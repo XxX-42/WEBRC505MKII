@@ -50,20 +50,37 @@ class FakeWorkletPort {
   onmessage: ((event: MessageEvent) => void) | null = null;
   readonly messages: Array<Record<string, unknown>> = [];
   static autoAcknowledgeReady = true;
+  private captureReadyEpoch = 0;
+  private captureReady = false;
 
   postMessage(message: Record<string, unknown>): void {
     this.messages.push({ ...message });
+    if (message.type === 'INPUT_READY') {
+      this.captureReadyEpoch = 0;
+      this.captureReady = false;
+    }
     if (message.type === 'INPUT_READY' && message.ready === true && FakeWorkletPort.autoAcknowledgeReady) {
       this.acknowledgeReady(message.generation);
     }
+    if (message.type === 'CHECK_CAPTURE_READINESS') {
+      this.notify({
+        type: 'CAPTURE_READINESS_STATE', inputGeneration: message.inputGeneration,
+        captureReadyEpoch: this.captureReadyEpoch, ready: this.captureReady,
+        oldestAvailableFrame: 0, latestAvailableFrame: this.captureReady ? 8_192 : 256,
+        preRollValidFrames: this.captureReady ? 8_192 : 256, requiredPreRollFrames: 8_192,
+      });
+    }
   }
 
-  acknowledgeReady(generation: unknown): void {
+  acknowledgeReady(generation: unknown, captureReadyEpoch = this.captureReadyEpoch): void {
     if (typeof generation !== 'number') return;
+    this.captureReadyEpoch = captureReadyEpoch;
+    this.captureReady = true;
     queueMicrotask(() => this.onmessage?.({
         data: {
           type: 'INPUT_CAPTURE_READY',
           inputGeneration: generation,
+          captureReadyEpoch,
           sampleRate: 44_100,
           oldestAvailableFrame: 0,
           latestAvailableFrame: 8_192,
@@ -75,6 +92,10 @@ class FakeWorkletPort {
   }
 
   notify(message: Record<string, unknown>): void {
+    if (message.type === 'INPUT_CAPTURE_NOT_READY') {
+      if (typeof message.captureReadyEpoch === 'number') this.captureReadyEpoch = message.captureReadyEpoch;
+      this.captureReady = false;
+    }
     queueMicrotask(() => this.onmessage?.({ data: message } as MessageEvent));
   }
 
@@ -154,7 +175,7 @@ describe('Browser input device lifecycle', () => {
     const node = FakeAudioWorkletNode.instances[0]!;
     const ready = node.port.messages.find((message) => message.type === 'INPUT_READY' && message.ready === true)!;
     node.port.notify({
-      type: 'INPUT_CAPTURE_NOT_READY', inputGeneration: ready.generation, sampleRate: 44_100,
+      type: 'INPUT_CAPTURE_NOT_READY', inputGeneration: ready.generation, captureReadyEpoch: 1, sampleRate: 44_100,
       reason: 'input-frame-discontinuity', frameStart: 12_000,
       oldestAvailableFrame: 4_000, latestAvailableFrame: 12_000,
       preRollValidFrames: 8_000, preRollCapacityFrames: 8_192, requiredPreRollFrames: 8_192,
@@ -167,8 +188,11 @@ describe('Browser input device lifecycle', () => {
     });
     expect(engine.getInputCaptureRequestFrame()).toBeNull();
 
-    node.port.acknowledgeReady(ready.generation);
+    const rewarm = engine.waitForInputCaptureReady();
     await Promise.resolve();
+    expect(engine.getUiStatus()).toMatchObject({ inputCaptureReady: false, inputCaptureWarming: true });
+    node.port.acknowledgeReady(ready.generation, 1);
+    await rewarm;
     expect(engine.getUiStatus()).toMatchObject({ inputCaptureReady: true, inputCaptureWarming: false });
     expect(engine.getInputCaptureRequestFrame()).not.toBeNull();
   });

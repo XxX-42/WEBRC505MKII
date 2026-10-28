@@ -18,6 +18,10 @@ const RECORDING_CHUNK_POOL_SIZE = 3;
 // cannot leave the track permanently busy; timeout discards the incomplete
 // take and preserves incumbent PCM/history.
 const RECORDING_CAPTURE_STOP_ACK_TIMEOUT_MS = 5_000;
+const sharedCaptureRetryReasons = new Set([
+    'capture-readiness-epoch-changed', 'capture-preroll-not-ready',
+    'request-frame-outside-preroll', 'input-frame-discontinuity',
+]);
 const OVERDUB_TRANSFER_BUFFER_FRAMES = 16_384;
 const OVERDUB_TRANSFER_BUFFER_POOL_SIZE = 3;
 // Reduce MessagePort traffic without allowing the live AudioBuffer update to
@@ -398,6 +402,8 @@ export class TrackAudio {
     private loopSyncSettingsRevision = 0;
     private lastLoopSyncSw: Track['loopSyncSw'];
     private recordingStartGeneration = 0;
+    private recordingCaptureStartAcknowledged = false;
+    private recordingCaptureStartRetryCount = 0;
     private recordingCaptureStopAckTimeout: ReturnType<typeof setTimeout> | null = null;
     public isReverse: boolean = false;
 
@@ -2413,7 +2419,7 @@ export class TrackAudio {
 
     public autoRecArmed = false;
 
-    public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number) {
+    public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number, sharedCaptureRetryCount = 0) {
         if (this.disposed) return;
         if (this.autoRecArmed || this.recordingStarting || this.isRecording || this.isFinalizingRecording
             || this.overdubStarting || this.overdubProcessor || this.pendingClear) {
@@ -2457,8 +2463,9 @@ export class TrackAudio {
                     return;
                 }
             }
-            const requestedCaptureFrame = quantizedStartFrame ?? this.engine.getInputCaptureRequestFrame?.() ?? null;
-            if ((autoRecEnabled || bounceEnabled) && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
+            let requestedCaptureFrame = quantizedStartFrame ?? this.engine.getInputCaptureRequestFrame?.() ?? null;
+            const sharedCaptureRequired = autoRecEnabled || bounceEnabled;
+            if (sharedCaptureRequired && !this.engine.beginInputCaptureSession) {
                 if (quantizedStartFrame !== undefined) {
                     this.failQuantizedRecordingStart('The required shared capture path is unavailable; existing loops are preserved.');
                     return;
@@ -2471,6 +2478,28 @@ export class TrackAudio {
             if (quantizedStartFrame !== undefined
                 && !this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
                 this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
+                return;
+            }
+            if (sharedCaptureRequired && quantizedStartFrame === undefined) {
+                try {
+                    // Immediate user starts have no externally specified frame
+                    // to preserve. Confirm current readiness in the worklet,
+                    // then sample a fresh frame immediately before reserving.
+                    await this.engine.waitForInputCaptureReady?.();
+                } catch (error) {
+                    if (generation !== this.recordingStartGeneration) return;
+                    this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} could not start because shared input capture did not rewarm: ${error instanceof Error ? error.message : String(error)}. Existing loops are preserved.`;
+                    this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+                    this.syncTransportState();
+                    return;
+                }
+                if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+                requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+            }
+            if (sharedCaptureRequired && requestedCaptureFrame === null) {
+                this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} requires ready shared input capture. Enable audio/input and retry; existing loops are preserved.`;
+                this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+                this.syncTransportState();
                 return;
             }
             if (autoRecEnabled) {
@@ -2508,6 +2537,8 @@ export class TrackAudio {
                         : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
+                    this.recordingCaptureStartAcknowledged = false;
+                    this.recordingCaptureStartRetryCount = sharedCaptureRetryCount;
                     if (quantizedStartFrame !== undefined) {
                         this.quantizedRecordingStartFrame = quantizedStartFrame;
                         this.quantizedRecordingPhaseRevision = quantizedPhaseRevision ?? null;
@@ -2700,6 +2731,11 @@ export class TrackAudio {
 
         if (message.type === 'CAPTURE_ERROR') {
             if (captureSession) {
+                const retryBeforeStartAck = !this.recordingCaptureStartAcknowledged
+                    && this.quantizedRecordingStartFrame === null
+                    && sharedCaptureRetryReasons.has(message.reason || '')
+                    && this.recordingCaptureStartRetryCount < 1;
+                const retryCount = this.recordingCaptureStartRetryCount;
                 const timing = Number.isSafeInteger(message.requestedStartFrame)
                     && Number.isSafeInteger(message.startReceivedFrame)
                     && Number.isSafeInteger(message.preRollCapacityFrames)
@@ -2714,6 +2750,21 @@ export class TrackAudio {
                     : '';
                 this.recordingDiagnostic = `Shared input capture failed: ${message.reason || 'unknown error'}.${timing} The previous track audio was kept; recording can be retried.`;
                 this.abortSharedRecording(captureSession, true);
+                if (retryBeforeStartAck && this.engine.waitForInputCaptureReady) {
+                    const retryGeneration = this.recordingStartGeneration;
+                    queueMicrotask(async () => {
+                        try {
+                            await this.engine.waitForInputCaptureReady?.();
+                            if (this.disposed || this.recordingStartGeneration !== retryGeneration
+                                || this.pendingClear || this.recordingStarting || this.isRecording || this.isFinalizingRecording) return;
+                            await this.startRecording(undefined, undefined, undefined, retryCount + 1);
+                        } catch (error) {
+                            if (!this.disposed && this.recordingStartGeneration === retryGeneration) {
+                                this.recordingDiagnostic = `Immediate recording retry stopped during shared capture rewarm: ${error instanceof Error ? error.message : String(error)}. The previous track audio was kept; retry when input is ready.`;
+                            }
+                        }
+                    });
+                }
             }
             return;
         }
@@ -2742,6 +2793,7 @@ export class TrackAudio {
         }
 
         if (message.type === 'RECORD_CONFIGURED') {
+            if (captureSession) this.recordingCaptureStartAcknowledged = true;
             if (captureSession && this.quantizedRecordingStartFrame !== null) {
                 const masterTrackId = this.transport.masterTrackId;
                 const phaseIsCurrent = this.quantizedRecordingPhaseRevision === this.transport.masterPhaseRevision;

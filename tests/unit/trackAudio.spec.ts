@@ -309,6 +309,93 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.recordingDiagnostic).toContain('shared capture path changed');
   });
 
+  it('waits for fresh shared readiness and samples a new frame only for an immediate Bounce start', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    let requestFrame: number | null = null;
+    engine.getBrowserBounceSourceMask = () => 2;
+    engine.getInputCaptureRequestFrame = () => requestFrame;
+    engine.waitForInputCaptureReady = vi.fn(async () => { requestFrame = 48_256; });
+    const node = new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode;
+    const session = { node, trackIndex: 0, sessionId: 44, inputGeneration: 5, startFrame: 48_256 };
+    engine.beginInputCaptureSession = vi.fn((_track: number, frame: number) => frame === 48_256 ? session : null);
+
+    await trackAudio.startRecording();
+
+    expect(engine.waitForInputCaptureReady).toHaveBeenCalledOnce();
+    expect(engine.beginInputCaptureSession).toHaveBeenCalledWith(0, 48_256, expect.any(Function), undefined, undefined, 2);
+    expect((trackAudio as any).recordingCaptureSession).toBe(session);
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+  });
+
+  it('retries an immediate shared capture at a fresh frame only when the old start never ACKed', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = createMockAudioContext().createBuffer(1, 256, 48_000);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.STOPPED;
+    let requestFrame = 8_000;
+    let readinessWaits = 0;
+    const sessions: Array<{ session: any; listener: (message: unknown) => void }> = [];
+    engine.getInputCaptureRequestFrame = () => requestFrame;
+    engine.waitForInputCaptureReady = vi.fn(async () => {
+      readinessWaits += 1;
+      if (readinessWaits >= 2) requestFrame = 16_000;
+    });
+    engine.getBrowserBounceSourceMask = () => 2;
+    engine.beginInputCaptureSession = vi.fn((trackIndex: number, startFrame: number, listener: (message: unknown) => void) => {
+      const session = {
+        node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+        trackIndex, sessionId: 60 + sessions.length, inputGeneration: 5, startFrame,
+      };
+      sessions.push({ session, listener });
+      return session;
+    });
+
+    await trackAudio.startRecording();
+    expect(sessions[0]?.session.startFrame).toBe(8_000);
+    sessions[0]?.listener({
+      type: 'CAPTURE_ERROR', trackIndex: 0, sessionId: sessions[0]!.session.sessionId,
+      inputGeneration: sessions[0]!.session.inputGeneration, reason: 'capture-readiness-epoch-changed',
+      requestedStartFrame: 8_000, startReceivedFrame: 8_100, oldestAvailableFrame: 8_000,
+      latestAvailableFrame: 8_100, preRollCapacityFrames: 8_192, preRollValidFrames: 100,
+      inputReady: true, currentInputGeneration: 5, sampleRate: 48_000,
+    });
+    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+
+    expect(engine.waitForInputCaptureReady).toHaveBeenCalledTimes(3);
+    expect(sessions[1]?.session.startFrame).toBe(16_000);
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+  });
+
+  it('does not retry or move an explicit quantized start after a discontinuity', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 256, context.sampleRate);
+    (trackAudio as any).audioBuffer = previous;
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 77, inputGeneration: 5, startFrame: 108_168,
+    };
+    engine.waitForInputCaptureReady = vi.fn(async () => undefined);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).quantizedRecordingStartFrame = session.startFrame;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.REC_STANDBY;
+
+    (trackAudio as any).handleRecordingMessage(session.node, {
+      type: 'CAPTURE_ERROR', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      reason: 'input-frame-discontinuity', requestedStartFrame: session.startFrame,
+      startReceivedFrame: 169_856, oldestAvailableFrame: 169_472, latestAvailableFrame: 169_856,
+      preRollCapacityFrames: 8_192, preRollValidFrames: 384, inputReady: true, sampleRate: 44_100,
+    });
+    await Promise.resolve();
+
+    expect(engine.waitForInputCaptureReady).not.toHaveBeenCalled();
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('input-frame-discontinuity');
+  });
+
   it('clears REC_STANDBY when shared capture reservation fails after setup', async () => {
     const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';
