@@ -93,6 +93,36 @@ bool consumeImportLedgerReservationFailure(const std::string& operationId) {
     }
     return false;
 }
+
+bool consumeImportBeginException(const std::string& operationId) {
+    static bool consumed = false;
+    const char* configuredId = std::getenv("WEBRC_NATIVE_TEST_THROW_BEFORE_IMPORT_BEGIN_OPERATION_ID");
+    if (!consumed && configuredId != nullptr && operationId == configuredId) {
+        consumed = true;
+        return true;
+    }
+    return false;
+}
+
+bool consumeImportPostBeginException(const std::string& operationId) {
+    static bool consumed = false;
+    const char* configuredId = std::getenv("WEBRC_NATIVE_TEST_THROW_AFTER_IMPORT_BEGIN_OPERATION_ID");
+    if (!consumed && configuredId != nullptr && operationId == configuredId) {
+        consumed = true;
+        return true;
+    }
+    return false;
+}
+
+bool consumeImportIndeterminateBeginException(const std::string& operationId) {
+    static bool consumed = false;
+    const char* configuredId = std::getenv("WEBRC_NATIVE_TEST_THROW_DURING_IMPORT_BEGIN_OPERATION_ID");
+    if (!consumed && configuredId != nullptr && operationId == configuredId) {
+        consumed = true;
+        return true;
+    }
+    return false;
+}
 #endif
 
 std::mutex& nativeImportOperationsMutex() { static std::mutex value; return value; }
@@ -1579,6 +1609,11 @@ int main() {
             std::lock_guard<std::mutex> lock(nativeImportOperationsMutex());
             const auto existing = nativeImportOperations().find(operationId);
             if (existing != nativeImportOperations().end()) {
+                if (existing->second.generation == 0U) {
+                    response.status = 503;
+                    writeError(response, "Native import operation is reserved but its begin outcome is indeterminate; do not retry this ID until the host incarnation changes.");
+                    return;
+                }
                 if (existing->second.archiveSha256 != archiveSha256 ||
                     existing->second.expectedProjectContentRevision != expectedProjectContentRevision) {
                     response.status = 409;
@@ -1616,6 +1651,11 @@ int main() {
             std::lock_guard<std::mutex> lock(nativeImportOperationsMutex());
             const auto existing = nativeImportOperations().find(operationId);
             if (existing != nativeImportOperations().end()) {
+                if (existing->second.generation == 0U) {
+                    response.status = 503;
+                    writeError(response, "Native import operation is reserved but its begin outcome is indeterminate; do not retry this ID until the host incarnation changes.");
+                    return;
+                }
                 if (existing->second.archiveSha256 != archiveSha256 ||
                     existing->second.expectedProjectContentRevision != expectedProjectContentRevision) {
                     response.status = 409;
@@ -1655,8 +1695,58 @@ int main() {
                 writeError(response, "Native project import operation status reservation exceeded process limits; no import was started.");
                 return;
             }
-            if (!engine.beginProjectArchiveImport(
-                    std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory))) {
+            bool beginEntered = false;
+            bool began = false;
+            try {
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+                if (consumeImportBeginException(operationId)) throw std::runtime_error("simulation exception before begin entry");
+#endif
+                beginEntered = true;
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+                if (consumeImportIndeterminateBeginException(operationId)) throw std::runtime_error("simulation indeterminate begin exception");
+#endif
+                began = engine.beginProjectArchiveImport(
+                    std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory));
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+                if (began && consumeImportPostBeginException(operationId)) {
+                    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                    while (std::chrono::steady_clock::now() < deadline) {
+                        const auto acceptedStatus = engine.getProjectArchiveImportStatus(generation);
+                        if (acceptedStatus.found && (acceptedStatus.state == NativeProjectImportState::Committed ||
+                            acceptedStatus.state == NativeProjectImportState::Cancelled)) break;
+                        std::this_thread::yield();
+                    }
+                    throw std::runtime_error("simulation exception after begin and terminal callback state");
+                }
+#endif
+            } catch (...) {
+                if (!beginEntered) {
+                    operations.erase(reserved);
+                    response.status = 503;
+                    writeError(response, "Native project import failed before begin entry; no import was started.");
+                    return;
+                }
+                try {
+                    if (generation != 0U && engine.getProjectArchiveImportStatus(generation).found) {
+                        reserved->second.generation = generation;
+                        response.status = 202;
+                        writeJson(response, json{{"ok", true}, {"generation", generation},
+                            {"hostIncarnationId", hostIncarnationId()}, {"operationId", operationId}, {"duplicate", false}});
+                        return;
+                    }
+                } catch (...) {
+                    // A failure while checking the engine cannot prove that
+                    // begin failed. Keep the sentinel and fail closed below.
+                }
+                // begin was entered but did not yield a queryable generation.
+                // Retain a sentinel so neither duplicate requests nor status
+                // queries can mistake the outcome for rejection/cancellation.
+                reserved->second.generation = 0U;
+                response.status = 503;
+                writeError(response, "Native project import begin outcome is indeterminate; its operation ID remains reserved and must not be retried.");
+                return;
+            }
+            if (!began) {
                 operations.erase(reserved);
                 response.status = 409;
                 writeError(response, error);
@@ -1725,6 +1815,11 @@ int main() {
                 return;
             }
             operation = found->second;
+        }
+        if (operation.generation == 0U) {
+            response.status = 503;
+            writeError(response, "Native import operation is reserved but its begin outcome is indeterminate; absence cannot be interpreted as cancellation and this ID must not be retried.");
+            return;
         }
         const auto status = engine.getProjectArchiveImportStatus(operation.generation);
         if (!status.found) {

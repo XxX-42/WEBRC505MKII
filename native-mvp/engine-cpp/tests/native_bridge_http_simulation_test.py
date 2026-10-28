@@ -246,6 +246,9 @@ def main():
     # Simulation-only fault injection exercises failure before the host claims
     # a generation. Production builds do not read this variable.
     os.environ["WEBRC_NATIVE_TEST_FAIL_IMPORT_LEDGER_OPERATION_ID"] = "e" * 32
+    os.environ["WEBRC_NATIVE_TEST_THROW_BEFORE_IMPORT_BEGIN_OPERATION_ID"] = "d" * 32
+    os.environ["WEBRC_NATIVE_TEST_THROW_DURING_IMPORT_BEGIN_OPERATION_ID"] = "b" * 32
+    os.environ["WEBRC_NATIVE_TEST_THROW_AFTER_IMPORT_BEGIN_OPERATION_ID"] = "c" * 32
     process = subprocess.Popen(
         [sys.argv[1]],
         stdout=subprocess.DEVNULL,
@@ -1734,6 +1737,99 @@ def main():
                 f"retry after pre-begin reservation failure did not commit exactly once: {retry_terminal}")
         status, project_before = request("/v1/status")
         require(status == 200, "could not refresh project revision after ledger reservation retry")
+        project_revision = project_before["projectContentRevision"]
+        project_import_path = f"/v1/project/import?expectedContentRevision={project_revision}"
+        revisions_before = {track["trackId"]: track["contentRevision"] for track in project_before.get("nativeTracks", [])}
+
+        before_begin_id = "d" * 32
+        before_begin_headers = dict(reservation_failure_headers, **{"X-Native-Operation-Id": before_begin_id})
+        before_begin_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=before_begin_headers)
+        try:
+            urllib.request.urlopen(before_begin_request, timeout=15)
+            raise AssertionError("injected exception before begin entry was accepted")
+        except urllib.error.HTTPError as error:
+            before_begin_status = error.code
+            before_begin_error = json.loads(error.read().decode("utf-8"))
+        require(before_begin_status == 503 and "no import was started" in before_begin_error.get("error", ""),
+                f"exception before begin did not clean the reserved ledger node: {before_begin_error}")
+        status, before_begin_absent = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={before_begin_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 404 and "absence does not prove" in before_begin_absent.get("error", ""),
+                f"pre-begin exception left an operation ledger entry: {before_begin_absent}")
+        require(request("/v1/status")[1]["projectContentRevision"] == project_revision,
+                "exception before begin changed the project")
+        with urllib.request.urlopen(urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+                method="POST", headers=before_begin_headers), timeout=15) as retry_response:
+            before_begin_retry = json.loads(retry_response.read().decode("utf-8"))
+        before_begin_generation = before_begin_retry["generation"]
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            status, before_begin_terminal = request_project_archive(
+                f"/v1/project/import/status?generation={before_begin_generation}", "GET")
+            if status == 200 and before_begin_terminal.get("state") in ("committed", "cancelled"):
+                break
+            time.sleep(0.005)
+        require(status == 200 and before_begin_terminal.get("state") == "committed",
+                f"same-ID retry after pre-begin exception did not commit: {before_begin_terminal}")
+        status, project_before = request("/v1/status")
+        require(status == 200, "could not refresh revision after pre-begin exception retry")
+        project_revision = project_before["projectContentRevision"]
+        project_import_path = f"/v1/project/import?expectedContentRevision={project_revision}"
+
+        indeterminate_id = "b" * 32
+        indeterminate_headers = dict(reservation_failure_headers, **{"X-Native-Operation-Id": indeterminate_id})
+        indeterminate_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=indeterminate_headers)
+        try:
+            urllib.request.urlopen(indeterminate_request, timeout=15)
+            raise AssertionError("injected exception after begin entry was accepted as a rejection")
+        except urllib.error.HTTPError as error:
+            indeterminate_status = error.code
+            indeterminate_error = json.loads(error.read().decode("utf-8"))
+        require(indeterminate_status == 503 and "indeterminate" in indeterminate_error.get("error", "").lower(),
+                f"uncertain begin exception was not reported as unresolved: {indeterminate_error}")
+        status, indeterminate_query = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={indeterminate_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 503 and "must not be retried" in indeterminate_query.get("error", ""),
+                f"uncertain begin outcome was not retained behind a fail-closed status: {indeterminate_query}")
+        retry_indeterminate = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=indeterminate_headers)
+        try:
+            urllib.request.urlopen(retry_indeterminate, timeout=15)
+            raise AssertionError("same-ID retry started after an indeterminate begin exception")
+        except urllib.error.HTTPError as error:
+            blocked_retry_status = error.code
+            blocked_retry = json.loads(error.read().decode("utf-8"))
+        require(blocked_retry_status == 503 and "indeterminate" in blocked_retry.get("error", "").lower(),
+                f"same-ID retry after indeterminate begin was not blocked: {blocked_retry}")
+        require(request("/v1/status")[1]["projectContentRevision"] == project_revision,
+                "simulated indeterminate begin unexpectedly changed the project")
+
+        after_begin_id = "c" * 32
+        after_begin_headers = dict(reservation_failure_headers, **{"X-Native-Operation-Id": after_begin_id})
+        after_begin_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=after_begin_headers)
+        with urllib.request.urlopen(after_begin_request, timeout=15) as after_begin_response:
+            after_begin_status, after_begin_result = after_begin_response.status, json.loads(after_begin_response.read().decode("utf-8"))
+        require(after_begin_status == 202 and after_begin_result.get("generation", 0) > 0,
+                f"exception after begin lost the accepted generation: {after_begin_result}")
+        status, after_begin_terminal = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={after_begin_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 200 and after_begin_terminal.get("generation") == after_begin_result["generation"] and
+                after_begin_terminal.get("state") == "committed",
+                f"post-begin exception erased or misreported the committed generation: {after_begin_terminal}")
+        with urllib.request.urlopen(urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+                method="POST", headers=after_begin_headers), timeout=15) as duplicate_response:
+            duplicate_status, duplicate_after_exception = duplicate_response.status, json.loads(duplicate_response.read().decode("utf-8"))
+        require(duplicate_status == 202 and duplicate_after_exception.get("duplicate") is True and
+                duplicate_after_exception.get("generation") == after_begin_result["generation"],
+                f"post-begin exception retry did not resolve to the original generation: {duplicate_after_exception}")
+        status, project_before = request("/v1/status")
+        require(status == 200, "could not refresh project revision after post-begin exception test")
         project_revision = project_before["projectContentRevision"]
         project_import_path = f"/v1/project/import?expectedContentRevision={project_revision}"
         revisions_before = {track["trackId"]: track["contentRevision"] for track in project_before.get("nativeTracks", [])}
