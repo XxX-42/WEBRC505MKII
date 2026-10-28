@@ -44,6 +44,8 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     await expect(strip.locator('.track-state')).toHaveText('RECORD');
     await page.waitForTimeout(250);
     await recordButton.evaluate((button: HTMLElement) => button.click());
+    await expect(strip.locator('.track-state')).toHaveText('PLAY');
+    await strip.getByRole('button', { name: 'Stop track (hold to clear)' }).click();
     await expect(strip.locator('.track-state')).toHaveText('STOP');
 
     const before = await page.evaluate(async () => {

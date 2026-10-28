@@ -44,6 +44,8 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
     await expect(strip.locator('.track-state')).toHaveText('RECORD', { timeout: 10_000 });
     await page.waitForTimeout(350);
     await recordButton.evaluate((button: HTMLElement) => button.click());
+    await expect(strip.locator('.track-state')).toHaveText('PLAY');
+    await strip.getByRole('button', { name: 'Stop track (hold to clear)' }).click();
     await expect(strip.locator('.track-state')).toHaveText('STOP', { timeout: 10_000 });
 
     const historyLayerButton = page.locator('[data-panel-control="undo-redo"]');
