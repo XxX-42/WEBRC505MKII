@@ -1,0 +1,2195 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_suspend_resume_frame_sentinel",
+  "completedAtUtc": "2026-10-28T16:39:18.382Z",
+  "sourceHead": "7eeca3c3d01f03db510e250c574125838237295e",
+  "browser": {
+    "name": "Chromium (Playwright)",
+    "version": "145.0.7632.6"
+  },
+  "sampleRateHz": 44100,
+  "requestedSuspendResumeCycles": 100,
+  "outputDevice": "Chromium synthetic zero-gain destination path; no physical output assertion",
+  "inputDevice": "Generated 997 Hz OscillatorNode feeding the production browser-input-capture worklet; no microphone permission",
+  "sentinels": {
+    "contextGlobal": {
+      "implementation": "independent AudioWorkletProcessor reading AudioWorkletGlobalScope.currentFrame and writing to a preallocated SharedArrayBuffer ring",
+      "callbacks": 772,
+      "discontinuities": [
+        {
+          "previousIndex": 409,
+          "currentIndex": 410,
+          "previousFrameStart": 52352,
+          "previousFrames": 128,
+          "currentFrameStart": 52352,
+          "deltaFrames": -128
+        },
+        {
+          "previousIndex": 410,
+          "currentIndex": 411,
+          "previousFrameStart": 52352,
+          "previousFrames": 128,
+          "currentFrameStart": 52608,
+          "deltaFrames": 128
+        }
+      ]
+    },
+    "productionCaptureTap": {
+      "implementation": "production public/worklets/browser-input-capture.js with test-only writes to a preallocated SharedArrayBuffer ring before lastFrameEnd assignment; input sentinel samples are checked without allocation",
+      "sourcePath": "public/worklets/browser-input-capture.js",
+      "testInstrumentedSourceSha256": "6b2e4cae69751ea3ca66a3849dad7cf11d919bf38917af4fa441857af2ee0af1",
+      "callbacks": 772,
+      "nonSilentInputCallbacks": 772,
+      "discontinuities": [
+        {
+          "previousIndex": 409,
+          "currentIndex": 410,
+          "previousFrameStart": 52352,
+          "previousFrames": 128,
+          "currentFrameStart": 52352,
+          "deltaFrames": -128
+        },
+        {
+          "previousIndex": 410,
+          "currentIndex": 411,
+          "previousFrameStart": 52352,
+          "previousFrames": 128,
+          "currentFrameStart": 52608,
+          "deltaFrames": 128
+        }
+      ]
+    }
+  },
+  "classification": "SHARED_CONTEXT_TIMELINE_DISCONTINUITY",
+  "coincidentContextAndCaptureDiscontinuities": [
+    {
+      "previousIndex": 409,
+      "currentIndex": 410,
+      "previousFrameStart": 52352,
+      "previousFrames": 128,
+      "currentFrameStart": 52352,
+      "deltaFrames": -128
+    },
+    {
+      "previousIndex": 410,
+      "currentIndex": 411,
+      "previousFrameStart": 52352,
+      "previousFrames": 128,
+      "currentFrameStart": 52608,
+      "deltaFrames": 128
+    }
+  ],
+  "lifecycle": [
+    {
+      "cycle": 0,
+      "before": {
+        "global": 25,
+        "capture": 25,
+        "currentTime": 0.07256235827664399,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.07256235827664399,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.10158730158730159,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 3200,
+      "firstPostResumeCaptureFrameStart": 3200,
+      "latestGlobalFrameStart": 4352,
+      "latestCaptureFrameStart": 4352
+    },
+    {
+      "cycle": 1,
+      "before": {
+        "global": 35,
+        "capture": 35,
+        "currentTime": 0.10158730158730159,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.10158730158730159,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.1306122448979592,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 4480,
+      "firstPostResumeCaptureFrameStart": 4480,
+      "latestGlobalFrameStart": 5632,
+      "latestCaptureFrameStart": 5632
+    },
+    {
+      "cycle": 2,
+      "before": {
+        "global": 45,
+        "capture": 45,
+        "currentTime": 0.1306122448979592,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.1306122448979592,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.14222222222222222,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 5760,
+      "firstPostResumeCaptureFrameStart": 5760,
+      "latestGlobalFrameStart": 6144,
+      "latestCaptureFrameStart": 6144
+    },
+    {
+      "cycle": 3,
+      "before": {
+        "global": 49,
+        "capture": 49,
+        "currentTime": 0.14222222222222222,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.14222222222222222,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.17124716553287983,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 6272,
+      "firstPostResumeCaptureFrameStart": 6272,
+      "latestGlobalFrameStart": 7424,
+      "latestCaptureFrameStart": 7424
+    },
+    {
+      "cycle": 4,
+      "before": {
+        "global": 59,
+        "capture": 59,
+        "currentTime": 0.17124716553287983,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.17124716553287983,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.2002721088435374,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 7552,
+      "firstPostResumeCaptureFrameStart": 7552,
+      "latestGlobalFrameStart": 8704,
+      "latestCaptureFrameStart": 8704
+    },
+    {
+      "cycle": 5,
+      "before": {
+        "global": 69,
+        "capture": 69,
+        "currentTime": 0.2002721088435374,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.2002721088435374,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.21188208616780047,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 8832,
+      "firstPostResumeCaptureFrameStart": 8832,
+      "latestGlobalFrameStart": 9216,
+      "latestCaptureFrameStart": 9216
+    },
+    {
+      "cycle": 6,
+      "before": {
+        "global": 73,
+        "capture": 73,
+        "currentTime": 0.21188208616780047,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.21188208616780047,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.24090702947845805,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 9344,
+      "firstPostResumeCaptureFrameStart": 9344,
+      "latestGlobalFrameStart": 10496,
+      "latestCaptureFrameStart": 10496
+    },
+    {
+      "cycle": 7,
+      "before": {
+        "global": 83,
+        "capture": 83,
+        "currentTime": 0.24090702947845805,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.24090702947845805,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.2525170068027211,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 10624,
+      "firstPostResumeCaptureFrameStart": 10624,
+      "latestGlobalFrameStart": 11008,
+      "latestCaptureFrameStart": 11008
+    },
+    {
+      "cycle": 8,
+      "before": {
+        "global": 87,
+        "capture": 87,
+        "currentTime": 0.2525170068027211,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.2525170068027211,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.2815419501133787,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 11136,
+      "firstPostResumeCaptureFrameStart": 11136,
+      "latestGlobalFrameStart": 12288,
+      "latestCaptureFrameStart": 12288
+    },
+    {
+      "cycle": 9,
+      "before": {
+        "global": 97,
+        "capture": 97,
+        "currentTime": 0.2815419501133787,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.2815419501133787,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.29024943310657597,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 12416,
+      "firstPostResumeCaptureFrameStart": 12416,
+      "latestGlobalFrameStart": 12672,
+      "latestCaptureFrameStart": 12672
+    },
+    {
+      "cycle": 10,
+      "before": {
+        "global": 100,
+        "capture": 100,
+        "currentTime": 0.29024943310657597,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.29024943310657597,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.3221768707482993,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 12800,
+      "firstPostResumeCaptureFrameStart": 12800,
+      "latestGlobalFrameStart": 14080,
+      "latestCaptureFrameStart": 14080
+    },
+    {
+      "cycle": 11,
+      "before": {
+        "global": 111,
+        "capture": 111,
+        "currentTime": 0.3221768707482993,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.3221768707482993,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.3512018140589569,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 14208,
+      "firstPostResumeCaptureFrameStart": 14208,
+      "latestGlobalFrameStart": 15360,
+      "latestCaptureFrameStart": 15360
+    },
+    {
+      "cycle": 12,
+      "before": {
+        "global": 121,
+        "capture": 121,
+        "currentTime": 0.3512018140589569,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.3512018140589569,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.38022675736961453,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 15488,
+      "firstPostResumeCaptureFrameStart": 15488,
+      "latestGlobalFrameStart": 16640,
+      "latestCaptureFrameStart": 16640
+    },
+    {
+      "cycle": 13,
+      "before": {
+        "global": 131,
+        "capture": 131,
+        "currentTime": 0.38022675736961453,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.38022675736961453,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.39183673469387753,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 16768,
+      "firstPostResumeCaptureFrameStart": 16768,
+      "latestGlobalFrameStart": 17152,
+      "latestCaptureFrameStart": 17152
+    },
+    {
+      "cycle": 14,
+      "before": {
+        "global": 135,
+        "capture": 135,
+        "currentTime": 0.39183673469387753,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.39183673469387753,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.42086167800453517,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 17280,
+      "firstPostResumeCaptureFrameStart": 17280,
+      "latestGlobalFrameStart": 18432,
+      "latestCaptureFrameStart": 18432
+    },
+    {
+      "cycle": 15,
+      "before": {
+        "global": 145,
+        "capture": 145,
+        "currentTime": 0.42086167800453517,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.42086167800453517,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.43247165532879817,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 18560,
+      "firstPostResumeCaptureFrameStart": 18560,
+      "latestGlobalFrameStart": 18944,
+      "latestCaptureFrameStart": 18944
+    },
+    {
+      "cycle": 16,
+      "before": {
+        "global": 149,
+        "capture": 149,
+        "currentTime": 0.43247165532879817,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.43247165532879817,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.4614965986394558,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 19072,
+      "firstPostResumeCaptureFrameStart": 19072,
+      "latestGlobalFrameStart": 20224,
+      "latestCaptureFrameStart": 20224
+    },
+    {
+      "cycle": 17,
+      "before": {
+        "global": 159,
+        "capture": 159,
+        "currentTime": 0.4614965986394558,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.4614965986394558,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.47020408163265304,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 20352,
+      "firstPostResumeCaptureFrameStart": 20352,
+      "latestGlobalFrameStart": 20608,
+      "latestCaptureFrameStart": 20608
+    },
+    {
+      "cycle": 18,
+      "before": {
+        "global": 162,
+        "capture": 162,
+        "currentTime": 0.47020408163265304,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.47020408163265304,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.5021315192743764,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 20736,
+      "firstPostResumeCaptureFrameStart": 20736,
+      "latestGlobalFrameStart": 22016,
+      "latestCaptureFrameStart": 22016
+    },
+    {
+      "cycle": 19,
+      "before": {
+        "global": 173,
+        "capture": 173,
+        "currentTime": 0.5021315192743764,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.5021315192743764,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.5108390022675737,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 22144,
+      "firstPostResumeCaptureFrameStart": 22144,
+      "latestGlobalFrameStart": 22400,
+      "latestCaptureFrameStart": 22400
+    },
+    {
+      "cycle": 20,
+      "before": {
+        "global": 176,
+        "capture": 176,
+        "currentTime": 0.5108390022675737,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.5108390022675737,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.5224489795918368,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 22528,
+      "firstPostResumeCaptureFrameStart": 22528,
+      "latestGlobalFrameStart": 22912,
+      "latestCaptureFrameStart": 22912
+    },
+    {
+      "cycle": 21,
+      "before": {
+        "global": 180,
+        "capture": 180,
+        "currentTime": 0.5224489795918368,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.5224489795918368,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.5514739229024943,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 23040,
+      "firstPostResumeCaptureFrameStart": 23040,
+      "latestGlobalFrameStart": 24192,
+      "latestCaptureFrameStart": 24192
+    },
+    {
+      "cycle": 22,
+      "before": {
+        "global": 190,
+        "capture": 190,
+        "currentTime": 0.5514739229024943,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.5514739229024943,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.5601814058956917,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 24320,
+      "firstPostResumeCaptureFrameStart": 24320,
+      "latestGlobalFrameStart": 24576,
+      "latestCaptureFrameStart": 24576
+    },
+    {
+      "cycle": 23,
+      "before": {
+        "global": 193,
+        "capture": 193,
+        "currentTime": 0.5601814058956917,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.5601814058956917,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.592108843537415,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 24704,
+      "firstPostResumeCaptureFrameStart": 24704,
+      "latestGlobalFrameStart": 25984,
+      "latestCaptureFrameStart": 25984
+    },
+    {
+      "cycle": 24,
+      "before": {
+        "global": 204,
+        "capture": 204,
+        "currentTime": 0.592108843537415,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.592108843537415,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.6008163265306122,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 26112,
+      "firstPostResumeCaptureFrameStart": 26112,
+      "latestGlobalFrameStart": 26368,
+      "latestCaptureFrameStart": 26368
+    },
+    {
+      "cycle": 25,
+      "before": {
+        "global": 207,
+        "capture": 207,
+        "currentTime": 0.6008163265306122,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.6008163265306122,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.6124263038548753,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 26496,
+      "firstPostResumeCaptureFrameStart": 26496,
+      "latestGlobalFrameStart": 26880,
+      "latestCaptureFrameStart": 26880
+    },
+    {
+      "cycle": 26,
+      "before": {
+        "global": 211,
+        "capture": 211,
+        "currentTime": 0.6124263038548753,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.6124263038548753,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.6414512471655329,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 27008,
+      "firstPostResumeCaptureFrameStart": 27008,
+      "latestGlobalFrameStart": 28160,
+      "latestCaptureFrameStart": 28160
+    },
+    {
+      "cycle": 27,
+      "before": {
+        "global": 221,
+        "capture": 221,
+        "currentTime": 0.6414512471655329,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.6414512471655329,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.6704761904761904,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 28288,
+      "firstPostResumeCaptureFrameStart": 28288,
+      "latestGlobalFrameStart": 29440,
+      "latestCaptureFrameStart": 29440
+    },
+    {
+      "cycle": 28,
+      "before": {
+        "global": 231,
+        "capture": 231,
+        "currentTime": 0.6704761904761904,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.6704761904761904,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.7024036281179138,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 29568,
+      "firstPostResumeCaptureFrameStart": 29568,
+      "latestGlobalFrameStart": 30848,
+      "latestCaptureFrameStart": 30848
+    },
+    {
+      "cycle": 29,
+      "before": {
+        "global": 242,
+        "capture": 242,
+        "currentTime": 0.7024036281179138,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.7024036281179138,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.7314285714285714,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 30976,
+      "firstPostResumeCaptureFrameStart": 30976,
+      "latestGlobalFrameStart": 32128,
+      "latestCaptureFrameStart": 32128
+    },
+    {
+      "cycle": 30,
+      "before": {
+        "global": 252,
+        "capture": 252,
+        "currentTime": 0.7314285714285714,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.7314285714285714,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.7401360544217687,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 32256,
+      "firstPostResumeCaptureFrameStart": 32256,
+      "latestGlobalFrameStart": 32512,
+      "latestCaptureFrameStart": 32512
+    },
+    {
+      "cycle": 31,
+      "before": {
+        "global": 255,
+        "capture": 255,
+        "currentTime": 0.7401360544217687,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.7401360544217687,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.7720634920634921,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 32640,
+      "firstPostResumeCaptureFrameStart": 32640,
+      "latestGlobalFrameStart": 33920,
+      "latestCaptureFrameStart": 33920
+    },
+    {
+      "cycle": 32,
+      "before": {
+        "global": 266,
+        "capture": 266,
+        "currentTime": 0.7720634920634921,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.7720634920634921,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.8010884353741496,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 34048,
+      "firstPostResumeCaptureFrameStart": 34048,
+      "latestGlobalFrameStart": 35200,
+      "latestCaptureFrameStart": 35200
+    },
+    {
+      "cycle": 33,
+      "before": {
+        "global": 276,
+        "capture": 276,
+        "currentTime": 0.8010884353741496,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.8010884353741496,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.8126984126984127,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 35328,
+      "firstPostResumeCaptureFrameStart": 35328,
+      "latestGlobalFrameStart": 35712,
+      "latestCaptureFrameStart": 35712
+    },
+    {
+      "cycle": 34,
+      "before": {
+        "global": 280,
+        "capture": 280,
+        "currentTime": 0.8126984126984127,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.8126984126984127,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.8417233560090703,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 35840,
+      "firstPostResumeCaptureFrameStart": 35840,
+      "latestGlobalFrameStart": 36992,
+      "latestCaptureFrameStart": 36992
+    },
+    {
+      "cycle": 35,
+      "before": {
+        "global": 290,
+        "capture": 290,
+        "currentTime": 0.8417233560090703,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.8417233560090703,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.8707482993197279,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 37120,
+      "firstPostResumeCaptureFrameStart": 37120,
+      "latestGlobalFrameStart": 38272,
+      "latestCaptureFrameStart": 38272
+    },
+    {
+      "cycle": 36,
+      "before": {
+        "global": 300,
+        "capture": 300,
+        "currentTime": 0.8707482993197279,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.8707482993197279,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.8823582766439909,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 38400,
+      "firstPostResumeCaptureFrameStart": 38400,
+      "latestGlobalFrameStart": 38784,
+      "latestCaptureFrameStart": 38784
+    },
+    {
+      "cycle": 37,
+      "before": {
+        "global": 304,
+        "capture": 304,
+        "currentTime": 0.8823582766439909,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.8823582766439909,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.9113832199546485,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 38912,
+      "firstPostResumeCaptureFrameStart": 38912,
+      "latestGlobalFrameStart": 40064,
+      "latestCaptureFrameStart": 40064
+    },
+    {
+      "cycle": 38,
+      "before": {
+        "global": 314,
+        "capture": 314,
+        "currentTime": 0.9113832199546485,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.9113832199546485,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.9200907029478458,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 40192,
+      "firstPostResumeCaptureFrameStart": 40192,
+      "latestGlobalFrameStart": 40448,
+      "latestCaptureFrameStart": 40448
+    },
+    {
+      "cycle": 39,
+      "before": {
+        "global": 317,
+        "capture": 317,
+        "currentTime": 0.9200907029478458,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.9200907029478458,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.9520181405895691,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 40576,
+      "firstPostResumeCaptureFrameStart": 40576,
+      "latestGlobalFrameStart": 41856,
+      "latestCaptureFrameStart": 41856
+    },
+    {
+      "cycle": 40,
+      "before": {
+        "global": 328,
+        "capture": 328,
+        "currentTime": 0.9520181405895691,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.9520181405895691,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.9810430839002268,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 41984,
+      "firstPostResumeCaptureFrameStart": 41984,
+      "latestGlobalFrameStart": 43136,
+      "latestCaptureFrameStart": 43136
+    },
+    {
+      "cycle": 41,
+      "before": {
+        "global": 338,
+        "capture": 338,
+        "currentTime": 0.9810430839002268,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.9810430839002268,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 0.9926530612244898,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 43264,
+      "firstPostResumeCaptureFrameStart": 43264,
+      "latestGlobalFrameStart": 43648,
+      "latestCaptureFrameStart": 43648
+    },
+    {
+      "cycle": 42,
+      "before": {
+        "global": 342,
+        "capture": 342,
+        "currentTime": 0.9926530612244898,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 0.9926530612244898,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.0216780045351475,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 43776,
+      "firstPostResumeCaptureFrameStart": 43776,
+      "latestGlobalFrameStart": 44928,
+      "latestCaptureFrameStart": 44928
+    },
+    {
+      "cycle": 43,
+      "before": {
+        "global": 352,
+        "capture": 352,
+        "currentTime": 1.0216780045351475,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.0216780045351475,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.0303854875283447,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 45056,
+      "firstPostResumeCaptureFrameStart": 45056,
+      "latestGlobalFrameStart": 45312,
+      "latestCaptureFrameStart": 45312
+    },
+    {
+      "cycle": 44,
+      "before": {
+        "global": 355,
+        "capture": 355,
+        "currentTime": 1.0303854875283447,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.0303854875283447,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.0419954648526077,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 45440,
+      "firstPostResumeCaptureFrameStart": 45440,
+      "latestGlobalFrameStart": 45824,
+      "latestCaptureFrameStart": 45824
+    },
+    {
+      "cycle": 45,
+      "before": {
+        "global": 359,
+        "capture": 359,
+        "currentTime": 1.0419954648526077,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.0419954648526077,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.0710204081632653,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 45952,
+      "firstPostResumeCaptureFrameStart": 45952,
+      "latestGlobalFrameStart": 47104,
+      "latestCaptureFrameStart": 47104
+    },
+    {
+      "cycle": 46,
+      "before": {
+        "global": 369,
+        "capture": 369,
+        "currentTime": 1.0710204081632653,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.0710204081632653,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1000453514739228,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 47232,
+      "firstPostResumeCaptureFrameStart": 47232,
+      "latestGlobalFrameStart": 48384,
+      "latestCaptureFrameStart": 48384
+    },
+    {
+      "cycle": 47,
+      "before": {
+        "global": 379,
+        "capture": 379,
+        "currentTime": 1.1000453514739228,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1000453514739228,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1116553287981858,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 48512,
+      "firstPostResumeCaptureFrameStart": 48512,
+      "latestGlobalFrameStart": 48896,
+      "latestCaptureFrameStart": 48896
+    },
+    {
+      "cycle": 48,
+      "before": {
+        "global": 383,
+        "capture": 383,
+        "currentTime": 1.1116553287981858,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1116553287981858,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1406802721088436,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 49024,
+      "firstPostResumeCaptureFrameStart": 49024,
+      "latestGlobalFrameStart": 50176,
+      "latestCaptureFrameStart": 50176
+    },
+    {
+      "cycle": 49,
+      "before": {
+        "global": 393,
+        "capture": 393,
+        "currentTime": 1.1406802721088436,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1406802721088436,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1522902494331067,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 50304,
+      "firstPostResumeCaptureFrameStart": 50304,
+      "latestGlobalFrameStart": 50688,
+      "latestCaptureFrameStart": 50688
+    },
+    {
+      "cycle": 50,
+      "before": {
+        "global": 397,
+        "capture": 397,
+        "currentTime": 1.1522902494331067,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1522902494331067,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1813151927437642,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 50816,
+      "firstPostResumeCaptureFrameStart": 50816,
+      "latestGlobalFrameStart": 51968,
+      "latestCaptureFrameStart": 51968
+    },
+    {
+      "cycle": 51,
+      "before": {
+        "global": 407,
+        "capture": 407,
+        "currentTime": 1.1813151927437642,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1813151927437642,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.1900226757369614,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 52096,
+      "firstPostResumeCaptureFrameStart": 52096,
+      "latestGlobalFrameStart": 52352,
+      "latestCaptureFrameStart": 52352
+    },
+    {
+      "cycle": 52,
+      "before": {
+        "global": 410,
+        "capture": 410,
+        "currentTime": 1.1900226757369614,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.1900226757369614,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.2016326530612245,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 52352,
+      "firstPostResumeCaptureFrameStart": 52352,
+      "latestGlobalFrameStart": 52864,
+      "latestCaptureFrameStart": 52864
+    },
+    {
+      "cycle": 53,
+      "before": {
+        "global": 414,
+        "capture": 414,
+        "currentTime": 1.2016326530612245,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.2016326530612245,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.230657596371882,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 52992,
+      "firstPostResumeCaptureFrameStart": 52992,
+      "latestGlobalFrameStart": 54144,
+      "latestCaptureFrameStart": 54144
+    },
+    {
+      "cycle": 54,
+      "before": {
+        "global": 424,
+        "capture": 424,
+        "currentTime": 1.230657596371882,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.230657596371882,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.2625850340136053,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 54272,
+      "firstPostResumeCaptureFrameStart": 54272,
+      "latestGlobalFrameStart": 55552,
+      "latestCaptureFrameStart": 55552
+    },
+    {
+      "cycle": 55,
+      "before": {
+        "global": 435,
+        "capture": 435,
+        "currentTime": 1.2625850340136053,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.2625850340136053,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.2712925170068028,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 55680,
+      "firstPostResumeCaptureFrameStart": 55680,
+      "latestGlobalFrameStart": 55936,
+      "latestCaptureFrameStart": 55936
+    },
+    {
+      "cycle": 56,
+      "before": {
+        "global": 438,
+        "capture": 438,
+        "currentTime": 1.2712925170068028,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.2712925170068028,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.3003174603174603,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 56064,
+      "firstPostResumeCaptureFrameStart": 56064,
+      "latestGlobalFrameStart": 57216,
+      "latestCaptureFrameStart": 57216
+    },
+    {
+      "cycle": 57,
+      "before": {
+        "global": 448,
+        "capture": 448,
+        "currentTime": 1.3003174603174603,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.3003174603174603,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.3322448979591837,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 57344,
+      "firstPostResumeCaptureFrameStart": 57344,
+      "latestGlobalFrameStart": 58624,
+      "latestCaptureFrameStart": 58624
+    },
+    {
+      "cycle": 58,
+      "before": {
+        "global": 459,
+        "capture": 459,
+        "currentTime": 1.3322448979591837,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.3322448979591837,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.340952380952381,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 58752,
+      "firstPostResumeCaptureFrameStart": 58752,
+      "latestGlobalFrameStart": 59008,
+      "latestCaptureFrameStart": 59008
+    },
+    {
+      "cycle": 59,
+      "before": {
+        "global": 462,
+        "capture": 462,
+        "currentTime": 1.340952380952381,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.340952380952381,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.3728798185941042,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 59136,
+      "firstPostResumeCaptureFrameStart": 59136,
+      "latestGlobalFrameStart": 60416,
+      "latestCaptureFrameStart": 60416
+    },
+    {
+      "cycle": 60,
+      "before": {
+        "global": 473,
+        "capture": 473,
+        "currentTime": 1.3728798185941042,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.3728798185941042,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.401904761904762,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 60544,
+      "firstPostResumeCaptureFrameStart": 60544,
+      "latestGlobalFrameStart": 61696,
+      "latestCaptureFrameStart": 61696
+    },
+    {
+      "cycle": 61,
+      "before": {
+        "global": 483,
+        "capture": 483,
+        "currentTime": 1.401904761904762,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.401904761904762,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.4106122448979592,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 61824,
+      "firstPostResumeCaptureFrameStart": 61824,
+      "latestGlobalFrameStart": 62080,
+      "latestCaptureFrameStart": 62080
+    },
+    {
+      "cycle": 62,
+      "before": {
+        "global": 486,
+        "capture": 486,
+        "currentTime": 1.4106122448979592,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.4106122448979592,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.4425396825396826,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 62208,
+      "firstPostResumeCaptureFrameStart": 62208,
+      "latestGlobalFrameStart": 63488,
+      "latestCaptureFrameStart": 63488
+    },
+    {
+      "cycle": 63,
+      "before": {
+        "global": 497,
+        "capture": 497,
+        "currentTime": 1.4425396825396826,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.4425396825396826,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.4512471655328798,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 63616,
+      "firstPostResumeCaptureFrameStart": 63616,
+      "latestGlobalFrameStart": 63872,
+      "latestCaptureFrameStart": 63872
+    },
+    {
+      "cycle": 64,
+      "before": {
+        "global": 500,
+        "capture": 500,
+        "currentTime": 1.4512471655328798,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.4512471655328798,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.4802721088435373,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 64000,
+      "firstPostResumeCaptureFrameStart": 64000,
+      "latestGlobalFrameStart": 65152,
+      "latestCaptureFrameStart": 65152
+    },
+    {
+      "cycle": 65,
+      "before": {
+        "global": 510,
+        "capture": 510,
+        "currentTime": 1.4802721088435373,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.4802721088435373,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.4918820861678004,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 65280,
+      "firstPostResumeCaptureFrameStart": 65280,
+      "latestGlobalFrameStart": 65664,
+      "latestCaptureFrameStart": 65664
+    },
+    {
+      "cycle": 66,
+      "before": {
+        "global": 514,
+        "capture": 514,
+        "currentTime": 1.4918820861678004,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.4918820861678004,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.5005895691609978,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 65792,
+      "firstPostResumeCaptureFrameStart": 65792,
+      "latestGlobalFrameStart": 66048,
+      "latestCaptureFrameStart": 66048
+    },
+    {
+      "cycle": 67,
+      "before": {
+        "global": 517,
+        "capture": 517,
+        "currentTime": 1.5005895691609978,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.5005895691609978,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.5325170068027212,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 66176,
+      "firstPostResumeCaptureFrameStart": 66176,
+      "latestGlobalFrameStart": 67456,
+      "latestCaptureFrameStart": 67456
+    },
+    {
+      "cycle": 68,
+      "before": {
+        "global": 528,
+        "capture": 528,
+        "currentTime": 1.5325170068027212,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.5325170068027212,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.5412244897959184,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 67584,
+      "firstPostResumeCaptureFrameStart": 67584,
+      "latestGlobalFrameStart": 67840,
+      "latestCaptureFrameStart": 67840
+    },
+    {
+      "cycle": 69,
+      "before": {
+        "global": 531,
+        "capture": 531,
+        "currentTime": 1.5412244897959184,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.5412244897959184,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.5528344671201815,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 67968,
+      "firstPostResumeCaptureFrameStart": 67968,
+      "latestGlobalFrameStart": 68352,
+      "latestCaptureFrameStart": 68352
+    },
+    {
+      "cycle": 70,
+      "before": {
+        "global": 535,
+        "capture": 535,
+        "currentTime": 1.5528344671201815,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.5528344671201815,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.5615419501133787,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 68480,
+      "firstPostResumeCaptureFrameStart": 68480,
+      "latestGlobalFrameStart": 68736,
+      "latestCaptureFrameStart": 68736
+    },
+    {
+      "cycle": 71,
+      "before": {
+        "global": 538,
+        "capture": 538,
+        "currentTime": 1.5615419501133787,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.5615419501133787,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.570249433106576,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 68864,
+      "firstPostResumeCaptureFrameStart": 68864,
+      "latestGlobalFrameStart": 69120,
+      "latestCaptureFrameStart": 69120
+    },
+    {
+      "cycle": 72,
+      "before": {
+        "global": 541,
+        "capture": 541,
+        "currentTime": 1.570249433106576,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.570249433106576,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.581859410430839,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 69248,
+      "firstPostResumeCaptureFrameStart": 69248,
+      "latestGlobalFrameStart": 69632,
+      "latestCaptureFrameStart": 69632
+    },
+    {
+      "cycle": 73,
+      "before": {
+        "global": 545,
+        "capture": 545,
+        "currentTime": 1.581859410430839,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.581859410430839,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.6108843537414965,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 69760,
+      "firstPostResumeCaptureFrameStart": 69760,
+      "latestGlobalFrameStart": 70912,
+      "latestCaptureFrameStart": 70912
+    },
+    {
+      "cycle": 74,
+      "before": {
+        "global": 555,
+        "capture": 555,
+        "currentTime": 1.6108843537414965,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.6108843537414965,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.6428117913832199,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 71040,
+      "firstPostResumeCaptureFrameStart": 71040,
+      "latestGlobalFrameStart": 72320,
+      "latestCaptureFrameStart": 72320
+    },
+    {
+      "cycle": 75,
+      "before": {
+        "global": 566,
+        "capture": 566,
+        "currentTime": 1.6428117913832199,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.6428117913832199,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.6718367346938776,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 72448,
+      "firstPostResumeCaptureFrameStart": 72448,
+      "latestGlobalFrameStart": 73600,
+      "latestCaptureFrameStart": 73600
+    },
+    {
+      "cycle": 76,
+      "before": {
+        "global": 576,
+        "capture": 576,
+        "currentTime": 1.6718367346938776,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.6718367346938776,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.6805442176870748,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 73728,
+      "firstPostResumeCaptureFrameStart": 73728,
+      "latestGlobalFrameStart": 73984,
+      "latestCaptureFrameStart": 73984
+    },
+    {
+      "cycle": 77,
+      "before": {
+        "global": 579,
+        "capture": 579,
+        "currentTime": 1.6805442176870748,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.6805442176870748,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.7124716553287982,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 74112,
+      "firstPostResumeCaptureFrameStart": 74112,
+      "latestGlobalFrameStart": 75392,
+      "latestCaptureFrameStart": 75392
+    },
+    {
+      "cycle": 78,
+      "before": {
+        "global": 590,
+        "capture": 590,
+        "currentTime": 1.7124716553287982,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.7124716553287982,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.7211791383219954,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 75520,
+      "firstPostResumeCaptureFrameStart": 75520,
+      "latestGlobalFrameStart": 75776,
+      "latestCaptureFrameStart": 75776
+    },
+    {
+      "cycle": 79,
+      "before": {
+        "global": 593,
+        "capture": 593,
+        "currentTime": 1.7211791383219954,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.7211791383219954,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.750204081632653,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 75904,
+      "firstPostResumeCaptureFrameStart": 75904,
+      "latestGlobalFrameStart": 77056,
+      "latestCaptureFrameStart": 77056
+    },
+    {
+      "cycle": 80,
+      "before": {
+        "global": 603,
+        "capture": 603,
+        "currentTime": 1.750204081632653,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.750204081632653,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.7821315192743765,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 77184,
+      "firstPostResumeCaptureFrameStart": 77184,
+      "latestGlobalFrameStart": 78464,
+      "latestCaptureFrameStart": 78464
+    },
+    {
+      "cycle": 81,
+      "before": {
+        "global": 614,
+        "capture": 614,
+        "currentTime": 1.7821315192743765,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.7821315192743765,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.7908390022675738,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 78592,
+      "firstPostResumeCaptureFrameStart": 78592,
+      "latestGlobalFrameStart": 78848,
+      "latestCaptureFrameStart": 78848
+    },
+    {
+      "cycle": 82,
+      "before": {
+        "global": 617,
+        "capture": 617,
+        "currentTime": 1.7908390022675738,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.7908390022675738,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.822766439909297,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 78976,
+      "firstPostResumeCaptureFrameStart": 78976,
+      "latestGlobalFrameStart": 80256,
+      "latestCaptureFrameStart": 80256
+    },
+    {
+      "cycle": 83,
+      "before": {
+        "global": 628,
+        "capture": 628,
+        "currentTime": 1.822766439909297,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.822766439909297,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.8314739229024943,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 80384,
+      "firstPostResumeCaptureFrameStart": 80384,
+      "latestGlobalFrameStart": 80640,
+      "latestCaptureFrameStart": 80640
+    },
+    {
+      "cycle": 84,
+      "before": {
+        "global": 631,
+        "capture": 631,
+        "currentTime": 1.8314739229024943,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.8314739229024943,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.8604988662131519,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 80768,
+      "firstPostResumeCaptureFrameStart": 80768,
+      "latestGlobalFrameStart": 81920,
+      "latestCaptureFrameStart": 81920
+    },
+    {
+      "cycle": 85,
+      "before": {
+        "global": 641,
+        "capture": 641,
+        "currentTime": 1.8604988662131519,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.8604988662131519,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.8924263038548752,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 82048,
+      "firstPostResumeCaptureFrameStart": 82048,
+      "latestGlobalFrameStart": 83328,
+      "latestCaptureFrameStart": 83328
+    },
+    {
+      "cycle": 86,
+      "before": {
+        "global": 652,
+        "capture": 652,
+        "currentTime": 1.8924263038548752,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.8924263038548752,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.921451247165533,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 83456,
+      "firstPostResumeCaptureFrameStart": 83456,
+      "latestGlobalFrameStart": 84608,
+      "latestCaptureFrameStart": 84608
+    },
+    {
+      "cycle": 87,
+      "before": {
+        "global": 662,
+        "capture": 662,
+        "currentTime": 1.921451247165533,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.921451247165533,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.9301587301587302,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 84736,
+      "firstPostResumeCaptureFrameStart": 84736,
+      "latestGlobalFrameStart": 84992,
+      "latestCaptureFrameStart": 84992
+    },
+    {
+      "cycle": 88,
+      "before": {
+        "global": 665,
+        "capture": 665,
+        "currentTime": 1.9301587301587302,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.9301587301587302,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.9620861678004535,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 85120,
+      "firstPostResumeCaptureFrameStart": 85120,
+      "latestGlobalFrameStart": 86400,
+      "latestCaptureFrameStart": 86400
+    },
+    {
+      "cycle": 89,
+      "before": {
+        "global": 676,
+        "capture": 676,
+        "currentTime": 1.9620861678004535,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.9620861678004535,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 1.991111111111111,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 86528,
+      "firstPostResumeCaptureFrameStart": 86528,
+      "latestGlobalFrameStart": 87680,
+      "latestCaptureFrameStart": 87680
+    },
+    {
+      "cycle": 90,
+      "before": {
+        "global": 686,
+        "capture": 686,
+        "currentTime": 1.991111111111111,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 1.991111111111111,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.0027210884353743,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 87808,
+      "firstPostResumeCaptureFrameStart": 87808,
+      "latestGlobalFrameStart": 88192,
+      "latestCaptureFrameStart": 88192
+    },
+    {
+      "cycle": 91,
+      "before": {
+        "global": 690,
+        "capture": 690,
+        "currentTime": 2.0027210884353743,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.0027210884353743,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.040453514739229,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 88320,
+      "firstPostResumeCaptureFrameStart": 88320,
+      "latestGlobalFrameStart": 89856,
+      "latestCaptureFrameStart": 89856
+    },
+    {
+      "cycle": 92,
+      "before": {
+        "global": 703,
+        "capture": 703,
+        "currentTime": 2.040453514739229,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.040453514739229,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.052063492063492,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 89984,
+      "firstPostResumeCaptureFrameStart": 89984,
+      "latestGlobalFrameStart": 90368,
+      "latestCaptureFrameStart": 90368
+    },
+    {
+      "cycle": 93,
+      "before": {
+        "global": 707,
+        "capture": 707,
+        "currentTime": 2.052063492063492,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.052063492063492,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.0810884353741494,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 90496,
+      "firstPostResumeCaptureFrameStart": 90496,
+      "latestGlobalFrameStart": 91648,
+      "latestCaptureFrameStart": 91648
+    },
+    {
+      "cycle": 94,
+      "before": {
+        "global": 717,
+        "capture": 717,
+        "currentTime": 2.0810884353741494,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.0810884353741494,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.0926984126984127,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 91776,
+      "firstPostResumeCaptureFrameStart": 91776,
+      "latestGlobalFrameStart": 92160,
+      "latestCaptureFrameStart": 92160
+    },
+    {
+      "cycle": 95,
+      "before": {
+        "global": 721,
+        "capture": 721,
+        "currentTime": 2.0926984126984127,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.0926984126984127,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.1217233560090705,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 92288,
+      "firstPostResumeCaptureFrameStart": 92288,
+      "latestGlobalFrameStart": 93440,
+      "latestCaptureFrameStart": 93440
+    },
+    {
+      "cycle": 96,
+      "before": {
+        "global": 731,
+        "capture": 731,
+        "currentTime": 2.1217233560090705,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.1217233560090705,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.1507482993197278,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 93568,
+      "firstPostResumeCaptureFrameStart": 93568,
+      "latestGlobalFrameStart": 94720,
+      "latestCaptureFrameStart": 94720
+    },
+    {
+      "cycle": 97,
+      "before": {
+        "global": 741,
+        "capture": 741,
+        "currentTime": 2.1507482993197278,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.1507482993197278,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.182675736961451,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 94848,
+      "firstPostResumeCaptureFrameStart": 94848,
+      "latestGlobalFrameStart": 96128,
+      "latestCaptureFrameStart": 96128
+    },
+    {
+      "cycle": 98,
+      "before": {
+        "global": 752,
+        "capture": 752,
+        "currentTime": 2.182675736961451,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.182675736961451,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.211700680272109,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 96256,
+      "firstPostResumeCaptureFrameStart": 96256,
+      "latestGlobalFrameStart": 97408,
+      "latestCaptureFrameStart": 97408
+    },
+    {
+      "cycle": 99,
+      "before": {
+        "global": 762,
+        "capture": 762,
+        "currentTime": 2.211700680272109,
+        "state": "running"
+      },
+      "suspendedAt": {
+        "currentTime": 2.211700680272109,
+        "state": "suspended"
+      },
+      "resumedAt": {
+        "currentTime": 2.2407256235827666,
+        "state": "running"
+      },
+      "firstPostResumeGlobalFrameStart": 97536,
+      "firstPostResumeCaptureFrameStart": 97536,
+      "latestGlobalFrameStart": 98688,
+      "latestCaptureFrameStart": 98688
+    }
+  ],
+  "final": {
+    "state": "suspended",
+    "currentTime": 2.2523356009070294,
+    "globalCallbacks": 772,
+    "captureCallbacks": 772
+  },
+  "limits": [
+    "This is a software-only Chromium AudioContext/AudioWorklet observation; it does not measure hardware XRUNs, device clock drift, or audible output.",
+    "The context-wide reference is a second AudioWorklet node in the same rendering quantum, not an independent physical device clock.",
+    "A no-gap result applies only to the recorded run and cannot explain the historical summary-only 128-frame report."
+  ]
+}
