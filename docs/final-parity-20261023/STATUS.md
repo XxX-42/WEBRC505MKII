@@ -1,5 +1,7 @@
 # RC-505 最终集成证据状态（2026-10-24）
 
+> 本页保留 2026-10-24 的历史快照。后续 Browser AutoRec／Bounce 和 Native REC ACTION 集成的当前状态见 [2026-10-28 进度](../rc505-progress-20261028.md)。
+
 文档快照基于最终已验证 UI 源 `9e48f39`、Native host 修复 `676eb21` 与最终报告提交。**软件交付仍为 PARTIAL。** 单测、生产构建、Native 仿真门禁及一次真实本地 Browser 虚拟输入 smoke 通过；完整 E2E 本轮为 85/112，另有性能、启动、硬件与部分软件 provider 缺口。详细状态见[最终回归回执](regression.json)与[Native 验证回执](native-verification.json)。
 
 | 项目 | 当前结论 | 证据 |
