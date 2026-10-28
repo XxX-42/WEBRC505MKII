@@ -380,6 +380,49 @@ describe('Native project import recovery', () => {
       recovery: { operationId: snapshotId, state: 'pending' }, createdAt: 1 });
   });
 
+  it('restores the PCM archive belonging to the explicitly selected second pending candidate', async () => {
+    installWebLock();
+    const current = await archive('Current project', 0.1);
+    const firstCandidate = await archive('First recovery', 0.25);
+    const secondCandidate = await archive('Second recovery', 0.75);
+    const { engine, restoreProjectArchive } = makeEngine(current);
+    const { store, api } = makeStore();
+    const firstId = 'first-pending-operation-0123456789';
+    const secondId = 'second-pending-operation-012345678';
+    const hostIncarnationId = 'b'.repeat(32);
+    const firstFingerprint = 'a'.repeat(64);
+    const secondFingerprint = 'c'.repeat(64);
+
+    for (const [operationId, name, bytes, generation, fingerprint] of [
+      [firstId, 'First recovery', firstCandidate, 81, firstFingerprint],
+      [secondId, 'Second recovery', secondCandidate, 82, secondFingerprint],
+    ] as const) {
+      await api.stageNativeImportRecovery({ operationId, ownerSessionId: `session-${operationId}`,
+        name, bpm: 120, archiveVersion: 1, sourceProjectContentRevision: 10,
+        sourceProjectTransportMutationRevision: 4, sourceHostIncarnationId: hostIncarnationId, sourceModeGeneration: 2 }, arrayBuffer(bytes));
+      await api.markNativeImportRecoveryPending(operationId, generation);
+      await api.bindNativeImportRequest(operationId, 10, fingerprint);
+    }
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockImplementation(async (operationId: string) => operationId === secondId
+      ? { state: 'committed', generation: 82, hostIncarnationId, operationId,
+        expectedProjectContentRevision: 10, archiveSha256: secondFingerprint } as any
+      : { state: 'unavailable', generation: 81, hostIncarnationId, operationId } as any);
+
+    const memory = new ProjectMemory(engine as any, store);
+    const candidates = await memory.listUnresolvedNativeImportRecoveryOptions();
+    expect(candidates.map((candidate) => candidate.operationId)).toEqual([firstId, secondId]);
+
+    await expect(memory.restoreNativeImportRecovery(candidates[1]!.operationId))
+      .resolves.toMatchObject({ name: 'Second recovery' });
+
+    expect(engine.getNativeProjectArchiveImportStatusByOperationId).toHaveBeenCalledExactlyOnceWith(secondId, hostIncarnationId);
+    expect(restoreProjectArchive).toHaveBeenCalledOnce();
+    const restoredArchive = restoreProjectArchive.mock.calls[0]![1];
+    expect(new Uint8Array(restoredArchive instanceof Uint8Array ? restoredArchive : new Uint8Array(restoredArchive)))
+      .toEqual(new Uint8Array(secondCandidate));
+    expect(api.readNativeImportRecoveryCandidate).toHaveBeenCalledExactlyOnceWith(secondId);
+  });
+
   it('keeps no-generation outcomes blocked and does not guess that the host cancelled', async () => {
     installWebLock();
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e65');
