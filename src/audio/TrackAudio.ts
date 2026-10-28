@@ -402,6 +402,8 @@ export class TrackAudio {
     private loopSyncSettingsRevision = 0;
     private lastLoopSyncSw: Track['loopSyncSw'];
     private recordingStartGeneration = 0;
+    private recordingStartRetrySuppressionGeneration = 0;
+    private recordingCaptureStartCancelled = false;
     private recordingCaptureStartAcknowledged = false;
     private recordingCaptureStartRetryCount = 0;
     private recordingCaptureStopAckTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -1947,6 +1949,13 @@ export class TrackAudio {
 
     public triggerStop() {
         if (this.disposed) return;
+        // A Stop/Cancel is authoritative even if the first RECORD_CONFIGURED
+        // acknowledgement has not arrived yet, or an automatic rewarm retry
+        // is already waiting in a microtask.
+        this.recordingStartRetrySuppressionGeneration += 1;
+        if (this.recordingCaptureSession && !this.recordingCaptureStartAcknowledged) {
+            this.recordingCaptureStartCancelled = true;
+        }
         if (this.autoRecArmed) { this.abortRecording(); this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY; this.syncTransportState(); return; }
         if (this.recordingStarting) {
             this.abortRecording();
@@ -2435,6 +2444,7 @@ export class TrackAudio {
 
         this.clearRecordingCaptureStopAckTimeout();
         const generation = ++this.recordingStartGeneration;
+        this.recordingCaptureStartCancelled = false;
         this.recordingStarting = true;
         try {
             const ctx = this.engine.context;
@@ -2637,6 +2647,10 @@ export class TrackAudio {
     }
 
     public async stopRecording(quantizedStopFrame?: number) {
+        this.recordingStartRetrySuppressionGeneration += 1;
+        if (this.recordingCaptureSession && !this.recordingCaptureStartAcknowledged) {
+            this.recordingCaptureStartCancelled = true;
+        }
         if (this.disposed) return;
         if (this.autoRecArmed) { this.triggerStop(); return; }
         if ((!this.isRecording && !this.isFinalizingRecording) || !this.workletNode) return;
@@ -2732,6 +2746,7 @@ export class TrackAudio {
         if (message.type === 'CAPTURE_ERROR') {
             if (captureSession) {
                 const retryBeforeStartAck = !this.recordingCaptureStartAcknowledged
+                    && !this.recordingCaptureStartCancelled
                     && this.quantizedRecordingStartFrame === null
                     && sharedCaptureRetryReasons.has(message.reason || '')
                     && this.recordingCaptureStartRetryCount < 1;
@@ -2752,14 +2767,17 @@ export class TrackAudio {
                 this.abortSharedRecording(captureSession, true);
                 if (retryBeforeStartAck && this.engine.waitForInputCaptureReady) {
                     const retryGeneration = this.recordingStartGeneration;
+                    const retrySuppressionGeneration = this.recordingStartRetrySuppressionGeneration;
                     queueMicrotask(async () => {
                         try {
                             await this.engine.waitForInputCaptureReady?.();
                             if (this.disposed || this.recordingStartGeneration !== retryGeneration
+                                || this.recordingStartRetrySuppressionGeneration !== retrySuppressionGeneration
                                 || this.pendingClear || this.recordingStarting || this.isRecording || this.isFinalizingRecording) return;
                             await this.startRecording(undefined, undefined, undefined, retryCount + 1);
                         } catch (error) {
-                            if (!this.disposed && this.recordingStartGeneration === retryGeneration) {
+                            if (!this.disposed && this.recordingStartGeneration === retryGeneration
+                                && this.recordingStartRetrySuppressionGeneration === retrySuppressionGeneration) {
                                 this.recordingDiagnostic = `Immediate recording retry stopped during shared capture rewarm: ${error instanceof Error ? error.message : String(error)}. The previous track audio was kept; retry when input is ready.`;
                             }
                         }

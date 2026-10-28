@@ -414,9 +414,10 @@ test('Browser UI blocks new recording and overdub while the shared tap rewarms',
       const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
       const browser = (AudioEngine.getInstance() as any).browser;
       const generation = browser.inputCaptureGeneration;
+      const captureReadyEpoch = browser.inputCaptureReadyEpoch;
       const sampleRate = browser.context.sampleRate;
       browser.handleInputCaptureMessage({
-        type: 'INPUT_CAPTURE_NOT_READY', inputGeneration: generation, sampleRate,
+        type: 'INPUT_CAPTURE_NOT_READY', inputGeneration: generation, captureReadyEpoch, sampleRate,
         reason: 'input-frame-discontinuity', frameStart: 12_000,
         oldestAvailableFrame: 4_000, latestAvailableFrame: 12_000,
         preRollValidFrames: 8_000, preRollCapacityFrames: 8_192, requiredPreRollFrames: 8_192,
@@ -431,10 +432,11 @@ test('Browser UI blocks new recording and overdub while the shared tap rewarms',
       const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
       const browser = (AudioEngine.getInstance() as any).browser;
       const generation = browser.inputCaptureGeneration;
+      const captureReadyEpoch = browser.inputCaptureReadyEpoch;
       const sampleRate = browser.context.sampleRate;
       const latestAvailableFrame = 8_192;
       browser.handleInputCaptureMessage({
-        type: 'INPUT_CAPTURE_READY', inputGeneration: generation, sampleRate,
+        type: 'INPUT_CAPTURE_READY', inputGeneration: generation, captureReadyEpoch, sampleRate,
         oldestAvailableFrame: 0, latestAvailableFrame,
         preRollValidFrames: 8_192, preRollCapacityFrames: 8_192,
         requiredPreRollFrames: 8_192,

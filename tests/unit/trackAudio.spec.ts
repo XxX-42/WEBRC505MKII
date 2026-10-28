@@ -367,6 +367,49 @@ describe('TrackAudio transport sync helpers', () => {
     expect((trackAudio as any).audioBuffer).toBe(previous);
   });
 
+  it('does not restart an unacknowledged capture after Stop while rewarm retry is pending', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 256, context.sampleRate);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.STOPPED;
+    let readinessWaits = 0;
+    let releaseRetryReadiness!: () => void;
+    const retryReadiness = new Promise<void>(resolve => { releaseRetryReadiness = resolve; });
+    const sessions: Array<{ session: any; listener: (message: unknown) => void }> = [];
+    engine.getInputCaptureRequestFrame = () => 8_000 + sessions.length * 8_000;
+    engine.waitForInputCaptureReady = vi.fn(() => {
+      readinessWaits += 1;
+      return readinessWaits === 2 ? retryReadiness : Promise.resolve();
+    });
+    engine.getBrowserBounceSourceMask = () => 2;
+    engine.beginInputCaptureSession = vi.fn((trackIndex: number, startFrame: number, listener: (message: unknown) => void) => {
+      const session = {
+        node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+        trackIndex, sessionId: 90 + sessions.length, inputGeneration: 5, startFrame,
+      };
+      sessions.push({ session, listener });
+      return session;
+    });
+
+    await trackAudio.startRecording();
+    sessions[0]!.listener({
+      type: 'CAPTURE_ERROR', sessionId: sessions[0]!.session.sessionId,
+      inputGeneration: sessions[0]!.session.inputGeneration, reason: 'capture-readiness-epoch-changed',
+    });
+    await vi.waitFor(() => expect(readinessWaits).toBe(2));
+
+    // Stop remains authoritative even though the errored session was released
+    // before the fresh-readiness wait finished.
+    trackAudio.triggerStop();
+    releaseRetryReadiness();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sessions).toHaveLength(1);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+  });
+
   it('does not retry or move an explicit quantized start after a discontinuity', async () => {
     const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
     const previous = context.createBuffer(1, 256, context.sampleRate);

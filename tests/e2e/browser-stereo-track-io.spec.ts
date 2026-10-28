@@ -137,17 +137,38 @@ test('records, plays and overdubs distinct stereo through all five Browser track
           } finally {
             MessagePort.prototype.postMessage = originalPostMessage;
           }
-          await waitFor(() => Boolean(track.recordingDiagnostic)
-            && !track.isRecording && !track.isFinalizingRecording && track.recordingCaptureSession === null,
-          'expired shared-capture request to fail cleanly and release its session');
-          if (!delayed || !track.recordingDiagnostic.includes('request-frame-outside-preroll')
-            || !track.recordingDiagnostic.includes('capacity 8192 frames')
-            || !track.recordingDiagnostic.includes('age ')) {
-            throw new Error(`Expired capture did not expose the expected frame-age/capacity diagnostic: ${track.recordingDiagnostic}`);
+          const expiredSession = track.recordingCaptureSession;
+          if (!delayed || !expiredSession) throw new Error('The delayed shared-capture request was not reserved');
+          const capturePort = browser.inputCaptureNode.port as MessagePort;
+          const originalCaptureHandler = capturePort.onmessage;
+          const captureErrors: any[] = [];
+          capturePort.onmessage = (event: MessageEvent) => {
+            if (event.data?.type === 'CAPTURE_ERROR' && event.data?.sessionId === expiredSession.sessionId) {
+              captureErrors.push(event.data);
+            }
+            originalCaptureHandler?.call(capturePort, event);
+          };
+          try {
+            await waitFor(() => captureErrors.length === 1
+              && track.recordingCaptureSession !== null
+              && track.recordingCaptureSession.sessionId !== expiredSession.sessionId
+              && track.isRecording,
+            'expired request rejection, session release, and fresh-frame retry');
+          } finally {
+            capturePort.onmessage = originalCaptureHandler;
+          }
+          const error = captureErrors[0];
+          if (error.reason !== 'request-frame-outside-preroll'
+            || error.preRollCapacityFrames !== 8_192
+            || !Number.isSafeInteger(error.requestedStartFrame)
+            || !Number.isSafeInteger(error.startReceivedFrame)
+            || error.startReceivedFrame - error.requestedStartFrame <= error.preRollCapacityFrames
+            || track.recordingCaptureSession.startFrame <= expiredSession.startFrame) {
+            throw new Error(`Expired capture did not fail with frame-age/capacity evidence followed by a fresh-frame retry: ${JSON.stringify({ error, oldStart: expiredSession.startFrame, newStart: track.recordingCaptureSession.startFrame })}`);
           }
         }
 
-        await track.startRecording();
+        if (!track.isRecording) await track.startRecording();
         await sleep(220);
         await track.stopRecording();
         await waitForRecordingComplete(track, index + 1);
