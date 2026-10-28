@@ -100,7 +100,7 @@
         {{ midiClockPhaseStatus }}
       </div>
       <div class="midi-clock-phase-note">
-        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; FA/FC actions happen on event arrival, while the FA frame projection remains diagnostic only. Starts are not sample-aligned or quantized.
+        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; an early FA waits up to 1 second for stable F8 evidence, then starts on pulse arrival. This delay is not sample-frame alignment; the FA frame projection remains diagnostic only.
       </div>
       <div
         v-if="clockSnapshot.selectedInputKey"
@@ -168,7 +168,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
 import { TrackState, TransportState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
-import { dispatchBrowserMidiTransportControl } from '../audio/BrowserMidiSyncControl';
+import {
+  armBrowserMidiPendingStart,
+  BROWSER_MIDI_PENDING_START_TIMEOUT_MS,
+  dispatchBrowserMidiTransportControl,
+  updateBrowserMidiPendingStart,
+  type BrowserMidiPendingStart,
+} from '../audio/BrowserMidiSyncControl';
 import { MidiClockInputController, type MidiClockRealtimeEvent, type MidiClockSnapshot } from '../audio/MidiClockInputController';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
@@ -197,8 +203,13 @@ const midiSyncMode = ref<MidiSyncMode>('off');
 const midiControlNotice = ref('');
 let lastMidiAppliedBpm: number | null = null;
 let midiControlEvidence: { sourceKey: string; timestampMs: number; tickPeriodMs: number } | null = null;
+let pendingMidiStart: BrowserMidiPendingStart | null = null;
+let pendingMidiStartTimer: number | null = null;
 const hasBrowserCommittedPhrase = (track: (typeof engine.tracks)[number]): boolean =>
   'hasCommittedPhrase' in track && track.hasCommittedPhrase;
+const isMidiSyncRecordingTrack = (track: (typeof engine.tracks)[number]): boolean =>
+  track.state === TrackState.RECORDING || track.state === TrackState.OVERDUBBING
+  || track.state === TrackState.REC_STANDBY || track.state === TrackState.REC_FINISHING;
 const hasCommittedBrowserLoops = ref(engine.tracks.some(hasBrowserCommittedPhrase));
 const midiClock = new MidiClockInputController({
   onChange: () => refreshMidiClock(),
@@ -259,7 +270,7 @@ const midiControlStatus = computed(() => {
   if (snapshot.connection !== 'connected') return 'Connect MIDI clock input to enable control';
   if (!snapshot.selectedInputKey) return 'Select one input to enable control';
   if (!hasStableMidiClock(snapshot)) return 'Waiting for stable single-source F8 clock';
-  return 'Stable F8 tempo follow active with empty tracks · MIDI Start/Stop is immediate, without sample phase alignment';
+  return 'Stable F8 tempo follow active with empty tracks · MIDI Start waits up to 1 second for stable clock, then starts on pulse arrival without sample alignment';
 });
 const midiFrameMappingStatus = computed(() => {
   const mapping = clockSnapshot.value.frameMapping;
@@ -278,6 +289,20 @@ const midiStartFrameMappingStatus = computed(() => {
 const refreshMidiClock = () => {
   clockSnapshot.value = midiClock.getSnapshot();
   hasCommittedBrowserLoops.value = engine.tracks.some(hasBrowserCommittedPhrase);
+  if (pendingMidiStart) {
+    const pendingResult = updateBrowserMidiPendingStart(pendingMidiStart, {
+      status: 'state',
+      sourceKey: null,
+      selectedSourceKey: clockSnapshot.value.selectedInputKey,
+      timestampMs: performance.now(),
+      enabled: midiSyncMode.value !== 'off' && audioMode.value === 'browser',
+      connected: clockSnapshot.value.connection === 'connected',
+      hasRecordingTrack: engine.tracks.some(isMidiSyncRecordingTrack),
+      hasCommittedLoops: hasCommittedBrowserLoops.value,
+      hasStableClockEvidence: false,
+    });
+    settlePendingMidiStart(pendingResult);
+  }
   if (midiSyncMode.value !== 'off'
     && (clockSnapshot.value.connection !== 'connected'
       || !clockSnapshot.value.selectedInputKey
@@ -301,6 +326,7 @@ const selectMidiClockInput = (event: Event) => {
   const target = event.target;
   if (!(target instanceof HTMLSelectElement)) return;
   midiControlEvidence = null;
+  cancelPendingMidiStart('MIDI Start canceled because the selected input changed.');
   midiClock.selectInput(target.value || null);
   refreshMidiClock();
 };
@@ -330,13 +356,61 @@ const selectMidiSyncMode = (event: Event) => {
 };
 
 const disableMidiSync = () => {
+  cancelPendingMidiStart('MIDI Start canceled because MIDI sync was disabled.');
   lastMidiAppliedBpm = null;
   midiControlEvidence = null;
   midiSyncMode.value = 'off';
   engine.setMidiClockSyncMode('off');
 };
 
+const cancelPendingMidiStart = (notice: string) => {
+  if (!pendingMidiStart) return;
+  pendingMidiStart = null;
+  if (pendingMidiStartTimer !== null) window.clearTimeout(pendingMidiStartTimer);
+  pendingMidiStartTimer = null;
+  midiControlNotice.value = notice;
+};
+
+const settlePendingMidiStart = (result: ReturnType<typeof updateBrowserMidiPendingStart>) => {
+  if (result.action === 'pending' || result.action === 'none') return;
+  pendingMidiStart = null;
+  if (pendingMidiStartTimer !== null) window.clearTimeout(pendingMidiStartTimer);
+  pendingMidiStartTimer = null;
+  if (result.action === 'started') {
+    if (midiSyncMode.value === 'all') engine.playAllTracks();
+    engine.rhythmEngine.start();
+    midiControlNotice.value = 'MIDI Start queued until stable F8 clock; playback began on pulse arrival, without sample-frame alignment.';
+    return;
+  }
+  const notices = {
+    expired: 'MIDI Start canceled because stable F8 clock did not arrive within 1 second.',
+    stop: 'Pending MIDI Start canceled by MIDI Stop.',
+    'source-changed': 'Pending MIDI Start canceled because the selected input changed.',
+    disabled: 'Pending MIDI Start canceled because MIDI sync was disabled.',
+    disconnected: 'Pending MIDI Start canceled because the MIDI input disconnected or permission was revoked.',
+    recording: 'Pending MIDI Start canceled because a track entered a recording state.',
+    loops: 'Pending MIDI Start canceled because a Browser loop exists.',
+  } as const;
+  midiControlNotice.value = notices[result.reason];
+};
+
 function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
+  if (pendingMidiStart) {
+    const pendingResult = updateBrowserMidiPendingStart(pendingMidiStart, {
+      status: event.status === 'stop' ? 'stop' : 'clock',
+      sourceKey: event.sourceKey,
+      selectedSourceKey: clockSnapshot.value.selectedInputKey,
+      timestampMs: event.timestampMs,
+      enabled: midiSyncMode.value !== 'off' && audioMode.value === 'browser',
+      connected: clockSnapshot.value.connection === 'connected',
+      hasRecordingTrack: engine.tracks.some(isMidiSyncRecordingTrack),
+      hasCommittedLoops: engine.tracks.some(hasBrowserCommittedPhrase),
+      hasStableClockEvidence: event.status === 'clock'
+        && event.clock.phaseLocked && event.clock.inferredMissingTicks === 0
+        && event.clock.rejectedIntervals === 0 && event.clock.tickPeriodMs !== null,
+    });
+    settlePendingMidiStart(pendingResult);
+  }
   if (midiSyncMode.value === 'off' || audioMode.value !== 'browser') return;
   if (event.sourceKey !== clockSnapshot.value.selectedInputKey) return;
   const eventHasStableEvidence = event.clock.phaseLocked && event.clock.inferredMissingTicks === 0
@@ -351,6 +425,16 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
   const recentEvidence = midiControlEvidence?.sourceKey === event.sourceKey
     && event.timestampMs >= midiControlEvidence.timestampMs
     && event.timestampMs - midiControlEvidence.timestampMs <= Math.max(500, midiControlEvidence.tickPeriodMs * 4);
+  if (event.status === 'start' && !eventHasStableEvidence && !recentEvidence) {
+    if (engine.tracks.some(hasBrowserCommittedPhrase)) return;
+    pendingMidiStart = armBrowserMidiPendingStart(event.sourceKey, event.timestampMs);
+    if (pendingMidiStartTimer !== null) window.clearTimeout(pendingMidiStartTimer);
+    pendingMidiStartTimer = window.setTimeout(() => {
+      cancelPendingMidiStart('MIDI Start canceled because stable F8 clock did not arrive within 1 second.');
+    }, BROWSER_MIDI_PENDING_START_TIMEOUT_MS);
+    midiControlNotice.value = 'MIDI Start is pending stable F8 clock for up to 1 second; playback will begin on arrival without sample-frame alignment.';
+    return;
+  }
   const dispatch = dispatchBrowserMidiTransportControl(
     midiSyncMode.value,
     event.status,

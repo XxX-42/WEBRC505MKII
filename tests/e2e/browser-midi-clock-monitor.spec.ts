@@ -1,6 +1,64 @@
 import { expect, test } from '@playwright/test';
 import { startBrowserAudio } from './uiHelpers';
 
+test('queues an early MIDI Start until stable selected-source clock evidence arrives', async ({ page }) => {
+  await page.addInitScript(() => {
+    const listeners = new Set<(event: { data: number[]; timeStamp: number }) => void>();
+    const input = {
+      name: 'Clock Master',
+      addEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.delete(listener),
+    };
+    const access = {
+      inputs: { forEach: (callback: (port: typeof input) => void) => callback(input) },
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    const permissionStatus = { state: 'granted', addEventListener: () => undefined, removeEventListener: () => undefined };
+    Object.defineProperty(window, '__earlyMidiStart', { configurable: true, value: {
+      send: (data: number[]) => listeners.forEach((listener) => listener({ data, timeStamp: performance.now() })),
+    } });
+    Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => access });
+    Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => permissionStatus } });
+  });
+
+  await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
+  await page.getByRole('button', { name: 'Connect MIDI clock input' }).click();
+  await page.getByTestId('midi-clock-input-select').selectOption({ label: 'Clock Master' });
+  await page.getByTestId('midi-clock-sync-mode').selectOption('rhythm');
+
+  const rhythmRunning = () => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return AudioEngine.getInstance().rhythmEngine.isRunning;
+  });
+  const send = (status: number) => page.evaluate((value) => {
+    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[]): void } }).__earlyMidiStart;
+    fake.send([value]);
+  }, status);
+
+  await send(0xfa);
+  await expect.poll(rhythmRunning).toBe(false);
+  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending stable F8 clock');
+  await send(0xfc);
+  await expect.poll(rhythmRunning).toBe(false);
+  await expect(page.getByTestId('midi-clock-control-notice')).toHaveText('Pending MIDI Start canceled by MIDI Stop.');
+  await send(0xfa);
+  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending stable F8 clock');
+  await page.evaluate(async () => {
+    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[]): void } }).__earlyMidiStart;
+    const period = 60_000 / 100 / 24;
+    for (let tick = 0; tick < 16; tick += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, period));
+      fake.send([0xf8]);
+    }
+  });
+  await expect.poll(rhythmRunning).toBe(true);
+  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('without sample-frame alignment');
+  await send(0xfc);
+  await expect.poll(rhythmRunning).toBe(false);
+});
+
 test('explicit MIDI sync follows stable clock and starts/stops the Browser rhythm only when enabled', async ({ page }) => {
   await page.addInitScript(() => {
     const listeners = new Set<(event: { data: number[]; timeStamp: number }) => void>();
