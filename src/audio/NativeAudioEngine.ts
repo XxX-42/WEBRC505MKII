@@ -6,7 +6,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, nativeRecordTempoToken, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -924,9 +924,6 @@ export class NativeAudioEngine {
       const reported = initialTracks[index]!;
       if (reported.state === 'Empty') continue;
       const metadata = await this.bridge.getTrackMetadata(index + 1);
-      if (archiveVersion >= 2 && metadata.originalTempoBpm === undefined) {
-        throw new Error(`Native Track ${index + 1} host advertises ProjectArchive v2 but omitted originalTempoBpm metadata`);
-      }
       if (metadata.trackId !== index + 1 || metadata.channels !== 2 || metadata.sampleRate !== initial.sampleRate ||
           !Number.isSafeInteger(metadata.contentRevision) || metadata.contentRevision !== reported.contentRevision) {
         throw new Error(`Native Track ${index + 1} changed or returned inconsistent metadata while project export was being prepared`);
@@ -943,7 +940,7 @@ export class NativeAudioEngine {
         frameCount: metadata.frameCount,
         channels: 2,
         contentRevision: metadata.contentRevision!,
-        originalTempoBpm: archiveVersion >= 2 ? metadata.originalTempoBpm! : null,
+        originalTempoBpm: archiveVersion >= 2 ? metadata.originalTempoBpm ?? null : null,
       };
     }
 
@@ -969,7 +966,7 @@ export class NativeAudioEngine {
       }
       // contentRevision is a host consistency token, not part of the shared
       // archive schema. Original tempo is included only when the host advertises
-      // v2 support; live Native recordings remain unknown.
+      // v2 support; older hosts or takes with an unverified tempo remain null.
       tracks[index] = {
         sampleRate: descriptor.sampleRate,
         frameCount: descriptor.frameCount,
@@ -1181,7 +1178,7 @@ export class NativeAudioEngine {
     if (patch.recAction !== undefined) await this.dispatchStatusRequest(() => this.bridge.setRecordAction(patch.recAction!));
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
-    await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId));
+    await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, this.nativeRecordTempoToken()));
   }
   public getMixerState(): MixerState { return mixerState(this.latestStatus?.mixerLevels); }
 
@@ -1192,11 +1189,16 @@ export class NativeAudioEngine {
   }
 
   public async recordTrack(trackId = 1) {
-    await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId));
+    await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId, this.nativeRecordTempoToken()));
   }
 
   public async stopTrack(trackId = 1) {
-    await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId));
+    await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, this.nativeRecordTempoToken()));
+  }
+
+  private nativeRecordTempoToken(): NativeRecordTempoToken | undefined {
+    const transport = Transport.getInstance();
+    return nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.projectMutationRevision);
   }
 
   public async playTrack(trackId = 1) {

@@ -31,6 +31,8 @@ using namespace webrc::native;
 
 namespace {
 
+constexpr std::uint64_t kMaximumSafeTempoRevision = 9007199254740991ULL;
+
 bool exactMemoryKeys(const json& value, std::initializer_list<const char*> keys) {
     return value.is_object() && value.size() == keys.size() && std::all_of(keys.begin(), keys.end(),
         [&value](const char* key) { return value.contains(key); });
@@ -915,6 +917,9 @@ json statusToJson(const EngineStatus& status) {
             {"meterDenominator", status.nativeRhythmMeterDenominator},
             {"eventsCleanRoomProcedural", status.nativeRhythmEventsCleanRoomProcedural},
             {"bpm", status.nativeRhythmBpm},
+            {"tempoRequestedRevision", status.nativeTempoRequestedRevision},
+            {"tempoAppliedRevision", status.nativeTempoAppliedRevision},
+            {"tempoAppliedValid", status.nativeTempoAppliedValid},
             {"kitIndex", status.nativeRhythmKitIndex},
             {"variation", nativeRhythmVariationToString(status.nativeRhythmVariation)},
             {"section", nativeRhythmSectionToString(status.nativeRhythmSection)},
@@ -957,6 +962,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperMultiTrackImplemented", status.nativeLooperMultiTrackImplemented},
         {"nativeLooperTracksStereo", status.nativeLooperTracksStereo},
         {"projectArchiveV2Supported", status.projectArchiveV2Supported},
+        {"nativeTempoRecordProvenanceVersion", 1U},
         {"nativeLooperMaxRecordSeconds", status.nativeLooperMaxRecordSeconds},
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
@@ -1077,6 +1083,39 @@ bool readUnsignedJsonInteger(const json& value, std::uint64_t maximum, std::uint
     if (signedValue < 0) return false;
     result = static_cast<std::uint64_t>(signedValue);
     return result <= maximum;
+}
+
+bool readRecordTempoToken(const httplib::Request& request, std::optional<double>& bpm, std::uint64_t& revision) {
+    const bool hasBpm = request.has_param("tempoBpm");
+    const bool hasRevision = request.has_param("tempoRevision");
+    if (!hasBpm && !hasRevision) { bpm.reset(); revision = 0U; return true; }
+    if (!hasBpm || !hasRevision || request.get_param_value_count("tempoBpm") != 1U ||
+        request.get_param_value_count("tempoRevision") != 1U) return false;
+    try {
+        const auto bpmText = request.get_param_value("tempoBpm");
+        std::size_t consumed = 0U;
+        const double value = std::stod(bpmText, &consumed);
+        if (consumed != bpmText.size() || !std::isfinite(value) || value < 40.0 || value > 300.0) return false;
+        const auto revisionText = request.get_param_value("tempoRevision");
+        const auto [end, status] = std::from_chars(revisionText.data(), revisionText.data() + revisionText.size(), revision);
+        if (status != std::errc{} || end != revisionText.data() + revisionText.size() ||
+            revision > kMaximumSafeTempoRevision) return false;
+        bpm = value;
+        return true;
+    } catch (...) { return false; }
+}
+
+bool readRecordTempoToken(const json& body, std::optional<double>& bpm, std::uint64_t& revision) {
+    const bool hasBpm = body.contains("tempoBpm");
+    const bool hasRevision = body.contains("tempoRevision");
+    if (!hasBpm && !hasRevision) { bpm.reset(); revision = 0U; return true; }
+    std::uint64_t parsedRevision = 0U;
+    if (!hasBpm || !hasRevision || !body.at("tempoBpm").is_number() ||
+        !readUnsignedJsonInteger(body.at("tempoRevision"), kMaximumSafeTempoRevision, parsedRevision)) return false;
+    const double value = body.at("tempoBpm").get<double>();
+    if (!std::isfinite(value) || value < 40.0 || value > 300.0) return false;
+    bpm = value; revision = parsedRevision;
+    return true;
 }
 
 bool isAllowedUiOrigin(const std::string& origin) {
@@ -1793,12 +1832,17 @@ int main() {
     server.Post("/v1/transport/record", [&engine](const httplib::Request& request, httplib::Response& response) {
         std::string error;
         std::size_t trackIndex = 0U;
+        std::optional<double> tempoBpm;
+        std::uint64_t tempoRevision = 0U;
         if (!readTrackIndex(request, trackIndex, error)) {
             response.status = 400;
             writeError(response, error);
             return;
         }
-        if (!engine.recordTrack(trackIndex, error)) {
+        if (!readRecordTempoToken(request, tempoBpm, tempoRevision)) {
+            response.status = 400; writeError(response, "REC tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
+        }
+        if (!engine.recordTrack(trackIndex, error, tempoBpm, tempoRevision)) {
             writeError(response, error);
             return;
         }
@@ -1846,25 +1890,36 @@ int main() {
     server.Post("/v1/transport/finish-record", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
-            if (!body.is_object() || body.size() != 1U || !body.contains("trackId") || !body.at("trackId").is_number_unsigned()) {
+            if (!body.is_object() || !body.contains("trackId") || !body.at("trackId").is_number_unsigned() ||
+                (body.size() != 1U && body.size() != 3U)) {
                 response.status = 400; writeError(response, "REC completion requires trackId 1..5."); return;
             }
             const auto trackId = body.at("trackId").get<unsigned int>();
             if (trackId < 1U || trackId > 5U) { response.status = 400; writeError(response, "Invalid REC completion track."); return; }
+            std::optional<double> tempoBpm;
+            std::uint64_t tempoRevision = 0U;
+            if (!readRecordTempoToken(body, tempoBpm, tempoRevision)) {
+                response.status = 400; writeError(response, "REC completion tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
+            }
             std::string error;
-            if (!engine.finishRecordingTrack(trackId - 1U, error)) { response.status = 409; writeError(response, error); return; }
+            if (!engine.finishRecordingTrack(trackId - 1U, error, tempoBpm, tempoRevision)) { response.status = 409; writeError(response, error); return; }
             writeJson(response, statusToJson(engine.getStatus()));
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
     server.Post("/v1/transport/stop", [&engine](const httplib::Request& request, httplib::Response& response) {
         std::string error;
         std::size_t trackIndex = 0U;
+        std::optional<double> tempoBpm;
+        std::uint64_t tempoRevision = 0U;
         if (!readTrackIndex(request, trackIndex, error)) {
             response.status = 400;
             writeError(response, error);
             return;
         }
-        if (!engine.stopTrack(trackIndex, error)) {
+        if (!readRecordTempoToken(request, tempoBpm, tempoRevision)) {
+            response.status = 400; writeError(response, "Stop tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
+        }
+        if (!engine.stopTrack(trackIndex, error, tempoBpm, tempoRevision)) {
             writeError(response, error);
             return;
         }

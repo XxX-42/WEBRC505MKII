@@ -6,6 +6,7 @@
 #include "native_output_stage.hpp"
 #include "native_pitch_processor.hpp"
 #include "native_poly_pitch_processor.hpp"
+#include "native_rhythm_engine.hpp"
 #include "project_archive_codec.hpp"
 
 #include <array>
@@ -282,6 +283,9 @@ struct EngineStatus {
     unsigned int nativePitchLatencySamples = 0U;
     NativePitchFallbackReason nativePitchFallbackReason = NativePitchFallbackReason::NotRequested;
     double nativeRhythmBpm = 120.0;
+    std::uint64_t nativeTempoRequestedRevision = 0U;
+    std::uint64_t nativeTempoAppliedRevision = 0U;
+    bool nativeTempoAppliedValid = false;
     unsigned int nativeRhythmKitIndex = 1;
     NativeRhythmVariation nativeRhythmVariation = NativeRhythmVariation::A;
     NativeRhythmSection nativeRhythmSection = NativeRhythmSection::Main;
@@ -458,6 +462,11 @@ struct NativeDubModeCommand {
     std::uint64_t revision = 0U;
 };
 
+struct NativeRhythmCommand {
+    NativeRhythmConfig config{};
+    std::uint64_t tempoRevision = 0U;
+};
+
 template <typename T, std::size_t Capacity>
 class SpscRingQueue {
 public:
@@ -527,10 +536,13 @@ public:
     bool play(std::string& error);
     bool toggleOverdub(std::string& error);
     bool clear(std::string& error);
-    bool recordTrack(std::size_t trackIndex, std::string& error);
-    bool finishRecordingTrack(std::size_t trackIndex, std::string& error);
+    bool recordTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
+                     std::uint64_t provenanceRevision = 0U);
+    bool finishRecordingTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
+                              std::uint64_t provenanceRevision = 0U);
     bool setRecordAction(bool overdub, std::string& error);
-    bool stopTrack(std::size_t trackIndex, std::string& error);
+    bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
+                   std::uint64_t provenanceRevision = 0U);
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
     bool clearTrack(std::size_t trackIndex, std::string& error);
@@ -751,7 +763,9 @@ private:
     void applyNativeRhythmCommands() noexcept;
     [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
     [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
-    [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error);
+    [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
+                                         std::optional<double> provenanceBpm = std::nullopt,
+                                         std::uint64_t provenanceRevision = 0U);
     void applyTrackCommandAtCallback(const Command& command) noexcept;
     [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
     void invalidateTrackMarkLocked(std::size_t trackIndex) noexcept;
@@ -967,7 +981,7 @@ private:
         NativeDubMode::Overdub, NativeDubMode::Overdub
     }};
     std::array<bool, kNativeTrackCount> nativeOfficialSourcePitchConflict_{};
-    SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
+    SpscRingQueue<NativeRhythmCommand, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;
     std::unique_ptr<NativeOutputStage> outputStage_{std::make_unique<NativeOutputStage>()};
     NativeEffectBank nativeInputFxBank_{};
@@ -1018,6 +1032,10 @@ private:
     std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed_{};
     std::array<std::atomic<unsigned int>, 7> mixerLevels_{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
     NativeRhythmConfig nativeRhythmConfig_{};
+    std::uint64_t nativeTempoRequestedRevision_ = 0U;
+    std::atomic<std::uint64_t> nativeTempoAppliedRevision_{0U};
+    std::atomic<std::uint64_t> nativeTempoAppliedBpmBits_{0U};
+    std::atomic<bool> nativeTempoAppliedValid_{false};
     std::uint64_t callbackFrameCursor_ = 0;
     std::atomic<std::uint64_t> publishedCallbackFrameCursor_{0U};
     std::atomic<bool> engineRunning_{false};
@@ -1039,6 +1057,10 @@ private:
     // Zero means unknown; supported BPM values have nonzero IEEE-754 bits.
     // Fixed atomic storage keeps callback and control readers race-free.
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> originalTempoBpmBits_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartRevision_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartBpmBits_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartNativeRevision_{};
+    std::array<bool, kNativeTrackCount> recordingTempoStartValid_{};
     // The global epoch also changes for Play/Stop transitions because project
     // import replaces those states; per-track content revisions remain PCM/history-only.
     std::atomic<std::uint64_t> projectContentRevision_{0U};

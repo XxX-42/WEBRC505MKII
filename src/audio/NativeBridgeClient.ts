@@ -191,6 +191,8 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
+  /** Host callback support for per-take BPM provenance tokens. */
+  nativeTempoRecordProvenanceVersion?: number;
   nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[];
     bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
   nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
@@ -267,6 +269,9 @@ export interface NativeStatus {
     meterNumerator: number;
     meterDenominator: number;
     eventsCleanRoomProcedural: boolean;
+    tempoRequestedRevision?: number;
+    tempoAppliedRevision?: number;
+    tempoAppliedValid?: boolean;
     patternSource: 'metadata-only-240-pattern-catalog';
     statusNote: string;
   };
@@ -465,6 +470,20 @@ export interface NativeTrackMetadata {
   readonly channels: 2;
   readonly contentRevision?: number;
   readonly originalTempoBpm?: number | null;
+}
+
+export interface NativeRecordTempoToken {
+  readonly bpm: number;
+  readonly revision: number;
+}
+
+/** Returns a provenance token only for hosts that explicitly support it. */
+export function nativeRecordTempoToken(
+  status: NativeStatus | null | undefined, bpm: number, revision: number,
+): NativeRecordTempoToken | undefined {
+  if (status?.nativeTempoRecordProvenanceVersion !== 1 || !Number.isFinite(bpm) || bpm < 40 || bpm > 300 ||
+      !Number.isSafeInteger(revision) || revision < 0) return undefined;
+  return { bpm, revision };
 }
 
 export interface NativeHqRenderOptions {
@@ -838,7 +857,9 @@ export class NativeBridgeClient {
       sampleRate: payload.sampleRate as number,
       frameCount: payload.frameCount as number,
       channels: 2,
-      ...(payload.originalTempoBpm === undefined ? {} : { originalTempoBpm: payload.originalTempoBpm as number | null }),
+      // Older Native hosts omit this field. Treat that protocol generation as
+      // unknown provenance instead of inferring a tempo from current state.
+      originalTempoBpm: payload.originalTempoBpm === undefined ? null : payload.originalTempoBpm as number | null,
       ...(Number.isSafeInteger(payload.contentRevision) && (payload.contentRevision as number) >= 0
         ? { contentRevision: payload.contentRevision as number } : {}),
     };
@@ -1035,9 +1056,10 @@ export class NativeBridgeClient {
     }
   }
 
-  public async finishRecordingTrack(trackId: number): Promise<NativeStatus> {
+  public async finishRecordingTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC completion track');
-    let status = await this.request<NativeStatus>('/v1/transport/finish-record', { method: 'POST', body: JSON.stringify({ trackId }) });
+    const body = { trackId, ...(tempo ? { tempoBpm: tempo.bpm, tempoRevision: tempo.revision } : {}) };
+    let status = await this.request<NativeStatus>('/v1/transport/finish-record', { method: 'POST', body: JSON.stringify(body) });
     const revision = status.nativeRecordPlay?.finishRequested[trackId - 1];
     if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC completion acknowledgement is unavailable.');
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
@@ -1060,16 +1082,16 @@ export class NativeBridgeClient {
     return this.request<NativeStatus>('/v1/transport/record', { method: 'POST' });
   }
 
-  public async recordTrack(trackId: number): Promise<NativeStatus> {
-    return this.requestTrackTransport('/v1/transport/record', trackId);
+  public async recordTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
+    return this.requestTrackTransport('/v1/transport/record', trackId, tempo);
   }
 
   public async stopTransport(): Promise<NativeStatus> {
     return this.request<NativeStatus>('/v1/transport/stop', { method: 'POST' });
   }
 
-  public async stopTrack(trackId: number): Promise<NativeStatus> {
-    return this.requestTrackTransport('/v1/transport/stop', trackId);
+  public async stopTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
+    return this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
   }
 
   public async play(): Promise<NativeStatus> {
@@ -1213,13 +1235,22 @@ export class NativeBridgeClient {
     throw new Error('Native Bounce callback acknowledgement timed out; read back the current switches before retrying.');
   }
 
-  private async requestTrackTransport(path: string, trackId: number): Promise<NativeStatus> {
+  private async requestTrackTransport(path: string, trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) {
       throw new RangeError('Native track ID must be an integer between 1 and 5.');
     }
     // Keep the original track-one routes unchanged for compatibility; higher
     // track IDs use the same command endpoint with an explicit 1-based selector.
-    const suffix = trackId === 1 ? '' : `?trackId=${trackId}`;
+    const params = new URLSearchParams();
+    if (trackId !== 1) params.set('trackId', String(trackId));
+    if (tempo) {
+      if (!Number.isFinite(tempo.bpm) || tempo.bpm < 40 || tempo.bpm > 300 || !Number.isSafeInteger(tempo.revision) || tempo.revision < 0) {
+        throw new RangeError('Native record tempo token must contain BPM 40..300 and a nonnegative safe revision.');
+      }
+      params.set('tempoBpm', String(tempo.bpm));
+      params.set('tempoRevision', String(tempo.revision));
+    }
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
     return this.request<NativeStatus>(`${path}${suffix}`, { method: 'POST' });
   }
 

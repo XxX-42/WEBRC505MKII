@@ -397,6 +397,9 @@ EngineStatus NativeAudioCore::getStatus() const {
         : nativePitchProcessor_->latencySamples();
     status.nativePitchFallbackReason = nativePitchFallbackReason_.load(std::memory_order_acquire);
     status.nativeRhythmBpm = nativeRhythmConfig_.bpm;
+    status.nativeTempoRequestedRevision = nativeTempoRequestedRevision_;
+    status.nativeTempoAppliedRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+    status.nativeTempoAppliedValid = nativeTempoAppliedValid_.load(std::memory_order_acquire);
     status.nativeRhythmKitIndex = nativeRhythmConfig_.kitIndex;
     status.nativeRhythmVariation = nativeRhythmConfig_.variation;
     status.nativeRhythmSection = nativeRhythmConfig_.section;
@@ -929,8 +932,9 @@ bool NativeAudioCore::record(std::string& error) {
     return recordTrack(0U, error);
 }
 
-bool NativeAudioCore::recordTrack(std::size_t trackIndex, std::string& error) {
-    return queueTrackCommand(CommandType::Record, trackIndex, error);
+bool NativeAudioCore::recordTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm,
+                                  std::uint64_t provenanceRevision) {
+    return queueTrackCommand(CommandType::Record, trackIndex, error, provenanceBpm, provenanceRevision);
 }
 
 bool NativeAudioCore::setRecordAction(bool overdub, std::string& error) {
@@ -960,7 +964,8 @@ bool NativeAudioCore::setRecordAction(bool overdub, std::string& error) {
     advanceProjectRevision(projectContentRevision_); error.clear(); return true;
 }
 
-bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& error) {
+bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& error,
+                                           std::optional<double> provenanceBpm, std::uint64_t provenanceRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (trackIndex >= kNativeTrackCount || !engineRunning_.load(std::memory_order_acquire) ||
@@ -984,8 +989,12 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
     }
     if (recordFinishRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) { error = "REC completion revision exhausted."; return false; }
     const auto revision = recordFinishRequested_[trackIndex] + 1U;
+    const bool provenanceValid = provenanceBpm.has_value() && std::isfinite(*provenanceBpm) &&
+        *provenanceBpm >= 40.0 && *provenanceBpm <= 300.0 &&
+        provenanceRevision <= kMaximumSafeProjectContentRevision;
     pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
-    if (!commandQueue_.push({CommandType::FinishRecording, finishAsDub, static_cast<std::uint8_t>(trackIndex), revision})) {
+    if (!commandQueue_.push({CommandType::FinishRecording, finishAsDub, static_cast<std::uint8_t>(trackIndex), revision,
+                             provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid})) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed); error = "Command queue is full."; return false;
     }
@@ -993,8 +1002,9 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
     advanceProjectRevision(projectContentRevision_); error.clear(); return true;
 }
 
-bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error) {
-    return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error);
+bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm,
+                                std::uint64_t provenanceRevision) {
+    return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error, provenanceBpm, provenanceRevision);
 }
 
 bool NativeAudioCore::playTrack(std::size_t trackIndex, std::string& error) {
@@ -1307,7 +1317,8 @@ void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
     }
 }
 
-bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error) {
+bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
+                                        std::optional<double> provenanceBpm, std::uint64_t provenanceRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
@@ -1351,7 +1362,11 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     }
     if (starting) recordStartPending_[trackIndex].store(true, std::memory_order_release);
     pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
-    if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex)})) {
+    const bool provenanceValid = provenanceBpm.has_value() && std::isfinite(*provenanceBpm) &&
+        *provenanceBpm >= 40.0 && *provenanceBpm <= 300.0 &&
+        provenanceRevision <= kMaximumSafeProjectContentRevision;
+    if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex), 0U,
+                             provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid})) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (starting) recordStartPending_[trackIndex].store(false, std::memory_order_release);
         telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
@@ -1427,10 +1442,32 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     track.applyCommand(command);
     const LoopMetadata after = track.metadata();
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) {
-        // A new live take has no acoustic BPM detector or source declaration.
         originalTempoBpmBits_[index].store(0U, std::memory_order_release);
+        recordingTempoStartRevision_[index] = command.provenanceRevision;
+        recordingTempoStartBpmBits_[index] = originalTempoBits(command.provenanceValid
+            ? std::optional<double>(command.provenanceBpm) : std::nullopt);
+        recordingTempoStartNativeRevision_[index] = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+        const auto appliedBpmBits = nativeTempoAppliedBpmBits_.load(std::memory_order_acquire);
+        recordingTempoStartValid_[index] = command.provenanceValid &&
+            nativeTempoAppliedValid_.load(std::memory_order_acquire) &&
+            appliedBpmBits == recordingTempoStartBpmBits_[index];
     } else if (command.type == CommandType::Clear && after.state == LooperState::Empty) {
         originalTempoBpmBits_[index].store(0U, std::memory_order_release);
+    }
+    const bool committedTake =
+        (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state != LooperState::Recording) ||
+        (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Recording && after.state != LooperState::Recording);
+    if (committedTake) {
+        const auto appliedBpmBits = nativeTempoAppliedBpmBits_.load(std::memory_order_acquire);
+        const bool tempoUnchanged = recordingTempoStartValid_[index] && command.provenanceValid &&
+            command.provenanceRevision == recordingTempoStartRevision_[index] &&
+            originalTempoBits(std::optional<double>(command.provenanceBpm)) == recordingTempoStartBpmBits_[index] &&
+            nativeTempoAppliedRevision_.load(std::memory_order_acquire) == recordingTempoStartNativeRevision_[index] &&
+            nativeTempoAppliedValid_.load(std::memory_order_acquire) &&
+            recordingTempoStartBpmBits_[index] == appliedBpmBits;
+        originalTempoBpmBits_[index].store(
+            tempoUnchanged ? originalTempoBits(std::optional<double>(command.provenanceBpm)) : 0U,
+            std::memory_order_release);
     }
     const std::uint64_t originalTempoAfter = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording &&
@@ -2816,13 +2853,19 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
         error = "Native tempo-based FX descriptor is unavailable for tempo synchronization.";
         return false;
     }
+    const bool tempoChanged = config.bpm != nativeRhythmConfig_.bpm;
+    if (tempoChanged && nativeTempoRequestedRevision_ >= kMaximumSafeProjectContentRevision) {
+        error = "Native tempo revision exhausted.";
+        return false;
+    }
+    const auto tempoRevision = nativeTempoRequestedRevision_ + (tempoChanged ? 1U : 0U);
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (nativeCatalogFxCommandQueue_.size() + count > 63U || nativeRhythmCommandQueue_.size() >= 15U) {
             telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native catalog FX command queue is full while synchronizing tempo-based catalog FX.";
             return false;
         }
-        (void)nativeRhythmCommandQueue_.push(config);
+        (void)nativeRhythmCommandQueue_.push({config, tempoRevision});
         for (std::size_t index = 0U; index < count; ++index) (void)nativeCatalogFxCommandQueue_.push(tempoCommands[index]);
     } else {
         if (nativeRhythmEngine_.sampleRate() != 0U && !nativeRhythmEngine_.setConfig(config, callbackFrameCursor_)) {
@@ -2842,7 +2885,13 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
             }
         }
     }
+    nativeTempoRequestedRevision_ = tempoRevision;
     nativeRhythmConfig_ = config;
+    if (!engineRunning_.load(std::memory_order_acquire)) {
+        nativeTempoAppliedBpmBits_.store(originalTempoBits(config.bpm), std::memory_order_release);
+        nativeTempoAppliedRevision_.store(nativeTempoRequestedRevision_, std::memory_order_release);
+        nativeTempoAppliedValid_.store(true, std::memory_order_release);
+    }
     advanceProjectRevision(projectContentRevision_);
     return true;
 }
@@ -3530,6 +3579,8 @@ void NativeAudioCore::finalizeProjectImportLocked() {
                 recordActionDubRequested_ = memory.recordActionDub;
                 recordActionRequestedRevision_ = recordActionAppliedRevision_.load(std::memory_order_acquire);
             }
+            if (memory.rhythm.bpm != nativeRhythmConfig_.bpm &&
+                nativeTempoRequestedRevision_ < kMaximumSafeProjectContentRevision) ++nativeTempoRequestedRevision_;
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -3827,6 +3878,9 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
         error = "Unable to prepare the native clean-room rhythm stage for the configured sample rate.";
         return false;
     }
+    nativeTempoAppliedBpmBits_.store(originalTempoBits(nativeRhythmConfig_.bpm), std::memory_order_release);
+    nativeTempoAppliedRevision_.store(nativeTempoRequestedRevision_, std::memory_order_release);
+    nativeTempoAppliedValid_.store(true, std::memory_order_release);
     if (!outputStage_->setReverbConfig(nativeReverbConfig_)) {
         error = "Unable to prepare the native FDN16 reverb configuration.";
         return false;
@@ -4283,9 +4337,13 @@ const float* NativeAudioCore::processInputFxForCallback(
 }
 
 void NativeAudioCore::applyNativeRhythmCommands() noexcept {
-    NativeRhythmConfig config;
-    while (nativeRhythmCommandQueue_.pop(config)) {
-        (void)nativeRhythmEngine_.setConfig(config, callbackFrameCursor_);
+    NativeRhythmCommand command;
+    while (nativeRhythmCommandQueue_.pop(command)) {
+        if (nativeRhythmEngine_.setConfig(command.config, callbackFrameCursor_)) {
+            nativeTempoAppliedBpmBits_.store(originalTempoBits(command.config.bpm), std::memory_order_release);
+            nativeTempoAppliedRevision_.store(command.tempoRevision, std::memory_order_release);
+            nativeTempoAppliedValid_.store(true, std::memory_order_release);
+        }
     }
 }
 
@@ -4835,6 +4893,9 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         // Fully validated before publication; these fixed-storage operations
         // neither allocate nor destroy DSP objects at the callback boundary.
         (void)nativeRhythmEngine_.setConfig(memory.rhythm, callbackFrameCursor_);
+        nativeTempoAppliedBpmBits_.store(originalTempoBits(memory.rhythm.bpm), std::memory_order_release);
+        nativeTempoAppliedRevision_.store(nativeTempoRequestedRevision_, std::memory_order_release);
+        nativeTempoAppliedValid_.store(true, std::memory_order_release);
         applyOfficialSourceTransports();
     }
 
@@ -4927,6 +4988,7 @@ int NativeAudioCore::handleAudioCallback(
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeRhythmCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
@@ -4958,7 +5020,6 @@ int NativeAudioCore::handleAudioCallback(
     // A restore pin protects direct LooperCore metadata/sample mutation. Defer
     // queued loop-transport changes until the callback has acknowledged unpin.
     if (historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeLoopTransportCommands();
-    applyNativeRhythmCommands();
     synchronizeOscVocSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
     synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
     synchronizeHrmAutoSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
@@ -5013,6 +5074,7 @@ int NativeAudioCore::handleInputAudioCallback(
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeRhythmCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
@@ -5042,7 +5104,6 @@ int NativeAudioCore::handleInputAudioCallback(
     applyNativeTrackFxApplyCommands();
     applyNativePitchCommands();
     if (historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeLoopTransportCommands();
-    applyNativeRhythmCommands();
     synchronizeOscVocSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
     synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 

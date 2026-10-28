@@ -1293,6 +1293,34 @@ def main():
         status, restored_action = request("/v1/record/settings", "POST", {"recAction": "REC->PLAY"})
         require(status == 200, f"REC ACTION restore failed: {restored_action}")
 
+        tempo_status = request("/v1/status")[1]
+        require(tempo_status.get("nativeTempoRecordProvenanceVersion") == 1,
+                "Native status did not advertise callback-validated REC tempo provenance")
+        tempo_bpm = tempo_status.get("nativeRhythm", {}).get("bpm", 120)
+        status, recording = request(
+            f"/v1/transport/record?trackId=3&tempoBpm={tempo_bpm}&tempoRevision=41", "POST", {})
+        require(status == 200, f"tempo-tagged Native REC could not be queued: {recording}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            live = request("/v1/status")[1]
+            if live["nativeTracks"][2]["state"] == "Recording": break
+            time.sleep(0.005)
+        require(live["nativeTracks"][2]["state"] == "Recording", "tempo-tagged REC did not reach callback")
+        status, finished = request("/v1/transport/finish-record", "POST", {
+            "trackId": 3, "tempoBpm": tempo_bpm, "tempoRevision": 41})
+        require(status == 200, f"tempo-tagged Native REC completion failed: {finished}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            finished_status = request("/v1/status")[1]
+            if finished_status.get("nativeRecordPlay", {}).get("finishApplied", [0, 0, 0])[2] == \
+                    finished.get("nativeRecordPlay", {}).get("finishRequested", [0, 0, 0])[2]: break
+            time.sleep(0.005)
+        status, tagged_metadata = request("/v1/export/track-metadata?trackId=3")
+        require(status == 200 and tagged_metadata.get("originalTempoBpm") == tempo_bpm,
+                f"callback-validated REC tempo was not published with its PCM: {tagged_metadata}")
+        status, cleared = request("/v1/transport/clear?trackId=3", "POST", {})
+        require(status == 200, f"tempo provenance test track could not be cleared: {cleared}")
+
         status, empty_track_metadata = request("/v1/export/track-metadata?trackId=2")
         require(status == 409 and "finalized, non-empty loop" in empty_track_metadata.get("error", ""),
                 "metadata endpoint did not reject an empty selected track after Track 2 was cleared")

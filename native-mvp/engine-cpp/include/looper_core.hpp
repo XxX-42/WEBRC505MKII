@@ -78,6 +78,9 @@ struct Command {
     bool boolValue = false;
     std::uint8_t trackIndex = 0U;
     std::uint64_t revision = 0U;
+    double provenanceBpm = 0.0;
+    std::uint64_t provenanceRevision = 0U;
+    bool provenanceValid = false;
 };
 
 struct ProcessStats {

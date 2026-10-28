@@ -91,6 +91,12 @@ struct NativeAudioCoreTestAccess {
         core.outputStage_->setLowPassEnabled(false, 0);
         assert(core.nativeRhythmEngine_.prepare(config.sampleRate));
         assert(core.nativeRhythmEngine_.setConfig(core.nativeRhythmConfig_, 0));
+        std::uint64_t tempoBits = 0U;
+        const double initialBpm = core.nativeRhythmConfig_.bpm;
+        std::memcpy(&tempoBits, &initialBpm, sizeof(tempoBits));
+        core.nativeTempoAppliedBpmBits_.store(tempoBits, std::memory_order_release);
+        core.nativeTempoAppliedRevision_.store(core.nativeTempoRequestedRevision_, std::memory_order_release);
+        core.nativeTempoAppliedValid_.store(true, std::memory_order_release);
     }
 
     static void installConfigTestDevices(NativeAudioCore& core) {
@@ -2323,6 +2329,59 @@ void testNativeProjectArchiveTempoMetadataLifecycle() {
     assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
     assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
     assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    NativeRhythmConfig authority;
+    authority.bpm = 120.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.recordTrack(0U, error, 120.0, 7U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    assert(core.finishRecordingTrack(0U, error, 120.0, 7U));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
+    assert(core.undoTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+    assert(core.redoTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
+
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.recordTrack(0U, error, 120.0, 8U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    authority.bpm = 121.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    // A tempo update queued during REC is applied before FINISH at this same
+    // callback boundary. The UI token also changes, so provenance stays unknown.
+    assert(core.finishRecordingTrack(0U, error, 121.0, 9U));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    authority.bpm = 120.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    // The UI BPM changes away and back before the pending host tempo update is
+    // enqueued. Same BPM is insufficient: the Transport revision must match.
+    assert(core.recordTrack(0U, error, 120.0, 10U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    assert(core.finishRecordingTrack(0U, error, 120.0, 12U));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.recordTrack(0U, error, 120.0, 13U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    // Transport changed before finish, but its asynchronous rhythm update has
+    // not reached the host queue. The per-request Transport token still fails.
+    assert(core.finishRecordingTrack(0U, error, 121.0, 14U));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
 
