@@ -4,6 +4,7 @@
     :class="[`appearance-${appearance}`, `mode-${effectiveMode.toLowerCase().replace('_', '-')}`]"
     :data-appearance="appearance"
     :data-indicator-mode="effectiveMode"
+    :data-visual-mapping="effectiveMode === 'STATUS' ? 'status-color' : 'engineering-approximation'"
     :data-state="currentState ?? 'unavailable'"
     :data-availability="isAvailable ? 'available' : 'unavailable'"
     role="img"

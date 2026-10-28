@@ -35,6 +35,18 @@ describe('AudioEngine capabilities', () => {
     expect(engine.getOutputLevel()).toBe(0);
   });
 
+  it('uses Native Loop LEVEL only when the Native host reports a track meter', async () => {
+    const engine = await loadEngineForSearch('/?audio=native');
+    const native = (engine as any).nativeEngine;
+    native.getUiStatus = vi.fn(() => ({ ready: true }));
+    native.getTrackFxApply = vi.fn(() => [{ available: false, peak: 0.9, rms: 0.5, error: 'meter provider unavailable' }]);
+    expect(engine.getTrackMeter(1)).toEqual({ available: false, peak: 0, rms: 0, reason: 'meter provider unavailable' });
+
+    native.getTrackFxApply.mockReturnValue([{ available: true, peak: 0.4, rms: 0.2, error: '' }]);
+    expect(engine.getTrackMeter(1)).toEqual({ available: true, peak: 0.4, rms: 0.2, reason: '' });
+    expect(engine.getTrackMeter(6).available).toBe(false);
+  });
+
   it('returns the Native REC ACTION promise so UI callers can handle provider failures', async () => {
     const engine = await loadEngineForSearch('/?audio=native');
     const native = (engine as any).nativeEngine;

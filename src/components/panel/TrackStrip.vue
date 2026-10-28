@@ -100,7 +100,8 @@
 
     <div class="main-button-column">
       <div class="halo-wrapper">
-        <LoopHalo :track-id="trackId" appearance="classic" indicator-mode="STATUS" :status-color="resolvedControls.record.ledColor" class="halo-layer" />
+        <LoopHalo :track-id="trackId" appearance="classic" :indicator-mode="loopIndicatorMode" :status-color="resolvedControls.record.ledColor"
+          :position="loopIndicatorPosition" :level="loopIndicatorLevel" class="halo-layer" />
         <HardwareButton
           shape="circle"
           size="lg"
@@ -140,6 +141,7 @@ import { TrackState } from '../../core/types';
 import { useDevicePanel } from '../../composables/useDevicePanel';
 import { useRc505Controls } from '../../composables/useRc505Controls';
 import { useRc505Memory } from '../../composables/useRc505Memory';
+import { useRc505LoopIndicator } from '../../composables/useRc505LoopIndicator';
 import { resolveRc505TrackControls } from '../../ui/rc505/Rc505ControlStateResolver';
 import { useTrackStripState } from '../../composables/useTrackStripState';
 import HardwareButton from '../ui/HardwareButton.vue';
@@ -155,6 +157,8 @@ const controls = useRc505Controls();
 const semanticMemory = useRc505Memory();
 const undoLayer = computed(() => controls.state.controlLayer === 'UNDO_REDO');
 const audioEngine = AudioEngine.getInstance();
+const loopIndicator = useRc505LoopIndicator();
+const loopIndicatorMode = computed(() => loopIndicator.mode.value);
 const audioStatusRevision = ref(0);
 const controlOperationPending = ref(false);
 const audioReady = computed(() => {
@@ -199,6 +203,18 @@ const {
 } = trackController;
 
 const trackTransportReady = computed(() => trackTransportEnabled.value && audioReady.value);
+const loopIndicatorPosition = computed(() => {
+  runtimeRevision.value;
+  if (loopIndicatorMode.value !== 'LOOP_POSITION' || audioEngine.getTrackHasPhrase(props.trackId) !== true) return null;
+  const position = audioEngine.trackPositions?.[props.trackId - 1];
+  return Number.isFinite(position) ? Math.max(0, Math.min(1, position!)) : null;
+});
+const loopIndicatorLevel = computed(() => {
+  runtimeRevision.value;
+  if (loopIndicatorMode.value !== 'LEVEL') return null;
+  const meter = audioEngine.getTrackMeter(props.trackId);
+  return meter.available && Number.isFinite(meter.peak) ? Math.max(0, Math.min(1, meter.peak)) : null;
+});
 const captureWarmupBlocksAction = computed(() => {
   audioStatusRevision.value;
   const status = audioEngine.getUiStatus();

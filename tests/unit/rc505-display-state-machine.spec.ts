@@ -67,6 +67,13 @@ describe('RC-505 Classic LCD state machine', () => {
     expect(state.view).toEqual({ kind: 'menu-root', pageIndex: 0, selectedIndex: 2 });
   });
 
+  it('opens the supported Loop Indicator setting from MENU > SETUP', () => {
+    const state = send(createRc505DisplayState(), { type: 'OPEN_ROOT', root: 'menu' },
+      { type: 'PAGE', direction: 1 }, { type: 'ENCODER_PRESS', encoderIndex: 3 });
+    expect(state.view).toEqual({ kind: 'editor', target: 'menu', category: 'setup', pageIndex: 0, pageCount: 1 });
+    expect(send(state, { type: 'EXIT' }).view).toEqual({ kind: 'menu-root', pageIndex: 1, selectedIndex: 7 });
+  });
+
   it('replaces repeated roots and editor targets without growing the return stack', () => {
     let state = send(createRc505DisplayState(),
       { type: 'OPEN_EDITOR', target: 'track', category: 'track' },

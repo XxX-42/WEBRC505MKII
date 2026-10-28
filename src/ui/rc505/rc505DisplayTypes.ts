@@ -54,7 +54,7 @@ export const RC505_MENU_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [
   { id: 'assign', label: 'ASSIGN', reason: 'Assign settings are not exposed by the current audio controller.' },
   { id: 'usb', label: 'USB', reason: 'USB settings are not exposed by the current audio controller.' },
   { id: 'midi', label: 'MIDI', reason: 'MIDI settings are not exposed by the current audio controller.' },
-  { id: 'setup', label: 'SETUP', reason: 'Setup options are not modeled by the current audio controller.' },
+  { id: 'setup', label: 'SETUP', target: 'menu' },
   { id: 'factory-reset', label: 'FACTORY RESET', reason: 'Factory reset is not implemented in this build.' },
 ];
 

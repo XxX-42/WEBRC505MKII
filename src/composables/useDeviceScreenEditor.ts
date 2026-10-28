@@ -28,6 +28,7 @@ import { useRc505Controls } from './useRc505Controls';
 import { useRc505FxSwitchSettings } from './useRc505FxSwitchSettings';
 import { assertTrackFxApplyConfirmed } from '../audio/TrackFxApplyStatus';
 import { useRc505Memory } from './useRc505Memory';
+import { useRc505LoopIndicator, type Rc505LoopIndicatorMode } from './useRc505LoopIndicator';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -241,6 +242,7 @@ const MONITORING_WARNING = [
 export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const device = options.panel ?? useDevicePanel();
   const semanticMemory = useRc505Memory();
+  const loopIndicator = useRc505LoopIndicator();
   const classic = options.surface === 'classic';
   const controls = useRc505Controls();
   const confirmAction = options.confirm ?? ((message: string) => eventConfirmation(message, options.surface ?? 'enhanced'));
@@ -1116,6 +1118,17 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         { disabled: !engine.getUiStatus().ready || editPending.value, reason: 'PARTIAL SOFTWARE ROUTE: global input monitoring only; no physical jack routing.' }),
         makeActionField('output-physical-route', 'OUTPUT JACKS', () => {}, { disabled: true, reason: 'MAIN/SUB/PHONES input and rhythm routing has no provider.' })]];
     }
+    if (classicView?.kind === 'editor' && classicView.target === 'menu' && classicView.category === 'setup') {
+      const modes: readonly Rc505LoopIndicatorMode[] = ['STATUS', 'LOOP_POSITION', 'LEVEL'];
+      return [[makeEnumField('loop-indicator-mode', 'LOOP INDICATOR', modes.indexOf(loopIndicator.mode.value),
+        fieldOptions(modes), (index) => loopIndicator.setMode(modes[index] ?? 'STATUS'), {
+          format: () => loopIndicator.mode.value,
+          reason: 'LEVEL uses the current runtime track meter; unavailable providers stay unavailable. LOOP POSITION/LEVEL ring drawings are engineering approximations, not hardware-verified LED mappings.',
+        }), makeActionField('loop-indicator-visual-limit', 'RING MAPPING', () => {}, {
+          disabled: true, reason: 'The official guide names the modes but does not give a numeric LED segment mapping; physical LED behavior has not been observed.',
+          format: () => 'APPROX · NOT HARDWARE-VERIFIED',
+        })]];
+    }
     if (classicView?.kind === 'editor' && classicView.target === 'memory') {
       if (classicView.category === 'name') {
         const memory = useRc505Memory();
@@ -1195,6 +1208,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const pageTitle = computed(() => {
     const view = classic ? useDevicePanel().classicState.value.view : null;
     if (view?.kind === 'editor' && view.target === 'memory') return view.category.toUpperCase();
+    if (view?.kind === 'editor' && view.target === 'menu' && view.category === 'setup') return 'SETUP · LOOP INDICATOR';
     if (view?.kind === 'editor' && view.target === 'menu' && view.category.startsWith('output')) return view.category === 'output' ? 'OUTPUT' : view.category === 'output-routing' ? 'OUTPUT / ROUTING' : 'ROUTING / INPUT/RHYTHM';
     const titles: Record<DevicePanelPage, string> = {
       home: 'HOME', mixer: 'MIXER', menu: 'MENU', memory: 'MEMORY · PCM/TEMPO', 'input-fx': `INPUT FX · ${currentInputSlot.value?.type || 'EMPTY'}`,
@@ -1208,6 +1222,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (statusText.value) return statusText.value;
     if (settings.error) return settings.error;
     const classicView = classic ? useDevicePanel().classicState.value.view : null;
+    if (classicView?.kind === 'editor' && classicView.target === 'menu' && classicView.category === 'setup') {
+      return `LOOP RING VISUAL APPROXIMATION · ${engine.getMode().toUpperCase()} METER AVAILABILITY IS LIVE.`;
+    }
     if (classicView?.kind === 'editor' && classicView.category === 'output-input-rhythm') return 'PARTIAL SOFTWARE ROUTE · GLOBAL INPUT THRU';
     const runtime = device.state.page === 'input-fx'
       ? input.runtimeStatus.value as (typeof input.runtimeStatus.value & { pendingRestart?: boolean; pendingApply?: boolean; acknowledged?: boolean })

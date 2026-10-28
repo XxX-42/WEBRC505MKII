@@ -462,6 +462,7 @@ describe('LoopHalo indicator modes', () => {
     expect(wrapper.attributes('data-indicator-mode')).toBe('LEVEL');
     expect(wrapper.attributes('data-availability')).toBe('unavailable');
     expect(wrapper.attributes('aria-label')).toBe('Track 1 level unavailable');
+    expect(wrapper.attributes('data-visual-mapping')).toBe('engineering-approximation');
     expect(context.arc).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });

@@ -1,0 +1,7 @@
+# Classic Loop Indicator modes
+
+The official [RC-505mkII Parameter Guide v1.3](https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf), SETUP section (printed p. 30), documents `STATUS`, `LOOP POSITION`, and `LEVEL`; it describes the latter two as loop position and playback level. The Classic LCD now exposes this choice at `MENU > SETUP > LOOP INDICATOR`.
+
+This implementation stores only the UI preference `webrc505_classic_loop_indicator_mode` in local storage. It does not write Memory, project archives, or loop PCM. `STATUS` keeps the existing shared control resolver behavior. `LOOP POSITION` uses the current track position only when the track has a phrase. `LEVEL` uses a live peak meter and stays unavailable when the selected runtime does not supply a meter; it does not substitute the track fader value.
+
+`LOOP POSITION` and `LEVEL` are rendered as continuous software arcs. The official guide confirms these modes but does not define a numeric arc-to-LED segment mapping in its text; this visual mapping is an engineering approximation and has not been checked against a physical unit. Browser meter readings come from the Browser track's post-fader, pre-shared-Track-FX meter while its audio context is running. Native readings are shown only when the connected host advertises its callback track-meter provider; otherwise the ring reports unavailable. These runtime readings and browser/native software tests are not hardware validation.
