@@ -33,6 +33,7 @@ const pitchHarness = vi.hoisted(() => {
     loadBuffer: vi.fn(async () => 1),
     clearBuffers: vi.fn(async () => undefined),
     scheduleLoop: vi.fn(async () => undefined),
+    scheduleSegment: vi.fn(async () => undefined),
     setPitch: vi.fn(async () => undefined),
     startProcessing: vi.fn(async () => undefined),
     stopProcessing: vi.fn(async () => undefined),
@@ -73,6 +74,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
       pitchHarness.node.loadBuffer,
       pitchHarness.node.clearBuffers,
       pitchHarness.node.scheduleLoop,
+      pitchHarness.node.scheduleSegment,
       pitchHarness.node.setPitch,
       pitchHarness.node.startProcessing,
       pitchHarness.node.stopProcessing,
@@ -159,6 +161,44 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(trackAudio.livePolyPitchLatencySamples).toBe(6_720);
     expect(trackAudio.livePolyPitchLatencySeconds).toBeCloseTo(6_720 / context.sampleRate);
     expect(trackAudio.state).toBe(TrackState.PLAYING);
+  });
+
+  it('schedules a finite LIVE_POLY segment and uses audio-clock completion for one-shot playback', async () => {
+    const { context, sourceNodes, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    trackAudio.track.oneShot = 'ON';
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 5, playbackRate: 0.75 });
+    await trackAudio.play();
+
+    expect(pitchHarness.node.scheduleSegment).toHaveBeenCalledWith(expect.objectContaining({
+      inputOffsetSeconds: 0,
+      inputEndSeconds: 1,
+      playbackRate: 0.75,
+    }));
+    expect(pitchHarness.node.scheduleLoop).not.toHaveBeenCalled();
+    expect(sourceNodes).toHaveLength(1);
+    expect(sourceNodes[0]!.loop).toBe(false);
+    expect(sourceNodes[0]!.connect).toHaveBeenCalled();
+    expect(trackAudio.livePolyPitchActive).toBe(true);
+    sourceNodes[0]!.onended?.();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.livePolyPitchActive).toBe(false);
+  });
+
+  it('runs LIVE_MONO one-shot through its Worklet with a finite source reader', async () => {
+    const { sourceNodes, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    trackAudio.track.oneShot = 'ON';
+    await trackAudio.setLiveMonoPitchEnabled(true, { semitones: -4 });
+    await trackAudio.play();
+
+    expect(sourceNodes).toHaveLength(1);
+    expect(sourceNodes[0]!.loop).toBe(false);
+    expect(sourceNodes[0]!.connect).toHaveBeenCalledWith(pitchHarness.monoNode);
+    expect(trackAudio.liveMonoPitchActive).toBe(true);
+    sourceNodes[0]!.onended?.();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.liveMonoPitchActive).toBe(false);
   });
 
   it('tears down an active read-head before switching into LIVE_POLY', async () => {

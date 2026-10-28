@@ -90,6 +90,16 @@ export interface LivePolyPitchLoopOptions {
   readonly tonalityLimitHz?: number;
 }
 
+export interface LivePolyPitchSegmentOptions {
+  /** Input position and exclusive end of this finite pass, in seconds. */
+  readonly inputOffsetSeconds: number;
+  readonly inputEndSeconds: number;
+  readonly outputTime?: number;
+  readonly semitones?: number;
+  readonly playbackRate?: number;
+  readonly tonalityLimitHz?: number;
+}
+
 export interface LivePolyPitchNode extends AudioWorkletNode {
   readonly mode: 'LIVE_POLY';
   readonly latencySamples: number;
@@ -103,6 +113,8 @@ export interface LivePolyPitchNode extends AudioWorkletNode {
   clearBuffers(): Promise<unknown>;
   /** Starts/replaces a looping internal-buffer segment (not a connected live input). */
   scheduleLoop(options: LivePolyPitchLoopOptions): Promise<unknown>;
+  /** Schedules one finite read without loop bounds. */
+  scheduleSegment(options: LivePolyPitchSegmentOptions): Promise<unknown>;
   setPitch(semitones: number, outputTime?: number, playbackRate?: number): Promise<unknown>;
   startProcessing(outputTime?: number): Promise<unknown>;
   stopProcessing(outputTime?: number): Promise<unknown>;
@@ -494,6 +506,33 @@ export async function createLivePolyPitchNode(
           tonalityHz: currentTonalityLimitHz,
           loopStart: loopStartSeconds,
           loopEnd: loopEndSeconds,
+        });
+      },
+    },
+    scheduleSegment: {
+      value: (segment: LivePolyPitchSegmentOptions) => {
+        const rate = segment.playbackRate ?? initialPlaybackRate;
+        validateRate(rate);
+        const semitones = segment.semitones ?? initialSemitones;
+        validateSemitones(semitones);
+        const currentTonalityLimitHz = segment.tonalityLimitHz ?? tonalityLimitHz;
+        if (!Number.isFinite(currentTonalityLimitHz) || currentTonalityLimitHz <= 0 || currentTonalityLimitHz > context.sampleRate / 2) {
+          throw new RangeError('Signalsmith tonality limit must be positive, finite, and no greater than Nyquist');
+        }
+        if (!Number.isFinite(segment.inputOffsetSeconds) || !Number.isFinite(segment.inputEndSeconds)
+            || segment.inputOffsetSeconds < 0 || segment.inputEndSeconds <= segment.inputOffsetSeconds) {
+          throw new RangeError('Finite pitch segment must describe a non-empty input range');
+        }
+        activeLoop = null;
+        const outputTime = segment.outputTime ?? context.currentTime + latencySeconds;
+        return node.schedule({
+          active: true,
+          input: segment.inputOffsetSeconds,
+          output: outputTime,
+          outputTime,
+          rate,
+          semitones,
+          tonalityHz: currentTonalityLimitHz,
         });
       },
     },

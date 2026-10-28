@@ -1876,6 +1876,15 @@ export class TrackAudio {
         } else if (this.state === TrackState.RECORDING) {
             this.scheduleRecordingStop();
         } else if (this.state === TrackState.PLAYING) {
+            // A one-shot track is an audition/retrigger target. It never enters
+            // overdub, including when the global record action is REC->DUB.
+            if (this.track.oneShot === 'ON' || this.engine.getRecordPlaySettings?.().recAction === 'REC->PLAY') {
+                this.startOffset = this.isReverse && this.audioBuffer
+                    ? Math.max(0, this.audioBuffer.duration - 1 / this.audioBuffer.sampleRate)
+                    : 0;
+                void this.play();
+                return;
+            }
             // The RC-505mkII does not enter overdub while REVERSE is on.
             // Keep the existing loop playing and report why the press had no effect.
             if (this.isReverse) {
@@ -2265,7 +2274,7 @@ export class TrackAudio {
                 return null;
             }
             source.buffer = this.audioBuffer;
-            source.loop = true;
+            source.loop = this.track.oneShot !== 'ON';
             gain.gain.value = gainValue;
             source.connect(gain);
             gain.connect(this.loopTransportWetMixGainNode ?? this.playbackSourceOutput);
@@ -2308,6 +2317,7 @@ export class TrackAudio {
         this.retiringSourceGainNode = oldGain;
         this.sourceNode = replacement.source;
         this.sourceGainNode = replacement.gain;
+        if (this.track.oneShot === 'ON') this.attachOneShotEnd(replacement.source, this.playbackRevision, replacement.gain);
         this.loopTransportRenderedBeatShiftSeconds = targetShift;
         this.loopTransportRuntimeFallbackReason = null;
         this.loopTransportTransitionActive = true;
@@ -3097,7 +3107,8 @@ export class TrackAudio {
         const context = this.engine.context;
         this.sourceNode = context.createBufferSource();
         this.sourceNode.buffer = this.audioBuffer;
-        this.sourceNode.loop = true;
+        const oneShot = this.track.oneShot === 'ON';
+        this.sourceNode.loop = !oneShot;
         this.sourceGainNode = null;
         if (this.isReverse) {
             this.sourceNode.connect(this.playbackSourceOutput);
@@ -3111,14 +3122,47 @@ export class TrackAudio {
             this.sourceGainNode.connect(this.playbackSourceOutput);
         }
         this.sourceNode.playbackRate.value = this.isReverse ? -1 : 1;
-        this.sourceNode.start(0, this.startOffset);
-        this.startTime = context.currentTime;
+        const startAt = context.currentTime;
+        this.sourceNode.start(startAt, this.startOffset);
+        if (oneShot) this.attachOneShotEnd(this.sourceNode, this.playbackRevision);
+        if (oneShot && this.isReverse) {
+            // Chromium keeps some negative-rate, non-looping BufferSources
+            // render-active after the reverse head reaches frame zero. Schedule
+            // the finite traversal's end on the audio clock as a hard boundary.
+            const remainingSeconds = this.startOffset / Math.max(1e-6, Math.abs(this.sourceNode.playbackRate.value));
+            this.sourceNode.stop(startAt + remainingSeconds);
+        }
+        this.startTime = startAt;
         this.loopTransportPlaybackInitialized = false;
         this.loopTransportTransitionActive = false;
         this.loopTransportPendingRetarget = false;
         if (!this.hasConfiguredLoopTransportFx()) this.loopTransportStartOffsetShiftSeconds = 0;
         this.state = TrackState.PLAYING;
         this.ensureTransportRunning();
+    }
+
+    private attachOneShotEnd(source: AudioBufferSourceNode, revision: number, completionGain: GainNode | null = this.sourceGainNode): void {
+        source.onended = () => {
+            if (this.disposed || revision !== this.playbackRevision || this.sourceNode !== source) return;
+            this.sourceNode = null;
+            this.sourceGainNode = null;
+            this.loopTransportPlaybackInitialized = false;
+            this.loopTransportTransitionActive = false;
+            this.loopTransportPendingRetarget = false;
+            this.stopAndDisconnectBufferSource(this.loopTransportDrySourceNode, this.loopTransportDryGainNode);
+            this.loopTransportDrySourceNode = null;
+            this.loopTransportDryGainNode = null;
+            try { this.loopTransportWetMixGainNode?.disconnect(); } catch { /* already disconnected */ }
+            this.loopTransportWetMixGainNode = null;
+            this.releaseLivePolyPitchNodeForReuse();
+            this.releaseLiveMonoPitchNodeForReuse();
+            this.state = TrackState.STOPPED;
+            if (this.sharedStates) Atomics.store(this.sharedStates, this.trackIndex, Object.values(TrackState).indexOf(TrackState.STOPPED));
+            if (this.sharedPositions) this.sharedPositions[this.trackIndex] = 0;
+            this.syncTransportState();
+            try { source.disconnect(); } catch { /* already disconnected */ }
+            try { completionGain?.disconnect(); } catch { /* already disconnected */ }
+        };
     }
 
     private startLoopTransportBufferPlayback(): boolean {
@@ -3143,6 +3187,7 @@ export class TrackAudio {
         }
         this.sourceNode = initial.source;
         this.sourceGainNode = initial.gain;
+        if (this.track.oneShot === 'ON') this.attachOneShotEnd(initial.source, this.playbackRevision);
         if (this.hasConfiguredVinylFlick() && !this.ensureLoopTransportDryReader(now)) {
             this.stopAndDisconnectBufferSource(initial.source, initial.gain);
             this.sourceNode = null;
@@ -3182,15 +3227,26 @@ export class TrackAudio {
         }
 
         node.connect(this.playbackSourceOutput);
+        const inputOffsetSeconds = Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate)));
         try {
-            await node.scheduleLoop({
-                inputOffsetSeconds: Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate))),
-                loopStartSeconds: 0,
-                loopEndSeconds: buffer.duration,
-                semitones: this.livePolyPitchSemitones,
-                playbackRate: this.livePolyPitchPlaybackRate,
-                tonalityLimitHz: this.livePolyPitchTonalityLimitHz,
-            });
+            if (this.track.oneShot === 'ON') {
+                await node.scheduleSegment({
+                    inputOffsetSeconds,
+                    inputEndSeconds: buffer.duration,
+                    semitones: this.livePolyPitchSemitones,
+                    playbackRate: this.livePolyPitchPlaybackRate,
+                    tonalityLimitHz: this.livePolyPitchTonalityLimitHz,
+                });
+            } else {
+                await node.scheduleLoop({
+                    inputOffsetSeconds,
+                    loopStartSeconds: 0,
+                    loopEndSeconds: buffer.duration,
+                    semitones: this.livePolyPitchSemitones,
+                    playbackRate: this.livePolyPitchPlaybackRate,
+                    tonalityLimitHz: this.livePolyPitchTonalityLimitHz,
+                });
+            }
         } catch (error) {
             disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
             this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
@@ -3207,6 +3263,20 @@ export class TrackAudio {
         this.livePolyPitchFallbackReasonValue = null;
         this.startTime = this.engine.context.currentTime;
         this.state = TrackState.PLAYING;
+        if (this.track.oneShot === 'ON') {
+            const completionSource = this.engine.context.createBufferSource();
+            const completionGain = this.engine.context.createGain();
+            completionSource.buffer = buffer;
+            completionSource.loop = false;
+            completionSource.playbackRate.value = this.livePolyPitchPlaybackRate;
+            completionGain.gain.value = 0;
+            completionSource.connect(completionGain);
+            completionGain.connect(this.engine.context.destination);
+            completionSource.start(0, inputOffsetSeconds);
+            this.sourceNode = completionSource;
+            this.sourceGainNode = completionGain;
+            this.attachOneShotEnd(completionSource, revision, completionGain);
+        }
         this.ensureTransportRunning();
     }
 
@@ -3222,7 +3292,8 @@ export class TrackAudio {
         node.setPitch(this.liveMonoPitchSemitones);
         const source = this.engine.context.createBufferSource();
         source.buffer = buffer;
-        source.loop = true;
+        const oneShot = this.track.oneShot === 'ON';
+        source.loop = !oneShot;
         source.playbackRate.value = 1;
         source.connect(node);
         node.connect(this.playbackSourceOutput);
@@ -3235,6 +3306,7 @@ export class TrackAudio {
         }
 
         this.sourceNode = source;
+        if (oneShot) this.attachOneShotEnd(source, revision);
         this.liveMonoPitchActiveInternal = true;
         this.liveMonoPitchFallbackReasonValue = null;
         this.startTime = this.engine.context.currentTime;
@@ -3323,6 +3395,14 @@ export class TrackAudio {
         if (this.disposed || !this.audioBuffer || this.pendingClear) return;
 
         this.stop();
+
+        // stop() snapshots a source-aware reader's current phase. For an
+        // explicit one-shot start/retrigger, discard that cursor after teardown.
+        if (this.track.oneShot === 'ON') {
+            this.startOffset = this.isReverse
+                ? Math.max(0, this.audioBuffer.duration - 1 / this.audioBuffer.sampleRate)
+                : 0;
+        }
 
         const revision = this.playbackRevision;
         const buffer = this.audioBuffer;

@@ -112,6 +112,7 @@ describe('TrackAudio transport sync helpers', () => {
       getInputStream: async () => context.createMediaStreamSource({} as MediaStream),
       getProcessedInputNode: async () => context.createGain(),
       checkAndResetMaster: vi.fn(),
+      getRecordPlaySettings: () => ({ recAction: 'REC->DUB' }),
       tracks: [] as Array<{ state: typeof TrackState[keyof typeof TrackState] }>,
     };
 
@@ -129,6 +130,58 @@ describe('TrackAudio transport sync helpers', () => {
     (trackAudio as any).syncTransportState();
 
     expect(Transport.state).toBe(TransportState.PLAYING);
+  });
+
+  it('plays one-shot PCM once, stops at source completion and retriggers from the directional head', async () => {
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    (trackAudio as any).audioBuffer = buffer;
+    trackAudio.track.oneShot = 'ON';
+
+    await trackAudio.play();
+    expect(nodes.sources[0]).toMatchObject({ loop: false, starts: [{ when: 0, offset: 0 }] });
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+
+    trackAudio.triggerRecord();
+    await Promise.resolve();
+    expect(nodes.sources).toHaveLength(2);
+    expect(nodes.sources[1]).toMatchObject({ loop: false, starts: [{ when: 0, offset: 0 }] });
+    expect(nodes.sources[0].stopTimes).toHaveLength(1);
+
+    nodes.sources[1].onended?.();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+  });
+
+  it('plays one-shot PCM from the reverse head and still finishes without looping', async () => {
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    (trackAudio as any).audioBuffer = buffer;
+    trackAudio.track.oneShot = 'ON';
+    trackAudio.isReverse = true;
+
+    await trackAudio.play();
+    expect(nodes.sources[0]?.loop).toBe(false);
+    expect(nodes.sources[0]?.playbackRate.value).toBe(-1);
+    expect(nodes.sources[0]?.starts[0]?.offset).toBeCloseTo(1 - 1 / context.sampleRate);
+    nodes.sources[0]?.onended?.();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+  });
+
+  it('uses REC->PLAY to retrigger an ordinary Browser loop from its head', async () => {
+    const { context, engine, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+    await trackAudio.play();
+    engine.getRecordPlaySettings = () => ({ recAction: 'REC->PLAY' });
+
+    trackAudio.triggerRecord();
+    await Promise.resolve();
+
+    expect(nodes.sources).toHaveLength(2);
+    expect(nodes.sources[0]!.stopTimes).toHaveLength(1);
+    expect(nodes.sources[1]).toMatchObject({ loop: true, starts: [{ when: 0, offset: 0 }] });
   });
 
   it('stops transport when all tracks are stopped or empty', async () => {
