@@ -59,7 +59,7 @@ describe('TrackAudio retirement lifecycle', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it('detaches quantized measure listeners and keeps PCM readable after idempotent disposal', async () => {
+  it('detaches the master phase listener and keeps PCM readable after idempotent disposal', async () => {
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 7));
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     const { context, track } = await createHarness();
@@ -75,11 +75,8 @@ describe('TrackAudio retirement lifecycle', () => {
     };
 
     const transport = (track as any).transport;
-    const listener = vi.fn();
+    const listener = (track as any).masterPhaseChangeListener;
     const removeListener = vi.spyOn(transport, 'off');
-    transport.on('measure', listener);
-    (track as any).quantizeStartListener = listener;
-    (track as any).waitingForQuantize = true;
     (track as any).engine.context.state = 'closed';
     const disposeFx = [
       vi.spyOn(track.fxChain.compressor, 'dispose'),
@@ -91,8 +88,7 @@ describe('TrackAudio retirement lifecycle', () => {
     track.dispose();
     track.dispose();
 
-    expect(removeListener).toHaveBeenCalledWith('measure', listener);
-    expect(listener).not.toHaveBeenCalled();
+    expect(removeListener).toHaveBeenCalledWith('master-phase-change', listener);
     expect(disposeFx.map((spy) => spy.mock.calls.length)).toEqual([1, 1, 1, 1]);
     expect(track.getProjectPcmSnapshot()?.channelData.map((channel) => channel[0])).toEqual([0.25, -0.5]);
     expect((track as any).pcmHistory.snapshot.buffer).toBe(history);

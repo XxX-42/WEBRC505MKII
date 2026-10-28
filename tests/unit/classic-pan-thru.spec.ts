@@ -27,7 +27,8 @@ async function settle() { await nextTick(); await Promise.resolve(); await nextT
 
 beforeEach(() => {
   const track = new Track(1);
-  const audio = { track, disposed: false, gainNode: { gain: { value: 1 } }, panNode: { pan: { value: 0 } },
+  const audio = { track, disposed: false, lastLoopSyncSw: track.loopSyncSw, loopSyncSettingsRevision: 0,
+    invalidateQuantizedRecordingStopIfStale: vi.fn(), transport: { masterTrackId: null }, gainNode: { gain: { value: 1 } }, panNode: { pan: { value: 0 } },
     playbackSourceOutput: { gain: { value: 1 } }, historyBusy: false,
     updateSettings() { TrackAudio.prototype.updateSettings.call(this as any); } };
   fixture.engine = { tracks: [audio], monitoringEnabled: false, getMode: () => 'browser',
