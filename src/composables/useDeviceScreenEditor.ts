@@ -734,9 +734,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       fields.push(makeEnumField('track-dub-mode', 'DUB MODE', Math.max(0, dubModes.indexOf(audioTrack.track.dubMode)),
         fieldOptions(dubModes), (value) => {
           const mode = dubModes[value];
-          if (!mode || audioTrack.historyBusy) return false;
+          if (!mode || currentTrackId.value !== bounceTarget || engine.getMode() !== 'browser' || (audioTrack as { historyBusy?: boolean }).historyBusy) throw new Error('Track changed or recording is active; select the track again.');
           audioTrack.track.dubMode = mode;
-        }, { disabled: audioTrack.historyBusy,
+        }, { disabled: !!(audioTrack as { historyBusy?: boolean }).historyBusy,
           reason: 'Roland Parameter Guide v1.3 p.2. Browser clean-room behavior; not compared with hardware.' }));
     }
     fields.push(makeBooleanField('track-bounce-in', 'BOUNCE IN', bounce?.bounceIn[bounceTarget - 1] === true, (enabled) => {
