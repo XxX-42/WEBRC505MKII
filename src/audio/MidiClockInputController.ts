@@ -2,7 +2,7 @@
 
 import type { MidiAccessLike, MidiInputLike, MidiMessageEventLike, MidiInputState } from './MidiInputController';
 
-export type MidiClockSignal = 'waiting' | 'observed' | 'stale';
+export type MidiClockSignal = 'waiting' | 'observed' | 'stale' | 'ambiguous';
 export type MidiClockStability = 'insufficient-data' | 'stable' | 'unstable';
 
 export interface MidiClockSnapshot {
@@ -26,6 +26,12 @@ const HISTORY_SIZE = 24;
 const STALE_AFTER_MS = 1000;
 const MAX_RELATIVE_JITTER = 0.05;
 
+interface PortClockState {
+  intervals: number[];
+  lastTickAtMs: number | null;
+  tickCount: number;
+}
+
 function requestBrowserMidiAccess(): Promise<MidiAccessLike> | undefined {
   if (typeof navigator === 'undefined') return undefined;
   const midiNavigator = navigator as unknown as { requestMIDIAccess?: () => Promise<MidiAccessLike> };
@@ -44,9 +50,7 @@ export class MidiClockInputController {
   private connection: MidiInputState = 'disconnected';
   private access?: MidiAccessLike;
   private readonly inputs = new Map<MidiInputLike, (event: MidiMessageEventLike) => void>();
-  private intervals: number[] = [];
-  private lastTickAtMs: number | null = null;
-  private tickCount = 0;
+  private readonly portClocks = new Map<MidiInputLike, PortClockState>();
   private generation = 0;
   private pending?: Promise<MidiInputState>;
 
@@ -104,29 +108,29 @@ export class MidiClockInputController {
     for (const [input, listener] of this.inputs) input.removeEventListener('midimessage', listener);
     this.inputs.clear();
     this.access = undefined;
-    this.intervals = [];
-    this.lastTickAtMs = null;
-    this.tickCount = 0;
+    this.portClocks.clear();
     this.setConnection('disconnected');
     this.onChange?.();
   }
 
   getSnapshot(nowMs = this.now()): MidiClockSnapshot {
-    const lastTickAtMs = this.lastTickAtMs;
-    const ageMs = lastTickAtMs === null ? Infinity : Math.max(0, nowMs - lastTickAtMs);
-    const signal: MidiClockSignal = lastTickAtMs === null
-      ? 'waiting'
-      : ageMs > STALE_AFTER_MS ? 'stale' : 'observed';
-    const stability: MidiClockStability = this.intervals.length < HISTORY_SIZE
+    const streams = [...this.portClocks.values()];
+    const activeStreams = streams.filter((stream) => stream.lastTickAtMs !== null
+      && Math.max(0, nowMs - stream.lastTickAtMs) <= STALE_AFTER_MS);
+    const signal: MidiClockSignal = activeStreams.length > 1
+      ? 'ambiguous'
+      : activeStreams.length === 1 ? 'observed' : streams.some((stream) => stream.lastTickAtMs !== null) ? 'stale' : 'waiting';
+    const source = activeStreams.length === 1 ? activeStreams[0] : undefined;
+    const stability: MidiClockStability = !source || source.intervals.length < HISTORY_SIZE
       ? 'insufficient-data'
-      : this.isStable() ? 'stable' : 'unstable';
-    const medianInterval = this.median(this.intervals);
+      : this.isStable(source.intervals) ? 'stable' : 'unstable';
+    const medianInterval = source ? this.median(source.intervals) : 0;
     return Object.freeze({
       connection: this.connection,
       signal,
       stability: signal === 'observed' ? stability : 'insufficient-data',
-      tickCount: this.tickCount,
-      lastTickAtMs,
+      tickCount: source?.tickCount ?? activeStreams.reduce((total, stream) => total + stream.tickCount, 0),
+      lastTickAtMs: source?.lastTickAtMs ?? null,
       measuredBpm: medianInterval > 0 ? 60000 / (medianInterval * 24) : null,
       inputCount: this.inputs.size,
     });
@@ -141,34 +145,38 @@ export class MidiClockInputController {
       if (!current.has(input)) {
         input.removeEventListener('midimessage', listener);
         this.inputs.delete(input);
+        this.portClocks.delete(input);
       }
     }
     for (const input of current) {
       if (this.inputs.has(input)) continue;
-      const listener = (event: MidiMessageEventLike): void => this.handleMessage(event);
+      const listener = (event: MidiMessageEventLike): void => this.handleMessage(event, input);
       input.addEventListener('midimessage', listener);
       this.inputs.set(input, listener);
+      this.portClocks.set(input, { intervals: [], lastTickAtMs: null, tickCount: 0 });
     }
   }
 
-  private handleMessage(event: MidiMessageEventLike): void {
+  private handleMessage(event: MidiMessageEventLike, input: MidiInputLike): void {
     const data = event?.data;
     if (!data || data.length !== 1 || data[0] !== CLOCK_STATUS || !Number.isFinite(event.timeStamp)) return;
+    const clock = this.portClocks.get(input);
+    if (!clock) return;
     const time = event.timeStamp;
-    if (this.lastTickAtMs !== null) {
-      const interval = time - this.lastTickAtMs;
+    if (clock.lastTickAtMs !== null) {
+      const interval = time - clock.lastTickAtMs;
       if (interval > 0 && Number.isFinite(interval)) {
-        this.intervals.push(interval);
-        if (this.intervals.length > HISTORY_SIZE) this.intervals.shift();
+        clock.intervals.push(interval);
+        if (clock.intervals.length > HISTORY_SIZE) clock.intervals.shift();
       }
     }
-    this.lastTickAtMs = time;
-    this.tickCount += 1;
+    clock.lastTickAtMs = time;
+    clock.tickCount += 1;
   }
 
-  private isStable(): boolean {
-    const median = this.median(this.intervals);
-    return median > 0 && this.intervals.every((interval) => Math.abs(interval - median) / median <= MAX_RELATIVE_JITTER);
+  private isStable(intervals: readonly number[]): boolean {
+    const median = this.median(intervals);
+    return median > 0 && intervals.every((interval) => Math.abs(interval - median) / median <= MAX_RELATIVE_JITTER);
   }
 
   private median(values: readonly number[]): number {

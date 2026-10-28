@@ -155,6 +155,7 @@ const midiClockStatus = computed(() => {
     case 'disconnected': return 'Clock monitor off';
   }
   if (snapshot.inputCount === 0) return 'Connected · no input port';
+  if (snapshot.signal === 'ambiguous') return 'Multiple clock sources · ambiguous';
   if (snapshot.signal === 'waiting') return 'Waiting for F8 clock';
   if (snapshot.signal === 'stale') return 'No recent F8 clock';
   if (snapshot.stability === 'stable') return 'Timing steady · monitor only';

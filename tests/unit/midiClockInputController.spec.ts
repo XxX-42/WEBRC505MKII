@@ -23,6 +23,8 @@ class FakeAccess implements MidiAccessLike {
   }
   addEventListener(_type: 'statechange', listener: () => void): void { this.listeners.add(listener); }
   removeEventListener(_type: 'statechange', listener: () => void): void { this.listeners.delete(listener); }
+  setPorts(ports: MidiInputLike[]): void { this.ports = ports; }
+  changeState(): void { for (const listener of this.listeners) listener(); }
 }
 
 describe('MidiClockInputController', () => {
@@ -62,6 +64,39 @@ describe('MidiClockInputController', () => {
     expect(controller.getSnapshot(700).stability).toBe('unstable');
     expect(controller.getSnapshot(1801).signal).toBe('stale');
     expect(controller.getSnapshot(1801).stability).toBe('insufficient-data');
+  });
+
+  it('keeps port histories separate and reports multiple live clock sources as ambiguous', async () => {
+    const first = new FakeInput();
+    const second = new FakeInput();
+    const access = new FakeAccess([first, second]);
+    const controller = new MidiClockInputController({ requestMIDIAccess: async () => access, now: () => 0 });
+    await controller.connect();
+    const start = 100;
+    const interval = 60_000 / 120 / 24;
+    for (let tick = 0; tick <= 24; tick += 1) first.send([0xf8], start + tick * interval);
+    const now = start + 24 * interval;
+    expect(controller.getSnapshot(now).stability).toBe('stable');
+
+    second.send([0xf8], now);
+    expect(controller.getSnapshot(now)).toMatchObject({ signal: 'ambiguous', stability: 'insufficient-data', measuredBpm: null });
+
+    access.setPorts([first]);
+    access.changeState();
+    expect(controller.getSnapshot(now)).toMatchObject({ signal: 'observed', stability: 'stable', inputCount: 1 });
+  });
+
+  it('clears a disconnected port and its clock evidence on statechange', async () => {
+    const input = new FakeInput();
+    const access = new FakeAccess([input]);
+    const controller = new MidiClockInputController({ requestMIDIAccess: async () => access, now: () => 0 });
+    await controller.connect();
+    input.send([0xf8], 100);
+    expect(controller.getSnapshot(100).signal).toBe('observed');
+
+    access.setPorts([]);
+    access.changeState();
+    expect(controller.getSnapshot(100)).toMatchObject({ signal: 'waiting', inputCount: 0, tickCount: 0, lastTickAtMs: null });
   });
 
   it('removes listeners and clears clock evidence on disconnect', async () => {

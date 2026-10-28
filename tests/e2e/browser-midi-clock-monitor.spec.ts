@@ -1,20 +1,31 @@
 import { expect, test } from '@playwright/test';
 
+test('renders the MIDI clock control only in the Tech interface', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await expect(page.getByTestId('midi-clock-status')).toHaveCount(0);
+  await page.goto('/?audio=browser&ui=tech');
+  await expect(page.getByTestId('midi-clock-status')).toHaveText('Clock monitor off');
+});
+
 test('explicitly connects a read-only MIDI clock monitor in the transport bar', async ({ page }) => {
   await page.addInitScript(() => {
-    const listeners = new Set<(event: { data: number[]; timeStamp: number }) => void>();
-    const input = {
-      addEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.add(listener),
-      removeEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.delete(listener),
+    const makeInput = () => {
+      const listeners = new Set<(event: { data: number[]; timeStamp: number }) => void>();
+      return {
+        addEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.add(listener),
+        removeEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.delete(listener),
+        send: (data: number[], timeStamp: number) => listeners.forEach((listener) => listener({ data, timeStamp })),
+      };
     };
+    const inputs = [makeInput(), makeInput()];
     const accessListeners = new Set<() => void>();
     const access = {
-      inputs: { forEach: (callback: (port: typeof input) => void) => callback(input) },
+      inputs: { forEach: (callback: (port: typeof inputs[number]) => void) => inputs.forEach(callback) },
       addEventListener: (_type: string, listener: () => void) => accessListeners.add(listener),
       removeEventListener: (_type: string, listener: () => void) => accessListeners.delete(listener),
     };
     Object.defineProperty(window, '__fakeMidiClock', { configurable: true, value: {
-      send: (data: number[], timeStamp: number) => listeners.forEach((listener) => listener({ data, timeStamp })),
+      send: (data: number[], timeStamp: number, sourceIndex = 0) => inputs[sourceIndex]?.send(data, timeStamp),
     } });
     Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => access });
   });
@@ -31,7 +42,7 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   });
 
   await page.evaluate(() => {
-    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number): void } }).__fakeMidiClock;
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
     const start = performance.now();
     for (let tick = 0; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24));
   });
@@ -42,6 +53,11 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     return { bpm: transport.bpm, state: transport.state, phaseRevision: transport.masterPhaseRevision };
   });
   expect(transportAfter).toEqual(transportBefore);
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
+    fake.send([0xf8], performance.now(), 1);
+  });
+  await expect(status).toHaveText('Multiple clock sources · ambiguous');
   await page.getByRole('button', { name: 'Disconnect MIDI clock input' }).click();
   await expect(status).toHaveText('Clock monitor off');
 });
