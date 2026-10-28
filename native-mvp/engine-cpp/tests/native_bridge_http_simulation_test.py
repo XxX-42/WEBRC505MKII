@@ -1315,6 +1315,24 @@ def main():
             if finished_status.get("nativeRecordPlay", {}).get("finishApplied", [0, 0, 0])[2] == \
                     finished.get("nativeRecordPlay", {}).get("finishRequested", [0, 0, 0])[2]: break
             time.sleep(0.005)
+        finished_track = next(track for track in finished_status["nativeTracks"] if track["trackId"] == 3)
+        status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
+        require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
+                f"unconfirmed REC tempo candidate leaked through the metadata endpoint: {staged_metadata}")
+        status, confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
+            "trackId": 3, "expectedContentRevision": finished_track["contentRevision"],
+            "tempoBpm": tempo_bpm, "tempoRevision": 41})
+        require(status == 200 and confirmation.get("nativeRecordTempoProvenance", {}).get("acceptedRequestRevision", 0) > 0,
+                f"callback tempo confirmation was not accepted for the staged take: {confirmation}")
+        confirm_revision = confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            confirmation_status = request("/v1/status")[1]
+            provenance = confirmation_status.get("nativeRecordTempoProvenance", {})
+            if provenance.get("appliedRevision", [0, 0, 0])[2] == confirm_revision: break
+            time.sleep(0.005)
+        require(provenance.get("acceptedRevision", [0, 0, 0])[2] == confirm_revision,
+                f"callback tempo confirmation did not publish the staged metadata: {provenance}")
         status, tagged_metadata = request("/v1/export/track-metadata?trackId=3")
         require(status == 200 and tagged_metadata.get("originalTempoBpm") == tempo_bpm,
                 f"callback-validated REC tempo was not published with its PCM: {tagged_metadata}")

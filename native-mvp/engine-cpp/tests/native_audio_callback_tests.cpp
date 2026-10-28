@@ -2342,6 +2342,12 @@ void testNativeProjectArchiveTempoMetadataLifecycle() {
     assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
     assert(core.finishRecordingTrack(0U, error, 120.0, 7U));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto stagedRevision = core.getStatus().nativeTrackContentRevision[0U];
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+    std::uint64_t confirmationRevision = 0U;
+    assert(core.confirmTrackTempoProvenance(0U, stagedRevision, 120.0, 7U, error, &confirmationRevision));
+    assert(confirmationRevision > 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
     assert(core.undoTrack(0U, error));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
@@ -2351,6 +2357,29 @@ void testNativeProjectArchiveTempoMetadataLifecycle() {
     assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
 
     assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    // The callback may stage a candidate, but a host rhythm change queued
+    // before confirmation must invalidate it at the confirmation boundary.
+    assert(core.recordTrack(0U, error, 120.0, 20U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    assert(core.finishRecordingTrack(0U, error, 120.0, 20U));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto staleCandidateRevision = core.getStatus().nativeTrackContentRevision[0U];
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+    authority.bpm = 121.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    std::uint64_t staleConfirmationRevision = 0U;
+    assert(core.confirmTrackTempoProvenance(0U, staleCandidateRevision, 120.0, 20U,
+        error, &staleConfirmationRevision));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.getStatus().nativeRecordTempoConfirmApplied[0U] == staleConfirmationRevision);
+    assert(core.getStatus().nativeRecordTempoConfirmAccepted[0U] != staleConfirmationRevision);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    authority.bpm = 120.0;
+    assert(core.setNativeRhythmConfig(authority, error));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(core.recordTrack(0U, error, 120.0, 8U));
     assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);

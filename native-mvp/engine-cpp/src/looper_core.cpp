@@ -157,6 +157,8 @@ void LooperCore::applyCommand(const Command& command) {
         break;
     case CommandType::SetRecordAction:
         break; // Owned by NativeAudioCore, not an individual looper.
+    case CommandType::ConfirmRecordTempoProvenance:
+        break; // Owned by NativeAudioCore, not an individual looper.
     case CommandType::Play:
         if (state_ == LooperState::Playing && loopTransportConfig_.oneShot && finalizedFrames_ > 0U) {
             playhead_ = 0U;

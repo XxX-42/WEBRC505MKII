@@ -782,6 +782,10 @@ json statusToJson(const EngineStatus& status) {
             {"recAction", status.nativeRecordActionDub ? "REC->DUB" : "REC->PLAY"},
             {"requestedRevision", status.nativeRecordActionRequestedRevision}, {"appliedRevision", status.nativeRecordActionAppliedRevision},
             {"finishRequested", status.nativeRecordFinishRequested}, {"finishApplied", status.nativeRecordFinishApplied}, {"finishCancelled", status.nativeRecordFinishCancelled}}},
+        {"nativeRecordTempoProvenance", {{"version", 1},
+            {"requestedRevision", status.nativeRecordTempoConfirmRequested},
+            {"appliedRevision", status.nativeRecordTempoConfirmApplied},
+            {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
         {"backend", backendToString(status.backend)},
@@ -1904,6 +1908,28 @@ int main() {
             std::string error;
             if (!engine.finishRecordingTrack(trackId - 1U, error, tempoBpm, tempoRevision)) { response.status = 409; writeError(response, error); return; }
             writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/transport/record-tempo/confirm", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t trackId = 0U, expectedContentRevision = 0U, tempoRevision = 0U;
+            std::optional<double> tempoBpm;
+            if (!body.is_object() || body.size() != 4U ||
+                !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
+                !readUnsignedJsonInteger(body.value("expectedContentRevision", json()), kMaximumSafeTempoRevision, expectedContentRevision) ||
+                !readRecordTempoToken(body, tempoBpm, tempoRevision) || !tempoBpm.has_value()) {
+                response.status = 400; writeError(response, "REC tempo confirmation requires trackId, expectedContentRevision, tempoBpm, and tempoRevision."); return;
+            }
+            std::string error;
+            std::uint64_t requestedRevision = 0U;
+            if (!engine.confirmTrackTempoProvenance(trackId - 1U, expectedContentRevision, *tempoBpm,
+                    tempoRevision, error, &requestedRevision)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeRecordTempoProvenance"]["acceptedRequestRevision"] = requestedRevision;
+            writeJson(response, status);
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
     server.Post("/v1/transport/stop", [&engine](const httplib::Request& request, httplib::Response& response) {

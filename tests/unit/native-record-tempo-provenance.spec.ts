@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   nativeRecordTempoToken,
+  nativeRecordTempoTokenMatches,
   NativeBridgeClient,
   type NativeStatus,
 } from '../../src/audio/NativeBridgeClient';
@@ -19,6 +20,8 @@ describe('Native REC tempo provenance tokens', () => {
     expect(nativeRecordTempoToken({ nativeTempoRecordProvenanceVersion: 1 } as NativeStatus, 301, 1)).toBeUndefined();
     expect(nativeRecordTempoToken({ nativeTempoRecordProvenanceVersion: 1 } as NativeStatus, 120, Number.MAX_SAFE_INTEGER + 1)).toBeUndefined();
     expect(nativeRecordTempoToken({ nativeTempoRecordProvenanceVersion: 1 } as NativeStatus, 120, 9)).toEqual({ bpm: 120, revision: 9 });
+    expect(nativeRecordTempoTokenMatches({ bpm: 120, revision: 9 }, { bpm: 120, revision: 10 })).toBe(false);
+    expect(nativeRecordTempoTokenMatches({ bpm: 120, revision: 9 }, { bpm: 120, revision: 9 })).toBe(true);
   });
 
   it('sends the same-call Transport tempo revision on record and finish, including change-away-and-back', async () => {
@@ -36,6 +39,8 @@ describe('Native REC tempo provenance tokens', () => {
       nativeRecordPlay: { version: 1, recActionAvailable: true, quantizeAvailable: false,
         recAction: 'REC->PLAY', requestedRevision: 1, appliedRevision: 1,
         finishRequested: [1, 0, 0, 0, 0], finishApplied: [1, 0, 0, 0, 0] },
+      nativeRecordTempoProvenance: { version: 1, requestedRevision: [1, 0, 0, 0, 0],
+        appliedRevision: [1, 0, 0, 0, 0], acceptedRevision: [1, 0, 0, 0, 0], acceptedRequestRevision: 1 },
       nativeTracks: [{ trackId: 1, state: 'Playing', loopProgress: 0 }],
     };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -51,11 +56,15 @@ describe('Native REC tempo provenance tokens', () => {
     expect(changedBackRevision).toBeGreaterThan(transportRevision);
     const finishToken = nativeRecordTempoToken(status as NativeStatus, transport.bpm, changedBackRevision)!;
     await client.finishRecordingTrack(1, finishToken);
+    await client.confirmTrackTempoProvenance(1, 3, finishToken);
     transport.bpm = startingBpm;
     expect(requestBodies[0]?.url).toContain(`tempoBpm=${startingBpm}`);
     expect(requestBodies[0]?.url).toContain(`tempoRevision=${transportRevision}`);
     expect(JSON.parse(requestBodies[1]?.body ?? '{}')).toMatchObject({
       trackId: 1, tempoBpm: startingBpm, tempoRevision: changedBackRevision,
+    });
+    expect(JSON.parse(requestBodies[2]?.body ?? '{}')).toMatchObject({
+      trackId: 1, expectedContentRevision: 3, tempoBpm: startingBpm, tempoRevision: changedBackRevision,
     });
   });
 
@@ -67,5 +76,27 @@ describe('Native REC tempo provenance tokens', () => {
     }));
     await new NativeBridgeClient('http://127.0.0.1:17755').recordTrack(1);
     expect(requests[0]).toBe('http://127.0.0.1:17755/v1/transport/record');
+  });
+
+  it('normalizes old-host metadata without a provenance field to null', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true, trackId: 1, sampleRate: 48000, frameCount: 64, channels: 2 }),
+    }) as Response));
+    await expect(new NativeBridgeClient().getTrackMetadata(1)).resolves.toMatchObject({ originalTempoBpm: null });
+  });
+
+  it('holds BPM mutations behind the callback confirmation barrier', () => {
+    const transport = Transport.getInstance();
+    const startBpm = transport.bpm;
+    const startRevision = transport.tempoMutationRevision;
+    const release = transport.beginTempoCommitBarrier();
+    transport.setBpm(startBpm === 120 ? 121 : 120);
+    expect(transport.bpm).toBe(startBpm);
+    expect(transport.tempoMutationRevision).toBe(startRevision);
+    release();
+    expect(transport.bpm).not.toBe(startBpm);
+    expect(transport.tempoMutationRevision).toBeGreaterThan(startRevision);
+    transport.setBpm(startBpm);
   });
 });

@@ -24,6 +24,7 @@ enum class CommandType : std::uint8_t {
     SetMonitoring,
     FinishRecording,
     SetRecordAction,
+    ConfirmRecordTempoProvenance,
 };
 
 // Source-aware effects that read the stored loop before tracks are summed.
@@ -81,6 +82,7 @@ struct Command {
     double provenanceBpm = 0.0;
     std::uint64_t provenanceRevision = 0U;
     bool provenanceValid = false;
+    std::uint64_t expectedContentRevision = 0U;
 };
 
 struct ProcessStats {

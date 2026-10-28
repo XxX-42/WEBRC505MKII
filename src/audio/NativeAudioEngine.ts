@@ -6,7 +6,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, nativeRecordTempoToken, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -1178,7 +1178,27 @@ export class NativeAudioEngine {
     if (patch.recAction !== undefined) await this.dispatchStatusRequest(() => this.bridge.setRecordAction(patch.recAction!));
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
-    await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, this.nativeRecordTempoToken()));
+    const finishToken = this.nativeRecordTempoToken();
+    await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, finishToken));
+    if (!finishToken) return;
+
+    const transport = Transport.getInstance();
+    const releaseTempoBarrier = transport.beginTempoCommitBarrier();
+    try {
+      const currentToken = nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
+      if (!nativeRecordTempoTokenMatches(finishToken, currentToken)) return;
+      const finishedTrack = this.latestStatus?.nativeTracks?.find(track => track.trackId === trackId);
+      if (!finishedTrack || !Number.isSafeInteger(finishedTrack.contentRevision)) return;
+      await this.dispatchStatusRequest(() => this.bridge.confirmTrackTempoProvenance(
+        trackId, finishedTrack.contentRevision!, finishToken));
+    } catch (error) {
+      // PCM was committed by the prior ACK. A failed second phase leaves its
+      // provenance null and must not make that completed take look verified.
+      this.lastError = `Native REC completed with unknown tempo provenance: ${error instanceof Error ? error.message : String(error)}`;
+      this.emitAll();
+    } finally {
+      releaseTempoBarrier();
+    }
   }
   public getMixerState(): MixerState { return mixerState(this.latestStatus?.mixerLevels); }
 
@@ -1198,7 +1218,7 @@ export class NativeAudioEngine {
 
   private nativeRecordTempoToken(): NativeRecordTempoToken | undefined {
     const transport = Transport.getInstance();
-    return nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.projectMutationRevision);
+    return nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
   }
 
   public async playTrack(trackId = 1) {

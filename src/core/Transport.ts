@@ -4,6 +4,9 @@ export class Transport {
     private static instance: Transport;
 
     private projectMutationRevisionValue = 0;
+    private tempoMutationRevisionValue = 0;
+    private tempoCommitBarrierCount = 0;
+    private deferredTempoMutations: Array<{ value: number; notify: boolean }> = [];
     private bpmValue = 120;
     private timeSignatureValue: readonly [number, number] = Object.freeze([4, 4]);
     private stateValue: TransportState = TransportState.STOPPED;
@@ -17,6 +20,7 @@ export class Transport {
 
     /** Monotonic epoch for values captured by project-load transactions. */
     public get projectMutationRevision(): number { return this.projectMutationRevisionValue; }
+    public get tempoMutationRevision(): number { return this.tempoMutationRevisionValue; }
 
     private noteProjectMutation(): void {
         // Once exhausted, callers can reject a new snapshot instead of risking
@@ -28,9 +32,44 @@ export class Transport {
 
     public get bpm(): number { return this.bpmValue; }
     public set bpm(value: number) {
+        this.requestBpmMutation(value, false);
+    }
+
+    /** Prevents a BPM edit from racing the Native callback provenance commit. */
+    public beginTempoCommitBarrier(): () => void {
+        this.tempoCommitBarrierCount += 1;
+        let released = false;
+        return () => {
+            if (released) return;
+            released = true;
+            this.tempoCommitBarrierCount = Math.max(0, this.tempoCommitBarrierCount - 1);
+            if (this.tempoCommitBarrierCount !== 0) return;
+            const queued = this.deferredTempoMutations;
+            this.deferredTempoMutations = [];
+            for (const mutation of queued) {
+                this.applyBpmMutation(mutation.value);
+                if (mutation.notify) {
+                    this.emit('bpm-change');
+                    console.log(`BPM updated to: ${this.bpm}`);
+                }
+            }
+        };
+    }
+
+    private requestBpmMutation(value: number, notify: boolean): boolean {
+        if (this.tempoCommitBarrierCount > 0) {
+            this.deferredTempoMutations.push({ value, notify });
+            return false;
+        }
+        this.applyBpmMutation(value);
+        return true;
+    }
+
+    private applyBpmMutation(value: number): void {
         if (this.bpmValue === value) return;
         this.clearMasterPhaseOrigin();
         this.bpmValue = value;
+        if (this.tempoMutationRevisionValue < Number.MAX_SAFE_INTEGER) this.tempoMutationRevisionValue += 1;
         this.noteProjectMutation();
     }
 
@@ -183,7 +222,12 @@ export class Transport {
     }
 
     public setBpm(bpm: number) {
-        this.bpm = Math.max(40, Math.min(300, bpm));
+        const value = Math.max(40, Math.min(300, bpm));
+        if (this.tempoCommitBarrierCount > 0) {
+            this.requestBpmMutation(value, true);
+            return;
+        }
+        this.requestBpmMutation(value, false);
         this.emit('bpm-change');
         console.log(`BPM updated to: ${this.bpm}`);
     }

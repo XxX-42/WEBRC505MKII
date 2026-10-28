@@ -201,6 +201,8 @@ export interface NativeStatus {
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
     recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
     finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[] };
+  nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
+    acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
   bridgeHealthy: boolean;
   engineRunning: boolean;
@@ -482,8 +484,14 @@ export function nativeRecordTempoToken(
   status: NativeStatus | null | undefined, bpm: number, revision: number,
 ): NativeRecordTempoToken | undefined {
   if (status?.nativeTempoRecordProvenanceVersion !== 1 || !Number.isFinite(bpm) || bpm < 40 || bpm > 300 ||
-      !Number.isSafeInteger(revision) || revision < 0) return undefined;
+      !Number.isSafeInteger(revision) || revision < 0 || revision >= Number.MAX_SAFE_INTEGER) return undefined;
   return { bpm, revision };
+}
+
+export function nativeRecordTempoTokenMatches(
+  expected: NativeRecordTempoToken | undefined, actual: NativeRecordTempoToken | undefined,
+): boolean {
+  return expected !== undefined && actual !== undefined && expected.bpm === actual.bpm && expected.revision === actual.revision;
 }
 
 export interface NativeHqRenderOptions {
@@ -1069,6 +1077,27 @@ export class NativeBridgeClient {
       const expected = status.nativeRecordPlay?.recAction === 'REC->DUB' ? 'Overdubbing' : 'Playing';
       if (status.nativeRecordPlay?.finishApplied[trackId - 1] === revision && track && (track.state === expected || track.state === 'Empty')) return status;
       if (Date.now() >= deadline) throw new Error('Native REC completion callback acknowledgement timed out; do not resend automatically.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
+  }
+
+  public async confirmTrackTempoProvenance(trackId: number, expectedContentRevision: number,
+      tempo: NativeRecordTempoToken): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC tempo confirmation track.');
+    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0) throw new RangeError('Invalid Native REC tempo content revision.');
+    let status = await this.request<NativeStatus>('/v1/transport/record-tempo/confirm', {
+      method: 'POST', body: JSON.stringify({ trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision }),
+    });
+    const revision = status.nativeRecordTempoProvenance?.acceptedRequestRevision;
+    if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC tempo confirmation acknowledgement is unavailable; provenance remains unknown.');
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      const provenance = status.nativeRecordTempoProvenance;
+      if (provenance && provenance.appliedRevision?.[trackId - 1] === revision) {
+        if (provenance.acceptedRevision?.[trackId - 1] !== revision) throw new Error('Native REC tempo confirmation was rejected; provenance remains unknown.');
+        return status;
+      }
+      if (Date.now() >= deadline) throw new Error('Native REC tempo confirmation callback acknowledgement timed out; provenance remains unknown.');
       await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
     }
   }

@@ -155,6 +155,9 @@ struct EngineStatus {
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishRequested{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishApplied{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishCancelled{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmRequested{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmApplied{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmAccepted{};
     std::array<unsigned int, 7> mixerLevels{100U, 100U, 100U, 100U, 100U, 100U, 100U};
     bool bridgeHealthy = true;
     bool engineRunning = false;
@@ -543,6 +546,9 @@ public:
     bool setRecordAction(bool overdub, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                    std::uint64_t provenanceRevision = 0U);
+    bool confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
+                                     double bpm, std::uint64_t tempoRevision, std::string& error,
+                                     std::uint64_t* requestedRevision = nullptr);
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
     bool clearTrack(std::size_t trackIndex, std::string& error);
@@ -882,6 +888,9 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordFinishApplied_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishRuntimeGeneration_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishCancelled_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordTempoConfirmRequested_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordTempoConfirmApplied_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordTempoConfirmAccepted_{};
     std::array<std::atomic<bool>, kNativeTrackCount> recordingMirrorReserved_{};
     std::array<std::atomic<bool>, kNativeTrackCount> recordStartPending_{};
     std::array<std::atomic<std::size_t>, kNativeTrackCount> recordingShadowCompactFrames_{};
@@ -1061,6 +1070,10 @@ private:
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartBpmBits_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartNativeRevision_{};
     std::array<bool, kNativeTrackCount> recordingTempoStartValid_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateBpmBits_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateRevision_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateNativeRevision_{};
+    std::array<bool, kNativeTrackCount> recordingTempoCandidateValid_{};
     // The global epoch also changes for Play/Stop transitions because project
     // import replaces those states; per-track content revisions remain PCM/history-only.
     std::atomic<std::uint64_t> projectContentRevision_{0U};
