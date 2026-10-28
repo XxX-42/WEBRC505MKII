@@ -364,8 +364,11 @@ export class BrowserAudioEngine implements IAudioEngine {
             || this.midiInputState !== 'disconnected') {
             throw new Error('Browser recovery graph must be a new, suspended, disconnected five-track engine.');
         }
-        try { await this.ensureTrackFxApplyRouter(); }
-        catch (error) { this.trackFxRouterUnavailableReason = error instanceof Error ? error.message : String(error); }
+        // Recovery promises to restore every authored Track FX route. Do not
+        // publish a partially wired replacement when the required router
+        // cannot be prepared; let the caller surface the failure and retain
+        // the closed source engine for export/retry.
+        await this.ensureTrackFxApplyRouter();
         if (snapshot.pcmHistoryBudget.limitBytes < 0 || !Number.isSafeInteger(snapshot.pcmHistoryBudget.limitBytes)
             || this.tracks.some((track) => track.historyBudgetBytes !== snapshot.pcmHistoryBudget.limitBytes)) {
             throw new Error('Candidate Browser engine did not receive the saved shared PCM history budget.');
@@ -467,6 +470,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.restoreDisconnectedMidiTarget(snapshot.midi.target);
         this.trackMixNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
         this.dryTrackMixGainNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
+        this.mainGainNode.gain.value = snapshot.mainGainValue;
+        this.mainGainNode.gain.setValueAtTime(snapshot.mainGainValue, this.context.currentTime);
         // AudioParam.value can continue reporting the intrinsic default while
         // a suspended context has a scheduled value at currentTime. Set the
         // immediate value too so the zero-gain invariant is observable and
@@ -626,6 +631,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 || JSON.stringify(snapshot.midi) !== JSON.stringify(current.midi)
                 || snapshot.monitoringWasEnabled !== current.monitoringWasEnabled
                 || snapshot.outputGainValue !== current.outputGainValue
+                || snapshot.mainGainValue !== current.mainGainValue
                 || snapshot.trackMixGainValue !== current.trackMixGainValue
                 || JSON.stringify(snapshot.recoveryPolicy) !== JSON.stringify(current.recoveryPolicy)
                 || snapshot.pcmHistoryBudget.retainedBytes !== current.pcmHistoryBudget.retainedBytes
@@ -722,6 +728,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.monitorGainNode!.gain.setValueAtTime(0, this.context.currentTime);
         this.masterGainNode.gain.value = 0;
         this.masterGainNode.gain.setValueAtTime(0, this.context.currentTime);
+        this.mainGainNode.gain.value = snapshot.mainGainValue;
+        this.mainGainNode.gain.setValueAtTime(snapshot.mainGainValue, this.context.currentTime);
         this.trackMixNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
         this.dryTrackMixGainNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
         this.selectedInputDeviceId = snapshot.source.inputDevicePreference;
@@ -1376,9 +1384,10 @@ export class BrowserAudioEngine implements IAudioEngine {
             limitBytes: this.tracks[0]!.historyBudgetBytes,
         });
         const outputGainValue = this.masterGainNode.gain.value;
+        const mainGainValue = this.mainGainNode.gain.value;
         const trackMixGainValue = this.trackMixNode.gain.value;
         if (!Number.isFinite(this.context.sampleRate) || this.context.sampleRate <= 0
-            || !Number.isFinite(outputGainValue) || !Number.isFinite(trackMixGainValue)) {
+            || !Number.isFinite(outputGainValue) || !Number.isFinite(mainGainValue) || !Number.isFinite(trackMixGainValue)) {
             throw new Error('Browser recovery snapshot was not captured because the audio graph contains invalid rate or gain values.');
         }
         if (this.tracks.some((track) => track.historyTotalRetainedBytes !== historyBudget.retainedBytes
@@ -1408,7 +1417,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 ? Object.freeze({ path: this.selectedHrmAutoMidiTarget.path, slot: this.selectedHrmAutoMidiTarget.slot, effectId: 'hrm_auto_m', trackId: null })
                 : null;
         const snapshot: BrowserRecoverySnapshot = Object.freeze({
-            schemaVersion: 2,
+            schemaVersion: 3,
             source: Object.freeze({
                 contextState: this.context.state,
                 sampleRate: this.context.sampleRate,
@@ -1437,6 +1446,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             midi: Object.freeze({ sourceInputState: this.midiInputState, target: selectedTarget }),
             monitoringWasEnabled: this.monitoringEnabled,
             outputGainValue,
+            mainGainValue,
             trackMixGainValue,
             recoveryPolicy: Object.freeze({
                 playback: 'start-stopped',

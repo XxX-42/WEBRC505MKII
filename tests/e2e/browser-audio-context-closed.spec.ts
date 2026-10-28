@@ -20,6 +20,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     const tracks = engine.tracks as any[];
     const browserEngine = tracks[0]!.engine as any;
     const context = tracks[0]!.engine.context as AudioContext;
+    browserEngine.mainGainNode.gain.value = 0.64;
     browserEngine.selectedOutputDeviceId = 'recovery-output-device';
     if (context.state !== 'running' || tracks.length !== 5) {
       throw new Error(`Expected a running five-track Browser graph, got ${context.state}/${tracks.length}`);
@@ -165,7 +166,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     await closedStatePublished;
     if (context.state !== 'closed') throw new Error(`AudioContext close did not finish: ${context.state}`);
     const recovery = (tracks[0]!.engine as any).getRecoverySnapshot();
-    if (recovery.schemaVersion !== 2 || recovery.source.contextState !== 'closed'
+    if (recovery.schemaVersion !== 3 || recovery.source.contextState !== 'closed'
       || recovery.tracks.length !== 5 || recovery.fx.privateTracks.length !== 5
       || recovery.pcmHistoryBudget.retainedBytes <= 0
       || recovery.recoveryPolicy.playback !== 'start-stopped'
@@ -229,6 +230,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
         historyBufferBytes: recovery.pcmHistoryBudget.retainedBytes,
         historyLimitBytes: recovery.pcmHistoryBudget.limitBytes,
         trackMixGainValue: recovery.trackMixGainValue,
+        mainGainValue: recovery.mainGainValue,
         privateBankCount: recovery.fx.privateTracks.length,
         recoveryPolicy: recovery.recoveryPolicy,
       },
@@ -254,7 +256,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(result.initError).toContain('permanently closed');
   expect(result.beforePcm).toEqual(result.afterPcm);
   expect(result.recovery).toMatchObject({
-    schemaVersion: 2,
+    schemaVersion: 3,
     source: { contextState: 'closed' },
     trackCount: 5,
     privateBankCount: 5,
@@ -451,7 +453,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     bpmListenersAfter: candidateResult.runtime.bpmListenersBefore,
   });
   expect(candidateResult.legacySchemaFactoryCalls).toBe(0);
-  expect(candidateResult.legacySchemaError).toContain('version-2 snapshot');
+  expect(candidateResult.legacySchemaError).toContain('version-3 snapshot');
   expect(candidateResult.runtime.tracks.map((track: any) => ({
     trackId: track.trackId,
     pitchMode: track.pitchMode,
@@ -809,6 +811,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
       outputGain: browser.masterGainNode.gain.value,
       outputLevel: facade.getOutputLevel(),
       trackMixGain: browser.trackMixNode.gain.value,
+      mainGain: browser.mainGainNode.gain.value,
       monitorGain: browser.monitorGainNode.gain.value,
       inputReady: facade.getUiStatus().inputReady,
       awaitingResume: facade.getUiStatus().recoveryAwaitingUserResume,
@@ -862,6 +865,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   });
   expect(adoptedRecovery.outputLevel).toBeCloseTo(37, 4);
   expect(adoptedRecovery.trackMixGain).toBeCloseTo(result.recovery.trackMixGainValue, 6);
+  expect(adoptedRecovery.mainGain).toBeCloseTo(result.recovery.mainGainValue, 6);
   expect(adoptedRecovery.pcm).toEqual(result.beforePcm.map(({ sha256 }: { sha256: string }) => sha256));
   expect(adoptedRecovery.history).toEqual(candidateResult.tracks.map((track: any) => track.sourceHistory));
   expect(adoptedRecovery.historyStatus).toEqual(result.beforeHistory);

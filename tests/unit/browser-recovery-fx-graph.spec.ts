@@ -18,7 +18,7 @@ function snapshotWith(typeForIndex: (bankIndex: number, slotIndex: number) => st
     };
   });
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     source: { contextState: 'closed', sampleRate: 48_000 },
     tracks: Array.from({ length: 5 }, (_, index) => ({
       trackId: index + 1,

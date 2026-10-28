@@ -100,8 +100,8 @@ function cloneBuffer(source: AudioBuffer, targetContext: AudioContext, label: st
 }
 
 function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: number; historyBytes: number; markBytes: number } {
-  if (!snapshot || snapshot.schemaVersion !== 2 || snapshot.source.contextState !== 'closed') {
-    throw new Error('A recovery candidate requires a version-2 snapshot from a closed Browser AudioContext.');
+  if (!snapshot || snapshot.schemaVersion !== 3 || snapshot.source.contextState !== 'closed') {
+    throw new Error('A recovery candidate requires a version-3 snapshot from a closed Browser AudioContext.');
   }
   validateBrowserRecoveryRuntimeSettings(snapshot);
   if (!Number.isSafeInteger(snapshot.source.sampleRate) || snapshot.source.sampleRate < 8_000 || snapshot.source.sampleRate > 384_000) {

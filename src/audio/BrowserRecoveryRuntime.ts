@@ -60,8 +60,8 @@ function validatePitchSettings(snapshot: BrowserRecoverySnapshot, trackIndex: nu
 
 /** Validate every stopped-runtime setting before a context or PCM copy is allocated. */
 export function validateBrowserRecoveryRuntimeSettings(snapshot: BrowserRecoverySnapshot): void {
-  if (!snapshot || snapshot.schemaVersion !== 2 || snapshot.tracks.length !== 5) {
-    throw new Error('Recovery requires the complete version-2 five-track runtime snapshot.');
+  if (!snapshot || snapshot.schemaVersion !== 3 || snapshot.tracks.length !== 5) {
+    throw new Error('Recovery requires the complete version-3 five-track runtime snapshot.');
   }
   for (let index = 0; index < snapshot.tracks.length; index += 1) {
     const track = snapshot.tracks[index]!;

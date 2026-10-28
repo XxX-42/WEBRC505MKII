@@ -500,6 +500,11 @@ export class AudioEngine {
   }
 
   public getOutputLevel(): number {
+    // A recovered graph is deliberately muted until the user resumes it.
+    // Keep reporting the authored level while that safety mute is active.
+    if (this.currentMode === 'browser' && this.recoveredBrowserOutputGain !== null) {
+      return this.browserOutputLevelPercent;
+    }
     return this.activeEngine.getMixerState?.().master ?? (this.currentMode === 'browser' ? this.browserOutputLevelPercent : 0);
   }
 

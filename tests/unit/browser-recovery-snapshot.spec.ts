@@ -85,12 +85,13 @@ describe('Browser closed-context recovery snapshot contract', () => {
     expect(() => engine.getRecoverySnapshot()).toThrow(/only after the old AudioContext has closed/);
     (context as unknown as { state: AudioContextState }).state = 'closed';
     engine.masterGainNode.gain.value = 0.72;
+    engine.mainGainNode.gain.value = 0.64;
     engine.trackMixNode.gain.value = 0.88;
 
     const beforeBudget = historyBudget.retainedBytes;
     const snapshot = engine.getRecoverySnapshot();
     expect(Object.isFrozen(snapshot)).toBe(true);
-    expect(snapshot.schemaVersion).toBe(2);
+    expect(snapshot.schemaVersion).toBe(3);
     expect(snapshot.source).toEqual({ contextState: 'closed', sampleRate: context.sampleRate,
       inputDevicePreference: 'remembered-input-only', outputDevicePreference: 'remembered-output-only', lastObservedRenderBlockFrames: 256 });
     expect(snapshot.transport).toMatchObject({ bpm: 107, timeSignature: [5, 8], state: 'PLAYING' });
@@ -115,7 +116,7 @@ describe('Browser closed-context recovery snapshot contract', () => {
     expect(snapshot.fx.sourceOverrides[0]?.trackId).toBe(1);
     expect(snapshot.fx.sourceOverrides[0]?.config.mode).toBe('vinylFlick');
     expect(snapshot.midi).toMatchObject({ sourceInputState: 'disconnected', target: null });
-    expect(snapshot).toMatchObject({ outputGainValue: 0.72, trackMixGainValue: 0.88, monitoringWasEnabled: false });
+    expect(snapshot).toMatchObject({ outputGainValue: 0.72, mainGainValue: 0.64, trackMixGainValue: 0.88, monitoringWasEnabled: false });
     expect(snapshot.recoveryPolicy).toEqual({
       playback: 'start-stopped', monitoring: 'start-muted', input: 'explicit-user-reconnect',
       midi: 'target-restored-disconnected', dynamicDspState: 'not-captured', effectTails: 'discarded',

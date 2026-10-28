@@ -106,8 +106,8 @@ export interface BrowserRecoveryTrack {
 }
 
 export interface BrowserRecoverySnapshot {
-  /** Version 2 adds the per-track Keep Pitch controls required for recovery. */
-  readonly schemaVersion: 2;
+  /** Version 3 adds the Browser main-bus gain to the recoverable mix. */
+  readonly schemaVersion: 3;
   readonly source: Readonly<{
     contextState: AudioContextState;
     sampleRate: number;
@@ -151,6 +151,7 @@ export interface BrowserRecoverySnapshot {
   }>;
   readonly monitoringWasEnabled: boolean;
   readonly outputGainValue: number;
+  readonly mainGainValue: number;
   readonly trackMixGainValue: number;
   /** Recovery always starts stopped and muted; a closed-context DSP tail cannot be transferred. */
   readonly recoveryPolicy: Readonly<{

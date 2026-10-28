@@ -75,7 +75,7 @@ function makeEngine(contextState: AudioContextState, label: string) {
   return engine;
 }
 
-const snapshot = { schemaVersion: 2 } as any;
+const snapshot = { schemaVersion: 3 } as any;
 
 describe('Browser recovery facade adoption', () => {
   beforeEach(() => {
@@ -275,7 +275,7 @@ describe('Browser recovery facade adoption', () => {
     const currentBuffer = {} as AudioBuffer;
     const historyBuffer = {} as AudioBuffer;
     const makeSnapshot = (buffer = currentBuffer, bpm = 120, revision = 3) => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       source: { contextState: 'closed', sampleRate: 44_100, inputDevicePreference: null, outputDevicePreference: null, lastObservedRenderBlockFrames: 128 },
       transport: { bpm, timeSignature: [4, 4], state: 'STOPPED', masterTrackId: null, masterLoopLengthSamples: 0, measureLength: 0, projectMutationRevision: 7 },
       rhythm: { patternIndex: 106, kitIndex: 1, variation: 'A', section: 'main', swingPercent: 50, quantizeGrid: '1/16', volumePercent: 50, wasRunning: false, error: '' },
@@ -284,7 +284,7 @@ describe('Browser recovery facade adoption', () => {
         settings: { pan: 'CENTER' }, pitch: { mode: 'off' }, sourceTransport: [null],
         history: { buffer: historyBuffer, direction: 'undo', isReverse: false, master: null, retainedBytes: 4, unavailableReason: null },
       }],
-      fx: {}, midi: {}, monitoringWasEnabled: false, outputGainValue: 1, trackMixGainValue: 1,
+      fx: {}, midi: {}, monitoringWasEnabled: false, outputGainValue: 1, mainGainValue: 0.75, trackMixGainValue: 1,
       pcmHistoryBudget: { retainedBytes: 4, limitBytes: 512 }, recoveryPolicy: { playback: 'start-stopped' },
     });
     const snapshot = makeSnapshot() as any;
