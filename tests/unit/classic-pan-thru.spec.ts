@@ -28,6 +28,7 @@ async function settle() { await nextTick(); await Promise.resolve(); await nextT
 beforeEach(() => {
   const track = new Track(1);
   const audio = { track, disposed: false, gainNode: { gain: { value: 1 } }, panNode: { pan: { value: 0 } },
+    playbackSourceOutput: { gain: { value: 1 } }, historyBusy: false,
     updateSettings() { TrackAudio.prototype.updateSettings.call(this as any); } };
   fixture.engine = { tracks: [audio], monitoringEnabled: false, getMode: () => 'browser',
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
@@ -62,6 +63,20 @@ describe('Classic existing audio controls', () => {
       expect(fixture.engine.tracks[0].panNode.pan.value).toBe(dsp);
       expect(editor.fields.value.find(field => field.key === 'track-pan')!.format!(value)).toBe(text);
     }
+  });
+  it('binds per-track DUB MODE options to the authored track setting on the Classic LCD', async () => {
+    const { editor } = createEditor('track');
+    editor.stepPage(1);
+    const field = editor.fields.value.find(item => item.key === 'track-dub-mode')!;
+    expect(field.label).toBe('DUB MODE');
+    expect(field.options?.map(option => option.label)).toEqual(['OVERDUB', 'REPLACE1', 'REPLACE2']);
+    expect(field.value).toBe(0);
+    await field.setValue!(2); await settle();
+    expect(fixture.engine.tracks[0].track.dubMode).toBe('REPLACE2');
+    expect(editor.fields.value.find(item => item.key === 'track-dub-mode')?.value).toBe(2);
+    fixture.engine.tracks[0].historyBusy = true;
+    await field.setValue!(0); await settle();
+    expect(fixture.engine.tracks[0].track.dubMode).toBe('REPLACE2');
   });
   it('leaves Native PAN explicitly disabled without changing its track', () => {
     fixture.engine.getMode = () => 'native';

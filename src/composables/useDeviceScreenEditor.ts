@@ -729,6 +729,16 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       format: (value) => value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
       disabled: engine.getMode() !== 'browser' || !audioTrack,
       reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
+    if (classic && engine.getMode() === 'browser' && audioTrack) {
+      const dubModes = ['OVERDUB', 'REPLACE1', 'REPLACE2'] as const;
+      fields.push(makeEnumField('track-dub-mode', 'DUB MODE', Math.max(0, dubModes.indexOf(audioTrack.track.dubMode)),
+        fieldOptions(dubModes), (value) => {
+          const mode = dubModes[value];
+          if (!mode || audioTrack.historyBusy) return false;
+          audioTrack.track.dubMode = mode;
+        }, { disabled: audioTrack.historyBusy,
+          reason: 'Roland Parameter Guide v1.3 p.2. Browser clean-room behavior; not compared with hardware.' }));
+    }
     fields.push(makeBooleanField('track-bounce-in', 'BOUNCE IN', bounce?.bounceIn[bounceTarget - 1] === true, (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the destination again.');
       const current = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
@@ -761,7 +771,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       audioTrack.updateSettings();
     }, { disabled: engine.getMode() !== 'browser' || !audioTrack || oneShotBusy,
       reason: engine.getMode() !== 'browser' ? 'Native 1SHOT has no provider.' : oneShotBusy ? 'Stop the track before changing 1SHOT.' : '' }));
-    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in', 'track-loop-sync', 'track-one-shot'].includes(field.key)) : fields);
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-dub-mode', 'track-bounce-in', 'track-loop-sync', 'track-one-shot'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {

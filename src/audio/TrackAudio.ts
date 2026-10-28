@@ -357,6 +357,8 @@ export class TrackAudio {
     private playbackRevision = 0;
     private gainNode: GainNode;
     private panNode: StereoPannerNode;
+    /** Gate loop-reader audio before the public Track FX/Bounce source tap. */
+    private readonly loopReaderGateGain: GainNode;
     private sharedTrackFxWetGain: GainNode | null = null;
     private sharedTrackFxDryGain: GainNode | null = null;
     private sharedTrackFxMeterSplit: ChannelSplitterNode | null = null;
@@ -404,6 +406,7 @@ export class TrackAudio {
     public recordingLimitReached = false;
     public recordingDiagnostic: string | null = null;
     private overdubProcessor: AudioWorkletNode | null = null;
+    private overdubReplace2ReaderMuted = false;
     private overdubInputNode: AudioNode | null = null;
     private overdubBounceSourceMix: { node: GainNode; dispose(): void } | null = null;
     private overdubMuteGainNode: GainNode | null = null;
@@ -473,6 +476,9 @@ export class TrackAudio {
         this.fxChain = new FXChain(ctx);
         this.playbackSourceOutput = ctx.createGain();
         this.playbackSourceOutput.gain.value = 1;
+        this.loopReaderGateGain = ctx.createGain();
+        this.loopReaderGateGain.gain.value = 1;
+        this.loopReaderGateGain.connect(this.playbackSourceOutput);
         this.playbackSourceOutput.connect(this.fxChain.input);
 
         // Routing: Source (Buffer/Worklet) -> Gain -> FXChain -> Pan -> Destination
@@ -1798,6 +1804,7 @@ export class TrackAudio {
         this.overdubCapturePendingChunkReturns.length = 0;
         this.overdubCaptureBuffers = null;
         this.clearRecordingChunkStorage();
+        this.loopReaderGateGain.disconnect();
         this.playbackSourceOutput.disconnect();
         this.sharedTrackFxWetGain?.disconnect();
         this.sharedTrackFxDryGain?.disconnect();
@@ -1827,7 +1834,6 @@ export class TrackAudio {
     public updateSettings() {
         if (this.disposed) return;
         this.gainNode.gain.value = this.track.playLevel / 100;
-
         const panStr = this.track.pan;
         let panVal = 0;
         if (panStr === "CENTER") panVal = 0;
@@ -2096,8 +2102,8 @@ export class TrackAudio {
             gain.gain.value = 0;
             wetGain.gain.value = 1;
             source.connect(gain);
-            gain.connect(this.playbackSourceOutput);
-            wetGain.connect(this.playbackSourceOutput);
+            gain.connect(this.loopReaderGateGain);
+            wetGain.connect(this.loopReaderGateGain);
             source.start(now, wrapLoopPhase(this.loopTransportCanonicalPhaseSeconds, this.audioBuffer.duration));
             // Publish only after the dry reader started successfully.
             this.sourceGainNode?.disconnect();
@@ -2112,8 +2118,8 @@ export class TrackAudio {
             this.stopAndDisconnectBufferSource(source, gain);
             try { wetGain?.disconnect(); } catch { /* failed setup */ }
             // Restore the original live path if reconnecting failed.
-            try { this.sourceGainNode?.connect(this.playbackSourceOutput); } catch { /* unavailable graph */ }
-            try { this.retiringSourceGainNode?.connect(this.playbackSourceOutput); } catch { /* unavailable graph */ }
+            try { this.sourceGainNode?.connect(this.loopReaderGateGain); } catch { /* unavailable graph */ }
+            try { this.retiringSourceGainNode?.connect(this.loopReaderGateGain); } catch { /* unavailable graph */ }
             return false;
         }
     }
@@ -2277,7 +2283,7 @@ export class TrackAudio {
             source.loop = this.track.oneShot !== 'ON';
             gain.gain.value = gainValue;
             source.connect(gain);
-            gain.connect(this.loopTransportWetMixGainNode ?? this.playbackSourceOutput);
+            gain.connect(this.loopTransportWetMixGainNode ?? this.loopReaderGateGain);
             source.playbackRate.value = this.getLoopMotorProductRate();
             this.scheduleLoopMotorAutomation(source, when);
             source.start(when, wrapLoopPhase(phaseSeconds, this.audioBuffer.duration));
@@ -3111,7 +3117,7 @@ export class TrackAudio {
         this.sourceNode.loop = !oneShot;
         this.sourceGainNode = null;
         if (this.isReverse) {
-            this.sourceNode.connect(this.playbackSourceOutput);
+            this.sourceNode.connect(this.loopReaderGateGain);
         } else {
             // A unity per-source gain makes the normal forward BufferSource
             // path crossfadeable if a read-head effect is selected mid-loop.
@@ -3119,7 +3125,7 @@ export class TrackAudio {
             this.sourceGainNode = context.createGain();
             this.sourceGainNode.gain.value = 1;
             this.sourceNode.connect(this.sourceGainNode);
-            this.sourceGainNode.connect(this.playbackSourceOutput);
+            this.sourceGainNode.connect(this.loopReaderGateGain);
         }
         this.sourceNode.playbackRate.value = this.isReverse ? -1 : 1;
         const startAt = context.currentTime;
@@ -3226,7 +3232,7 @@ export class TrackAudio {
             return;
         }
 
-        node.connect(this.playbackSourceOutput);
+        node.connect(this.loopReaderGateGain);
         const inputOffsetSeconds = Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate)));
         try {
             if (this.track.oneShot === 'ON') {
@@ -3248,13 +3254,13 @@ export class TrackAudio {
                 });
             }
         } catch (error) {
-            disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
+            disconnectAudioNodeIfConnected(node, this.loopReaderGateGain);
             this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
             throw error;
         }
 
         if (revision !== this.playbackRevision || !this.livePolyPitchEnabledInternal || this.isReverse) {
-            disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
+            disconnectAudioNodeIfConnected(node, this.loopReaderGateGain);
             this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
             return;
         }
@@ -3296,7 +3302,7 @@ export class TrackAudio {
         source.loop = !oneShot;
         source.playbackRate.value = 1;
         source.connect(node);
-        node.connect(this.playbackSourceOutput);
+        node.connect(this.loopReaderGateGain);
         try {
             source.start(0, Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate))));
         } catch (error) {
@@ -3345,7 +3351,7 @@ export class TrackAudio {
         this.livePolyPitchActiveInternal = false;
         if (!node) return;
         try { void node.stopProcessing(this.engine.context.currentTime).catch(() => undefined); } catch { /* node may already be closed */ }
-        disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
+        disconnectAudioNodeIfConnected(node, this.loopReaderGateGain);
         this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
     }
 
@@ -3560,6 +3566,9 @@ export class TrackAudio {
 
         const generation = ++this.overdubStartGeneration;
         this.overdubStarting = true;
+        const dubMode = this.track.dubMode;
+        this.overdubReplace2ReaderMuted = dubMode === 'REPLACE2';
+        this.loopReaderGateGain.gain.value = this.overdubReplace2ReaderMuted ? 0 : 1;
         const ctx = this.engine.context;
         let createdWorklet: AudioWorkletNode | null = null;
         let createdMuteGain: GainNode | null = null;
@@ -3674,6 +3683,7 @@ export class TrackAudio {
                 latencySamples: Math.floor(this.engine.roundTripLatency * ctx.sampleRate),
                 recordingOffsetSamples: this.getBrowserRecordingOffsetConfig().recordingOffsetSamples,
                 reverse: this.isReverse,
+                dubMode,
                 ...(captureSession && requestFrame !== null ? { requestFrame } : {}),
             }, transferList);
 
@@ -3717,6 +3727,10 @@ export class TrackAudio {
         } finally {
             if (generation === this.overdubStartGeneration) this.overdubStarting = false;
             else if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
+            if (generation === this.overdubStartGeneration && !this.overdubProcessor && !this.overdubStarting) {
+                this.overdubReplace2ReaderMuted = false;
+                this.loopReaderGateGain.gain.value = 1;
+            }
         }
     }
 
@@ -4324,6 +4338,10 @@ export class TrackAudio {
         this.overdubAppliedFrameCount = 0;
         this.overdubRollbackAborted = false;
         this.overdubRollbackRestored = false;
+        if (!restart) {
+            this.overdubReplace2ReaderMuted = false;
+            this.loopReaderGateGain.gain.value = 1;
+        }
         if (committedOverdub) this.hasCommittedOverdub = true;
         if (this.pendingClear) {
             this.pendingClear = false;

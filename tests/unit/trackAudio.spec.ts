@@ -663,16 +663,115 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.overdubDiagnostic).toContain('dropped 4 input frames');
   });
 
+  it.each([
+    ['OVERDUB', 1], ['REPLACE1', 1], ['REPLACE2', 0],
+  ] as const)('routes %s through the Browser worker and gates only its loop reader as required', async (dubMode, readerGain) => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).audioBuffer = context.createBuffer(2, 32, context.sampleRate);
+    trackAudio.track.dubMode = dubMode;
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.triggerRecord();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(readerGain);
+    expect(trackAudio.playbackSourceOutput.gain.value).toBe(1);
+    trackAudio.track.playLevel = 70;
+    trackAudio.updateSettings();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(readerGain);
+    expect(trackAudio.playbackSourceOutput.gain.value).toBe(1);
+    expect((trackAudio as any).gainNode.gain.value).toBe(0.7);
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    expect(node?.port.posted[0]?.message).toMatchObject({ type: 'OVERDUB_INIT', dubMode });
+
+    trackAudio.triggerRecord();
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(1);
+    expect(trackAudio.playbackSourceOutput.gain.value).toBe(1);
+  });
+
+  it('does not let a cancelled REPLACE2 startup unmute a later OVERDUB startup', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).audioBuffer = context.createBuffer(1, 32, context.sampleRate);
+    let resolveFirst!: (node: AudioNode) => void;
+    let resolveSecond!: (node: AudioNode) => void;
+    engine.getProcessedInputNode = vi.fn()
+      .mockImplementationOnce(() => new Promise<AudioNode>(resolve => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise<AudioNode>(resolve => { resolveSecond = resolve; }));
+    trackAudio.track.dubMode = 'REPLACE2';
+    trackAudio.state = TrackState.PLAYING;
+    trackAudio.triggerRecord();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(0);
+    trackAudio.triggerStop();
+    await trackAudio.play();
+
+    trackAudio.track.dubMode = 'OVERDUB';
+    trackAudio.triggerRecord();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(1);
+    resolveFirst(context.createGain());
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(1);
+    resolveSecond(context.createGain());
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+
+    const node = FakeAudioWorkletNode.instances[0];
+    expect(node?.port.posted[0]?.message).toMatchObject({ type: 'OVERDUB_INIT', dubMode: 'OVERDUB' });
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(1);
+    trackAudio.triggerRecord();
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
+  });
+
+  it('commits stereo replacement to PCM and keeps the same edit available for undo and redo', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const buffer = context.createBuffer(2, 32, context.sampleRate);
+    buffer.getChannelData(0).set(Float32Array.from({ length: 32 }, (_, index) => index + 1));
+    buffer.getChannelData(1).set(Float32Array.from({ length: 32 }, (_, index) => -index - 1));
+    (trackAudio as any).audioBuffer = buffer;
+    trackAudio.track.dubMode = 'REPLACE1';
+    trackAudio.state = TrackState.PLAYING;
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    expect(node?.port.posted[0]?.message.dubMode).toBe('REPLACE1');
+
+    node?.port.receive({ type: 'OVERDUB_PATCH', sequence: 0, slotIndex: 0, validFrames: 2,
+      startInputFrame: 0, endInputFrame: 2,
+      indices: Uint32Array.of(0, 1), values: Float32Array.of(0.25, 0.5), rightValues: Float32Array.of(-0.25, -0.5),
+      oldValues: Float32Array.of(1, 2), oldRightValues: Float32Array.of(-1, -2), });
+    expect([...buffer.getChannelData(0).slice(0, 2)]).toEqual([0.25, 0.5]);
+    expect([...buffer.getChannelData(1).slice(0, 2)]).toEqual([-0.25, -0.5]);
+
+    context.currentTime = 1;
+    trackAudio.triggerRecord();
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 1,
+      requestedStopFrame: context.sampleRate, appliedExclusiveEnd: context.sampleRate, processorStopFrame: context.sampleRate });
+    expect(trackAudio.undo()).toBe(true);
+    const undoBuffer = (trackAudio as any).audioBuffer as AudioBuffer;
+    expect([...undoBuffer.getChannelData(0).slice(0, 2)]).toEqual([1, 2]);
+    expect([...undoBuffer.getChannelData(1).slice(0, 2)]).toEqual([-1, -2]);
+    expect(trackAudio.redo()).toBe(true);
+    const redoBuffer = (trackAudio as any).audioBuffer as AudioBuffer;
+    expect([...redoBuffer.getChannelData(0).slice(0, 2)]).toEqual([0.25, 0.5]);
+    expect([...redoBuffer.getChannelData(1).slice(0, 2)]).toEqual([-0.25, -0.5]);
+  });
+
   it('reports AudioWorklet unavailability and returns the audible track to PLAYING', async () => {
     vi.stubGlobal('AudioWorkletNode', undefined);
     const { TrackState, trackAudio } = await createTrackAudioHarness();
     (trackAudio as any).audioBuffer = (trackAudio as any).engine.context.createBuffer(1, 16, 44_100);
+    trackAudio.track.dubMode = 'REPLACE2';
     trackAudio.state = TrackState.PLAYING;
 
     trackAudio.triggerRecord();
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(0);
     for (let index = 0; index < 6; index += 1) await Promise.resolve();
 
     expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect((trackAudio as any).loopReaderGateGain.gain.value).toBe(1);
     expect(trackAudio.overdubDiagnostic).toContain('AudioWorklet is unavailable');
     expect(trackAudio.overdubDiagnostic).toContain('Track playback remains audible');
   });

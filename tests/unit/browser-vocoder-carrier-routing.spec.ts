@@ -257,18 +257,46 @@ describe('TrackAudio carrier bus is strictly playback-only and before all insert
     await (track as unknown as { startOverdub(): Promise<void> }).startOverdub();
     const overdub = Worklet.instances.find(node => node.name === 'rc505-overdub-processor')!;
     expect(overdub).toBeDefined();
-    expect(processed.connect).toHaveBeenCalledWith(overdub);
+    expect(processed.connect).toHaveBeenCalledWith(overdub, 0, 0);
     expect(pathExists(processed, track.playbackSourceOutput as unknown as Node)).toBe(false);
     expect(pathExists(sources[0]!, track.playbackSourceOutput as unknown as Node)).toBe(true);
+    expect(pathExists(sources[0]!, (track as any).loopReaderGateGain as Node)).toBe(true);
+    expect(((track as any).loopReaderGateGain as Node).edges).toContainEqual({ target: track.playbackSourceOutput as unknown as Node, input: 0 });
     expect(overdub.edges[0]!.target.gain.value).toBe(0);
     overdub.onprocessorerror?.(); stop();
+  });
+  it('REPLACE2 gates only the loop reader before Track FX and Bounce source taps', async () => {
+    vi.stubGlobal('AudioWorkletNode', Worklet);
+    const { track, ctx, sources, processed, stop } = await realTrack();
+    Object.assign((track as any).engine, { getInputCaptureRequestFrame: undefined, beginInputCaptureSession: undefined });
+    Object.assign(track, { audioBuffer: ctx.createBuffer(2, ctx.sampleRate, ctx.sampleRate), startOffset: 0 });
+    track.track.dubMode = 'REPLACE2';
+    await track.play();
+    track.state = TrackState.OVERDUBBING;
+    await (track as unknown as { startOverdub(): Promise<void> }).startOverdub();
+
+    const gate = (track as any).loopReaderGateGain as Node;
+    const overdub = Worklet.instances.find(node => node.name === 'rc505-overdub-processor')!;
+    expect(gate.gain.value).toBe(0);
+    expect(track.playbackSourceOutput.gain.value).toBe(1);
+    expect(pathExists(sources[0]!, gate)).toBe(true);
+    expect(pathExists(gate, track.playbackSourceOutput as unknown as Node)).toBe(true);
+    expect(processed.connect).toHaveBeenCalledWith(overdub, 0, 0);
+    expect(pathExists(processed, gate)).toBe(false);
+    expect(overdub.edges[0]!.target.gain.value).toBe(0);
+
+    track.triggerStop();
+    overdub.port.onmessage?.({ data: { type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 } } as MessageEvent);
+    expect(gate.gain.value).toBe(1);
+    stop();
   });
   it.each(['mono', 'poly'] as const)('live %s pitch playback uses the same pre-strip bus and disconnects on stop', async mode => {
     const { track, ctx, stop } = await realTrack();
     const node = Object.assign(new Node(), { latencySeconds: .02, latencySamples: 882, loadBuffer: vi.fn(async () => undefined), scheduleLoop: vi.fn(async () => undefined), stopProcessing: vi.fn(async () => undefined), clearBuffers: vi.fn(async () => undefined), releaseWasmMemory: vi.fn(async () => undefined), setPitch: vi.fn(), port: { close: vi.fn() } });
     Object.assign(track, { audioBuffer: ctx.createBuffer(2, ctx.sampleRate, ctx.sampleRate), startOffset: 0, [mode === 'poly' ? 'livePolyPitchNode' : 'liveMonoPitchNode']: node, [mode === 'poly' ? 'livePolyPitchEnabledInternal' : 'liveMonoPitchEnabledInternal']: true });
     await track.play();
-    expect(node.connect).toHaveBeenCalledWith(track.playbackSourceOutput);
+    expect(node.connect).toHaveBeenCalledWith((track as any).loopReaderGateGain);
     expect(node.connect).not.toHaveBeenCalledWith(track.fxChain.input);
     track.stop(); expect(pathExists(node, track.playbackSourceOutput as unknown as Node)).toBe(false); stop();
   });

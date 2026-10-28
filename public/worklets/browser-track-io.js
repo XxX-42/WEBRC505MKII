@@ -164,6 +164,8 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
       ? Math.trunc(message.recordingOffsetSamples)
       : 0;
     this.reverse = message.reverse === true;
+    this.dubMode = message.dubMode === 'REPLACE1' || message.dubMode === 'REPLACE2'
+      ? message.dubMode : 'OVERDUB';
 
     this.startupRequestFrame = Number.isSafeInteger(message.requestFrame) && message.requestFrame >= 0
       ? message.requestFrame : null;
@@ -488,10 +490,10 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
     // Validate the complete mono/stereo write before changing either channel.
     // A malformed right-channel buffer must never leave a half-applied frame.
     patch.oldValues[patchOffset] = leftOldValue;
-    patch.values[patchOffset] = leftOldValue + leftSample;
+    patch.values[patchOffset] = this.dubMode === 'OVERDUB' ? leftOldValue + leftSample : leftSample;
     if (rightLoop && patch.oldRightValues && patch.rightValues) {
       patch.oldRightValues[patchOffset] = rightOldValue;
-      patch.rightValues[patchOffset] = rightOldValue + rightSample;
+      patch.rightValues[patchOffset] = this.dubMode === 'OVERDUB' ? rightOldValue + rightSample : rightSample;
     }
     leftLoop[writeIndex] = patch.values[patchOffset] || 0;
     if (rightLoop && patch.rightValues) rightLoop[writeIndex] = patch.rightValues[patchOffset] || 0;

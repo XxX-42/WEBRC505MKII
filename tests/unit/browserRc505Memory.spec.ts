@@ -59,6 +59,19 @@ describe('Browser semantic Memory', () => {
     expect(doc.archive.byteLength).toBeGreaterThan(100);
   });
 
+  it('captures and restores each track DUB MODE as supported Memory semantics', async () => {
+    const { runtime, engine, seed } = harness(); seed(1);
+    engine.tracks[2]!.track.dubMode = 'REPLACE2';
+    const document = await runtime.capture();
+    expect(document.semantics.fields['track.3.dubMode']).toEqual({ availability: 'supported', value: 'REPLACE2' });
+    expect((document.extensions.WEBRC.browserMemory as any).tracks[2].settings.dubMode).toBe('REPLACE2');
+
+    engine.tracks[2]!.track.dubMode = 'OVERDUB';
+    const candidate = await runtime.prepare(document, runtime.revision());
+    await candidate.commit(); await candidate.dispose();
+    expect(engine.tracks[2]!.track.dubMode).toBe('REPLACE2');
+  });
+
   it.each(['track.1.pan', 'record.recAction', 'mixer.main'])('rejects a %s semantic/configuration contradiction before preparation', async (address) => {
     const { runtime, engine, seed } = harness(); seed(1);
     const document = await runtime.capture();

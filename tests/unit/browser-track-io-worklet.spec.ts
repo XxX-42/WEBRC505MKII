@@ -68,6 +68,7 @@ function initOverdub(processor: WorkletInstance, samples: number[], options: {
   latencySamples?: number;
   recordingOffsetSamples?: number;
   reverse?: boolean;
+  dubMode?: 'OVERDUB' | 'REPLACE1' | 'REPLACE2';
 } = {}) {
   const capacity = options.capacity ?? 4;
   const poolSize = options.poolSize ?? 3;
@@ -81,6 +82,7 @@ function initOverdub(processor: WorkletInstance, samples: number[], options: {
     latencySamples: options.latencySamples ?? 0,
     recordingOffsetSamples: options.recordingOffsetSamples ?? 0,
     reverse: options.reverse ?? false,
+    ...(options.dubMode ? { dubMode: options.dubMode } : {}),
   });
 }
 
@@ -122,6 +124,37 @@ describe('browser track I/O AudioWorklets', () => {
     const patch = processor.port.posted.find(({ message }) => message.type === 'OVERDUB_PATCH')?.message;
     expect(Array.from(patch?.values ?? [])).toEqual([15, 27, 39, 0]);
     expect(Array.from(patch?.indices ?? [])).toEqual([0, 1, 2, 0]);
+  });
+
+  it.each([
+    ['OVERDUB', [14, 26], [140, 260]],
+    ['REPLACE1', [4, 6], [40, 60]],
+    ['REPLACE2', [4, 6], [40, 60]],
+  ] as const)('%s preserves stereo frame mapping while applying input and Bounce once', (dubMode, expectedLeft, expectedRight) => {
+    const { worklets, setCurrentFrame } = loadProcessors();
+    const OverdubProcessor = worklets.get('rc505-overdub-processor');
+    const processor = new OverdubProcessor!({ processorOptions: { transferBufferFrames: 4, transferBufferPoolSize: 3 } });
+    const left = Float32Array.from([10, 20, 30, 40]);
+    const right = Float32Array.from([100, 200, 300, 400]);
+    const buffers = makePool(3, 4).map((buffer) => ({
+      ...buffer, rightValues: new Float32Array(4), oldRightValues: new Float32Array(4),
+    }));
+    processor.port.receive({
+      type: 'OVERDUB_INIT', channels: [left, right], channelCount: 2, buffers, dubMode,
+      startFrame: 0, startOffsetSamples: 0, latencySamples: 0, recordingOffsetSamples: 0,
+    });
+    setCurrentFrame(0);
+    processor.process([
+      [Float32Array.from([1, 2]) , Float32Array.from([10, 20])],
+      [Float32Array.from([3, 4]), Float32Array.from([30, 40])],
+    ], [[new Float32Array(2), new Float32Array(2)]]);
+
+    const patch = processor.port.posted.find(({ message }) => message.type === 'OVERDUB_PATCH')?.message;
+    expect(Array.from(patch?.indices ?? [])).toEqual([0, 1, 0, 0]);
+    expect(Array.from(patch?.values ?? [])).toEqual([...expectedLeft, 0, 0]);
+    expect(Array.from(patch?.rightValues ?? [])).toEqual([...expectedRight, 0, 0]);
+    expect(Array.from(patch?.oldValues ?? [])).toEqual([10, 20, 0, 0]);
+    expect(Array.from(patch?.oldRightValues ?? [])).toEqual([100, 200, 0, 0]);
   });
 
   it('batches four 128-frame quanta but flushes a partial patch immediately at STOP', () => {
