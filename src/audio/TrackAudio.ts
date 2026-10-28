@@ -194,6 +194,8 @@ type RecordingWorkletMessage =
         channelCount: number;
         maxRecordingFrames: number;
         maxRecordingBytes: number;
+        requestedStartFrame?: number;
+        captureStartFrame?: number;
         sessionId?: number;
         inputGeneration?: number;
         startReceivedFrame?: number;
@@ -374,6 +376,11 @@ export class TrackAudio {
     private isRecording: boolean = false;
     private isFinalizingRecording = false;
     private recordingStarting = false;
+    private quantizedRecordingStartFrame: number | null = null;
+    private quantizedRecordingPhaseRevision: number | null = null;
+    private quantizedRecordingTrackSyncRevision: number | null = null;
+    private loopSyncSettingsRevision = 0;
+    private lastLoopSyncSw: Track['loopSyncSw'];
     private recordingStartGeneration = 0;
     private recordingCaptureStopAckTimeout: ReturnType<typeof setTimeout> | null = null;
     public isReverse: boolean = false;
@@ -458,6 +465,7 @@ export class TrackAudio {
 
     constructor(engine: IAudioEngine, track: Track, index: number, sharedStates: Int32Array | null, sharedPositions: Float32Array | null, historyBudget = getBrowserPcmHistoryBudget(engine)) {
         this.track = track;
+        this.lastLoopSyncSw = track.loopSyncSw;
         this.trackIndex = index;
         this.sharedStates = sharedStates;
         this.sharedPositions = sharedPositions;
@@ -1827,6 +1835,14 @@ export class TrackAudio {
 
     public updateSettings() {
         if (this.disposed) return;
+        if (this.lastLoopSyncSw !== this.track.loopSyncSw) {
+            this.lastLoopSyncSw = this.track.loopSyncSw;
+            if (this.loopSyncSettingsRevision < Number.MAX_SAFE_INTEGER) this.loopSyncSettingsRevision += 1;
+            else this.loopSyncSettingsRevision = Number.MAX_SAFE_INTEGER;
+        }
+        if (this.track.id === this.transport.masterTrackId && this.track.loopSyncSw !== 'ON') {
+            this.transport.clearMasterPhaseOrigin();
+        }
         this.gainNode.gain.value = this.track.playLevel / 100;
         const panStr = this.track.pan;
         let panVal = 0;
@@ -1914,11 +1930,9 @@ export class TrackAudio {
         }
 
         const pendingQuantizedCapture = this.recordingCaptureSession;
-        const currentCaptureFrame = this.engine.getInputCaptureRequestFrame?.();
-        if (pendingQuantizedCapture && currentCaptureFrame !== null && currentCaptureFrame !== undefined
-            && currentCaptureFrame < pendingQuantizedCapture.startFrame) {
+        if (pendingQuantizedCapture && this.state === TrackState.REC_STANDBY) {
             this.abortRecording();
-            this.recordingDiagnostic = 'Quantized recording was cancelled before its audio start frame; the previous loop was kept.';
+            this.recordingDiagnostic = 'Quantized recording was cancelled before the worklet start acknowledgement; the previous loop was kept.';
             this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
             this.syncTransportState();
             return;
@@ -1968,6 +1982,11 @@ export class TrackAudio {
         // A master loop phase is usable only after an ordinary audio source
         // has established its start on the AudioContext frame clock.
         if (this.track.loopSyncSw === 'ON' && measureQuantize && this.transport.hasMasterTrack()) {
+            const masterTrackId = this.transport.masterTrackId;
+            if (masterTrackId === null || this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) !== true) {
+                this.recordingDiagnostic = 'Measure quantization is unavailable because the master track does not have LOOP SYNC SW enabled. Existing loops are preserved.';
+                return;
+            }
             const requestFrame = this.engine.getInputCaptureRequestFrame?.();
             const targetFrame = requestFrame === null || requestFrame === undefined
                 ? null : this.transport.getNextMeasureStartFrame(requestFrame);
@@ -1976,7 +1995,7 @@ export class TrackAudio {
                 return;
             }
             this.state = TrackState.REC_STANDBY;
-            void this.startRecording(targetFrame);
+            void this.startRecording(targetFrame, this.transport.masterPhaseRevision, this.loopSyncSettingsRevision);
             return;
         }
 
@@ -2016,8 +2035,10 @@ export class TrackAudio {
             this.stopRecording();
             return;
         }
-        const targetFrame = requestFrame === null || requestFrame === undefined
-            ? null : this.transport.getNextMeasureStartFrame(requestFrame);
+        const captureStartFrame = this.recordingCaptureSession?.startFrame ?? requestFrame ?? -1;
+        const stopReferenceFrame = Math.max(requestFrame ?? -1, captureStartFrame);
+        const targetFrame = stopReferenceFrame < Number.MAX_SAFE_INTEGER
+            ? this.transport.getNextMeasureStartFrame(stopReferenceFrame + 1) : null;
         if (targetFrame === null) {
             this.recordingDiagnostic = 'Master phrase phase is unknown; the take will stop at the current audio frame without claiming quantization.';
             this.stopRecording();
@@ -2351,10 +2372,13 @@ export class TrackAudio {
 
     public autoRecArmed = false;
 
-    public async startRecording(quantizedStartFrame?: number) {
+    public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number) {
         if (this.disposed) return;
         if (this.autoRecArmed || this.recordingStarting || this.isRecording || this.isFinalizingRecording
-            || this.overdubStarting || this.overdubProcessor || this.pendingClear) return;
+            || this.overdubStarting || this.overdubProcessor || this.pendingClear) {
+            if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart('The track became busy before the quantized start could be reserved. Existing loops are preserved.');
+            return;
+        }
 
         if (this.state === TrackState.EMPTY) {
             this.clearMarkInternal();
@@ -2375,17 +2399,32 @@ export class TrackAudio {
             const autoRecEnabled = autoRec?.enabled === true;
             const bounceSourceMask = this.engine.getBrowserBounceSourceMask?.(this.trackIndex) ?? 0;
             const bounceEnabled = bounceSourceMask !== 0;
+            if (quantizedStartFrame !== undefined) {
+                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                    this.failQuantizedRecordingStart('The audio-clock phase or shared capture path changed before the quantized start was reserved. Existing loops are preserved.');
+                    return;
+                }
+            }
             if (autoRecEnabled && this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
                 this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
                 return;
             }
             const requestedCaptureFrame = quantizedStartFrame ?? this.engine.getInputCaptureRequestFrame?.() ?? null;
             if ((autoRecEnabled || bounceEnabled) && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
+                if (quantizedStartFrame !== undefined) {
+                    this.failQuantizedRecordingStart('The required shared capture path is unavailable; existing loops are preserved.');
+                    return;
+                }
                 this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} requires ready shared input capture. Enable audio/input and retry; existing loops are preserved.`;
                 return;
             }
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+            if (quantizedStartFrame !== undefined
+                && !this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
+                return;
+            }
             if (autoRecEnabled) {
                 const current = this.engine.getBrowserAutoRecSettings?.();
                 if (!current?.enabled || current.sensitivity !== autoRec!.sensitivity) return;
@@ -2421,6 +2460,11 @@ export class TrackAudio {
                         : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
+                    if (quantizedStartFrame !== undefined) {
+                        this.quantizedRecordingStartFrame = quantizedStartFrame;
+                        this.quantizedRecordingPhaseRevision = quantizedPhaseRevision ?? null;
+                        this.quantizedRecordingTrackSyncRevision = quantizedTrackSyncRevision ?? null;
+                    }
                     this.workletNode = captureSession.node;
 
                     // Preserve the existing live-input/track-FX route while
@@ -2430,6 +2474,7 @@ export class TrackAudio {
                     } catch (error) {
                         this.recordingDiagnostic = `Could not connect the live recording monitor path: ${error instanceof Error ? error.message : String(error)}.`;
                         this.abortSharedRecording(captureSession, true);
+                        if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart('The quantized capture monitor setup failed; the previous loop was kept.');
                         return;
                     }
                     this.recordingInputNode = input;
@@ -2438,16 +2483,18 @@ export class TrackAudio {
                     this.state = autoRecEnabled || quantizedStartFrame !== undefined ? TrackState.REC_STANDBY : TrackState.RECORDING;
                     return;
                 }
-                if (autoRecEnabled || bounceEnabled) { this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} could not reserve shared capture. Existing loops are preserved.`; return; }
+                if (autoRecEnabled || bounceEnabled) {
+                    if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart('The shared capture path could not reserve the quantized audio frame. Existing loops are preserved.');
+                    else this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} could not reserve shared capture. Existing loops are preserved.`;
+                    return;
+                }
                 this.recordingDiagnostic = 'Shared capture was unavailable at the requested frame; using the legacy recorder.';
             } else if (this.engine.getInputCaptureRequestFrame && requestedCaptureFrame === null) {
                 this.recordingDiagnostic = 'Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.';
             }
 
             if (quantizedStartFrame !== undefined) {
-                this.recordingDiagnostic = 'The shared capture path could not reserve the verified quantized audio frame. Existing loops are preserved.';
-                this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
-                this.syncTransportState();
+                this.failQuantizedRecordingStart('The shared capture path could not reserve the verified quantized audio frame. Existing loops are preserved.');
                 return;
             }
 
@@ -2478,9 +2525,36 @@ export class TrackAudio {
             this.state = TrackState.RECORDING;
 
             workletNode.port.postMessage({ type: 'START_RECORD' });
+        } catch (error) {
+            if (quantizedStartFrame !== undefined) {
+                if (generation === this.recordingStartGeneration) {
+                    this.failQuantizedRecordingStart(`Quantized recording setup failed: ${error instanceof Error ? error.message : String(error)}. Existing loops are preserved.`);
+                }
+                return;
+            }
+            throw error;
         } finally {
             if (generation === this.recordingStartGeneration) this.recordingStarting = false;
         }
+    }
+
+    private failQuantizedRecordingStart(message: string): void {
+        this.abortRecording();
+        this.recordingDiagnostic = message;
+        this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+        this.syncTransportState();
+    }
+
+    private isQuantizedStartCurrent(phaseRevision?: number, trackSyncRevision?: number): boolean {
+        const masterTrackId = this.transport.masterTrackId;
+        const inputFrame = this.engine.getInputCaptureRequestFrame?.();
+        return phaseRevision === this.transport.masterPhaseRevision
+            && trackSyncRevision === this.loopSyncSettingsRevision
+            && this.track.loopSyncSw === 'ON' && masterTrackId !== null
+            && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true
+            && this.engine.isBrowserRhythmRunning?.() !== true
+            && inputFrame !== null && inputFrame !== undefined
+            && !!this.engine.beginInputCaptureSession;
     }
 
     public async stopRecording(quantizedStopFrame?: number) {
@@ -2615,6 +2689,28 @@ export class TrackAudio {
         }
 
         if (message.type === 'RECORD_CONFIGURED') {
+            if (captureSession && this.quantizedRecordingStartFrame !== null) {
+                const masterTrackId = this.transport.masterTrackId;
+                const phaseIsCurrent = this.quantizedRecordingPhaseRevision === this.transport.masterPhaseRevision;
+                const trackSyncIsCurrent = this.quantizedRecordingTrackSyncRevision === this.loopSyncSettingsRevision;
+                const acknowledgedFrame = message.captureStartFrame === this.quantizedRecordingStartFrame
+                    && message.requestedStartFrame === this.quantizedRecordingStartFrame
+                    && captureSession.startFrame === this.quantizedRecordingStartFrame;
+                const syncIsCurrent = this.track.loopSyncSw === 'ON' && masterTrackId !== null
+                    && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true
+                    && this.engine.isBrowserRhythmRunning?.() !== true;
+                if (!phaseIsCurrent || !trackSyncIsCurrent || !acknowledgedFrame || !syncIsCurrent) {
+                    this.recordingDiagnostic = 'The master phase or LOOP SYNC setting changed before the worklet start acknowledgement; the scheduled capture was cancelled and the previous loop was kept.';
+                    this.abortSharedRecording(captureSession, true);
+                    return;
+                }
+                this.quantizedRecordingStartFrame = null;
+                this.quantizedRecordingPhaseRevision = null;
+                this.quantizedRecordingTrackSyncRevision = null;
+                this.isRecording = true;
+                this.state = TrackState.RECORDING;
+                this.syncTransportState();
+            }
             if (this.autoRecArmed) {
                 this.autoRecArmed = false; this.isRecording = true; this.state = TrackState.RECORDING;
                 this.ensureTransportRunning();
@@ -2725,10 +2821,6 @@ export class TrackAudio {
             this.recordingChunkCount += 1;
             this.recordingStoredFrames += validFrames;
             this.recordingFramesCaptured = this.recordingStoredFrames;
-            if (this.state === TrackState.REC_STANDBY && captureSession) {
-                this.state = TrackState.RECORDING;
-                this.syncTransportState();
-            }
         } else {
             this.recordingOverflowEvents += 1;
             if (!withinPcmBudget) this.recordingDiagnostic = 'Recording exceeded the 384 MiB per-track PCM capture budget; excess frames were discarded.';
@@ -2793,6 +2885,9 @@ export class TrackAudio {
         this.returnRetainedSharedCaptureChunks(session);
         this.engine.releaseInputCaptureSession?.(session);
         this.recordingCaptureSession = null;
+        this.quantizedRecordingStartFrame = null;
+        this.quantizedRecordingPhaseRevision = null;
+        this.quantizedRecordingTrackSyncRevision = null;
         try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
         this.recordingInputNode = null;
         if (this.workletNode === session.node) this.workletNode = null;
@@ -3133,7 +3228,7 @@ export class TrackAudio {
         this.sourceNode.start(startAt, this.startOffset);
         const measureFrames = Math.round(this.transport.measureLength * context.sampleRate);
         if (this.track.id === this.transport.masterTrackId && !oneShot && !this.isReverse
-            && this.startOffset === 0 && !this.hasConfiguredLoopTransportFx()
+            && this.track.loopSyncSw === 'ON' && this.startOffset === 0 && !this.hasConfiguredLoopTransportFx()
             && !this.liveMonoPitchActiveInternal && !this.livePolyPitchActiveInternal
             && Number.isSafeInteger(measureFrames) && Math.abs(this.audioBuffer.length - measureFrames) <= 1) {
             // The current Browser model has no recorded measure-count metadata.
@@ -4593,6 +4688,9 @@ export class TrackAudio {
         this.clearRecordingCaptureStopAckTimeout();
         this.recordingStartGeneration += 1;
         this.recordingStarting = false;
+        this.quantizedRecordingStartFrame = null;
+        this.quantizedRecordingPhaseRevision = null;
+        this.quantizedRecordingTrackSyncRevision = null;
         this.autoRecArmed = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;

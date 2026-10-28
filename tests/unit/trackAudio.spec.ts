@@ -136,14 +136,15 @@ describe('TrackAudio transport sync helpers', () => {
     const { engine, TrackState, trackAudio } = await createTrackAudioHarness();
     const previous = createMockAudioContext().createBuffer(1, 256, 48_000);
     (trackAudio as any).audioBuffer = previous;
-    trackAudio.state = TrackState.RECORDING;
+    trackAudio.state = TrackState.REC_STANDBY;
     (trackAudio as any).isRecording = true;
     const session = {
       node: { port: { postMessage: vi.fn(), onmessage: null }, disconnect: vi.fn() },
       trackIndex: 0, sessionId: 7, inputGeneration: 3, startFrame: 900,
     };
     (trackAudio as any).recordingCaptureSession = session;
-    engine.getInputCaptureRequestFrame = () => 899;
+    // The target frame has arrived, but the worklet start ACK has not.
+    engine.getInputCaptureRequestFrame = () => 900;
     engine.abortInputCaptureSession = vi.fn();
     engine.releaseInputCaptureSession = vi.fn();
 
@@ -153,7 +154,161 @@ describe('TrackAudio transport sync helpers', () => {
     expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
     expect((trackAudio as any).audioBuffer).toBe(previous);
     expect(trackAudio.state).toBe(TrackState.STOPPED);
-    expect(trackAudio.recordingDiagnostic).toContain('cancelled before its audio start frame');
+    expect(trackAudio.recordingDiagnostic).toContain('cancelled before the worklet start acknowledgement');
+  });
+
+  it('uses the worklet start-frame ACK to enter RECORDING without waiting for a chunk', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 9, inputGeneration: 4, startFrame: 48_100,
+    };
+    engine.isBrowserTrackLoopSyncEnabled = () => true;
+    engine.isBrowserRhythmRunning = () => false;
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).quantizedRecordingStartFrame = session.startFrame;
+    (trackAudio as any).quantizedRecordingPhaseRevision = Transport.masterPhaseRevision;
+    (trackAudio as any).quantizedRecordingTrackSyncRevision = 0;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.REC_STANDBY;
+
+    (trackAudio as any).handleRecordingMessage(session.node, {
+      type: 'RECORD_CONFIGURED', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      channelCount: 2, maxRecordingFrames: 100, maxRecordingBytes: 800,
+      requestedStartFrame: session.startFrame, captureStartFrame: session.startFrame,
+    });
+
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+    expect((trackAudio as any).recordingStoredFrames).toBe(0);
+    Transport.stop();
+  });
+
+  it('cancels a reserved quantized capture if the master phase changes before its start ACK', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 256, context.sampleRate);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    const phaseRevision = Transport.masterPhaseRevision;
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 10, inputGeneration: 4, startFrame: 48_100,
+    };
+    engine.isBrowserTrackLoopSyncEnabled = () => true;
+    engine.isBrowserRhythmRunning = () => false;
+    engine.abortInputCaptureSession = vi.fn();
+    engine.releaseInputCaptureSession = vi.fn();
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).quantizedRecordingStartFrame = session.startFrame;
+    (trackAudio as any).quantizedRecordingPhaseRevision = phaseRevision;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.REC_STANDBY;
+    Transport.setBpm(121);
+
+    (trackAudio as any).handleRecordingMessage(session.node, {
+      type: 'RECORD_CONFIGURED', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      channelCount: 2, maxRecordingFrames: 100, maxRecordingBytes: 800,
+      requestedStartFrame: session.startFrame, captureStartFrame: session.startFrame,
+    });
+
+    expect(engine.abortInputCaptureSession).toHaveBeenCalledWith(session);
+    expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('phase or LOOP SYNC setting changed');
+  });
+
+  it('restores the prior idle state when quantized capture setup cannot reserve shared input', async () => {
+    const { engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    trackAudio.state = TrackState.REC_STANDBY;
+    engine.getBrowserBounceSourceMask = () => 1;
+    engine.getInputCaptureRequestFrame = () => null;
+
+    await trackAudio.startRecording(960, Transport.masterPhaseRevision, 0);
+
+    expect(trackAudio.state).toBe(TrackState.EMPTY);
+    expect((trackAudio as any).recordingStarting).toBe(false);
+    expect(trackAudio.recordingDiagnostic).toContain('shared capture path changed');
+  });
+
+  it('clears REC_STANDBY when shared capture reservation fails after setup', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    engine.isBrowserTrackLoopSyncEnabled = () => true;
+    engine.isBrowserRhythmRunning = () => false;
+    engine.getInputCaptureRequestFrame = () => 101;
+    engine.beginInputCaptureSession = vi.fn(() => null);
+    trackAudio.state = TrackState.REC_STANDBY;
+
+    await trackAudio.startRecording(96_100, Transport.masterPhaseRevision, 0);
+
+    expect(engine.beginInputCaptureSession).toHaveBeenCalledOnce();
+    expect(trackAudio.state).toBe(TrackState.EMPTY);
+    expect(trackAudio.recordingDiagnostic).toContain('could not reserve the verified quantized audio frame');
+    Transport.stop();
+  });
+
+  it('schedules stop on the next measure frame and retains that target for delayed worklet delivery', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 12, inputGeneration: 4, startFrame: 200,
+    };
+    engine.getInputCaptureRequestFrame = () => 48_101;
+    engine.isBrowserRhythmRunning = () => false;
+    engine.stopInputCaptureSession = vi.fn(() => true);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.RECORDING;
+
+    (trackAudio as any).scheduleRecordingStop();
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 88_300);
+    (trackAudio as any).clearRecordingCaptureStopAckTimeout();
+    Transport.stop();
+  });
+
+  it('does not establish master phase when the master track LOOP SYNC switch is off', async () => {
+    const { context, trackAudio, Transport } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    trackAudio.track.loopSyncSw = 'OFF';
+    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+
+    await trackAudio.play();
+
+    expect(nodes.sources[0]?.starts).toHaveLength(1);
+    expect(Transport.getNextMeasureStartFrame(200)).toBeNull();
+    Transport.stop();
+  });
+
+  it('refuses a phase-backed quantized start when the master LOOP SYNC switch is off', async () => {
+    const { context, engine, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    engine.isBrowserTrackLoopSyncEnabled = () => false;
+    engine.getRecordPlaySettings = () => ({ quantize: 'MEASURE' } as any);
+    const start = vi.spyOn(trackAudio, 'startRecording');
+
+    (trackAudio as any).scheduleRecordingStart();
+
+    expect(start).not.toHaveBeenCalled();
+    expect(trackAudio.recordingDiagnostic).toContain('master track does not have LOOP SYNC SW enabled');
+    Transport.stop();
   });
 
   it('plays one-shot PCM once, stops at source completion and retriggers from the directional head', async () => {

@@ -238,6 +238,9 @@ export class BrowserAudioEngine implements IAudioEngine {
         return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: true });
     }
     public isBrowserRhythmRunning(): boolean { return this.rhythmEngine.isRunning; }
+    public isBrowserTrackLoopSyncEnabled(trackId: number): boolean {
+        return this.tracks.find((track) => track.track.id === trackId)?.track.loopSyncSw === 'ON';
+    }
     public setRecordPlaySettings(patch: RecordPlaySettingsPatch): void {
         assertRecordPlaySettings(patch);
         if (this.tracks.some(track => track.state === 'RECORDING' || track.state === 'REC_FINISHING' || track.state === 'REC_STANDBY')) throw new Error('Finish or cancel recording before changing record/play settings');

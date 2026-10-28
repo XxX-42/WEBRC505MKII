@@ -13,6 +13,7 @@ export class Transport {
     /** Audio-clock frame at which the current Browser master loop began. */
     private masterPhaseOriginFrameValue: number | null = null;
     private masterMeasureFramesValue: number | null = null;
+    private masterPhaseRevisionValue = 0;
 
     /** Monotonic epoch for values captured by project-load transactions. */
     public get projectMutationRevision(): number { return this.projectMutationRevisionValue; }
@@ -80,6 +81,17 @@ export class Transport {
         this.measureLengthValue = value;
         this.noteProjectMutation();
     }
+    public get masterPhaseRevision(): number { return this.masterPhaseRevisionValue; }
+
+    private advanceMasterPhaseRevision(): boolean {
+        if (this.masterPhaseRevisionValue >= Number.MAX_SAFE_INTEGER) {
+            this.masterPhaseOriginFrameValue = null;
+            this.masterMeasureFramesValue = null;
+            return false;
+        }
+        this.masterPhaseRevisionValue += 1;
+        return true;
+    }
 
     /**
      * Publish a phase only when a caller can tie it to an actual audio source
@@ -90,12 +102,14 @@ export class Transport {
             || !Number.isSafeInteger(measureFrames) || measureFrames <= 0 || this.masterLoopLengthSamples <= 0) return false;
         this.masterPhaseOriginFrameValue = frame;
         this.masterMeasureFramesValue = measureFrames;
-        return true;
+        if (this.advanceMasterPhaseRevision()) return true;
+        return false;
     }
 
     public clearMasterPhaseOrigin(): void {
         this.masterPhaseOriginFrameValue = null;
         this.masterMeasureFramesValue = null;
+        if (this.masterPhaseRevisionValue < Number.MAX_SAFE_INTEGER) this.masterPhaseRevisionValue += 1;
     }
 
     /** Return the next measure boundary on the established audio-frame timeline. */

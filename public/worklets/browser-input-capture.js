@@ -153,7 +153,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       },
       configMessage: {
         type: 'RECORD_CONFIGURED', trackIndex, sessionId: 0, inputGeneration: 0,
-        channelCount: 0, requestedStartFrame: 0, maxRecordingFrames: 0,
+        channelCount: 0, requestedStartFrame: 0, captureStartFrame: 0, maxRecordingFrames: 0,
         maxRecordingBytes: this.maxRecordingBytes,
         startReceivedFrame: 0, requestAgeAtStartFrames: 0,
         preRollCapacityFrames: this.preRollFrames, preRollValidFrames: 0,
@@ -469,6 +469,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.inputGeneration = slot.inputGeneration;
     message.channelCount = slot.channelCount;
     message.requestedStartFrame = slot.requestedStartFrame;
+    message.captureStartFrame = slot.requestedStartFrame;
     message.maxRecordingFrames = slot.maxFrames;
     message.maxRecordingBytes = slot.maxRecordingBytes;
     message.startReceivedFrame = slot.startReceivedFrame;

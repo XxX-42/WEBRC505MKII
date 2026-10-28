@@ -79,6 +79,23 @@ function createCapture(options: Record<string, number> = {}) {
 }
 
 describe('Browser shared input capture worklet', () => {
+  it('acknowledges a quantized start on the exact current input frame', () => {
+    const capture = createCapture();
+    capture.process([0, 1, 2, 3], undefined, 0);
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 80, inputGeneration: 1,
+      startFrame: 4, maxRecordingBytes: 256,
+    });
+
+    // Requested frame equals the next callback's currentFrame exactly.
+    capture.process([4, 5, 6, 7], undefined, 4);
+
+    expect(capture.messages('RECORD_CONFIGURED')[0]).toMatchObject({
+      requestedStartFrame: 4, captureStartFrame: 4,
+    });
+    expect(capture.messages('RECORD_CHUNK')[0]).toMatchObject({ startFrame: 4, validFrames: 4 });
+  });
+
   it('backfills the requested stereo start frame and reports an exclusive stop frame', () => {
     const capture = createCapture();
     capture.process([0, 1, 2, 3], [0, -1, -2, -3]);
@@ -326,6 +343,9 @@ describe('Browser shared input capture worklet', () => {
     capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 2, stopFrame: 9 });
     capture.process([4, 5, 6, 7]);
     capture.process([8, 9, 10, 11]);
+    expect(capture.messages('RECORD_CONFIGURED')[0]).toMatchObject({
+      requestedStartFrame: 6, captureStartFrame: 6,
+    });
 
     const chunks = capture.messages('RECORD_CHUNK');
     const complete = capture.messages('RECORD_COMPLETE')[0];
