@@ -983,7 +983,7 @@ export class NativeBridgeClient {
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
       const settings = status.nativeRecordPlay;
-      if (settings?.requestedRevision === revision && settings.appliedRevision === revision && settings.recAction === recAction) return status;
+      if (settings?.requestedRevision === revision && settings?.appliedRevision === revision && settings?.recAction === recAction) return status;
       if (Date.now() >= deadline) throw new Error('Native REC ACTION callback acknowledgement timed out; do not resend automatically.');
       await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
     }
