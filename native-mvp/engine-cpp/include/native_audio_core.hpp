@@ -548,10 +548,11 @@ public:
                               std::uint64_t provenanceRevision = 0U);
     bool setRecordAction(bool overdub, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
-                   std::uint64_t provenanceRevision = 0U);
+                   std::uint64_t provenanceRevision = 0U, std::uint64_t* requestedRevision = nullptr);
     bool confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                      double bpm, std::uint64_t tempoRevision, std::string& error,
-                                     std::uint64_t* requestedRevision = nullptr);
+                                     std::uint64_t* requestedRevision = nullptr,
+                                     std::uint64_t expectedStopRevision = 0U);
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
     bool clearTrack(std::size_t trackIndex, std::string& error);
@@ -774,7 +775,8 @@ private:
     [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
                                          std::optional<double> provenanceBpm = std::nullopt,
-                                         std::uint64_t provenanceRevision = 0U);
+                                         std::uint64_t provenanceRevision = 0U,
+                                         std::uint64_t* requestedRevision = nullptr);
     void applyTrackCommandAtCallback(const Command& command) noexcept;
     [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
     void invalidateTrackMarkLocked(std::size_t trackIndex) noexcept;
@@ -1081,6 +1083,7 @@ private:
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateBpmBits_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateRevision_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateNativeRevision_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateStopRevision_{};
     std::array<bool, kNativeTrackCount> recordingTempoCandidateValid_{};
     // The global epoch also changes for Play/Stop transitions because project
     // import replaces those states; per-track content revisions remain PCM/history-only.

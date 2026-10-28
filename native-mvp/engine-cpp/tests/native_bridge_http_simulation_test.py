@@ -1359,8 +1359,10 @@ def main():
         status, stopped = request(
             f"/v1/transport/stop?trackId=3&tempoBpm={tempo_bpm}&tempoRevision={stop_tempo_revision}", "POST", {})
         require(status == 200, f"tempo-tagged Native STOP could not be queued: {stopped}")
-        stop_revision = stopped.get("nativeRecordPlay", {}).get("stopRequested", [0, 0, 0])[2]
-        require(stop_revision > 0, f"Native STOP did not return a callback revision: {stopped}")
+        stop_revision = stopped.get("nativeRecordPlay", {}).get("acceptedStopRequestRevision", 0)
+        require(stop_revision > 0 and
+                stopped.get("nativeRecordPlay", {}).get("stopRequested", [0, 0, 0])[2] == stop_revision,
+                f"Native STOP did not return its exact accepted callback revision: {stopped}")
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             stop_status = request("/v1/status")[1]
@@ -1374,9 +1376,26 @@ def main():
         status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
         require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
                 f"unconfirmed STOP tempo candidate leaked through the metadata endpoint: {staged_metadata}")
+        status, stale_confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
+            "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
+            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision + 1})
+        require(status == 200,
+                f"Native did not queue the deliberately stale STOP confirmation: {stale_confirmation}")
+        stale_confirm_revision = stale_confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            stale_status = request("/v1/status")[1]
+            stale_provenance = stale_status.get("nativeRecordTempoProvenance", {})
+            if stale_provenance.get("appliedRevision", [0, 0, 0])[2] == stale_confirm_revision: break
+            time.sleep(0.005)
+        require(stale_provenance.get("acceptedRevision", [0, 0, 0])[2] != stale_confirm_revision,
+                f"Native callback accepted a STOP confirmation bound to a different revision: {stale_provenance}")
+        status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
+        require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
+                f"revision-mismatched STOP confirmation published tempo metadata: {staged_metadata}")
         status, confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
             "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
-            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision})
+            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision})
         require(status == 200, f"callback confirmation for Native STOP take failed: {confirmation}")
         confirm_revision = confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
         deadline = time.monotonic() + 2.0

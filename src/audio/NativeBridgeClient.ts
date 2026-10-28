@@ -191,6 +191,7 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
+  nativeStopTrackAcknowledgement?: { trackId: number; requestedRevision: number; appliedRevision: number; committedRevision: number };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
   nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[];
@@ -201,7 +202,8 @@ export interface NativeStatus {
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
     recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
     finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[];
-    stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[] };
+    stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[];
+    acceptedStopRequestRevision?: number };
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -1083,11 +1085,15 @@ export class NativeBridgeClient {
   }
 
   public async confirmTrackTempoProvenance(trackId: number, expectedContentRevision: number,
-      tempo: NativeRecordTempoToken): Promise<NativeStatus> {
+      tempo: NativeRecordTempoToken, expectedStopRevision?: number): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC tempo confirmation track.');
     if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0) throw new RangeError('Invalid Native REC tempo content revision.');
+    if (expectedStopRevision !== undefined && (!Number.isSafeInteger(expectedStopRevision) || expectedStopRevision <= 0)) {
+      throw new RangeError('Invalid Native STOP commit revision for tempo confirmation.');
+    }
     let status = await this.request<NativeStatus>('/v1/transport/record-tempo/confirm', {
-      method: 'POST', body: JSON.stringify({ trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision }),
+      method: 'POST', body: JSON.stringify({ trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision,
+        ...(expectedStopRevision === undefined ? {} : { stopRevision: expectedStopRevision }) }),
     });
     const revision = status.nativeRecordTempoProvenance?.acceptedRequestRevision;
     if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC tempo confirmation acknowledgement is unavailable; provenance remains unknown.');
@@ -1123,12 +1129,22 @@ export class NativeBridgeClient {
   public async stopTrack(trackId: number, tempo?: NativeRecordTempoToken, callbackAckSupported = tempo !== undefined): Promise<NativeStatus> {
     let status = await this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
     if (!callbackAckSupported) return status;
-    const revision = status.nativeRecordPlay?.stopRequested?.[trackId - 1];
+    const revision = status.nativeRecordPlay?.acceptedStopRequestRevision;
     if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native STOP callback acknowledgement is unavailable.');
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
-      if (status.nativeRecordPlay?.stopApplied?.[trackId - 1] === revision) return status;
       if (status.nativeRecordPlay?.stopRequested?.[trackId - 1] !== revision) throw new Error('Native STOP request was superseded before callback acknowledgement.');
+      const appliedRevision = status.nativeRecordPlay?.stopApplied?.[trackId - 1];
+      if (appliedRevision === revision) {
+        const committedRevision = status.nativeRecordPlay?.stopCommittedRevision?.[trackId - 1];
+        if (!Number.isSafeInteger(committedRevision)) throw new Error('Native STOP commit acknowledgement is unavailable.');
+        return { ...status, nativeStopTrackAcknowledgement: {
+          trackId, requestedRevision: revision!, appliedRevision: appliedRevision!, committedRevision: committedRevision!,
+        } };
+      }
+      if (Number.isSafeInteger(appliedRevision) && appliedRevision! > revision!) {
+        throw new Error('Native STOP callback acknowledgement for this request was superseded.');
+      }
       if (Date.now() >= deadline) throw new Error('Native STOP callback acknowledgement timed out; do not resend automatically.');
       await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
     }

@@ -1915,18 +1915,21 @@ int main() {
     server.Post("/v1/transport/record-tempo/confirm", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
-            std::uint64_t trackId = 0U, expectedContentRevision = 0U, tempoRevision = 0U;
+            std::uint64_t trackId = 0U, expectedContentRevision = 0U, tempoRevision = 0U, expectedStopRevision = 0U;
             std::optional<double> tempoBpm;
-            if (!body.is_object() || body.size() != 4U ||
+            if (!body.is_object() || (body.size() != 4U && body.size() != 5U) ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !readUnsignedJsonInteger(body.value("expectedContentRevision", json()), kMaximumSafeTempoRevision, expectedContentRevision) ||
+                (body.contains("stopRevision") &&
+                    (!readUnsignedJsonInteger(body.at("stopRevision"), kMaximumSafeTempoRevision, expectedStopRevision) || expectedStopRevision == 0U)) ||
+                (body.size() == 5U) != body.contains("stopRevision") ||
                 !readRecordTempoToken(body, tempoBpm, tempoRevision) || !tempoBpm.has_value()) {
-                response.status = 400; writeError(response, "REC tempo confirmation requires trackId, expectedContentRevision, tempoBpm, and tempoRevision."); return;
+                response.status = 400; writeError(response, "REC tempo confirmation requires trackId, expectedContentRevision, tempoBpm, tempoRevision, and optional stopRevision."); return;
             }
             std::string error;
             std::uint64_t requestedRevision = 0U;
             if (!engine.confirmTrackTempoProvenance(trackId - 1U, expectedContentRevision, *tempoBpm,
-                    tempoRevision, error, &requestedRevision)) {
+                    tempoRevision, error, &requestedRevision, expectedStopRevision)) {
                 response.status = 409; writeError(response, error); return;
             }
             auto status = statusToJson(engine.getStatus());
@@ -1947,11 +1950,14 @@ int main() {
         if (!readRecordTempoToken(request, tempoBpm, tempoRevision)) {
             response.status = 400; writeError(response, "Stop tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
         }
-        if (!engine.stopTrack(trackIndex, error, tempoBpm, tempoRevision)) {
+        std::uint64_t requestedRevision = 0U;
+        if (!engine.stopTrack(trackIndex, error, tempoBpm, tempoRevision, &requestedRevision)) {
             writeError(response, error);
             return;
         }
-        writeJson(response, statusToJson(engine.getStatus()));
+        auto status = statusToJson(engine.getStatus());
+        status["nativeRecordPlay"]["acceptedStopRequestRevision"] = requestedRevision;
+        writeJson(response, status);
     });
 
     server.Post("/v1/transport/play", [&engine](const httplib::Request& request, httplib::Response& response) {

@@ -1187,14 +1187,14 @@ export class NativeAudioEngine {
   }
 
   private async confirmCommittedTakeTempo(trackId: number, finishToken: NativeRecordTempoToken,
-      expectedContentRevision: number): Promise<void> {
+      expectedContentRevision: number, expectedStopRevision?: number): Promise<void> {
     const transport = Transport.getInstance();
     const releaseTempoBarrier = transport.beginTempoCommitBarrier();
     try {
       const currentToken = nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
       if (!nativeRecordTempoTokenMatches(finishToken, currentToken)) return;
       await this.dispatchStatusRequest(() => this.bridge.confirmTrackTempoProvenance(
-        trackId, expectedContentRevision, finishToken));
+        trackId, expectedContentRevision, finishToken, expectedStopRevision));
     } catch (error) {
       // PCM was committed by the prior ACK. A failed second phase leaves its
       // provenance null and must not make that completed take look verified.
@@ -1222,17 +1222,17 @@ export class NativeAudioEngine {
     const beforeContentRevision = beforeTrack?.contentRevision;
     const stopToken = wasRecording ? this.nativeRecordTempoToken() : undefined;
     const callbackAckSupported = this.latestStatus?.nativeTempoRecordProvenanceVersion === 1;
-    await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
+    const stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
     if (!wasRecording || !stopToken || !callbackAckSupported || !Number.isSafeInteger(beforeContentRevision)) return;
-    const status = this.latestStatus;
-    const stopApplied = status?.nativeRecordPlay?.stopApplied?.[trackId - 1];
-    const committedRevision = status?.nativeRecordPlay?.stopCommittedRevision?.[trackId - 1];
-    if (!Number.isSafeInteger(stopApplied) || stopApplied! <= 0 || committedRevision !== stopApplied) return;
-    const stoppedTrack = status?.nativeTracks?.find(track => track.trackId === trackId);
+    const stopAck = stopStatus.nativeStopTrackAcknowledgement;
+    if (!stopAck || stopAck.trackId !== trackId || !Number.isSafeInteger(stopAck.requestedRevision) ||
+        stopAck.requestedRevision <= 0 || stopAck.appliedRevision !== stopAck.requestedRevision ||
+        stopAck.committedRevision !== stopAck.requestedRevision) return;
+    const stoppedTrack = stopStatus.nativeTracks?.find(track => track.trackId === trackId);
     const stoppedContentRevision = stoppedTrack?.contentRevision;
     if (!stoppedTrack || stoppedTrack.state !== 'Stopped' || !Number.isSafeInteger(stoppedContentRevision) ||
         stoppedContentRevision! <= beforeContentRevision!) return;
-    await this.confirmCommittedTakeTempo(trackId, stopToken, stoppedContentRevision!);
+    await this.confirmCommittedTakeTempo(trackId, stopToken, stoppedContentRevision!, stopAck.requestedRevision);
   }
 
   private nativeRecordTempoToken(): NativeRecordTempoToken | undefined {
@@ -1867,10 +1867,11 @@ export class NativeAudioEngine {
     }
   }
 
-  private async dispatchStatusRequest(request: () => Promise<NativeStatus>) {
+  private async dispatchStatusRequest<T extends NativeStatus>(request: () => Promise<T>): Promise<T> {
     try {
       const status = await request();
       this.applyStatus(status);
+      return status;
     } catch (error) {
       this.handleBridgeFailure(error, false);
       throw error;

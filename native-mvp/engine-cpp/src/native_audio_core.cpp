@@ -1009,18 +1009,21 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
 }
 
 bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm,
-                                std::uint64_t provenanceRevision) {
-    return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error, provenanceBpm, provenanceRevision);
+                                std::uint64_t provenanceRevision, std::uint64_t* requestedRevision) {
+    return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error, provenanceBpm, provenanceRevision,
+                             requestedRevision);
 }
 
 bool NativeAudioCore::confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                                    double bpm, std::uint64_t tempoRevision, std::string& error,
-                                                   std::uint64_t* requestedRevision) {
+                                                   std::uint64_t* requestedRevision,
+                                                   std::uint64_t expectedStopRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (requestedRevision != nullptr) *requestedRevision = 0U;
     if (trackIndex >= kNativeTrackCount || !std::isfinite(bpm) || bpm < 40.0 || bpm > 300.0 ||
-        tempoRevision > kMaximumSafeProjectContentRevision || expectedContentRevision > kMaximumSafeProjectContentRevision) {
+        tempoRevision > kMaximumSafeProjectContentRevision || expectedContentRevision > kMaximumSafeProjectContentRevision ||
+        expectedStopRevision > kMaximumSafeProjectContentRevision) {
         error = "Native REC tempo confirmation token is invalid."; return false;
     }
     if (!engineRunning_.load(std::memory_order_acquire) ||
@@ -1039,7 +1042,7 @@ bool NativeAudioCore::confirmTrackTempoProvenance(std::size_t trackIndex, std::u
     const auto revision = recordTempoConfirmRequested_[trackIndex] + 1U;
     pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
     const Command command{CommandType::ConfirmRecordTempoProvenance, false,
-        static_cast<std::uint8_t>(trackIndex), revision, bpm, tempoRevision, true, expectedContentRevision};
+        static_cast<std::uint8_t>(trackIndex), revision, bpm, tempoRevision, true, expectedContentRevision, expectedStopRevision};
     if (!commandQueue_.push(command)) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed);
@@ -1361,9 +1364,11 @@ void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
 }
 
 bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
-                                        std::optional<double> provenanceBpm, std::uint64_t provenanceRevision) {
+                                        std::optional<double> provenanceBpm, std::uint64_t provenanceRevision,
+                                        std::uint64_t* requestedRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (requestedRevision != nullptr) *requestedRevision = 0U;
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "A Native project import is pending; wait for its generation status before changing tracks.";
         return false;
@@ -1425,6 +1430,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision;
+    if (type == CommandType::StopRecordOrPlayback && requestedRevision != nullptr) *requestedRevision = stopRevision;
     if (type == CommandType::Clear || (type == CommandType::Record && state == LooperState::Empty)) {
         invalidateTrackMarkLocked(trackIndex);
         if (type == CommandType::Record) {
@@ -1501,7 +1507,8 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             requestedBpmBits == recordingTempoCandidateBpmBits_[index] &&
             nativeTempoAppliedValid_.load(std::memory_order_acquire) &&
             nativeTempoAppliedRevision_.load(std::memory_order_acquire) == recordingTempoCandidateNativeRevision_[index] &&
-            nativeBpmBits == recordingTempoCandidateBpmBits_[index];
+            nativeBpmBits == recordingTempoCandidateBpmBits_[index] &&
+            command.expectedStopRevision == recordingTempoCandidateStopRevision_[index];
         if (tempoProvenanceConfirmed) {
             originalTempoBpmBits_[index].store(recordingTempoCandidateBpmBits_[index], std::memory_order_release);
             recordingTempoCandidateValid_[index] = false;
@@ -1547,6 +1554,8 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             ? originalTempoBits(std::optional<double>(command.provenanceBpm)) : 0U;
         recordingTempoCandidateRevision_[index] = command.provenanceRevision;
         recordingTempoCandidateNativeRevision_[index] = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+        recordingTempoCandidateStopRevision_[index] = command.type == CommandType::StopRecordOrPlayback
+            ? command.revision : 0U;
         originalTempoBpmBits_[index].store(0U, std::memory_order_release);
     }
     const std::uint64_t originalTempoAfter = originalTempoBpmBits_[index].load(std::memory_order_acquire);

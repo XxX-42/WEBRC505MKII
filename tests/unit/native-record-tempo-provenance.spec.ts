@@ -79,7 +79,8 @@ describe('Native REC tempo provenance tokens', () => {
   });
 
   it('waits for a modern host STOP callback ACK and exposes whether it committed recording', async () => {
-    const initial = { ok: true, nativeRecordPlay: { stopRequested: [4, 0, 0, 0, 0], stopApplied: [3, 0, 0, 0, 0],
+    const initial = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 4,
+      stopRequested: [4, 0, 0, 0, 0], stopApplied: [3, 0, 0, 0, 0],
       stopCommittedRevision: [0, 0, 0, 0, 0] } };
     const applied = { ok: true, nativeRecordPlay: { stopRequested: [4, 0, 0, 0, 0], stopApplied: [4, 0, 0, 0, 0],
       stopCommittedRevision: [4, 0, 0, 0, 0] }, nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 8 }] };
@@ -91,7 +92,20 @@ describe('Native REC tempo provenance tokens', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('tempoBpm=120&tempoRevision=7');
-    expect(status.nativeRecordPlay?.stopCommittedRevision?.[0]).toBe(4);
+    expect(status.nativeStopTrackAcknowledgement).toEqual({
+      trackId: 1, requestedRevision: 4, appliedRevision: 4, committedRevision: 4,
+    });
+  });
+
+  it('rejects a concurrent STOP that supersedes the request even if its callback committed', async () => {
+    const accepted = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 9,
+      stopRequested: [9, 0, 0, 0, 0], stopApplied: [8, 0, 0, 0, 0], stopCommittedRevision: [0, 0, 0, 0, 0] } };
+    const superseded = { ok: true, nativeRecordPlay: { stopRequested: [10, 0, 0, 0, 0],
+      stopApplied: [9, 0, 0, 0, 0], stopCommittedRevision: [9, 0, 0, 0, 0] } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(accepted)).mockResolvedValueOnce(jsonResponse(superseded)));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+
+    await expect(client.stopTrack(1, { bpm: 120, revision: 7 }, true)).rejects.toThrow(/superseded/);
   });
 
   it('normalizes old-host metadata without a provenance field to null', async () => {
