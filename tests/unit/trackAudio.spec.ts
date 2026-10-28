@@ -1095,6 +1095,125 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.overdubDiagnostic).toContain('dropped 4 input frames');
   });
 
+  it('keeps an errored overdub active through terminal drain and preserves the prior PCM on STOP', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 32, context.sampleRate);
+    previous.getChannelData(0).set([0.1, 0.2, 0.3]);
+    const originalPcm = [...previous.getChannelData(0).slice(0, 3)];
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    expect(node?.name).toBe('rc505-overdub-processor');
+
+    node?.port.receive({ type: 'OVERDUB_ERROR', message: 'input-frame-discontinuity' });
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    expect((trackAudio as any).overdubProcessor).toBe(node);
+    expect((trackAudio as any).overdubStopping).toBe(true);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect([...previous.getChannelData(0).slice(0, 3)]).toEqual(originalPcm);
+
+    // An explicit user STOP remains authoritative while the worklet drains.
+    trackAudio.triggerStop();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0, startupCancelled: true });
+    expect(node?.disconnected).toBe(true);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect([...previous.getChannelData(0).slice(0, 3)]).toEqual(originalPcm);
+    expect(trackAudio.overdubDiagnostic).toContain('input-frame-discontinuity');
+  });
+
+  it('does not turn a REC press during an error drain into an automatic overdub restart', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 32, context.sampleRate);
+    previous.getChannelData(0).fill(0.25);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    node?.port.receive({ type: 'OVERDUB_ERROR', message: 'input-frame-discontinuity' });
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+
+    // REC toggles out of the erroring overdub; it must not queue a restart.
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect((trackAudio as any).overdubRestartAfterStop).toBe(false);
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0, startupCancelled: true });
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    expect(FakeAudioWorkletNode.instances).toHaveLength(1);
+    expect(node?.disconnected).toBe(true);
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect([...previous.getChannelData(0).slice(0, 3)]).toEqual([0.25, 0.25, 0.25]);
+  });
+
+  it('keeps the overdub state until terminal ACK patches have fully drained', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 32, context.sampleRate);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    node?.port.receive({ type: 'OVERDUB_ERROR', message: 'late-worklet-error' });
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 1,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
+
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    expect((trackAudio as any).overdubProcessor).toBe(node);
+    expect(node?.disconnected).toBe(false);
+
+    node?.port.receive({ type: 'OVERDUB_PATCH', sequence: 0, slotIndex: 0, validFrames: 2,
+      startInputFrame: 100, endInputFrame: 102, indices: Uint32Array.of(0, 1),
+      values: Float32Array.of(0.4, 0.6), oldValues: Float32Array.of(0, 0) });
+
+    expect(node?.disconnected).toBe(true);
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect([...previous.getChannelData(0).slice(0, 2)]).toEqual([...Float32Array.of(0.4, 0.6)]);
+  });
+
+  it('still restarts after a deliberate stop followed by a new REC before terminal ACK', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).audioBuffer = context.createBuffer(1, 32, context.sampleRate);
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    const first = FakeAudioWorkletNode.instances[0];
+    expect(first?.name).toBe('rc505-overdub-processor');
+
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    expect((trackAudio as any).overdubRestartAfterStop).toBe(true);
+
+    first?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0, overflowEvents: 0, patchesSent: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
+    for (let index = 0; index < 10; index += 1) await Promise.resolve();
+
+    expect(FakeAudioWorkletNode.instances).toHaveLength(2);
+    expect(first?.disconnected).toBe(true);
+    expect(FakeAudioWorkletNode.instances[1]?.port.posted[0]?.message.type).toBe('OVERDUB_INIT');
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    trackAudio.triggerStop();
+    FakeAudioWorkletNode.instances[1]?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 0,
+      overflowEvents: 0, patchesSent: 0, requestedStopFrame: 0, appliedExclusiveEnd: 0,
+      processorStopFrame: 0 });
+  });
+
   it.each([
     ['OVERDUB', 1], ['REPLACE1', 1], ['REPLACE2', 0],
   ] as const)('routes %s through the Browser worker and gates only its loop reader as required', async (dubMode, readerGain) => {

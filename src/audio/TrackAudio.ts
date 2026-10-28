@@ -3925,7 +3925,6 @@ export class TrackAudio {
             workletNode.onprocessorerror = () => {
                 if (this.overdubProcessor !== workletNode) return;
                 this.overdubDiagnostic = 'Overdub AudioWorklet stopped unexpectedly; track playback remains audible.';
-                if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
                 this.finishOverdubNode(workletNode);
                 this.syncTransportState();
             };
@@ -3980,7 +3979,7 @@ export class TrackAudio {
             this.overdubBaselineSnapshot = null;
             this.overdubStopRollbackJournal = null;
             this.overdubDiagnostic = `Overdub is unavailable: ${error instanceof Error ? error.message : String(error)}. Track playback remains audible.`;
-            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+            if (!this.overdubProcessor && this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
             this.syncTransportState();
             this.restoreLoopTransportAfterOverdub();
         } finally {
@@ -4322,7 +4321,6 @@ export class TrackAudio {
                     try { workletNode.port.postMessage({ type: 'OVERDUB_BACKFILL_ERROR', reason: 'capture-session-not-current' }); }
                     catch { this.finishOverdubNode(workletNode); }
                 }
-                if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
                 this.syncTransportState();
                 return;
             }
@@ -4473,7 +4471,6 @@ export class TrackAudio {
             this.overdubDiagnostic = this.overdubDiagnostic?.startsWith('Overdub startup failed before PCM commit:')
                 ? `${this.overdubDiagnostic} Worklet: ${workletReason}`
                 : `Overdub failed: ${workletReason}. Track playback remains audible.`;
-            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
             // ERROR is explanatory, not the terminal barrier. Wait for the
             // stopped ACK and its patch count before retiring the processor.
             if (!this.overdubStopping) {
@@ -4525,7 +4522,6 @@ export class TrackAudio {
                     this.overdubRollbackAborted = true;
                     this.overdubDiagnostic = `Overdub buffer pool overflow dropped ${overflowFrames} input frames across ${payload.overflowEvents ?? 0} bursts, and automatic PCM restoration failed; partial PCM may remain. Use Undo if the pre-overdub snapshot is available.`;
                 }
-                if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
                 this.syncTransportState();
             }
             this.overdubExpectedPatchMessages = payload.patchesSent!;
@@ -4547,7 +4543,6 @@ export class TrackAudio {
         // missing image as permission to discard the user's prior undo step.
         if (!this.overdubRollbackAborted && !this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
         this.overdubDiagnostic = diagnostic;
-        if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
         if (this.overdubProcessor === workletNode && !this.overdubStopping) this.stopOverdub();
         this.syncTransportState();
     }
@@ -4606,7 +4601,13 @@ export class TrackAudio {
             this.pendingClear = false;
             this.completeClear();
         } else if (restart) void this.startOverdub();
-        else this.restoreLoopTransportAfterOverdub();
+        else {
+            // A failure or terminal drain can finish without a user toggle.
+            // Only clear OVERDUBBING at the actual retirement barrier, and
+            // preserve STOPPED/PLAYING if the user already changed transport.
+            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+            this.restoreLoopTransportAfterOverdub();
+        }
     }
 
     private watchOverdubDrain(workletNode: AudioWorkletNode): void {
@@ -4618,7 +4619,6 @@ export class TrackAudio {
                 ? 'the terminal stop acknowledgement'
                 : `final PCM patches (${this.overdubReceivedPatchMessages}/${this.overdubExpectedPatchMessages} received)`;
             this.overdubDiagnostic = `Overdub stop could not drain ${pending} within ${OVERDUB_STOP_ACK_TIMEOUT_MS} ms (AudioContext state: ${contextState}); the stop-frame cutoff was applied, but missing pre-stop patches may leave a partial overdub. Use Undo to restore the pre-overdub PCM if its history entry was retained.`;
-            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
             this.finishOverdubNode(workletNode);
             this.syncTransportState();
         }, OVERDUB_STOP_ACK_TIMEOUT_MS);
