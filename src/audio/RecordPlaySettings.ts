@@ -3,7 +3,7 @@ export interface RecordPlaySettings {
   readonly reason: string;
   readonly recAction: 'REC->DUB' | 'REC->PLAY' | null;
   readonly quantize: 'OFF' | 'MEASURE' | null;
-  readonly autoRecAvailable: false;
+  readonly autoRecAvailable: boolean;
   readonly bounceAvailable: false;
 }
 export type RecordPlaySettingsPatch = Partial<Pick<RecordPlaySettings, 'recAction' | 'quantize'>>;

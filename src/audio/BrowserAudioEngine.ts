@@ -217,7 +217,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
     private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
     public getRecordPlaySettings(): RecordPlaySettings {
-        return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: false, bounceAvailable: false });
+        return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: false });
     }
     public setRecordPlaySettings(patch: RecordPlaySettingsPatch): void {
         assertRecordPlaySettings(patch);

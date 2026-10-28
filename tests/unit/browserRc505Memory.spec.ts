@@ -23,6 +23,11 @@ beforeEach(() => { Transport.getInstance().stop(); Transport.getInstance().reset
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Browser semantic Memory', () => {
+  it('advertises the implemented Browser AutoRec capability independently of its current switch', () => {
+    const { engine } = harness();
+    expect(engine.getBrowserAutoRecSettings().enabled).toBe(false);
+    expect(engine.getRecordPlaySettings().autoRecAvailable).toBe(true);
+  });
   it('uses independent stereo analyser channels for nonzero pre-shared-FX meters', () => {
     const { engine } = harness();
     const track = engine.tracks[0] as any;
