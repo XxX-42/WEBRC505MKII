@@ -5,6 +5,9 @@ import { Track, TrackState } from '../../src/core/types';
 
 class FakeTrack {
   readyState: MediaStreamTrackState = 'live';
+  readonly kind = 'audio';
+  muted = false;
+  enabled = true;
   readonly stop = vi.fn(() => { this.readyState = 'ended'; });
   private readonly listeners = new Set<EventListener>();
 
@@ -195,6 +198,47 @@ describe('Browser input device lifecycle', () => {
     await rewarm;
     expect(engine.getUiStatus()).toMatchObject({ inputCaptureReady: true, inputCaptureWarming: false });
     expect(engine.getInputCaptureRequestFrame()).not.toBeNull();
+  });
+
+  it('saves main-thread state and callback metadata for a shared capture error', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const input = makeStream();
+    vi.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(input.stream);
+    const engine = new BrowserAudioEngine();
+    await engine.setInputDevice('mic-diagnostics');
+
+    const node = FakeAudioWorkletNode.instances[0]!;
+    const ready = node.port.messages.find((message) => message.type === 'INPUT_READY' && message.ready === true)!;
+    const listener = vi.fn();
+    const session = engine.beginInputCaptureSession(2, 18_560, listener);
+    expect(session).not.toBeNull();
+    node.port.notify({
+      type: 'CAPTURE_ERROR', trackIndex: 2, sessionId: session!.sessionId,
+      inputGeneration: session!.inputGeneration, reason: 'input-frame-discontinuity',
+      requestedStartFrame: 18_560, stopFrame: 0, startReceivedFrame: 18_560,
+      oldestAvailableFrame: 10_368, latestAvailableFrame: 18_560,
+      callbackFrameStart: 18_688, callbackFrameCount: 128, previousCallbackEndFrame: 18_560,
+      preRollEndAtCallbackStart: 18_560, preRollCapacityFrames: 8_192, preRollValidFrames: 8_192,
+      inputReady: true, currentInputGeneration: ready.generation, captureReadyEpoch: 0, sampleRate: 44_100,
+    });
+
+    await vi.waitFor(() => expect(engine.getUiStatus().lastInputCaptureError).not.toBeNull());
+    const diagnostic = engine.getUiStatus().lastInputCaptureError!;
+    expect(diagnostic).toMatchObject({
+      reason: 'input-frame-discontinuity', trackIndex: 2, sessionId: session!.sessionId,
+      inputGeneration: session!.inputGeneration,
+      worklet: {
+        requestedStartFrame: 18_560, callbackFrameStart: 18_688, callbackFrameCount: 128,
+        previousCallbackEndFrame: 18_560, callbackGapFrames: 128,
+        preRollEndAtCallbackStart: 18_560, preRollValidFrames: 8_192,
+      },
+      audioContext: { state: engine.context.state, sampleRate: engine.context.sampleRate },
+      input: {
+        state: 'ready', deviceSelected: true, captureReady: true,
+        tracks: [{ kind: 'audio', readyState: 'live', muted: false, enabled: true }],
+      },
+    });
+    expect(listener).toHaveBeenCalledOnce();
   });
 
   it('does not let an older late stream or error overwrite the newest failed request', async () => {

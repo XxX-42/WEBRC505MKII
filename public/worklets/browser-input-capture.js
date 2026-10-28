@@ -64,6 +64,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     };
     this.lastFrameEnd = null;
     this.diagnosticFrameStart = 0;
+    this.diagnosticFrameCount = 0;
     this.diagnosticPreviousFrameEnd = -1;
     this.diagnosticPreRollEndFrame = 0;
     this.inputReady = false;
@@ -456,6 +457,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.preRollCapacityFrames = this.preRollFrames;
     message.preRollValidFrames = this.preRollValidFrames;
     message.callbackFrameStart = this.diagnosticFrameStart;
+    message.callbackFrameCount = this.diagnosticFrameCount;
     message.previousCallbackEndFrame = this.diagnosticPreviousFrameEnd;
     message.preRollEndAtCallbackStart = this.diagnosticPreRollEndFrame;
     message.inputReady = this.inputReady;
@@ -782,6 +784,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       : this.fallbackCurrentFrame;
     const frameEnd = frameStart + frames;
     this.diagnosticFrameStart = frameStart;
+    this.diagnosticFrameCount = frames;
     this.diagnosticPreviousFrameEnd = this.lastFrameEnd === null ? -1 : this.lastFrameEnd;
     this.diagnosticPreRollEndFrame = this.preRollEndFrame;
     const inputChannelCount = this.inputReady && rawLeft && processedLeft ? 2 : 0;

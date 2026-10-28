@@ -114,7 +114,10 @@ describe('Browser shared input capture worklet', () => {
     capture.process([8, 9, 10, 11], undefined, 8);
 
     expect(capture.messages('RECORD_CONFIGURED')).toHaveLength(0);
-    expect(capture.messages('CAPTURE_ERROR')[0]).toMatchObject({ reason: 'input-frame-discontinuity' });
+    expect(capture.messages('CAPTURE_ERROR')[0]).toMatchObject({
+      reason: 'input-frame-discontinuity', callbackFrameStart: 8, callbackFrameCount: 4,
+      previousCallbackEndFrame: 4, preRollEndAtCallbackStart: 4,
+    });
     expect(capture.messages('RECORD_ABORTED')).toHaveLength(1);
   });
 

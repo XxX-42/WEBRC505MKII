@@ -254,6 +254,7 @@ type RecordingWorkletMessage =
         oldestAvailableFrame?: number;
         latestAvailableFrame?: number;
         callbackFrameStart?: number;
+        callbackFrameCount?: number;
         previousCallbackEndFrame?: number;
         preRollEndAtCallbackStart?: number;
         preRollCapacityFrames?: number;

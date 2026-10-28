@@ -92,8 +92,59 @@ export interface BrowserAudioUiStatus {
     inputCaptureUnavailableReason?: string;
     inputState?: 'not-requested' | 'requesting' | 'ready' | 'error';
     inputError?: string;
+    /** Last shared-input capture error with main-thread context and device state. */
+    lastInputCaptureError?: BrowserInputCaptureErrorDiagnostic | null;
     /** Candidate recovery is installed, muted and suspended until an explicit resume click. */
     recoveryAwaitingUserResume?: boolean;
+}
+
+export interface BrowserInputCaptureErrorDiagnostic {
+    readonly capturedAtEpochMs: number;
+    readonly reason: string;
+    readonly trackIndex: number | null;
+    readonly sessionId: number | null;
+    readonly inputGeneration: number | null;
+    readonly worklet: {
+        readonly requestedStartFrame: number | null;
+        readonly stopFrame: number | null;
+        readonly startReceivedFrame: number | null;
+        readonly oldestAvailableFrame: number | null;
+        readonly latestAvailableFrame: number | null;
+        readonly callbackFrameStart: number | null;
+        readonly callbackFrameCount: number | null;
+        readonly previousCallbackEndFrame: number | null;
+        readonly callbackGapFrames: number | null;
+        readonly preRollEndAtCallbackStart: number | null;
+        readonly preRollCapacityFrames: number | null;
+        readonly preRollValidFrames: number | null;
+        readonly inputReady: boolean | null;
+        readonly currentInputGeneration: number | null;
+        readonly captureReadyEpoch: number | null;
+        readonly sampleRate: number | null;
+    };
+    readonly audioContext: {
+        readonly state: string;
+        readonly sampleRate: number;
+        readonly currentTimeSeconds: number;
+        readonly currentFrameEstimate: number;
+        readonly baseLatencySeconds: number | null;
+        readonly outputLatencySeconds: number | null;
+        readonly visibilityState: string | null;
+    };
+    readonly input: {
+        readonly state: string;
+        readonly generation: number;
+        readonly deviceSelected: boolean;
+        readonly captureReady: boolean;
+        readonly captureReadyGeneration: number;
+        readonly captureReadyEpoch: number | null;
+        readonly tracks: ReadonlyArray<{
+            readonly kind: string;
+            readonly readyState: string;
+            readonly muted: boolean;
+            readonly enabled: boolean;
+        }>;
+    };
 }
 
 const CLOSED_AUDIO_CONTEXT_ERROR = 'Browser AudioContext is permanently closed. Existing loops remain in memory; export them from Memory before reloading because reloading without an exported project loses unsaved loops.';
@@ -167,6 +218,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     private inputCaptureReadyEpoch: number | null = null;
     private inputCaptureWarmupReason = '';
     private inputCaptureUnavailableReason = '';
+    public lastInputCaptureError: BrowserInputCaptureErrorDiagnostic | null = null;
     private closedAudioContextHandled = false;
     private readonly inputCaptureSessions = new Map<number, {
         readonly session: InputCaptureSession;
@@ -2504,6 +2556,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             inputCaptureUnavailableReason: this.inputCaptureUnavailableReason,
             inputState: closed && this.selectedInputDeviceId ? 'error' : this.inputState,
             inputError: closed && this.selectedInputDeviceId ? (this.inputError || 'The Browser AudioContext closed; reconnect input after audio recovery.') : this.inputError,
+            lastInputCaptureError: this.lastInputCaptureError,
             recoveryAwaitingUserResume,
         };
     }
@@ -3681,10 +3734,12 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.rejectInputCaptureReadyWaiters(new Error(this.inputCaptureUnavailableReason));
                 this.rejectInputCaptureRewarmWaiters(new Error(this.inputCaptureUnavailableReason));
                 for (const [trackIndex, record] of this.inputCaptureSessions) {
-                    record.listener({
+                    const message = {
                         type: 'CAPTURE_ERROR', trackIndex, sessionId: record.session.sessionId,
                         inputGeneration: record.session.inputGeneration, reason: 'capture-processor-error',
-                    });
+                    };
+                    this.recordInputCaptureError(message);
+                    record.listener(message);
                 }
                 this.emitStatus();
             };
@@ -3865,7 +3920,70 @@ export class BrowserAudioEngine implements IAudioEngine {
             if (message.type === 'RECORD_CHUNK') this.recycleUnclaimedInputCaptureChunk(message);
             return;
         }
+        if (message.type === 'CAPTURE_ERROR') this.recordInputCaptureError(message);
         record.listener(message);
+        if (message.type === 'CAPTURE_ERROR') this.emitStatus();
+    }
+
+    private recordInputCaptureError(message: Record<string, any>): void {
+        const finiteInteger = (value: unknown): number | null => Number.isSafeInteger(value) ? value as number : null;
+        const finiteNumber = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
+        const context = this.context;
+        const sampleRate = context.sampleRate;
+        const currentTimeSeconds = Number.isFinite(context.currentTime) ? context.currentTime : 0;
+        const callbackFrameStart = finiteInteger(message.callbackFrameStart);
+        const previousCallbackEndFrame = finiteInteger(message.previousCallbackEndFrame);
+        const audioTracks = this.currentMediaStream?.getAudioTracks() ?? [];
+        this.lastInputCaptureError = {
+            capturedAtEpochMs: Date.now(),
+            reason: typeof message.reason === 'string' ? message.reason : 'unknown error',
+            trackIndex: finiteInteger(message.trackIndex),
+            sessionId: finiteInteger(message.sessionId),
+            inputGeneration: finiteInteger(message.inputGeneration),
+            worklet: {
+                requestedStartFrame: finiteInteger(message.requestedStartFrame),
+                stopFrame: finiteInteger(message.stopFrame),
+                startReceivedFrame: finiteInteger(message.startReceivedFrame),
+                oldestAvailableFrame: finiteInteger(message.oldestAvailableFrame),
+                latestAvailableFrame: finiteInteger(message.latestAvailableFrame),
+                callbackFrameStart,
+                callbackFrameCount: finiteInteger(message.callbackFrameCount),
+                previousCallbackEndFrame,
+                callbackGapFrames: callbackFrameStart !== null && previousCallbackEndFrame !== null
+                    && previousCallbackEndFrame >= 0
+                    ? callbackFrameStart - previousCallbackEndFrame : null,
+                preRollEndAtCallbackStart: finiteInteger(message.preRollEndAtCallbackStart),
+                preRollCapacityFrames: finiteInteger(message.preRollCapacityFrames),
+                preRollValidFrames: finiteInteger(message.preRollValidFrames),
+                inputReady: typeof message.inputReady === 'boolean' ? message.inputReady : null,
+                currentInputGeneration: finiteInteger(message.currentInputGeneration),
+                captureReadyEpoch: finiteInteger(message.captureReadyEpoch),
+                sampleRate: finiteInteger(message.sampleRate),
+            },
+            audioContext: {
+                state: String(context.state),
+                sampleRate,
+                currentTimeSeconds,
+                currentFrameEstimate: Math.round(currentTimeSeconds * sampleRate),
+                baseLatencySeconds: finiteNumber(context.baseLatency),
+                outputLatencySeconds: finiteNumber(context.outputLatency),
+                visibilityState: typeof document !== 'undefined' ? String(document.visibilityState) : null,
+            },
+            input: {
+                state: this.inputState,
+                generation: this.inputCaptureGeneration,
+                deviceSelected: this.selectedInputDeviceId !== null,
+                captureReady: this.inputCaptureReady,
+                captureReadyGeneration: this.inputCaptureReadyGeneration,
+                captureReadyEpoch: this.inputCaptureReadyEpoch,
+                tracks: audioTracks.map((track) => ({
+                    kind: track.kind,
+                    readyState: track.readyState,
+                    muted: track.muted,
+                    enabled: track.enabled,
+                })),
+            },
+        };
     }
 
     private recycleUnclaimedInputCaptureChunk(message: any): void {
