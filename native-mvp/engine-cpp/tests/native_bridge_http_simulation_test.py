@@ -92,7 +92,7 @@ def request_project_archive(path, method="POST", body=None, content_type=None):
         connection.close()
 
 
-def build_project_archive(tracks, name="HTTP import test", bpm=120.0):
+def build_project_archive(tracks, name="HTTP import test", bpm=120.0, version=1):
     payload = bytearray()
     track_manifest = []
     for track in tracks:
@@ -102,19 +102,22 @@ def build_project_archive(tracks, name="HTTP import test", bpm=120.0):
         channels = track["channels"]
         samples = track["samples"]
         pcm = struct.pack("<" + "f" * len(samples), *samples)
-        track_manifest.append({
+        descriptor = {
             "sampleRate": track.get("sampleRate", 48000),
             "frameCount": len(samples) // channels,
             "channels": channels,
             "payloadOffset": len(payload),
             "byteLength": len(pcm),
             "sha256": hashlib.sha256(pcm).hexdigest(),
-        })
+        }
+        if version >= 2:
+            descriptor["originalTempoBpm"] = track.get("originalTempoBpm")
+        track_manifest.append(descriptor)
         payload.extend(pcm)
 
     manifest = {
         "format": "rc505-project-archive",
-        "version": 1,
+        "version": version,
         "project": {
             "name": name,
             "bpm": bpm,
@@ -1300,7 +1303,8 @@ def main():
         # source is synthetic; this is not a physical audio-device test.
         status, metadata = request("/v1/export/track-metadata?trackId=1", headers={"Origin": "http://localhost:5173"})
         require(status == 200 and metadata.get("channels") == 2 and
-                metadata.get("sampleRate") == 48000 and metadata.get("frameCount", 0) > 0,
+                metadata.get("sampleRate") == 48000 and metadata.get("frameCount", 0) > 0 and
+                metadata.get("originalTempoBpm") is None,
                 f"metadata-only route did not report a completed loop: {metadata}")
         status, metadata_headers, metadata_body = request_raw(
             "/v1/export/track-metadata?trackId=1", {"Origin": "http://127.0.0.1:4174"}
@@ -1476,6 +1480,8 @@ def main():
         status, project_before = request("/v1/status")
         require(status == 200 and project_before.get("engineRunning") is True,
                 "project-import route test requires the simulated engine to be running")
+        require(project_before.get("projectArchiveV2Supported") is True,
+                "Native host did not advertise ProjectArchive v2 capability")
         project_revision = project_before.get("projectContentRevision")
         require(isinstance(project_revision, int) and project_revision >= 0 and
                 project_before.get("projectContentRevisionSnapshotStable") is True,
@@ -1617,6 +1623,31 @@ def main():
             "/v1/project/import/status?generation=0", "GET")
         require(status == 400 and malformed_generation.get("ok") is False,
                 "zero import generation was not explicitly rejected")
+
+        # V2 metadata follows the PCM through the real HTTP import transaction
+        # and is exposed by the callback-pinned track metadata endpoint.
+        before_v2 = request("/v1/status")[1]
+        v2_archive = build_project_archive([
+            {"channels": 2, "samples": [0.2, -0.2, 0.4, -0.4], "originalTempoBpm": 96.25},
+            None, None, None, None,
+        ], name="V2 tempo metadata", version=2)
+        v2_path = f"/v1/project/import?expectedContentRevision={before_v2['projectContentRevision']}"
+        status, v2_accepted = request_project_archive(v2_path, "POST", v2_archive, "application/octet-stream")
+        require(status == 202 and v2_accepted.get("generation", 0) > 0,
+                f"Native HTTP host did not stage v2 archive metadata: {v2_accepted}")
+        v2_generation = v2_accepted["generation"]
+        deadline = time.monotonic() + 5.0
+        v2_state = "pending"
+        while time.monotonic() < deadline and v2_state not in ("committed", "cancelled"):
+            time.sleep(0.005)
+            status, v2_status = request_project_archive(
+                f"/v1/project/import/status?generation={v2_generation}", "GET")
+            v2_state = v2_status.get("state")
+        require(status == 200 and v2_state == "committed",
+                f"Native HTTP v2 import did not receive commit acknowledgement: {v2_status}")
+        status, v2_track_metadata = request("/v1/export/track-metadata?trackId=1")
+        require(status == 200 and v2_track_metadata.get("originalTempoBpm") == 96.25,
+                f"Native metadata snapshot did not retain v2 BPM with the imported track: {v2_track_metadata}")
 
         status, stopped = request("/v1/engine/stop", "POST", {})
         require(status == 200 and stopped.get("engineRunning") is False,

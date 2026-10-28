@@ -292,6 +292,7 @@ struct EngineStatus {
     unsigned int nativeLooperTrackCount = 0U;
     bool nativeLooperMultiTrackImplemented = false;
     bool nativeLooperTracksStereo = false;
+    bool projectArchiveV2Supported = true;
     unsigned int nativeLooperMaxRecordSeconds = 0U;
     std::uint64_t nativeLooperPreallocatedBytes = 0U;
     std::uint64_t nativeLooperStorageBudgetBytes = LooperCore::kDefaultAggregateLoopStorageBudgetBytes;
@@ -639,7 +640,8 @@ public:
         std::size_t& frameCount,
         unsigned int& sampleRate,
         std::string& error,
-        std::uint64_t* contentRevision = nullptr
+        std::uint64_t* contentRevision = nullptr,
+        std::optional<double>* originalTempoBpm = nullptr
     );
 
     // Stages a validated archive on the control thread and publishes it as a
@@ -679,6 +681,8 @@ private:
         std::array<std::vector<float>, kNativeTrackCount> candidateStereoStorage{};
         std::array<std::size_t, kNativeTrackCount> frameCounts{};
         std::array<LoopMetadata, kNativeTrackCount> previousMetadata{};
+        std::array<std::uint64_t, kNativeTrackCount> previousOriginalTempoBits{};
+        std::array<std::uint64_t, kNativeTrackCount> candidateOriginalTempoBits{};
         std::unique_ptr<NativeMemorySettings> memory;
         std::array<NativeEffectBank, 7U> candidateFxBanks{};
         std::unique_ptr<NativeOutputStage> candidateOutputStage;
@@ -871,6 +875,8 @@ private:
     struct TrackHistoryRecord {
         LoopMetadata before{};
         LoopMetadata after{};
+        std::uint64_t beforeOriginalTempoBits = 0U;
+        std::uint64_t afterOriginalTempoBits = 0U;
         HistoryKind kind = HistoryKind::None;
         bool valid = false;
         bool applied = false;
@@ -1030,6 +1036,9 @@ private:
         static_cast<int>(LooperState::Empty)
     }};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackContentRevision_{};
+    // Zero means unknown; supported BPM values have nonzero IEEE-754 bits.
+    // Fixed atomic storage keeps callback and control readers race-free.
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> originalTempoBpmBits_{};
     // The global epoch also changes for Play/Stop transitions because project
     // import replaces those states; per-track content revisions remain PCM/history-only.
     std::atomic<std::uint64_t> projectContentRevision_{0U};
@@ -1070,6 +1079,7 @@ private:
     std::atomic<bool> loopSnapshotEligible_{false};
     std::atomic<LooperState> loopSnapshotState_{LooperState::Empty};
     std::atomic<std::uint64_t> loopSnapshotContentRevision_{0U};
+    std::atomic<std::uint64_t> loopSnapshotOriginalTempoBits_{0U};
     std::atomic<std::size_t> loopSnapshotTrackIndex_{0U};
     std::atomic<std::uint64_t> loopSnapshotNextGeneration_{0U};
     std::atomic<std::uint64_t> loopSnapshotRequestGeneration_{0U};

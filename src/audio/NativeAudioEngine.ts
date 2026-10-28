@@ -917,12 +917,16 @@ export class NativeAudioEngine {
       timeSignatureDenominator: transport.timeSignature[1],
       measureLengthSeconds: transport.masterTrackId === null ? 0 : transport.getMeasureDuration(),
     };
-    const descriptors = new Array<null | { sampleRate: number; frameCount: number; channels: 2; contentRevision: number }>(5).fill(null);
+    const archiveVersion = initial.projectArchiveV2Supported === true ? 2 : 1;
+    const descriptors = new Array<null | { sampleRate: number; frameCount: number; channels: 2; contentRevision: number; originalTempoBpm: number | null }>(5).fill(null);
     let payloadBytes = 0;
     for (let index = 0; index < 5; index += 1) {
       const reported = initialTracks[index]!;
       if (reported.state === 'Empty') continue;
       const metadata = await this.bridge.getTrackMetadata(index + 1);
+      if (archiveVersion >= 2 && metadata.originalTempoBpm === undefined) {
+        throw new Error(`Native Track ${index + 1} host advertises ProjectArchive v2 but omitted originalTempoBpm metadata`);
+      }
       if (metadata.trackId !== index + 1 || metadata.channels !== 2 || metadata.sampleRate !== initial.sampleRate ||
           !Number.isSafeInteger(metadata.contentRevision) || metadata.contentRevision !== reported.contentRevision) {
         throw new Error(`Native Track ${index + 1} changed or returned inconsistent metadata while project export was being prepared`);
@@ -934,7 +938,13 @@ export class NativeAudioEngine {
       if (!Number.isSafeInteger(payloadBytes) || payloadBytes > PROJECT_ARCHIVE_LIMITS.maxPayloadBytes) {
         throw new Error(`Native project PCM exceeds the ${Math.floor(PROJECT_ARCHIVE_LIMITS.maxPayloadBytes / (1024 * 1024))} MiB archive payload limit`);
       }
-      descriptors[index] = { sampleRate: metadata.sampleRate, frameCount: metadata.frameCount, channels: 2, contentRevision: metadata.contentRevision! };
+      descriptors[index] = {
+        sampleRate: metadata.sampleRate,
+        frameCount: metadata.frameCount,
+        channels: 2,
+        contentRevision: metadata.contentRevision!,
+        originalTempoBpm: archiveVersion >= 2 ? metadata.originalTempoBpm! : null,
+      };
     }
 
     if (transportSnapshot.masterTrackId !== null) {
@@ -947,7 +957,7 @@ export class NativeAudioEngine {
       throw new Error('Native project has loop timing without a master track; project was not saved');
     }
 
-    const tracks: Array<null | { sampleRate: number; frameCount: number; channels: 2; pcm: Float32Array }> = new Array(5).fill(null);
+    const tracks: Array<null | { sampleRate: number; frameCount: number; channels: 2; pcm: Float32Array; originalTempoBpm?: number | null }> = new Array(5).fill(null);
     for (let index = 0; index < 5; index += 1) {
       const descriptor = descriptors[index];
       if (!descriptor) continue;
@@ -958,17 +968,20 @@ export class NativeAudioEngine {
         throw new Error(`Native Track ${index + 1} changed between metadata and PCM snapshot; project save was canceled`);
       }
       // contentRevision is a host consistency token, not part of the shared
-      // archive schema. Keep the encoded track object restricted to v1 keys.
+      // archive schema. Original tempo is included only when the host advertises
+      // v2 support; live Native recordings remain unknown.
       tracks[index] = {
         sampleRate: descriptor.sampleRate,
         frameCount: descriptor.frameCount,
         channels: 2,
         pcm: snapshot.samples,
+        ...(archiveVersion >= 2 ? { originalTempoBpm: descriptor.originalTempoBpm } : {}),
       };
     }
 
     const after = await this.bridge.getStatus();
     if (!after.engineRunning || after.sampleRate !== initial.sampleRate || !Array.isArray(after.nativeTracks) || after.nativeTracks.length !== 5 ||
+        after.projectArchiveV2Supported !== initial.projectArchiveV2Supported ||
         after.nativeTracks.some((track, index) => track.contentRevision !== initialTracks[index]!.contentRevision ||
           track.state === 'Recording' || track.state === 'Overdubbing') ||
         transport.bpm !== transportSnapshot.bpm || transport.masterTrackId !== transportSnapshot.masterTrackId ||
@@ -989,7 +1002,7 @@ export class NativeAudioEngine {
         timeSignatureDenominator: transportSnapshot.timeSignatureDenominator,
       },
       tracks: tracks as unknown as ProjectArchiveTrackList,
-    });
+    }, { version: archiveVersion });
   }
 
   /**

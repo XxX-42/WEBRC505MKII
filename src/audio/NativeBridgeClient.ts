@@ -222,6 +222,8 @@ export interface NativeStatus {
   lastError: string;
   loopProgress: number;
   nativeLooperTrackCount?: number;
+  /** Explicit host capability; absent on older Native binaries. */
+  projectArchiveV2Supported?: boolean;
   nativeLooperMultiTrackImplemented?: boolean;
   nativeLooperTracksStereo?: boolean;
   nativeLooperMaxRecordSeconds?: number;
@@ -464,6 +466,7 @@ export interface NativeTrackMetadata {
   readonly frameCount: number;
   readonly channels: 2;
   readonly contentRevision?: number;
+  readonly originalTempoBpm?: number | null;
 }
 
 export interface NativeHqRenderOptions {
@@ -827,7 +830,9 @@ export class NativeBridgeClient {
     }
     if (!isObject(payload) || payload.ok !== true || payload.trackId !== trackId ||
         !Number.isInteger(payload.sampleRate) || (payload.sampleRate as number) < 8_000 || (payload.sampleRate as number) > 192_000 ||
-        !Number.isSafeInteger(payload.frameCount) || (payload.frameCount as number) <= 0 || payload.channels !== 2) {
+        !Number.isSafeInteger(payload.frameCount) || (payload.frameCount as number) <= 0 || payload.channels !== 2 ||
+        (payload.originalTempoBpm !== undefined && payload.originalTempoBpm !== null &&
+          (typeof payload.originalTempoBpm !== 'number' || !Number.isFinite(payload.originalTempoBpm) || payload.originalTempoBpm < 40 || payload.originalTempoBpm > 300))) {
       throw new Error('Native bridge returned invalid HQ render track metadata.');
     }
     return {
@@ -835,6 +840,7 @@ export class NativeBridgeClient {
       sampleRate: payload.sampleRate as number,
       frameCount: payload.frameCount as number,
       channels: 2,
+      ...(payload.originalTempoBpm === undefined ? {} : { originalTempoBpm: payload.originalTempoBpm as number | null }),
       ...(Number.isSafeInteger(payload.contentRevision) && (payload.contentRevision as number) >= 0
         ? { contentRevision: payload.contentRevision as number } : {}),
     };

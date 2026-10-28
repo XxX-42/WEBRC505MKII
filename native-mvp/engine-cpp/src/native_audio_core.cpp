@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <new>
 #include <sstream>
@@ -27,6 +28,8 @@ static_assert(kNativeBounceSwitchBits == 11U &&
 
 static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
     "project-load revisions are updated on the audio callback and must remain lock-free");
+static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
+    "original tempo metadata is published on the audio callback and must remain lock-free");
 static_assert(std::atomic<unsigned int>::is_always_lock_free && std::atomic<bool>::is_always_lock_free,
     "callback telemetry uses only lock-free fixed-size atomics");
 
@@ -41,6 +44,22 @@ void advanceProjectRevision(std::atomic<std::uint64_t>& revision) noexcept {
             return;
         }
     }
+}
+
+std::uint64_t originalTempoBits(std::optional<double> bpm) noexcept {
+    if (!bpm.has_value()) return 0U;
+    std::uint64_t bits = 0U;
+    static_assert(sizeof(bits) == sizeof(*bpm), "tempo metadata requires binary64 storage");
+    std::memcpy(&bits, &*bpm, sizeof(bits));
+    return bits;
+}
+
+std::optional<double> originalTempoFromBits(std::uint64_t bits) noexcept {
+    if (bits == 0U) return std::nullopt;
+    double bpm = 0.0;
+    std::memcpy(&bpm, &bits, sizeof(bpm));
+    if (!std::isfinite(bpm) || bpm < 40.0 || bpm > 300.0) return std::nullopt;
+    return bpm;
 }
 
 std::uint64_t encodeNativeBounceSnapshot(const NativeBounceSettings& settings, std::uint64_t revision) noexcept {
@@ -269,6 +288,7 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.nativeLooperTrackCount = static_cast<unsigned int>(kNativeTrackCount);
     status.nativeLooperMultiTrackImplemented = true;
     status.nativeLooperTracksStereo = true;
+    status.projectArchiveV2Supported = true;
     status.nativeLooperMaxRecordSeconds = static_cast<unsigned int>(nativeLooperMaxRecordSeconds_);
     status.nativeLooperPreallocatedBytes = nativeLooperPreallocatedBytes_;
     status.nativeLooperStorageBudgetBytes = currentConfig_
@@ -1403,8 +1423,16 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     const std::size_t index = command.trackIndex;
     auto& track = looperForTrack(index);
     const LoopMetadata before = track.metadata();
+    const std::uint64_t originalTempoBefore = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     track.applyCommand(command);
     const LoopMetadata after = track.metadata();
+    if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) {
+        // A new live take has no acoustic BPM detector or source declaration.
+        originalTempoBpmBits_[index].store(0U, std::memory_order_release);
+    } else if (command.type == CommandType::Clear && after.state == LooperState::Empty) {
+        originalTempoBpmBits_[index].store(0U, std::memory_order_release);
+    }
+    const std::uint64_t originalTempoAfter = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording &&
         recordingMirrorReserved_[index].load(std::memory_order_acquire)) {
         track.setRecordingMirror(historyPcm_[index].data(), historyPcm_[index].size() / 2U);
@@ -1448,9 +1476,12 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     }
     auto& history = historyRecords_[index];
     const auto publish = [this, index, &history](HistoryKind kind, const LoopMetadata& oldMeta,
-                                                  const LoopMetadata& newMeta, std::size_t frames) noexcept {
+                                                  const LoopMetadata& newMeta, std::size_t frames,
+                                                  std::uint64_t oldOriginalTempo, std::uint64_t newOriginalTempo) noexcept {
         history.before = oldMeta;
         history.after = newMeta;
+        history.beforeOriginalTempoBits = oldOriginalTempo;
+        history.afterOriginalTempoBits = newOriginalTempo;
         history.kind = kind;
         history.valid = true;
         history.applied = false;
@@ -1470,15 +1501,18 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         historyCanUndo_[index].store(false, std::memory_order_release);
         historyCanRedo_[index].store(false, std::memory_order_release);
     } else if (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state == LooperState::Playing) {
-        publish(HistoryKind::Metadata, LoopMetadata{LooperState::Empty, 0U, 0U, 0U}, after, 0U);
+        publish(HistoryKind::Metadata, LoopMetadata{LooperState::Empty, 0U, 0U, 0U}, after, 0U,
+                originalTempoBefore, originalTempoAfter);
     } else if (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Recording &&
                after.state == LooperState::Stopped && recordingHistoryPending_[index]) {
         recordingHistoryPending_[index] = false;
-        publish(HistoryKind::Metadata, LoopMetadata{LooperState::Empty, 0U, 0U, 0U}, after, 0U);
+        publish(HistoryKind::Metadata, LoopMetadata{LooperState::Empty, 0U, 0U, 0U}, after, 0U,
+                originalTempoBefore, originalTempoAfter);
     } else if (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Overdubbing &&
                after.state == LooperState::Stopped && overdubSnapshotReady_[index].load(std::memory_order_acquire)) {
         const auto frames = overdubSnapshotFrames_[index].load(std::memory_order_acquire);
-        publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames);
+        publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames,
+                originalTempoBefore, originalTempoAfter);
         markCandidateBytes_[index].store(frames <= std::numeric_limits<std::uint64_t>::max() / (2U * sizeof(float))
             ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
         markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
@@ -1489,7 +1523,7 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
         recordingHistoryPending_[index] = false;
         if (before.finalizedFrames > 0U) {
-            publish(HistoryKind::Metadata, before, after, 0U);
+            publish(HistoryKind::Metadata, before, after, 0U, originalTempoBefore, originalTempoAfter);
         } else {
             history.valid = false;
             historyCanUndo_[index].store(false, std::memory_order_release);
@@ -1504,7 +1538,8 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     } else if (command.type == CommandType::ToggleOverdub && before.state == LooperState::Overdubbing &&
                after.state == LooperState::Playing && overdubSnapshotReady_[index].load(std::memory_order_acquire)) {
         const auto frames = overdubSnapshotFrames_[index].load(std::memory_order_acquire);
-        publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames);
+        publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames,
+                originalTempoBefore, originalTempoAfter);
         markCandidateBytes_[index].store(frames <= std::numeric_limits<std::uint64_t>::max() / (2U * sizeof(float))
             ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
         markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
@@ -1595,6 +1630,7 @@ bool NativeAudioCore::restoreTrackHistory(std::size_t trackIndex, bool redo, std
         return false;
     }
     const LoopMetadata destination = redo ? history.after : history.before;
+    const auto destinationOriginalTempo = redo ? history.afterOriginalTempoBits : history.beforeOriginalTempoBits;
     if (history.kind != HistoryKind::Pcm && !historyPcm_[trackIndex].empty()) {
         historyRetainedBytes_.fetch_sub(historyPcmBytes_[trackIndex].exchange(0U, std::memory_order_acq_rel), std::memory_order_acq_rel);
         std::vector<float>().swap(historyPcm_[trackIndex]);
@@ -1615,6 +1651,7 @@ bool NativeAudioCore::restoreTrackHistory(std::size_t trackIndex, bool redo, std
     safeDestination.state = destination.finalizedFrames == 0U ? LooperState::Empty : LooperState::Stopped;
     safeDestination.playhead = 0U;
     track.restoreMetadata(safeDestination);
+    originalTempoBpmBits_[trackIndex].store(destinationOriginalTempo, std::memory_order_release);
     history.applied = redo;
     historyCanUndo_[trackIndex].store(redo, std::memory_order_release);
     historyCanRedo_[trackIndex].store(!redo, std::memory_order_release);
@@ -3026,13 +3063,15 @@ bool NativeAudioCore::getTrackSnapshotMetadata(
     std::size_t& frameCount,
     unsigned int& sampleRate,
     std::string& error,
-    std::uint64_t* contentRevision
+    std::uint64_t* contentRevision,
+    std::optional<double>* originalTempoBpm
 ) {
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     std::lock_guard<std::mutex> snapshotLock(loopSnapshotMutex_);
     frameCount = 0U;
     sampleRate = 0U;
     if (contentRevision != nullptr) *contentRevision = 0U;
+    if (originalTempoBpm != nullptr) originalTempoBpm->reset();
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "Wait for the pending Native project import generation before exporting project metadata.";
         return false;
@@ -3106,6 +3145,9 @@ bool NativeAudioCore::getTrackSnapshotMetadata(
     frameCount = static_cast<std::size_t>(frameCount64);
     sampleRate = currentConfig_->sampleRate;
     if (contentRevision != nullptr) *contentRevision = loopSnapshotContentRevision_.load(std::memory_order_acquire);
+    if (originalTempoBpm != nullptr) {
+        *originalTempoBpm = originalTempoFromBits(loopSnapshotOriginalTempoBits_.load(std::memory_order_acquire));
+    }
     cancelSnapshot();
     return true;
 }
@@ -3136,7 +3178,7 @@ bool NativeAudioCore::beginProjectArchiveImport(
         error = "Native project load was canceled because loop PCM or history changed while the archive was being read; all current tracks were preserved. Retry the load.";
         return false;
     }
-    if (archive.version != 1U || encodedBytes < kProjectArchiveHeaderBytes || encodedBytes > kProjectArchiveMaxBytes) {
+    if ((archive.version != 1U && archive.version != 2U) || encodedBytes < kProjectArchiveHeaderBytes || encodedBytes > kProjectArchiveMaxBytes) {
         error = "Native project import archive version or encoded size is unsupported.";
         return false;
     }
@@ -3173,6 +3215,12 @@ bool NativeAudioCore::beginProjectArchiveImport(
     for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
         const auto& track = archive.tracks[index];
         if (!track) continue;
+        if ((archive.version == 1U && track->originalTempoBpm.has_value()) ||
+            (track->originalTempoBpm.has_value() && (!std::isfinite(*track->originalTempoBpm) ||
+             *track->originalTempoBpm < 40.0 || *track->originalTempoBpm > 300.0))) {
+            error = "Native project import track original tempo is incompatible with its archive version or outside 40..300 BPM.";
+            return false;
+        }
         if (track->sampleRate != sampleRate || track->frameCount == 0U ||
             track->frameCount > capacityFrames || (track->channels != 1U && track->channels != 2U) ||
             track->frameCount > std::numeric_limits<std::uint64_t>::max() / track->channels ||
@@ -3397,8 +3445,11 @@ bool NativeAudioCore::beginProjectArchiveImport(
             const auto& source = archive.tracks[index];
             if (!source) {
                 transaction->frameCounts[index] = 0U;
+                transaction->candidateOriginalTempoBits[index] = 0U;
                 continue;
             }
+            transaction->candidateOriginalTempoBits[index] =
+                originalTempoBits(archive.version >= 2U ? source->originalTempoBpm : std::nullopt);
             const auto frames = static_cast<std::size_t>(source->frameCount);
             transaction->frameCounts[index] = frames;
             if (source->channels == 2U) {
@@ -4599,6 +4650,9 @@ bool NativeAudioCore::processLoopSnapshotRequestAtCallback() noexcept {
         loopSnapshotContentRevision_.store(
             trackIndex < kNativeTrackCount ? trackContentRevision_[trackIndex].load(std::memory_order_acquire) : 0U,
             std::memory_order_release);
+        loopSnapshotOriginalTempoBits_.store(
+            trackIndex < kNativeTrackCount ? originalTempoBpmBits_[trackIndex].load(std::memory_order_acquire) : 0U,
+            std::memory_order_release);
         loopSnapshotPinned_ = state == LooperState::Stopped || state == LooperState::Playing;
         loopSnapshotEligible_.store(loopSnapshotPinned_, std::memory_order_release);
     } else {
@@ -4694,6 +4748,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
             transaction->candidateStereoStorage[index].size() == expectedSamples &&
             track.channels() == 2U;
         transaction->previousMetadata[index] = track.metadata();
+        transaction->previousOriginalTempoBits[index] = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     }
     if (!eligible) {
         projectImportCancelledByCallback_.store(true, std::memory_order_release);
@@ -4718,6 +4773,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
                 transaction->candidateStereoStorage[swapped],
                 static_cast<std::size_t>(transaction->previousMetadata[swapped].finalizedFrames));
             looperForTrack(swapped).restoreMetadata(transaction->previousMetadata[swapped]);
+            originalTempoBpmBits_[swapped].store(transaction->previousOriginalTempoBits[swapped], std::memory_order_release);
         }
         projectImportCancelledByCallback_.store(true, std::memory_order_release);
         projectImportState_.store(NativeProjectImportState::Cancelled, std::memory_order_release);
@@ -4780,6 +4836,13 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         // neither allocate nor destroy DSP objects at the callback boundary.
         (void)nativeRhythmEngine_.setConfig(memory.rhythm, callbackFrameCursor_);
         applyOfficialSourceTransports();
+    }
+
+    // PCM and its archive metadata publish in this same callback generation.
+    // The callback reads preallocated integer bits only; conversion and JSON
+    // work remain on control threads.
+    for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
+        originalTempoBpmBits_[index].store(transaction->candidateOriginalTempoBits[index], std::memory_order_release);
     }
 
     for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {

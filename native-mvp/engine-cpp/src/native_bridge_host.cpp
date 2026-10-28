@@ -956,6 +956,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperTrackCount", status.nativeLooperTrackCount},
         {"nativeLooperMultiTrackImplemented", status.nativeLooperMultiTrackImplemented},
         {"nativeLooperTracksStereo", status.nativeLooperTracksStereo},
+        {"projectArchiveV2Supported", status.projectArchiveV2Supported},
         {"nativeLooperMaxRecordSeconds", status.nativeLooperMaxRecordSeconds},
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
@@ -1570,7 +1571,8 @@ int main() {
         std::size_t frameCount = 0U;
         unsigned int sampleRate = 0U;
         std::uint64_t contentRevision = 0U;
-        if (!engine.getTrackSnapshotMetadata(trackIndex, frameCount, sampleRate, error, &contentRevision)) {
+        std::optional<double> originalTempoBpm;
+        if (!engine.getTrackSnapshotMetadata(trackIndex, frameCount, sampleRate, error, &contentRevision, &originalTempoBpm)) {
             response.status = 409;
             writeError(response, error);
             return;
@@ -1582,6 +1584,7 @@ int main() {
             {"frameCount", frameCount},
             {"channels", 2},
             {"contentRevision", contentRevision},
+            {"originalTempoBpm", originalTempoBpm ? json(*originalTempoBpm) : json(nullptr)},
             {"sampleFormat", "float32le"},
         });
     });
