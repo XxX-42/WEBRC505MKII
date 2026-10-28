@@ -161,6 +161,11 @@ export class NativeTrackProxy {
     } else if (this.state === TrackState.STOPPED) {
       return this.engine.playTrack(this.trackId);
     } else if (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING) {
+      // Use the callback-applied Native readback. The requested UI setting may
+      // still be pending, rejected, or unsupported by an older host.
+      if (this.state === TrackState.PLAYING && this.engine.getOneShot(this.trackId) === true) {
+        return this.engine.playTrack(this.trackId);
+      }
       return this.engine.toggleOverdub(this.trackId);
     }
   }
