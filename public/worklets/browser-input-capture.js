@@ -32,6 +32,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.preRollRight = new Float32Array(this.preRollFrames);
     this.preRollRawLeft = new Float32Array(this.preRollFrames);
     this.preRollRawRight = new Float32Array(this.preRollFrames);
+    this.preRollBounceLeft = Array.from({ length: this.trackCount }, () => new Float32Array(this.preRollFrames));
+    this.preRollBounceRight = Array.from({ length: this.trackCount }, () => new Float32Array(this.preRollFrames));
     this.preRollGateMask = new Uint8Array(this.preRollFrames);
     this.preRollEndFrame = 0;
     this.preRollValidFrames = 0;
@@ -110,6 +112,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       inputGeneration: 0,
       state: 'idle',
       autoRecThreshold: null,
+      bounceSourceMask: 0,
       requestedStartFrame: 0,
       startReceivedFrame: 0,
       requestedMaxRecordingFrames: null,
@@ -334,11 +337,14 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       return;
     }
     slot.startReceivedFrame = startReceivedFrame;
+    const bounceSourceMask = message.bounceSourceMask === undefined ? 0 : message.bounceSourceMask;
     if (!Number.isSafeInteger(message.sessionId) || message.sessionId <= 0
       || !Number.isSafeInteger(message.startFrame) || message.startFrame < 0
       || (message.maxRecordingFrames !== undefined && (!Number.isSafeInteger(message.maxRecordingFrames)
         || message.maxRecordingFrames < 0 || message.maxRecordingFrames > 1_000_000))
       || (message.autoRecThreshold !== undefined && (!Number.isFinite(message.autoRecThreshold) || message.autoRecThreshold <= 0 || message.autoRecThreshold > 1))
+      || !Number.isSafeInteger(bounceSourceMask) || bounceSourceMask < 0 || bounceSourceMask > 31
+      || (bounceSourceMask & (1 << slot.trackIndex)) !== 0
       || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration) {
       this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration);
       return;
@@ -366,6 +372,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.sessionId = message.sessionId;
     slot.inputGeneration = message.inputGeneration;
     slot.autoRecThreshold = message.autoRecThreshold === undefined ? null : message.autoRecThreshold;
+    slot.bounceSourceMask = bounceSourceMask;
     slot.state = slot.autoRecThreshold === null ? 'pending' : 'armed';
     slot.requestedStartFrame = message.startFrame;
     slot.requestedMaxRecordingFrames = Number.isSafeInteger(message.maxRecordingFrames)
@@ -438,7 +445,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       }
       if (!this.beginCapture(slot, this.preRollChannelCount)) return;
       for (let frame = slot.requestedStartFrame; frame < stopFrame; frame += 1) {
-        this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
+        this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
       }
       this.completeCapture(slot, stopFrame - slot.requestedStartFrame);
       return;
@@ -584,11 +591,17 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     return true;
   }
 
-  readPreRoll(frame, channel, trackIndex) {
+  readPreRoll(frame, channel, trackIndex, bounceSourceMask = 0) {
     const index = frame % this.preRollFrames;
     const processed = (this.preRollGateMask[index] & (1 << trackIndex)) !== 0;
-    if (processed) return channel === 0 ? this.preRollLeft[index] : this.preRollRight[index];
-    return channel === 0 ? this.preRollRawLeft[index] : this.preRollRawRight[index];
+    let value = processed
+      ? (channel === 0 ? this.preRollLeft[index] : this.preRollRight[index])
+      : (channel === 0 ? this.preRollRawLeft[index] : this.preRollRawRight[index]);
+    for (let source = 0; source < this.trackCount; source += 1) {
+      if (bounceSourceMask & (1 << source)) value += channel === 0
+        ? this.preRollBounceLeft[source][index] : this.preRollBounceRight[source][index];
+    }
+    return value;
   }
 
   backfillPending(slot, frameStart, inputChannelCount) {
@@ -608,7 +621,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (!channelCount || !this.beginCapture(slot, channelCount)) return;
     const backfillEnd = this.preRollEndFrame < frameStart ? this.preRollEndFrame : frameStart;
     for (let frame = slot.requestedStartFrame; frame < backfillEnd; frame += 1) {
-      this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
+      this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
     }
   }
 
@@ -662,7 +675,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.state = 'idle';
   }
 
-  storePreRoll(frame, rawLeft, rawRight, processedLeft, processedRight) {
+  storePreRoll(frame, rawLeft, rawRight, processedLeft, processedRight, inputs, offset) {
     const index = frame % this.preRollFrames;
     this.preRollRawLeft[index] = rawLeft;
     this.preRollRawRight[index] = rawRight;
@@ -673,6 +686,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       if (this.trackFxApplyEnabled[track] === 1) mask |= 1 << track;
     }
     this.preRollGateMask[index] = mask;
+    for (let source = 0; source < this.trackCount; source += 1) {
+      const channels = inputs[source + 2] || EMPTY_CHANNELS;
+      const left = channels[0] || null;
+      const right = channels[1] || left;
+      this.preRollBounceLeft[source][index] = left && offset < left.length ? left[offset] : 0;
+      this.preRollBounceRight[source][index] = right && offset < right.length ? right[offset] : 0;
+    }
   }
 
   failActiveSessions(reason) {
@@ -685,6 +705,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   process(inputs, outputs) {
     const rawChannels = inputs[0] || EMPTY_CHANNELS;
     const processedChannels = inputs[1] || EMPTY_CHANNELS;
+    const bounceChannels = inputs;
     const rawLeft = rawChannels[0] || null;
     const rawRight = rawChannels[1] || rawLeft;
     const processedLeft = processedChannels[0] || null;
@@ -786,11 +807,20 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
         if (slot.state === 'recording' && absoluteFrame >= slot.requestedStartFrame
           && (!slot.stopRequested || absoluteFrame < slot.stopFrame)) {
           const processed = this.trackFxApplyEnabled[slot.trackIndex] === 1;
-          this.recordFrame(slot, processed ? processedSampleLeft : rawSampleLeft,
-            processed ? processedSampleRight : rawSampleRight);
+          let inputLeft = processed ? processedSampleLeft : rawSampleLeft;
+          let inputRight = processed ? processedSampleRight : rawSampleRight;
+          for (let source = 0; source < this.trackCount; source += 1) {
+            if (!(slot.bounceSourceMask & (1 << source))) continue;
+            const channels = bounceChannels[source + 2] || EMPTY_CHANNELS;
+            const sourceLeft = channels[0] || null;
+            const sourceRight = channels[1] || sourceLeft;
+            inputLeft += sourceLeft && offset < sourceLeft.length ? sourceLeft[offset] : 0;
+            inputRight += sourceRight && offset < sourceRight.length ? sourceRight[offset] : 0;
+          }
+          this.recordFrame(slot, inputLeft, inputRight);
         }
       }
-      this.storePreRoll(absoluteFrame, rawSampleLeft, rawSampleRight, processedSampleLeft, processedSampleRight);
+      this.storePreRoll(absoluteFrame, rawSampleLeft, rawSampleRight, processedSampleLeft, processedSampleRight, inputs, offset);
     }
     this.preRollEndFrame = frameEnd;
     this.preRollValidFrames = Math.min(this.preRollFrames, this.preRollValidFrames + frames - firstNewOffset);
@@ -812,7 +842,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
           } else {
             this.beginCapture(slot, inputChannelCount);
             for (let frame = slot.requestedStartFrame; frame < slot.stopFrame; frame += 1) {
-              this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
+              this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
             }
             this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);
           }

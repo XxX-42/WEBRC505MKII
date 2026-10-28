@@ -405,6 +405,7 @@ export class TrackAudio {
     public recordingDiagnostic: string | null = null;
     private overdubProcessor: AudioWorkletNode | null = null;
     private overdubInputNode: AudioNode | null = null;
+    private overdubBounceSourceMix: { node: GainNode; dispose(): void } | null = null;
     private overdubMuteGainNode: GainNode | null = null;
     private overdubStartGeneration = 0;
     private overdubStopping = false;
@@ -1764,6 +1765,8 @@ export class TrackAudio {
             try { overdub.port.close(); } catch { /* already closed */ }
         }
         try { this.overdubInputNode?.disconnect(); } catch { /* already disconnected */ }
+        this.overdubBounceSourceMix?.dispose();
+        this.overdubBounceSourceMix = null;
         try { this.overdubMuteGainNode?.disconnect(); } catch { /* already disconnected */ }
         this.overdubInputNode = null;
         this.overdubMuteGainNode = null;
@@ -2369,13 +2372,15 @@ export class TrackAudio {
             // user's requested start boundary.
             const autoRec = this.engine.getBrowserAutoRecSettings?.();
             const autoRecEnabled = autoRec?.enabled === true;
+            const bounceSourceMask = this.engine.getBrowserBounceSourceMask?.(this.trackIndex) ?? 0;
+            const bounceEnabled = bounceSourceMask !== 0;
             if (autoRecEnabled && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
                 this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
                 return;
             }
             const requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
-            if (autoRecEnabled && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
-                this.recordingDiagnostic = 'AutoRec requires ready shared input capture. Enable audio/input and retry; existing loops are preserved.';
+            if ((autoRecEnabled || bounceEnabled) && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
+                this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} requires ready shared input capture. Enable audio/input and retry; existing loops are preserved.`;
                 return;
             }
             const input = await this.engine.getProcessedInputNode();
@@ -2406,9 +2411,9 @@ export class TrackAudio {
                 const onCaptureMessage = (message: unknown) => {
                     if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
                 };
-                captureSession = autoRecEnabled
+                captureSession = autoRecEnabled || bounceEnabled
                     ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
-                        undefined, browserAutoRecThreshold(autoRec!.sensitivity))
+                        undefined, autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined, bounceSourceMask)
                     : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
@@ -2429,7 +2434,7 @@ export class TrackAudio {
                     this.state = autoRecEnabled ? TrackState.REC_STANDBY : TrackState.RECORDING;
                     return;
                 }
-                if (autoRecEnabled) { this.recordingDiagnostic = 'AutoRec could not arm shared capture. Existing loops are preserved.'; return; }
+                if (autoRecEnabled || bounceEnabled) { this.recordingDiagnostic = `${autoRecEnabled ? 'AutoRec' : 'Bounce'} could not reserve shared capture. Existing loops are preserved.`; return; }
                 this.recordingDiagnostic = 'Shared capture was unavailable at the requested frame; using the legacy recorder.';
             } else if (this.engine.getInputCaptureRequestFrame && requestedCaptureFrame === null) {
                 this.recordingDiagnostic = 'Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.';
@@ -3476,7 +3481,9 @@ export class TrackAudio {
         let createdWorklet: AudioWorkletNode | null = null;
         let createdMuteGain: GainNode | null = null;
         let captureSession: InputCaptureSession | null = null;
+        let bounceSourceMix: { node: GainNode; dispose(): void } | null = null;
         let requestFrame: number | null = null;
+        const bounceSourceMask = this.engine.getBrowserBounceSourceMask?.(this.trackIndex) ?? 0;
 
         try {
             const hasSharedCapture = typeof this.engine.getInputCaptureRequestFrame === 'function'
@@ -3484,7 +3491,7 @@ export class TrackAudio {
             if (hasSharedCapture) {
                 requestFrame = this.engine.getInputCaptureRequestFrame!();
                 if (requestFrame === null) throw new Error('The shared input capture was not ready at the overdub request frame');
-                captureSession = this.beginOverdubCaptureSession(requestFrame, generation);
+                captureSession = this.beginOverdubCaptureSession(requestFrame, generation, bounceSourceMask);
                 if (!captureSession) throw new Error('The shared input capture session could not be reserved at the overdub request frame');
             }
 
@@ -3527,8 +3534,12 @@ export class TrackAudio {
                 if (buffer.oldRightValues) transferList.push(buffer.oldRightValues.buffer);
             }
 
+            if (bounceSourceMask !== 0) {
+                bounceSourceMix = this.engine.createBrowserBounceSourceMix?.(this.trackIndex, bounceSourceMask) ?? null;
+                if (!bounceSourceMix) throw new Error('The selected Bounce source mix could not be prepared.');
+            }
             const workletNode = new AudioWorkletNode(ctx, 'rc505-overdub-processor', {
-                numberOfInputs: 1,
+                numberOfInputs: bounceSourceMix ? 2 : 1,
                 numberOfOutputs: 1,
                 outputChannelCount: [channelCount],
                 channelCount,
@@ -3585,11 +3596,14 @@ export class TrackAudio {
 
             // Preserve the old muted-sink routing. The existing buffer source stays
             // audible while real-time overdub DSP and loop readback remain in the worklet.
-            input.connect(workletNode);
+            input.connect(workletNode, 0, 0);
+            bounceSourceMix?.node.connect(workletNode, 0, 1);
             this.overdubInputNode = input;
+            this.overdubBounceSourceMix = bounceSourceMix;
             workletNode.connect(muteGain);
             muteGain.connect(ctx.destination);
         } catch (error) {
+            bounceSourceMix?.dispose();
             if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
             if (generation !== this.overdubStartGeneration) {
                 if (!this.overdubHasEdited) this.releasePendingOverdubSnapshot();
@@ -3622,7 +3636,7 @@ export class TrackAudio {
         }
     }
 
-    private beginOverdubCaptureSession(startFrame: number, generation: number): InputCaptureSession | null {
+    private beginOverdubCaptureSession(startFrame: number, generation: number, bounceSourceMask = 0): InputCaptureSession | null {
         if (!Number.isSafeInteger(startFrame) || startFrame < 0 || this.overdubCaptureSession) return null;
         let session: InputCaptureSession | null = null;
         session = this.engine.beginInputCaptureSession?.(
@@ -3632,6 +3646,8 @@ export class TrackAudio {
                 if (session) this.handleOverdubCaptureMessage(session, generation, message);
             },
             OVERDUB_STARTUP_BACKFILL_FRAMES,
+            undefined,
+            bounceSourceMask,
         ) ?? null;
         if (!session) return null;
         this.overdubCaptureSession = session;
@@ -4192,6 +4208,8 @@ export class TrackAudio {
         workletNode.onprocessorerror = null;
         try { this.overdubInputNode?.disconnect(workletNode); } catch { /* already disconnected */ }
         this.overdubInputNode = null;
+        this.overdubBounceSourceMix?.dispose();
+        this.overdubBounceSourceMix = null;
         workletNode.disconnect();
         workletNode.port.close?.();
         if (this.overdubMuteGainNode) {

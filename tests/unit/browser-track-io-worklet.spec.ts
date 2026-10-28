@@ -109,6 +109,21 @@ describe('browser track I/O AudioWorklets', () => {
     expect(processor.port.posted[0]?.transferList).toHaveLength(3);
   });
 
+  it('adds the separately connected Bounce source bus exactly once to live overdub PCM', () => {
+    const { worklets, setCurrentFrame } = loadProcessors();
+    const OverdubProcessor = worklets.get('rc505-overdub-processor');
+    const processor = new OverdubProcessor!({ processorOptions: { transferBufferFrames: 4, transferBufferPoolSize: 3 } });
+    initOverdub(processor, [10, 20, 30, 40]);
+    setCurrentFrame(0);
+    processor.process([
+      [Float32Array.from([1, 2, 3])],
+      [Float32Array.from([4, 5, 6]), Float32Array.from([-4, -5, -6])],
+    ], [[new Float32Array(3)]]);
+    const patch = processor.port.posted.find(({ message }) => message.type === 'OVERDUB_PATCH')?.message;
+    expect(Array.from(patch?.values ?? [])).toEqual([15, 27, 39, 0]);
+    expect(Array.from(patch?.indices ?? [])).toEqual([0, 1, 2, 0]);
+  });
+
   it('batches four 128-frame quanta but flushes a partial patch immediately at STOP', () => {
     const { worklets, setCurrentFrame } = loadProcessors();
     const OverdubProcessor = worklets.get('rc505-overdub-processor');

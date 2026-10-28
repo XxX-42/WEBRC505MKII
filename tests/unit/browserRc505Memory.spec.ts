@@ -247,3 +247,34 @@ describe('Browser AutoRec authored Memory settings', () => {
     await expect(stale.commit()).rejects.toThrow(/changed/); await stale.dispose();
   });
 });
+
+describe('Browser Bounce authored Memory settings', () => {
+  it('captures and restores the master switch and independent destination/source switches', async () => {
+    const { engine, runtime, seed } = harness(); seed(1);
+    engine.setBrowserBounceSettings({ bounceSw: true,
+      bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, true] });
+    const document = await runtime.capture();
+    expect(document.semantics.fields['record.bounceSw']).toMatchObject({ availability: 'supported', value: true });
+    expect(document.semantics.fields['track.1.bounceIn']).toMatchObject({ availability: 'supported', value: true });
+    expect(document.semantics.fields['track.2.bounceTrack']).toMatchObject({ availability: 'supported', value: true });
+    engine.setBrowserBounceSettings({ bounceSw: false,
+      bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] });
+    const candidate = await runtime.prepare(document, runtime.revision()); await candidate.commit(); await candidate.dispose();
+    expect(engine.getBrowserBounceSettings()).toEqual({ bounceSw: true,
+      bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, true] });
+    document.semantics.fields['track.1.bounceIn']!.value = false;
+    await expect(runtime.prepare(document, runtime.revision())).rejects.toThrow(/disagrees/);
+  });
+
+  it('opens legacy Memory without Bounce by defaulting every control off', async () => {
+    const { engine, runtime, seed } = harness(); seed(1);
+    const document = await runtime.capture();
+    delete (document.extensions.WEBRC.browserMemory as any).bounce;
+    for (const name of Object.keys(document.semantics.fields)) if (name.includes('bounce')) delete document.semantics.fields[name];
+    engine.setBrowserBounceSettings({ bounceSw: true,
+      bounceIn: [true, true, true, true, true], bounceTrack: [true, true, true, true, true] });
+    const candidate = await runtime.prepare(document, runtime.revision()); await candidate.commit(); await candidate.dispose();
+    expect(engine.getBrowserBounceSettings()).toEqual({ bounceSw: false,
+      bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] });
+  });
+});

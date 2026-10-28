@@ -427,7 +427,7 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
     this.port.postMessage({ type: 'OVERDUB_ERROR', message: `Overdub startup was cancelled before PCM commit (${reason}).` });
   }
 
-  queueStartupInput(inputChannels, sourceStart, frames, frameStart) {
+  queueStartupInput(inputChannels, bounceChannels, sourceStart, frames, frameStart) {
     if (frames <= 0) return true;
     const expectedFrame = this.startupFirstInputFrame + this.startupLiveFrames;
     if (frameStart + sourceStart !== expectedFrame
@@ -438,14 +438,16 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
     }
     const left = inputChannels[0];
     const right = inputChannels[1] || left;
+    const bounceLeft = bounceChannels[0] || null;
+    const bounceRight = bounceChannels[1] || bounceLeft;
     if (!left || sourceStart + frames > left.length || !right || sourceStart + frames > right.length) {
       this.failStartup('startup-live-input-unavailable');
       return false;
     }
     const destination = this.startupLiveFrames;
     for (let frame = 0; frame < frames; frame += 1) {
-      this.startupLiveLeft[destination + frame] = left[sourceStart + frame] || 0;
-      this.startupLiveRight[destination + frame] = right[sourceStart + frame] || 0;
+      this.startupLiveLeft[destination + frame] = (left[sourceStart + frame] || 0) + (bounceLeft && sourceStart + frame < bounceLeft.length ? bounceLeft[sourceStart + frame] || 0 : 0);
+      this.startupLiveRight[destination + frame] = (right[sourceStart + frame] || 0) + (bounceRight && sourceStart + frame < bounceRight.length ? bounceRight[sourceStart + frame] || 0 : 0);
     }
     this.startupLiveFrames += frames;
     if (this.startupLiveFrames > this.startupLiveQueuePeakFrames) {
@@ -454,7 +456,7 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
     return true;
   }
 
-  applyInputSample(absoluteFrame, inputChannels, inputFrame, patchSlot) {
+  applyInputSample(absoluteFrame, inputChannels, inputFrame, patchSlot, bounceChannels = EMPTY_CHANNELS) {
     const loops = this.loopChannels;
     const left = inputChannels[0];
     if (!loops || !left) return false;
@@ -473,14 +475,16 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
     else if (patch.endInputFrame !== absoluteFrame) return false;
     const patchOffset = patch.validFrames;
     const right = inputChannels[1] || left;
+    const bounceLeft = bounceChannels[0] || null;
+    const bounceRight = bounceChannels[1] || bounceLeft;
     const leftLoop = loops[0];
     const rightLoop = this.channelCount > 1 ? loops[1] : null;
     if (!leftLoop || !patch.values || !patch.oldValues || inputFrame >= left.length
       || (rightLoop && (!patch.rightValues || !patch.oldRightValues || inputFrame >= right.length))) return false;
     const leftOldValue = leftLoop[writeIndex];
     const rightOldValue = rightLoop ? rightLoop[writeIndex] : 0;
-    const leftSample = left[inputFrame] || 0;
-    const rightSample = right[inputFrame] || 0;
+    const leftSample = (left[inputFrame] || 0) + (bounceLeft && inputFrame < bounceLeft.length ? bounceLeft[inputFrame] || 0 : 0);
+    const rightSample = (right[inputFrame] || 0) + (bounceRight && inputFrame < bounceRight.length ? bounceRight[inputFrame] || 0 : 0);
     // Validate the complete mono/stereo write before changing either channel.
     // A malformed right-channel buffer must never leave a half-applied frame.
     patch.oldValues[patchOffset] = leftOldValue;
@@ -557,6 +561,7 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
 
   process(inputs, outputs) {
     const inputChannels = inputs[0] || EMPTY_CHANNELS;
+    const bounceChannels = inputs[1] || EMPTY_CHANNELS;
     const outputChannels = outputs[0] || EMPTY_CHANNELS;
     let frames = 0;
     for (let channel = 0; channel < outputChannels.length; channel += 1) {
@@ -587,11 +592,11 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
           firstMessage.firstInputFrame = firstInputFrame;
           firstMessage.channelCount = inputChannels[1] ? 2 : 1;
           this.port.postMessage(firstMessage);
-          queuedStartupInput = this.queueStartupInput(inputChannels, sourceStart, input.length - sourceStart, renderFrame);
+          queuedStartupInput = this.queueStartupInput(inputChannels, bounceChannels, sourceStart, input.length - sourceStart, renderFrame);
         }
       } else if (this.startupPhase === 'waiting-backfill' || this.startupPhase === 'replaying') {
         if (input && input.length > 0) {
-          queuedStartupInput = this.queueStartupInput(inputChannels, 0, input.length, renderFrame);
+          queuedStartupInput = this.queueStartupInput(inputChannels, bounceChannels, 0, input.length, renderFrame);
         }
       }
 
@@ -637,7 +642,7 @@ class BrowserOverdubProcessor extends AudioWorkletProcessor {
             }
             if (patchSlot < 0) {
               this.noteOverflow();
-            } else if (!this.applyInputSample(absoluteInputFrame, inputChannels, frame, patchSlot)) {
+            } else if (!this.applyInputSample(absoluteInputFrame, inputChannels, frame, patchSlot, bounceChannels)) {
                 this.noteOverflow();
             } else {
               const patch = this.patchPool[patchSlot];

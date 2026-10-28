@@ -1,4 +1,5 @@
 import { assertBrowserAutoRecSettings, DEFAULT_BROWSER_AUTO_REC, type BrowserAutoRecSettings } from './BrowserAutoRecSettings';
+import { assertBrowserBounceSettings, browserBounceSourceMask, normalizeBrowserBounceSettings, type BrowserBounceSettings } from './BrowserBounceSettings';
 import { assertRecordPlaySettings, type RecordPlaySettings, type RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { translateBrowserOfficialSourceParameters } from './fx/dsp/OfficialBrowserSourceParameters';
@@ -155,6 +156,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     private monitorGainNode: GainNode | null = null;
     private inputCaptureNode: AudioWorkletNode | null = null;
     private inputCaptureRawSource: MediaStreamAudioSourceNode | null = null;
+    private inputCaptureBounceSources: Array<GainNode | null> = [null, null, null, null, null];
     private trackFxRouterNode: AudioWorkletNode | null = null;
     private trackFxRouterUnavailableReason = '';
     private inputCaptureMuteGainNode: GainNode | null = null;
@@ -214,6 +216,17 @@ export class BrowserAudioEngine implements IAudioEngine {
         assertBrowserAutoRecSettings(settings);
         for (const track of this.tracks) if (track.autoRecArmed) track.triggerStop();
         this.browserAutoRecSettings = { ...settings };
+    }
+    private browserBounceSettings: BrowserBounceSettings = normalizeBrowserBounceSettings();
+    public getBrowserBounceSettings(): Readonly<BrowserBounceSettings> {
+        return { bounceSw: this.browserBounceSettings.bounceSw, bounceIn: [...this.browserBounceSettings.bounceIn], bounceTrack: [...this.browserBounceSettings.bounceTrack] };
+    }
+    public getBrowserBounceSourceMask(destinationTrackIndex: number): number {
+        return browserBounceSourceMask(this.browserBounceSettings, destinationTrackIndex);
+    }
+    public setBrowserBounceSettings(settings: BrowserBounceSettings): void {
+        assertBrowserBounceSettings(settings);
+        this.browserBounceSettings = normalizeBrowserBounceSettings(settings);
     }
     private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
     public getRecordPlaySettings(): RecordPlaySettings {
@@ -2540,6 +2553,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             outputGain: this.masterGainNode.gain.value, mainGain: this.mainGainNode.gain.value, trackMixGain: this.trackMixNode.gain.value,
             recordPlay: { ...this.recordPlaySettings },
             autoRec: { ...this.browserAutoRecSettings },
+            bounce: this.getBrowserBounceSettings() as BrowserBounceSettings,
         };
     }
 
@@ -2562,6 +2576,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const oldRaw = this.inputCaptureRawSource;
         const mute = this.context.createGain(); mute.gain.value = 0;
         let router: AudioWorkletNode | null = null, capture: AudioWorkletNode | null = null;
+        let candidateBounceSources: Array<GainNode | null> = [null, null, null, null, null];
         let adopted = false, wired = false;
         let captureReady = false;
         let processorFailure: Error | null = null;
@@ -2571,6 +2586,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 try { preparedInputOutput.disconnect(capture); } catch { /* unpublished edge */ }
                 try { this.inputFxChain.output.disconnect(capture); } catch { /* unpublished edge */ }
                 try { source?.disconnect(capture); } catch { /* unpublished edge */ }
+                this.disconnectBouncePlaybackSources(capture, candidateBounceSources);
                 capture.port.onmessage = null; capture.onprocessorerror = null;
                 try { capture.disconnect(); capture.port.close(); } catch { /* unpublished node */ }
             }
@@ -2583,7 +2599,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 processorOptions: { trackCount: 5, initialTrackFxApply: values.slice() },
             });
             capture = new AudioWorkletNode(this.context, 'rc505-input-capture', {
-                numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
+                numberOfInputs: 7, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
                 processorOptions: { trackCount: 5, chunkSize: 16384, chunkPoolSize: 3, preRollFrames: 8192, maxRecordingBytes: 384 * 1024 * 1024,
                     sampleRate: this.context.sampleRate, initialTrackFxApply: values.slice() },
             });
@@ -2591,6 +2607,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             // The candidate tap only observes the already-authorized source. Its output is always silent.
             if (source) source.connect(capture, 0, 0);
             preparedInputOutput.connect(capture, 0, 1);
+            candidateBounceSources = this.connectBouncePlaybackSources(capture);
             const applyFrame = Math.ceil(this.context.currentTime * this.context.sampleRate) + Math.max(4096, this.selectedBufferFrames * 8);
             await new Promise<void>((resolve, reject) => {
                 const timeout = setTimeout(() => finish(new Error('Memory replacement capture/router did not jointly acknowledge all five gates.')), 3000);
@@ -2644,13 +2661,14 @@ export class BrowserAudioEngine implements IAudioEngine {
                         if (oldCapture) {
                             this.inputFxChain.output.disconnect(oldCapture);
                             if (oldRaw) oldRaw.disconnect(oldCapture);
+                            this.disconnectBouncePlaybackSources(oldCapture, this.inputCaptureBounceSources);
                         }
                         wired = true;
                     } catch (error) {
                         trackEdges.forEach((edge) => edge.rollback());
                         try { this.inputFxChain.output.disconnect(nextCapture); } catch { /* candidate edge not installed */ }
                         preparedInputOutput.connect(nextCapture, 0, 1);
-                        if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); }
+                        if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
                         throw error;
                     }
                 },
@@ -2658,12 +2676,13 @@ export class BrowserAudioEngine implements IAudioEngine {
                     if (!wired) return;
                     trackEdges.forEach((edge) => edge.rollback());
                     this.inputFxChain.output.disconnect(nextCapture); preparedInputOutput.connect(nextCapture, 0, 1);
-                    if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); }
+                    if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
                     wired = false;
                 },
                 adopt: () => {
                     adopted = true;
                     this.trackFxRouterNode = nextRouter; this.inputCaptureNode = nextCapture; this.inputCaptureMuteGainNode = mute;
+                    this.inputCaptureBounceSources = candidateBounceSources;
                     this.inputCaptureRawSource = source; this.inputCaptureGeneration = generation;
                     this.inputCaptureReady = captureReady; this.inputCaptureReadyGeneration = captureReady ? generation : 0;
                     this.inputCaptureUnavailableReason = ''; this.trackFxRouterUnavailableReason = '';
@@ -2699,6 +2718,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         assertRecordPlaySettings(saved.recordPlay);
         const preparedAutoRec = saved.autoRec ?? { ...DEFAULT_BROWSER_AUTO_REC };
         assertBrowserAutoRecSettings(preparedAutoRec);
+        const preparedBounce = normalizeBrowserBounceSettings(saved.bounce);
         if (!Number.isFinite(saved.rhythm.volumePercent) || saved.rhythm.volumePercent < 0 || saved.rhythm.volumePercent > 100
             || saved.rhythm.wasRunning !== false) throw new Error('Memory Rhythm must have a valid volume and stopped capture state.');
         const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
@@ -2838,6 +2858,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.masterGainNode.gain.value = saved.outputGain; this.mainGainNode.gain.value = saved.mainGain; this.trackMixNode.gain.value = saved.trackMixGain; this.dryTrackMixGainNode.gain.value = saved.trackMixGain;
                         this.recordPlaySettings = { ...saved.recordPlay };
                         this.browserAutoRecSettings = { ...preparedAutoRec };
+                        this.browserBounceSettings = normalizeBrowserBounceSettings(preparedBounce);
                         // No await occurs between the graph edits and all-five PCM publication.
                         pcm.commit();
                     } catch (error) {
@@ -2854,6 +2875,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.masterGainNode.gain.value = old.outputGain; this.mainGainNode.gain.value = old.mainGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
                         this.recordPlaySettings = { ...old.recordPlay };
                         this.browserAutoRecSettings = { ...(old.autoRec ?? DEFAULT_BROWSER_AUTO_REC) };
+                        this.browserBounceSettings = normalizeBrowserBounceSettings(old.bounce);
                         const transport = Transport.getInstance();
                         // The signature setter stores before notifying. A throwing observer must not
                         // interrupt restoration of the remaining transport fields.
@@ -3604,7 +3626,7 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         if (!this.inputCaptureNode) {
             const node = new AudioWorkletNode(this.context, 'rc505-input-capture', {
-                numberOfInputs: 2,
+                numberOfInputs: 7,
                 numberOfOutputs: 1,
                 outputChannelCount: [2],
                 channelCount: 2,
@@ -3623,13 +3645,16 @@ export class BrowserAudioEngine implements IAudioEngine {
             const mute = this.context.createGain();
             mute.gain.value = 0;
             try {
-                // Input 0 carries the raw device samples; input 1 carries the
-                // aligned shared Input FX output. Both are stereo at the tap.
+                // Inputs 0/1 carry raw and Input FX lanes; inputs 2..6 carry
+                // playback-only source lanes for the per-target Bounce mask.
                 this.inputFxChain.output.connect(node, 0, 1);
+                this.inputCaptureBounceSources = this.connectBouncePlaybackSources(node);
                 node.connect(mute);
                 mute.connect(this.context.destination);
             } catch (error) {
                 try { disconnectAudioNodeIfConnected(this.inputFxChain.output, node); } catch { /* failed graph setup */ }
+                this.disconnectBouncePlaybackSources(node, this.inputCaptureBounceSources);
+                this.inputCaptureBounceSources = [null, null, null, null, null];
                 node.disconnect();
                 mute.disconnect();
                 throw error;
@@ -4024,12 +4049,60 @@ export class BrowserAudioEngine implements IAudioEngine {
         return Math.ceil(this.context.currentTime * this.context.sampleRate);
     }
 
+    private connectBouncePlaybackSources(node: AudioWorkletNode): Array<GainNode | null> {
+        return this.tracks.map((track, index) => {
+            const source = track.playbackSourceOutput;
+            source.connect(node, 0, index + 2);
+            return source;
+        });
+    }
+
+    private disconnectBouncePlaybackSources(node: AudioWorkletNode, sources: readonly (GainNode | null)[]): void {
+        for (const source of sources) if (source) {
+            try { disconnectAudioNodeIfConnected(source, node); } catch { /* candidate or context already detached */ }
+        }
+    }
+
+    public createBrowserBounceSourceMix(destinationTrackIndex: number, sourceMask: number): { node: GainNode; dispose(): void } | null {
+        if (!Number.isInteger(destinationTrackIndex) || destinationTrackIndex < 0 || destinationTrackIndex >= 5
+            || !Number.isSafeInteger(sourceMask) || sourceMask < 0 || sourceMask > 31
+            || (sourceMask & (1 << destinationTrackIndex)) !== 0) return null;
+        if (sourceMask === 0) return null;
+        const mix = this.context.createGain();
+        mix.gain.value = 1;
+        const connected: GainNode[] = [];
+        try {
+            for (let sourceIndex = 0; sourceIndex < 5; sourceIndex += 1) {
+                if (!(sourceMask & (1 << sourceIndex))) continue;
+                // Use the documented playback-only tap. Roland's Bounce article
+                // does not specify where source Track FX sit in the copied path;
+                // this Browser implementation therefore copies pre-Track-FX PCM.
+                const source = this.tracks[sourceIndex]?.playbackSourceOutput;
+                if (!source) throw new Error(`Bounce source track ${sourceIndex + 1} is unavailable.`);
+                source.connect(mix);
+                connected.push(source);
+            }
+        } catch (error) {
+            for (const source of connected) { try { disconnectAudioNodeIfConnected(source, mix); } catch { /* rollback */ } }
+            mix.disconnect();
+            throw error;
+        }
+        let disposed = false;
+        return { node: mix, dispose: () => {
+            if (disposed) return;
+            disposed = true;
+            for (const source of connected) { try { disconnectAudioNodeIfConnected(source, mix); } catch { /* context may be closed */ } }
+            mix.disconnect();
+        } };
+    }
+
     public beginInputCaptureSession(
         trackIndex: number,
         startFrame: number,
         listener: (message: unknown) => void,
         maxRecordingFrames?: number,
         autoRecThreshold?: number,
+        bounceSourceMask?: number,
     ): InputCaptureSession | null {
         const node = this.inputCaptureNode;
         if (!node || !this.inputCaptureReady || this.inputCaptureReadyGeneration !== this.inputCaptureGeneration
@@ -4037,6 +4110,8 @@ export class BrowserAudioEngine implements IAudioEngine {
             || !Number.isSafeInteger(startFrame) || startFrame < 0 || this.inputCaptureSessions.has(trackIndex)
             || (maxRecordingFrames !== undefined && (!Number.isSafeInteger(maxRecordingFrames)
                 || maxRecordingFrames < 0 || maxRecordingFrames > 1_000_000))) return null;
+        if (bounceSourceMask !== undefined && (!Number.isSafeInteger(bounceSourceMask) || bounceSourceMask < 0 || bounceSourceMask > 31
+            || (bounceSourceMask & (1 << trackIndex)) !== 0)) return null;
         if (!Number.isSafeInteger(this.nextInputCaptureSessionId) || this.nextInputCaptureSessionId <= 0) return null;
         let effectiveStartFrame = startFrame;
         const session: InputCaptureSession = {
@@ -4056,6 +4131,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             node.port.postMessage({
                 type: 'START_CAPTURE', trackIndex, sessionId: session.sessionId,
                 ...(autoRecThreshold !== undefined ? { autoRecThreshold } : {}),
+                ...(bounceSourceMask !== undefined ? { bounceSourceMask } : {}),
                 inputGeneration: session.inputGeneration, startFrame,
                 ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
                 maxRecordingBytes: 384 * 1024 * 1024,
@@ -4124,12 +4200,14 @@ export class BrowserAudioEngine implements IAudioEngine {
             if (this.inputCaptureRawSource) {
                 try { disconnectAudioNodeIfConnected(this.inputCaptureRawSource, node); } catch { /* context closing */ }
             }
+            this.disconnectBouncePlaybackSources(node, this.inputCaptureBounceSources);
             try { node.disconnect(); } catch { /* already disconnected */ }
             try { node.port.close?.(); } catch { /* already closed */ }
         }
         try { this.inputCaptureMuteGainNode?.disconnect(); } catch { /* already disconnected */ }
         this.inputCaptureNode = null;
         this.inputCaptureRawSource = null;
+        this.inputCaptureBounceSources = [null, null, null, null, null];
         this.inputCaptureMuteGainNode = null;
     }
 

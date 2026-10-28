@@ -1,4 +1,5 @@
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
+import type { BrowserBounceSettings } from './BrowserBounceSettings';
 import type { RecordPlaySettings } from './RecordPlaySettings';
 export interface InputCaptureSession {
     readonly node: AudioWorkletNode;
@@ -8,6 +9,10 @@ export interface InputCaptureSession {
     readonly startFrame: number;
     /** Optional strict per-session frame cap used for startup backfill windows. */
     readonly maxRecordingFrames?: number;
+}
+export interface BrowserBounceSourceMix {
+    readonly node: GainNode;
+    dispose(): void;
 }
 
 export interface IAudioEngine {
@@ -23,6 +28,10 @@ export interface IAudioEngine {
     /** Optional shared Browser input-capture path; Native keeps its own callback recorder. */
     getInputCaptureRequestFrame?(): number | null;
     getBrowserAutoRecSettings?(): Readonly<BrowserAutoRecSettings>;
+    getBrowserBounceSettings?(): Readonly<BrowserBounceSettings>;
+    getBrowserBounceSourceMask?(destinationTrackIndex: number): number;
+    /** Connect selected pre-Track-FX playback outputs to one summed overdub source bus. */
+    createBrowserBounceSourceMix?(destinationTrackIndex: number, sourceMask: number): BrowserBounceSourceMix | null;
     beginInputCaptureSession?(
         trackIndex: number,
         startFrame: number,
@@ -30,6 +39,8 @@ export interface IAudioEngine {
         maxRecordingFrames?: number,
         /** Raw stereo peak trigger, evaluated only by the Browser capture renderer. */
         autoRecThreshold?: number,
+        /** Five-bit per-source Bounce mask, with the destination track excluded. */
+        bounceSourceMask?: number,
     ): InputCaptureSession | null;
     stopInputCaptureSession?(session: InputCaptureSession, stopFrame: number): boolean;
     abortInputCaptureSession?(session: InputCaptureSession): void;

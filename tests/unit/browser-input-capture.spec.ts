@@ -43,7 +43,8 @@ function createCapture(options: Record<string, number> = {}) {
   });
   processor.port.receive({ type: 'INPUT_READY', ready: true, generation: 1 });
   const process = (left: number[], right?: number[], frameStart?: number,
-    processedLeftValues: number[] = left, processedRightValues?: number[]) => {
+    processedLeftValues: number[] = left, processedRightValues?: number[],
+    bounceInputs: Array<[number[], number[]?]> = []) => {
     const rawLeft = Float32Array.from(left);
     const rawChannels = right === undefined ? [rawLeft] : [rawLeft, Float32Array.from(right)];
     const processedLeft = Float32Array.from(processedLeftValues);
@@ -51,6 +52,10 @@ function createCapture(options: Record<string, number> = {}) {
       ? right : processedLeftValues;
     const processedChannels = [processedLeft, Float32Array.from(processedRightValues ?? defaultProcessedRight)];
     const inputs = [rawChannels, processedChannels];
+    for (let source = 0; source < (options.trackCount ?? 1); source += 1) {
+      const bounce = bounceInputs[source];
+      inputs.push(bounce ? [Float32Array.from(bounce[0]), Float32Array.from(bounce[1] ?? bounce[0])] : []);
+    }
     const outputs = [[new Float32Array(left.length), new Float32Array(left.length)]];
     const runtimeGlobal = globalThis as typeof globalThis & { currentFrame?: number };
     const hadCurrentFrame = Object.prototype.hasOwnProperty.call(runtimeGlobal, 'currentFrame');
@@ -114,6 +119,28 @@ describe('Browser shared input capture worklet', () => {
       oldestAvailableFrame: 0, latestAvailableFrame: 8,
       preRollValidFrames: 8, requiredPreRollFrames: 8,
     });
+  });
+
+  it('mixes only the snapshotted Bounce source mask into stereo input and pre-roll', () => {
+    const capture = createCapture({ trackCount: 5, chunkSize: 16, preRollFrames: 8 });
+    const sources = (left: number, right: number): Array<[number[], number[]]> => [
+      [[100, 100, 100, 100], [100, 100, 100, 100]],
+      [[left, left, left, left], [right, right, right, right]],
+      [[200, 200, 200, 200], [200, 200, 200, 200]],
+      [[300, 300, 300, 300], [300, 300, 300, 300]],
+      [[400, 400, 400, 400], [400, 400, 400, 400]],
+    ];
+    capture.process([1, 1, 1, 1], [10, 10, 10, 10], 0, [1, 1, 1, 1], [10, 10, 10, 10], sources(2, 20));
+    capture.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 70, inputGeneration: 1,
+      startFrame: 2, maxRecordingBytes: 256, bounceSourceMask: 2 });
+    capture.process([1, 1, 1, 1], [10, 10, 10, 10], 4, [1, 1, 1, 1], [10, 10, 10, 10], sources(2, 20));
+    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 70, stopFrame: 6 });
+    const chunks = capture.messages('RECORD_CHUNK');
+    expect(chunks.flatMap((chunk: any) => Array.from(chunk.channels[0].subarray(0, chunk.validFrames)))).toEqual([3, 3, 3, 3]);
+    expect(chunks.flatMap((chunk: any) => Array.from(chunk.channels[1].subarray(0, chunk.validFrames)))).toEqual([30, 30, 30, 30]);
+    capture.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 71, inputGeneration: 1,
+      startFrame: 6, maxRecordingBytes: 256, bounceSourceMask: 1 });
+    expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({ sessionId: 71, reason: 'invalid-capture-request' });
   });
 
   it('switches one recording from processed to raw exactly at the acknowledged frame', () => {

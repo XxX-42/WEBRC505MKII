@@ -233,6 +233,54 @@ test('Browser engine records connected stereo input through its shared tap', asy
   expect(recorded.diagnostic).toBeNull();
 });
 
+test('Browser Bounce records a selected source track into the destination loop', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const audio = AudioEngine.getInstance();
+    const browser = (audio as any).browser;
+    const context = browser.context as AudioContext;
+    const silentInput = context.createMediaStreamDestination();
+    const mute = context.createGain(); mute.gain.value = 0;
+    const silence = new OscillatorNode(context, { frequency: 80 });
+    silence.connect(mute).connect(silentInput); silence.start();
+    await browser.replaceInputStream(silentInput.stream);
+
+    const sourceTrack = audio.tracks[1] as any;
+    const destinationTrack = audio.tracks[0] as any;
+    const source = new OscillatorNode(context, { frequency: 440 });
+    const sourceGain = context.createGain(); sourceGain.gain.value = 0.2;
+    source.connect(sourceGain).connect(sourceTrack.playbackSourceOutput);
+    source.start();
+    audio.setBrowserBounceSettings({ bounceSw: true,
+      bounceIn: [true, false, false, false, false], bounceTrack: [false, true, false, false, false] });
+    await destinationTrack.startRecording();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await destinationTrack.stopRecording();
+    source.stop(); silence.stop();
+  });
+
+  await page.waitForFunction(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return !!track && !track.isFinalizingRecording && !!track.audioBuffer;
+  }, undefined, { timeout: 8_000 });
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    const buffer = track.audioBuffer as AudioBuffer;
+    return Array.from({ length: buffer.numberOfChannels }, (_, channel) => {
+      const samples = buffer.getChannelData(channel);
+      let squareSum = 0;
+      for (let index = 0; index < samples.length; index += 1) squareSum += samples[index]! * samples[index]!;
+      return { length: samples.length, rms: Math.sqrt(squareSum / Math.max(1, samples.length)) };
+    });
+  });
+  expect(result).toHaveLength(2);
+  expect(result.every((channel) => channel.length > 0 && channel.rms > 0.05)).toBe(true);
+});
+
 test('Browser Auto Rec arms the shared worklet and records only after the input trigger', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);

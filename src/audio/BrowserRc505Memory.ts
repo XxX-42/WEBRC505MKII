@@ -1,4 +1,5 @@
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
+import { normalizeBrowserBounceSettings, type BrowserBounceSettings } from './BrowserBounceSettings';
 import type { BrowserAudioEngine } from './BrowserAudioEngine';
 import type { BrowserRecoverySnapshot, BrowserRecoveryTrack } from './BrowserRecoverySnapshot';
 import { Transport } from '../core/Transport';
@@ -11,6 +12,8 @@ export interface BrowserMemoryConfiguration {
   version: 1;
   /** Missing on older envelopes: disabled with SENS 50. */
   autoRec?: BrowserAutoRecSettings;
+  /** Missing on older envelopes: all Bounce switches OFF. */
+  bounce?: BrowserBounceSettings;
   tracks: Array<Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>>;
   fx: BrowserRecoverySnapshot['fx'];
   rhythm: BrowserRecoverySnapshot['rhythm'];
@@ -36,6 +39,13 @@ function supportedValues(configuration: BrowserMemoryConfiguration): Record<stri
   if (configuration.autoRec) {
     values['record.autoRecSw'] = configuration.autoRec.enabled;
     values['record.autoRecSens'] = configuration.autoRec.sensitivity;
+  }
+  if (configuration.bounce) {
+    values['record.bounceSw'] = configuration.bounce.bounceSw;
+    for (let index = 0; index < 5; index += 1) {
+      values[`track.${index + 1}.bounceIn`] = configuration.bounce.bounceIn[index]!;
+      values[`track.${index + 1}.bounceTrack`] = configuration.bounce.bounceTrack[index]!;
+    }
   }
   values['mixer.main'] = Math.round(configuration.mainGain * 100);
   values['mixer.master'] = Math.round(configuration.outputGain * 100);
@@ -112,7 +122,7 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
   }
   observeMethods(engine, ['setFxType', 'setFxParam', 'setFxNamedParameters', 'setFxActive', 'setStepSlicerStep',
     'setStepSlicerControl', 'setTrackFxType', 'setTrackFxParameter', 'setTrackFxNamedParameters', 'setTrackFxActive',
-    'setTrackFxApply', 'setLoopTransport', 'clearLoopTransportOverride', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx', 'setMixerLevel', 'setRecordPlaySettings', 'setBrowserAutoRecSettings'], changed);
+    'setTrackFxApply', 'setLoopTransport', 'clearLoopTransportOverride', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx', 'setMixerLevel', 'setRecordPlaySettings', 'setBrowserAutoRecSettings', 'setBrowserBounceSettings'], changed);
   observeMethods(engine.rhythmEngine, ['setPattern', 'setCatalogPattern', 'setKit', 'setVariation', 'setSection',
     'setSwingPercent', 'setQuantizeGrid', 'setSettings', 'setVolume', 'start', 'stop', 'toggle'], changed);
   const revision = () => JSON.stringify([
@@ -140,6 +150,7 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
     capture: async () => {
       const expected = revision(); assertStable(expected);
       const state = engine.captureMemoryConfiguration();
+      state.bounce = normalizeBrowserBounceSettings(state.bounce);
       const archive = await engine.exportProjectArchive('Memory');
       assertStable(expected);
       const transport = Transport.getInstance();
@@ -157,6 +168,7 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
         throw new Error('Memory lacks a complete supported Browser configuration.');
       }
       assertSemanticIntegrity(document, state);
+      state.bounce = normalizeBrowserBounceSettings(state.bounce);
       const project = await decodeProjectArchive(document.archive);
       if (project.bpm !== document.semantics.tempo || project.transport.timeSignatureNumerator !== document.semantics.meter[0]
         || project.transport.timeSignatureDenominator !== document.semantics.meter[1]) throw new Error('Memory tempo/meter disagrees with its PCM archive.');
