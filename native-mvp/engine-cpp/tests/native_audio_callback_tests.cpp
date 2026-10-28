@@ -2450,6 +2450,67 @@ void testNativeDubModeCallbackAckPcmAndUndoCancellation() {
     }
 }
 
+void testNativeOneShotOverdubAdmissionIsSideEffectFree() {
+    using namespace webrc::native;
+    std::string error;
+    std::array<float, 128U> output{};
+    const std::array<float, 8U> input{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
+
+    NativeAudioCore overdubCore;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(overdubCore);
+    LoopTransportConfig oneShot;
+    oneShot.oneShot = true;
+    assert(overdubCore.setNativeLoopTransport(0U, oneShot, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(overdubCore, true);
+    NativeAudioCoreTestAccess::recordLoop(overdubCore, 0U,
+        std::vector<float>(input.begin(), input.end()), 4U, output.data());
+    assert(overdubCore.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(overdubCore, nullptr, output.data(), 1U) == 0);
+    auto before = overdubCore.getStatus();
+    assert(before.nativeTrackStates[0U] == LooperState::Playing);
+    assert(before.nativeLoopTransportAppliedOneShot[0U]);
+    assert(before.nativeTrackHistory[0U].canUndo);
+    const auto queueBefore = NativeAudioCoreTestAccess::commandQueueSize(overdubCore);
+    assert(!overdubCore.toggleTrackOverdub(0U, error));
+    assert(error.find("1SHOT") != std::string::npos);
+    const auto after = overdubCore.getStatus();
+    assert(after.nativeTrackStates[0U] == before.nativeTrackStates[0U]);
+    assert(after.nativeHistoryRetainedBytes == before.nativeHistoryRetainedBytes);
+    assert(after.nativeTrackHistory[0U].canUndo == before.nativeTrackHistory[0U].canUndo);
+    assert(after.nativeTrackHistory[0U].canRedo == before.nativeTrackHistory[0U].canRedo);
+    assert(NativeAudioCoreTestAccess::commandQueueSize(overdubCore) == queueBefore);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(overdubCore, false);
+
+    NativeAudioCore recDubCore;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(recDubCore);
+    assert(recDubCore.setNativeLoopTransport(0U, oneShot, error));
+    assert(recDubCore.setRecordAction(true, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(recDubCore, true);
+    assert(recDubCore.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(recDubCore, input.data(), output.data(), 4U) == 0);
+    const auto recBefore = recDubCore.getStatus();
+    assert(recBefore.nativeTrackStates[0U] == LooperState::Recording);
+    assert(recBefore.nativeHistoryRetainedBytes == 0U); // 1SHOT takes do not reserve REC->DUB shadow PCM.
+    assert(recDubCore.finishRecordingTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::commandQueueSize(recDubCore) == 1U);
+    assert(NativeAudioCoreTestAccess::callback(recDubCore, nullptr, output.data(), 1U) == 0);
+    const auto recAfter = recDubCore.getStatus();
+    assert(recAfter.nativeTrackStates[0U] == LooperState::Playing); // 1SHOT REC->DUB falls back to REC->PLAY.
+    assert(recAfter.nativeRecordFinishApplied[0U] == recAfter.nativeRecordFinishRequested[0U]);
+    assert(recAfter.nativeHistoryRetainedBytes == 0U);
+    std::array<float, 8U> completedPcm{};
+    std::size_t completedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(recDubCore, 0U, completedPcm.data(), 4U, completedFrames));
+    assert(completedFrames == 4U);
+    for (std::size_t frame = 0U; frame < completedFrames; ++frame) {
+        assert(completedPcm[frame * 2U] == input[frame]);
+        assert(completedPcm[frame * 2U + 1U] == input[frame]);
+    }
+    assert(recDubCore.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(recDubCore, nullptr, output.data(), 4U) == 0);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(recDubCore, false);
+}
+
 void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks() {
     using namespace webrc::native;
     NativeAudioCore core;
@@ -2580,6 +2641,7 @@ void testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance() 
 
 int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
+    testNativeOneShotOverdubAdmissionIsSideEffectFree();
     testMixerIndependentPcmGains();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();

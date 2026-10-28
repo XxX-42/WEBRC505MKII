@@ -445,7 +445,9 @@ def main():
         status, stopped_before_transport = request("/v1/engine/stop", "POST", {})
         require(status == 200 and stopped_before_transport.get("engineRunning") is False,
                 "Native loop-transport stopped-state setup failed")
-        status, configured_loop_transport = request(loop_transport_path, "POST", loop_transport_config)
+        # Keep Track 3's callback-applied 1SHOT enabled for the admission tests
+        # below; posting the base config here would explicitly disable it.
+        status, configured_loop_transport = request(loop_transport_path, "POST", oneshot_config)
         require(status == 200, f"valid Native per-track loop-transport config was rejected: {configured_loop_transport}")
         track_three_transport = next((track for track in configured_loop_transport.get("nativeTracks", [])
                                       if track.get("trackId") == 3), {})
@@ -1199,6 +1201,89 @@ def main():
                                        if track.get("trackId") == 2), None)
                 require(status == 200 and selected_state == "Empty",
                         f"Track 2 clear state did not persist: {selected_state}")
+
+        # Track 3's applied 1SHOT setting was acknowledged before engine start.
+        # A live HTTP overdub request must be rejected before it reserves PCM history.
+        selector = "?trackId=3"
+        status, recording = request(f"/v1/transport/record{selector}", "POST", {})
+        require(status == 200, f"1SHOT Track 3 recording was rejected: {recording}")
+        # Leave enough playback time for the HTTP status/admission checks below;
+        # ONE SHOT correctly reaches Stopped as soon as its finite loop ends.
+        time.sleep(0.5)
+        status, stopped = request(f"/v1/transport/stop{selector}", "POST", {})
+        require(status == 200, f"1SHOT Track 3 recording stop was rejected: {stopped}")
+        time.sleep(0.01)
+        status, playing = request(f"/v1/transport/play{selector}", "POST", {})
+        require(status == 200, f"1SHOT Track 3 play was rejected: {playing}")
+        before_rejected_overdub = request("/v1/status")[1]
+        track_three_before = before_rejected_overdub["nativeTracks"][2]
+        require(track_three_before["state"] == "Playing" and
+                track_three_before["loopTransportAppliedOneShot"] is True,
+                f"Track 3 was not playing with callback-applied 1SHOT: {track_three_before}")
+        status, rejected_overdub = request(f"/v1/transport/overdub-toggle{selector}", "POST", {})
+        require(status == 409 and "1SHOT" in rejected_overdub.get("error", ""),
+                f"Native accepted an overdub while 1SHOT was enabled: {rejected_overdub}")
+        after_rejected_overdub = request("/v1/status")[1]
+        track_three_after = after_rejected_overdub["nativeTracks"][2]
+        require(track_three_after["state"] == "Playing" and
+                after_rejected_overdub["nativeHistory"]["retainedBytes"] == before_rejected_overdub["nativeHistory"]["retainedBytes"] and
+                track_three_after["history"]["canUndo"] == track_three_before["history"]["canUndo"] and
+                track_three_after["history"]["canRedo"] == track_three_before["history"]["canRedo"],
+                "Rejected 1SHOT overdub changed playback or PCM history")
+        status, stopped = request(f"/v1/transport/stop{selector}", "POST", {})
+        require(status == 200, f"1SHOT Track 3 playback stop was rejected: {stopped}")
+        status, cleared = request(f"/v1/transport/clear{selector}", "POST", {})
+        require(status == 200, f"1SHOT Track 3 clear was rejected: {cleared}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            cleared_status = request("/v1/status")[1]
+            if cleared_status["nativeTracks"][2]["state"] == "Empty":
+                break
+            time.sleep(0.005)
+        require(cleared_status["nativeTracks"][2]["state"] == "Empty", "Track 3 clear was not callback-applied")
+
+        # With global REC->DUB but per-track 1SHOT, finishing a take is treated
+        # as REC->PLAY. It must not reserve or commit an overdub shadow.
+        status, configured_action = request("/v1/record/settings", "POST", {"recAction": "REC->DUB"})
+        require(status == 200, f"REC->DUB test action was rejected: {configured_action}")
+        history_before_rec_dub = request("/v1/status")[1]["nativeHistory"]["retainedBytes"]
+        status, recording = request(f"/v1/transport/record{selector}", "POST", {})
+        require(status == 200, f"1SHOT REC->DUB test recording was rejected: {recording}")
+        time.sleep(0.25)
+        status, finished = request("/v1/transport/finish-record", "POST", {"trackId": 3})
+        require(status == 200, f"1SHOT REC->DUB take could not finish as REC->PLAY: {finished}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            after_finish = request("/v1/status")[1]
+            track_three_after_finish = after_finish["nativeTracks"][2]
+            if track_three_after_finish["state"] == "Playing" and \
+                    after_finish["nativeRecordPlay"]["finishApplied"][2] == after_finish["nativeRecordPlay"]["finishRequested"][2]:
+                break
+            time.sleep(0.005)
+        require(track_three_after_finish["state"] == "Playing",
+                f"1SHOT REC->DUB did not complete in playback state: {track_three_after_finish}")
+        status, headers, one_shot_take = request_raw("/v1/export/loop-snapshot?trackId=3",
+            {"Origin": "http://localhost:5173"})
+        frame_count = int(headers.get("X-Native-Loop-Frame-Count", "0"))
+        require(status == 200 and frame_count > 0 and len(one_shot_take) == frame_count * 2 * 4,
+                "1SHOT REC->DUB fallback did not preserve a valid completed PCM take")
+        require(after_finish["nativeHistory"]["retainedBytes"] == history_before_rec_dub and
+                after_finish["nativeTracks"][2]["history"]["retainedPcmBytes"] == 0 and
+                after_finish["nativeTracks"][2]["history"]["canUndo"] is True,
+                "1SHOT REC->DUB fallback retained an unnecessary overdub snapshot or lost recording history")
+        status, stopped = request(f"/v1/transport/stop{selector}", "POST", {})
+        require(status == 200, f"1SHOT REC->DUB playback could not be stopped: {stopped}")
+        status, cleared = request(f"/v1/transport/clear{selector}", "POST", {})
+        require(status == 200, f"1SHOT REC->DUB test track could not be cleared: {cleared}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            cleared_status = request("/v1/status")[1]
+            if cleared_status["nativeTracks"][2]["state"] == "Empty":
+                break
+            time.sleep(0.005)
+        require(cleared_status["nativeTracks"][2]["state"] == "Empty", "Track 3 REC->DUB clear was not callback-applied")
+        status, restored_action = request("/v1/record/settings", "POST", {"recAction": "REC->PLAY"})
+        require(status == 200, f"REC ACTION restore failed: {restored_action}")
 
         status, empty_track_metadata = request("/v1/export/track-metadata?trackId=2")
         require(status == 409 and "finalized, non-empty loop" in empty_track_metadata.get("error", ""),

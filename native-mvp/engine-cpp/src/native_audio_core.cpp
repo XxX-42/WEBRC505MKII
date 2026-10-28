@@ -952,12 +952,16 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
         recordFinishCancelled_[trackIndex] != recordFinishRequested_[trackIndex]) {
         error = "REC completion is already pending; do not resend."; return false;
     }
-    if (recordActionDubRequested_ && !recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
+    const bool oneShotApplied = nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire);
+    // REC ACTION is global while 1SHOT is per-track. Engineering policy: keep
+    // the completed take and enter PLAY when this track cannot legally enter DUB.
+    const bool finishAsDub = recordActionDubRequested_ && !oneShotApplied;
+    if (finishAsDub && !recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
         error = "REC->DUB has no reserved snapshot; recording unchanged."; return false;
     }
     if (recordFinishRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) { error = "REC completion revision exhausted."; return false; }
     const auto revision = recordFinishRequested_[trackIndex] + 1U;
-    if (!commandQueue_.push({CommandType::FinishRecording, recordActionDubRequested_, static_cast<std::uint8_t>(trackIndex), revision})) {
+    if (!commandQueue_.push({CommandType::FinishRecording, finishAsDub, static_cast<std::uint8_t>(trackIndex), revision})) {
         telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed); error = "Command queue is full."; return false;
     }
     recordFinishRequested_[trackIndex] = revision;
@@ -978,10 +982,14 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
         error = "A Native project import is pending; wait for its generation before changing tracks.";
         return false;
     }
-    reclaimInactiveHistoryPcmLocked();
     if (trackIndex >= kNativeTrackCount) { error = "Native track index must be between 0 and 4."; return false; }
     if (!engineRunning_.load(std::memory_order_acquire)) { error = "Engine is not running."; return false; }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (state == LooperState::Playing && nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Native 1SHOT playback cannot be overdubbed.";
+        return false;
+    }
+    reclaimInactiveHistoryPcmLocked();
     if (state == LooperState::Playing) {
         if (commandQueue_.size() != 0U) {
             error = "Wait for queued Native track commands to finish before starting an overdub.";
@@ -1279,7 +1287,8 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     const bool starting = type == CommandType::Record && state == LooperState::Empty;
     if (starting && recordStartPending_[trackIndex].load(std::memory_order_acquire)) { error = "Record start is already pending."; return false; }
     bool reserved = false;
-    if (type == CommandType::Record && state == LooperState::Empty && recordActionDubRequested_) {
+    const bool oneShotApplied = nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire);
+    if (type == CommandType::Record && state == LooperState::Empty && recordActionDubRequested_ && !oneShotApplied) {
         if (commandQueue_.size() != 0U || recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
             error = "Wait for pending recording commands."; return false;
         }

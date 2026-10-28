@@ -1892,6 +1892,7 @@ int main() {
             return;
         }
         if (!engine.toggleTrackOverdub(trackIndex, error)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }
