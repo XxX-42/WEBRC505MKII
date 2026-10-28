@@ -191,7 +191,7 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
-  nativeMemory?: { version: 1; loopTransports: NativeLoopTransportConfig[]; dubModes?: NativeDubMode[];
+  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[];
     bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
   nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
@@ -248,8 +248,6 @@ export interface NativeStatus {
     history?: NativeTrackHistoryStatus;
     mark?: NativeTrackMarkStatus;
   }>;
-  /** Requested Native Memory source settings. Older bridge builds omit this. */
-  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[] };
   nativeHistory?: { budgetBytes: number; retainedBytes: number };
   /** Missing or unknown versions mean Native MARK SET/CLEAR is unavailable. */
   nativeMarkVersion?: number;

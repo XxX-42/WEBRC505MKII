@@ -34,7 +34,8 @@ function assertLoopTransportReadback(status: NativeStatus): void {
     const fault = track?.loopTransportFaultRevision;
     const appliedOneShot = track?.loopTransportAppliedOneShot;
     const savedOneShot = transports[index]?.oneShot;
-    if (!Number.isSafeInteger(requested) || !Number.isSafeInteger(applied) || !Number.isSafeInteger(fault)
+    if (typeof requested !== 'number' || typeof applied !== 'number' || typeof fault !== 'number'
+      || !Number.isSafeInteger(requested) || !Number.isSafeInteger(applied) || !Number.isSafeInteger(fault)
       || (appliedOneShot !== undefined && typeof appliedOneShot !== 'boolean')
       || (savedOneShot !== undefined && typeof savedOneShot !== 'boolean')
       || ((appliedOneShot === undefined) !== (savedOneShot === undefined))) {
