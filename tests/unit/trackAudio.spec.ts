@@ -624,7 +624,7 @@ describe('TrackAudio transport sync helpers', () => {
     trackAudio.triggerRecord();
     for (let index = 0; index < 6; index += 1) await Promise.resolve();
 
-    const node = FakeAudioWorkletNode.instances[0];
+    const node = FakeAudioWorkletNode.instances.at(-1);
     expect(node?.name).toBe('rc505-overdub-processor');
     expect(addModule).toHaveBeenCalledWith('/worklets/browser-track-io.js');
     const init = node?.port.posted[0]?.message;
