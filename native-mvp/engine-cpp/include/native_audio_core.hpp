@@ -305,6 +305,10 @@ struct EngineStatus {
     /** True only when project-relevant status fields were sampled without an epoch change. */
     bool projectContentRevisionSnapshotStable = false;
     std::array<LoopTransportStatus, kNativeTrackCount> nativeTrackLoopTransportStatus{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportRequestedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportAppliedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportFaultRevision{};
+    std::array<bool, kNativeTrackCount> nativeLoopTransportAppliedOneShot{};
     std::array<NativeTrackHistoryStatus, kNativeTrackCount> nativeTrackHistory{};
     bool nativeTrackFxApplyAvailable = true;
     std::array<NativeTrackFxApplyStatus, kNativeTrackCount> nativeTrackFxApply{};
@@ -430,6 +434,7 @@ struct NativePitchCommand {
 struct NativeLoopTransportCommand {
     std::size_t trackIndex = 0U; // zero-based, matching recordTrack()/playTrack()
     LoopTransportConfig config{};
+    std::uint64_t revision = 0U;
 };
 
 template <typename T, std::size_t Capacity>
@@ -528,7 +533,8 @@ public:
     bool setNativeLoopTransport(
         std::size_t trackIndex,
         const LoopTransportConfig& config,
-        std::string& error
+        std::string& error,
+        std::uint64_t* acceptedRevision = nullptr
     );
     bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
         std::uint64_t* acceptedRevision = nullptr);
@@ -901,6 +907,11 @@ private:
     // bypass/removal restores each independently authored route, not generic OFF.
     std::array<LoopTransportConfig, kNativeTrackCount> nativeBaseLoopTransportConfigs_{};
     std::array<LoopTransportConfig, kNativeTrackCount> nativeMemoryLoopTransportSettings_{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportRequestedRevision_{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportRuntimeRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportAppliedRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportFaultRevision_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeLoopTransportAppliedOneShot_{};
     std::array<bool, kNativeTrackCount> nativeOfficialSourcePitchConflict_{};
     SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;

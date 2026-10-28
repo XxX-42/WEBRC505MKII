@@ -585,6 +585,22 @@ export class AudioEngine {
     return this.nativeEngine.setLoopTransport(trackId, config);
   }
 
+  /** Native 1SHOT is exposed only when the bridge returns callback-acknowledged readback. */
+  public async setNativeOneShot(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    if (this.currentMode !== 'native') throw new Error('Native 1SHOT is only available in Native audio mode.');
+    return this.nativeEngine.setOneShot(trackId, enabled);
+  }
+
+  public getNativeOneShot(trackId: number): boolean | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getOneShot(trackId);
+  }
+
+  public getNativeTrackState(trackId: number) {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.nativeTrackState(trackId);
+  }
+
   /** Configure the Browser's separate per-loop source-readhead stage. */
   public setBrowserLoopTransport(trackId: number, config: NativeLoopTransportConfig): boolean {
     if (this.currentMode !== 'browser' || !this.browserEngine) return false;

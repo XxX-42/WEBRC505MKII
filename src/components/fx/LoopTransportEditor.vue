@@ -94,6 +94,7 @@ type SavedTransportSettings = {
 
 const makeDefault = (): NativeLoopTransportConfig => ({
   mode: 'off',
+  oneShot: false,
   beatOffsetBeats: 0,
   bpm: Transport.getInstance().bpm,
   crossfadeMs: 5,

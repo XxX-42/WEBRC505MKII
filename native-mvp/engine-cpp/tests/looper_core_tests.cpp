@@ -127,8 +127,11 @@ void testReadOnlyPlaybackPreview() {
         for (const auto command : {CommandType::ToggleOverdub, CommandType::StopRecordOrPlayback, CommandType::Clear, CommandType::Record}) {
             previewed.applyCommand({command}); expected.fill(9.0f);
             const auto before = previewed.metadata();
-            assert(!previewed.previewPlayback(expected.data(), 128U, 2U, 4096U));
-            assert(std::all_of(expected.begin(), expected.begin() + 256U, [](float x) { return x == 0.0f; }));
+            const bool previewAvailable = previewed.previewPlayback(expected.data(), 128U, 2U, 4096U);
+            assert(previewAvailable == (command == CommandType::ToggleOverdub));
+            if (!previewAvailable) {
+                assert(std::all_of(expected.begin(), expected.begin() + 256U, [](float x) { return x == 0.0f; }));
+            }
             const auto after = previewed.metadata();
             assert(before.state == after.state && before.playhead == after.playhead && before.recordedFrames == after.recordedFrames);
         }
@@ -309,6 +312,47 @@ int main() {
     assert(std::fabs(sourcePlayback[39U] - sourceRamp[7679U]) < 0.0001f);
     assert(sourcePlayback[0] > sourceRamp[439U]);
     assert(sourcePlayback[0] < sourceRamp[7679U]);
+
+    // Native 1SHOT is finite, ignores overdub entry, and a Play command during
+    // playback retriggers from the beginning. The callback performs this with
+    // a fixed cursor and no locks or allocations.
+    LooperCore oneShot(8U, 1U, 1U);
+    std::array<float, 4> oneShotInput{{0.1f, 0.2f, 0.3f, 0.4f}};
+    std::array<float, 4> oneShotOutput{};
+    oneShot.applyCommand({CommandType::Record, false});
+    (void)oneShot.process(oneShotInput.data(), oneShotOutput.data(), 4U, 1U, 1U);
+    oneShot.applyCommand({CommandType::StopRecordOrPlayback, false});
+    LoopTransportConfig oneShotConfig;
+    oneShotConfig.oneShot = true;
+    assert(oneShot.setLoopTransportConfig(oneShotConfig));
+    oneShot.applyCommand({CommandType::Play, false});
+    oneShot.applyCommand({CommandType::ToggleOverdub, false});
+    assert(oneShot.state() == LooperState::Playing);
+    std::array<float, 6> oneShotPreview{};
+    const auto beforePreview = oneShot.metadata();
+    assert(oneShot.previewPlayback(oneShotPreview.data(), 6U, 1U, 6U));
+    assert((std::array<float, 4>{{oneShotPreview[0], oneShotPreview[1], oneShotPreview[2], oneShotPreview[3]}} == oneShotInput));
+    assert(oneShotPreview[4] == 0.0f && oneShotPreview[5] == 0.0f);
+    assert(oneShot.metadata().playhead == beforePreview.playhead && oneShot.state() == beforePreview.state);
+    std::array<float, 2> oneShotInterrupted{};
+    (void)oneShot.process(nullptr, oneShotInterrupted.data(), 2U, 0U, 1U);
+    assert(!oneShot.setLoopTransportConfig(LoopTransportConfig{}));
+    oneShot.applyCommand({CommandType::Play, false});
+    std::array<float, 6> oneShotPlayback{};
+    std::array<float, 6> oneShotBounceTap{};
+    auto oneShotStats = oneShot.process(nullptr, oneShotPlayback.data(), 6U, 0U, 1U, oneShotBounceTap.data());
+    assert(oneShotStats.state == LooperState::Stopped);
+    assert((std::array<float, 4>{{oneShotPlayback[0], oneShotPlayback[1], oneShotPlayback[2], oneShotPlayback[3]}} == oneShotInput));
+    assert(oneShotPlayback[4] == 0.0f && oneShotPlayback[5] == 0.0f);
+    assert(oneShotBounceTap == oneShotPlayback);
+    oneShot.applyCommand({CommandType::Clear, false});
+    oneShot.applyCommand({CommandType::Record, false});
+    (void)oneShot.process(oneShotInput.data(), oneShotOutput.data(), 4U, 1U, 1U);
+    oneShot.applyCommand({CommandType::FinishRecording, true});
+    assert(oneShot.state() == LooperState::Playing);
+    std::array<float, 4> oneShotRecToDub{};
+    oneShotStats = oneShot.process(nullptr, oneShotRecToDub.data(), 4U, 0U, 1U);
+    assert(oneShotStats.state == LooperState::Stopped && oneShotRecToDub == oneShotInput);
 
     // Integer read-head wrap remains phase-continuous for a periodic source;
     // Beat Shift changes pointer position but preserves the loop period.

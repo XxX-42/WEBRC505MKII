@@ -437,6 +437,23 @@ export class NativeAudioEngine {
     }
   }
 
+  public async setOneShot(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    try {
+      const status = await this.bridge.setOneShot(trackId, enabled);
+      this.applyStatus(status);
+      return status;
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
+
+  public getOneShot(trackId: number): boolean | null {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
+    const value = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAppliedOneShot;
+    return typeof value === 'boolean' ? value : null;
+  }
+
   public getNativeBounceSettings(): Readonly<{ bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }> | null {
     const value = this.latestStatus?.nativeBounce;
     return value ? { bounceSw: value.bounceSw, bounceIn: [...value.bounceIn], bounceTrack: [...value.bounceTrack] } : null;

@@ -761,16 +761,37 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     }, { disabled: engine.getMode() !== 'browser' || !audioTrack || loopSyncBusy,
       reason: engine.getMode() !== 'browser' ? 'Native loop sync has no provider.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
     const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');
-    fields.push(makeBooleanField('track-one-shot', '1SHOT', audioTrack?.track.oneShot === 'ON', (enabled) => {
+    const nativeOneShot = engine.getMode() === 'native' ? engine.getNativeOneShot?.(bounceTarget) ?? null : null;
+    const nativeTrackState = engine.getMode() === 'native' ? engine.getNativeTrackState?.(bounceTarget) ?? null : null;
+    const nativeOneShotBusy = nativeTrackState !== null && nativeTrackState !== 'Empty' && nativeTrackState !== 'Stopped';
+    const oneShotValue = engine.getMode() === 'native' ? nativeOneShot === true : audioTrack?.track.oneShot === 'ON';
+    const oneShotUnavailable = engine.getMode() === 'native' && nativeOneShot === null;
+    const oneShotDisabled = engine.getMode() === 'browser'
+      ? !audioTrack || oneShotBusy
+      : !audioTrack || oneShotUnavailable || nativeOneShotBusy;
+    fields.push(makeBooleanField('track-one-shot', '1SHOT', oneShotValue, async (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the track again.');
-      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('1SHOT is unavailable in this audio mode.');
+      if (!audioTrack) throw new Error('1SHOT is unavailable for this track.');
+      if (engine.getMode() === 'native') {
+        if (typeof engine.setNativeOneShot !== 'function') throw new Error('This Native bridge does not provide callback-acknowledged 1SHOT.');
+        const acknowledged = await engine.setNativeOneShot(bounceTarget, enabled);
+        const applied = acknowledged.nativeTracks?.find((track) => track.trackId === bounceTarget)?.loopTransportAppliedOneShot;
+        if (acknowledged.nativeMemory?.loopTransports[bounceTarget - 1]?.oneShot !== enabled || applied !== enabled) {
+          throw new Error('Native 1SHOT callback and setting readback did not match the requested value.');
+        }
+        audioTrack.track.oneShot = enabled ? 'ON' : 'OFF';
+        return;
+      }
       if ((audioTrack as { historyBusy?: boolean }).historyBusy || (audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED')) {
         throw new Error('Stop the track before changing 1SHOT.');
       }
       audioTrack.track.oneShot = enabled ? 'ON' : 'OFF';
       audioTrack.updateSettings();
-    }, { disabled: engine.getMode() !== 'browser' || !audioTrack || oneShotBusy,
-      reason: engine.getMode() !== 'browser' ? 'Native 1SHOT has no provider.' : oneShotBusy ? 'Stop the track before changing 1SHOT.' : '' }));
+    }, { disabled: oneShotDisabled,
+      reason: engine.getMode() === 'native'
+        ? oneShotUnavailable ? 'This Native bridge does not provide callback-acknowledged 1SHOT.'
+          : nativeOneShotBusy ? 'Stop the track before changing 1SHOT.' : ''
+        : oneShotBusy ? 'Stop the track before changing 1SHOT.' : '' }));
     return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-dub-mode', 'track-bounce-in', 'track-loop-sync', 'track-one-shot'].includes(field.key)) : fields);
   }
 

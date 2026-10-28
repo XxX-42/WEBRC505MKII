@@ -196,6 +196,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             const auto& source = transports[track];
             auto& target = candidate->loopTransports[track];
             target.mode = static_cast<LoopTransportMode>(boundedInteger(source.at("mode"), 0, 2));
+            target.oneShot = source.value("oneShot", false);
             target.beatOffsetBeats = source.at("beatOffsetBeats").get<float>();
             target.bpm = source.at("bpm").get<float>();
             target.crossfadeMs = source.at("crossfadeMs").get<float>();
@@ -500,8 +501,10 @@ json callbackTelemetryToJson(const NativeCallbackTelemetryStatus& value) {
 
 json statusToJson(const EngineStatus& status) {
     json memoryTransports = json::array();
-    for (const auto& config : status.nativeMemoryLoopTransports) {
+    for (std::size_t track = 0U; track < status.nativeMemoryLoopTransports.size(); ++track) {
+        const auto& config = status.nativeMemoryLoopTransports[track];
         memoryTransports.push_back({{"mode", static_cast<unsigned int>(config.mode)},
+            {"oneShot", status.nativeLoopTransportAppliedOneShot[track]},
             {"beatOffsetBeats", config.beatOffsetBeats}, {"bpm", config.bpm}, {"crossfadeMs", config.crossfadeMs},
             {"vinylSpeedPercent", config.vinylSpeedPercent}, {"motorReturnSeconds", config.motorReturnSeconds},
             {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
@@ -521,6 +524,10 @@ json statusToJson(const EngineStatus& status) {
             {"state", looperStateToString(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
             {"contentRevision", status.nativeTrackContentRevision[track]},
+            {"loopTransportRequestedRevision", status.nativeLoopTransportRequestedRevision[track]},
+            {"loopTransportAppliedRevision", status.nativeLoopTransportAppliedRevision[track]},
+            {"loopTransportFaultRevision", status.nativeLoopTransportFaultRevision[track]},
+            {"loopTransportAppliedOneShot", status.nativeLoopTransportAppliedOneShot[track]},
             {"loopTransportStatus", loopTransportStatusToString(status.nativeTrackLoopTransportStatus[track])},
             {"vocoderCarrierStatus", vocoderCarrierStatusToString(status.nativeVocoderCarrierStatuses[track])},
             {"history", {
@@ -1968,6 +1975,14 @@ int main() {
                 writeError(response, "'mode' must be 'off', 'beatShift', or 'vinylFlick'.");
                 return;
             }
+            if (body.contains("oneShot")) {
+                if (!body["oneShot"].is_boolean()) {
+                    response.status = 400;
+                    writeError(response, "'oneShot' must be a boolean.");
+                    return;
+                }
+                config.oneShot = body["oneShot"].get<bool>();
+            }
 
             const auto readBoundedFloat = [&body, &response](const char* name, double minimum, double maximum, float& target) {
                 if (!body.contains(name) || !body[name].is_number()) {
@@ -1996,12 +2011,15 @@ int main() {
             }
 
             std::string error;
-            if (!engine.setNativeLoopTransport(static_cast<std::size_t>(trackId - 1U), config, error)) {
+            std::uint64_t acceptedRevision = 0U;
+            if (!engine.setNativeLoopTransport(static_cast<std::size_t>(trackId - 1U), config, error, &acceptedRevision)) {
                 response.status = 409;
                 writeError(response, error);
                 return;
             }
-            writeJson(response, statusToJson(engine.getStatus()));
+            auto status = statusToJson(engine.getStatus());
+            status["nativeTracks"][static_cast<std::size_t>(trackId - 1U)]["loopTransportAcceptedRevision"] = acceptedRevision;
+            writeJson(response, status);
         } catch (const std::exception& error) {
             response.status = 400;
             writeError(response, error.what());

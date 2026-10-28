@@ -343,6 +343,20 @@ def main():
                 [track.get("loopTransportStatus") for track in before_foreign_transport.get("nativeTracks", [])],
                 "rejected foreign-origin loop-transport write mutated Native state")
 
+        oneshot_config = dict(loop_transport_config)
+        oneshot_config["oneShot"] = True
+        status, oneshot_ack = request(loop_transport_path, "POST", oneshot_config)
+        oneshot_track = oneshot_ack.get("nativeTracks", [])[2]
+        oneshot_memory = oneshot_ack.get("nativeMemory", {}).get("loopTransports", [])[2]
+        require(status == 200 and oneshot_track.get("loopTransportAcceptedRevision") == oneshot_track.get("loopTransportAppliedRevision")
+                and oneshot_track.get("loopTransportAppliedOneShot") is True
+                and oneshot_memory.get("oneShot") is True,
+                "Native 1SHOT did not return an applied callback revision and matching Memory readback")
+        invalid_oneshot_config = dict(oneshot_config)
+        invalid_oneshot_config["oneShot"] = "true"
+        status, _ = request(loop_transport_path, "POST", invalid_oneshot_config)
+        require(status == 400, "Native loop transport accepted a non-boolean 1SHOT setting")
+
         status, devices = request("/v1/devices")
         require(status == 200, "device catalog endpoint failed")
         simulated_inputs = devices.get("inputsByBackend", {}).get("WASAPI", [])

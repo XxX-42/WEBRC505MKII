@@ -123,6 +123,9 @@ NativeAudioCore::NativeAudioCore()
         nativeTrackFxApplyFaultRevision_[track].store(0U, std::memory_order_relaxed);
         nativeTrackFxApplyPeak_[track].store(0.0f, std::memory_order_relaxed);
         nativeTrackFxApplyRms_[track].store(0.0f, std::memory_order_relaxed);
+        nativeLoopTransportAppliedRevision_[track].store(0U, std::memory_order_relaxed);
+        nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_relaxed);
+        nativeLoopTransportAppliedOneShot_[track].store(false, std::memory_order_relaxed);
     }
 }
 
@@ -386,6 +389,10 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeTrackProgress[track] = trackProgress_[track].load(std::memory_order_acquire);
         status.nativeTrackContentRevision[track] = trackContentRevision_[track].load(std::memory_order_acquire);
         status.nativeTrackLoopTransportStatus[track] = trackLoopTransportStatus_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportRequestedRevision[track] = nativeLoopTransportRequestedRevision_[track];
+        status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
         status.nativeVocoderCarrierStatuses[track] = engineRunning_.load(std::memory_order_acquire)
             ? nativeVocoderCarrierStatuses_[track].load(std::memory_order_acquire) : NativeVocoderCarrierStatus::NotRequested;
         status.nativeTrackHistory[track].canUndo = historyCanUndo_[track].load(std::memory_order_acquire);
@@ -557,6 +564,12 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.roundTripEstimateMs = status.inputLatencyMs + status.outputLatencyMs;
     status.lastError = lastError_;
     status.nativeMemoryLoopTransports = nativeMemoryLoopTransportSettings_;
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        status.nativeLoopTransportRequestedRevision[track] = nativeLoopTransportRequestedRevision_[track];
+        status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
+    }
     const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
     const auto appliedBounceSnapshot = nativeBounceAppliedSnapshot_.load(std::memory_order_acquire);
     status.nativeBounce = decodeNativeBounceSettings(appliedBounceSnapshot);
@@ -2424,7 +2437,8 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
 bool NativeAudioCore::setNativeLoopTransport(
     std::size_t trackIndex,
     const LoopTransportConfig& config,
-    std::string& error
+    std::string& error,
+    std::uint64_t* acceptedRevision
 ) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
@@ -2445,17 +2459,41 @@ bool NativeAudioCore::setNativeLoopTransport(
         error = "Native Vinyl Flick requires a loop sample rate of at least 8000 Hz.";
         return false;
     }
+    const auto currentState = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (config.oneShot != nativeMemoryLoopTransportSettings_[trackIndex].oneShot &&
+        (recordStartPending_[trackIndex].load(std::memory_order_acquire) ||
+         currentState == LooperState::Recording || currentState == LooperState::Playing ||
+         currentState == LooperState::Overdubbing)) {
+        error = "Stop the track before changing Native 1SHOT.";
+        return false;
+    }
+    if (nativeLoopTransportRequestedRevision_[trackIndex] >= kMaximumSafeProjectContentRevision) {
+        error = "Native loop transport revision exhausted.";
+        return false;
+    }
+    const auto revision = nativeLoopTransportRequestedRevision_[trackIndex] + 1U;
     if (engineRunning_.load(std::memory_order_acquire)) {
-        if (!nativeLoopTransportCommandQueue_.push({trackIndex, config})) {
+        if (!nativeLoopTransportCommandQueue_.push({trackIndex, config, revision})) {
             telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native loop transport command queue is full.";
             return false;
         }
     } else {
         nativeBaseLoopTransportConfigs_[trackIndex] = config;
+        if (!looperForTrack(trackIndex).setLoopTransportConfig(config)) {
+            error = "Native loop transport could not be applied.";
+            return false;
+        }
+        nativeLoopTransportRuntimeRevision_[trackIndex] = revision;
+        nativeLoopTransportAppliedRevision_[trackIndex].store(revision, std::memory_order_release);
+        nativeLoopTransportAppliedOneShot_[trackIndex].store(config.oneShot, std::memory_order_release);
+        nativeLoopTransportFaultRevision_[trackIndex].store(0U, std::memory_order_release);
         applyOfficialSourceTransports();
     }
     nativeMemoryLoopTransportSettings_[trackIndex] = config;
+    nativeLoopTransportRequestedRevision_[trackIndex] = revision;
+    nativeLoopTransportFaultRevision_[trackIndex].store(0U, std::memory_order_release);
+    if (acceptedRevision != nullptr) *acceptedRevision = revision;
     error.clear();
     advanceProjectRevision(projectContentRevision_);
     return true;
@@ -3273,6 +3311,14 @@ void NativeAudioCore::finalizeProjectImportLocked() {
             }
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (nativeLoopTransportRequestedRevision_[track] < kMaximumSafeProjectContentRevision) {
+                    ++nativeLoopTransportRequestedRevision_[track];
+                }
+                nativeLoopTransportRuntimeRevision_[track] = nativeLoopTransportRequestedRevision_[track];
+                nativeLoopTransportAppliedRevision_[track].store(nativeLoopTransportRuntimeRevision_[track], std::memory_order_release);
+                nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
+            }
             const auto bounceRevision = nativeBounceSnapshotRevision(nativeBounceRequestedSnapshot_.load(std::memory_order_relaxed)) + 1U;
             nativeBounceRequestedSnapshot_.store(encodeNativeBounceSnapshot(memory.bounce, bounceRevision), std::memory_order_release);
             nativeReverbConfig_ = memory.reverb;
@@ -4038,7 +4084,17 @@ void NativeAudioCore::applyNativePitchCommands() noexcept {
 void NativeAudioCore::applyNativeLoopTransportCommands() noexcept {
     NativeLoopTransportCommand command;
     while (nativeLoopTransportCommandQueue_.pop(command)) {
-        if (command.trackIndex < kNativeTrackCount) nativeBaseLoopTransportConfigs_[command.trackIndex] = command.config;
+        if (command.trackIndex >= kNativeTrackCount) continue;
+        auto& looper = looperForTrack(command.trackIndex);
+        if (!looper.setLoopTransportConfig(command.config)) {
+            nativeLoopTransportFaultRevision_[command.trackIndex].store(command.revision, std::memory_order_release);
+            continue;
+        }
+        nativeBaseLoopTransportConfigs_[command.trackIndex] = command.config;
+        nativeLoopTransportRuntimeRevision_[command.trackIndex] = command.revision;
+        nativeLoopTransportAppliedRevision_[command.trackIndex].store(command.revision, std::memory_order_release);
+        nativeLoopTransportAppliedOneShot_[command.trackIndex].store(command.config.oneShot, std::memory_order_release);
+        nativeLoopTransportFaultRevision_[command.trackIndex].store(0U, std::memory_order_release);
     }
     applyOfficialSourceTransports();
 }
@@ -4094,8 +4150,11 @@ void NativeAudioCore::applyOfficialSourceTransports() noexcept {
         const bool pitchTarget = (nativePitchRuntimeEnabled_ || nativePitchRuntimeReverse_) &&
             (nativePitchRuntimeTrackId_ == 0U || nativePitchRuntimeTrackId_ == track + 1U);
         nativeOfficialSourcePitchConflict_[track] = requested && pitchTarget;
-        const auto& config = requested && !pitchTarget ? overlay : nativeBaseLoopTransportConfigs_[track];
-        (void)looperForTrack(track).setLoopTransportConfig(config);
+        auto config = requested && !pitchTarget ? overlay : nativeBaseLoopTransportConfigs_[track];
+        if (requested && !pitchTarget) config.oneShot = nativeBaseLoopTransportConfigs_[track].oneShot;
+        if (looperForTrack(track).setLoopTransportConfig(config)) {
+            nativeLoopTransportAppliedOneShot_[track].store(config.oneShot, std::memory_order_release);
+        }
         trackLoopTransportStatus_[track].store(nativeOfficialSourcePitchConflict_[track]
             ? LoopTransportStatus::UnsupportedPitchProcessing : looperForTrack(track).loopTransportStatus(), std::memory_order_release);
     }
@@ -4515,6 +4574,9 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
             nativePerTrackFxBanks_[track].swapPrepared(transaction->candidateFxBanks[track + 2U]);
             nativeBaseLoopTransportConfigs_[track] = memory.loopTransports[track];
+            nativeLoopTransportRuntimeRevision_[track] = nativeLoopTransportRequestedRevision_[track];
+            nativeLoopTransportAppliedRevision_[track].store(nativeLoopTransportRuntimeRevision_[track], std::memory_order_release);
+            nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
         }
         for (std::size_t bank = 0U; bank < memory.banks.size(); ++bank) {
             for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {

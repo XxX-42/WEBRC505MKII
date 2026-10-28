@@ -36,6 +36,8 @@ enum class LoopTransportMode : std::uint8_t {
 
 struct LoopTransportConfig {
     LoopTransportMode mode = LoopTransportMode::Off;
+    // 1SHOT plays the finalized loop once. Playback is forward-only in Native.
+    bool oneShot = false;
     // BEAT SHIFT: signed beat offset, tempo in beats per minute and a
     // click-free parameter-transition crossfade. Offsets may be fractional.
     float beatOffsetBeats = 0.0f;

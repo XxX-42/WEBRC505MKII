@@ -150,7 +150,7 @@ void LooperCore::applyCommand(const Command& command) {
                 // normal source-transport start preparation without publishing
                 // an intermediate Stopped state or accepting another command.
                 applyCommand({CommandType::Play});
-                if (command.boolValue) state_ = LooperState::Overdubbing;
+                if (command.boolValue && !loopTransportConfig_.oneShot) state_ = LooperState::Overdubbing;
             }
             recordingMirror_ = nullptr; recordingMirrorFrames_ = 0U;
         }
@@ -158,6 +158,17 @@ void LooperCore::applyCommand(const Command& command) {
     case CommandType::SetRecordAction:
         break; // Owned by NativeAudioCore, not an individual looper.
     case CommandType::Play:
+        if (state_ == LooperState::Playing && loopTransportConfig_.oneShot && finalizedFrames_ > 0U) {
+            playhead_ = 0U;
+            vinylReadPosition_ = 0.0;
+            vinylSpeedRatio_ = 1.0;
+            vinylAcceleration_ = 0.0;
+            previousLoopTransportConfig_ = LoopTransportConfig{};
+            previousBeatShiftOffsetSamples_ = 0.0;
+            fadeStartVinylPosition_ = 0.0;
+            fadeStartVinylSpeed_ = 1.0;
+            transportFadeRemaining_ = loopTransportConfig_.mode == LoopTransportMode::Off ? 0U : transportFadeFrames_;
+        }
         if (state_ == LooperState::Stopped && finalizedFrames_ > 0) {
             playhead_ = 0;
             vinylReadPosition_ = 0.0;
@@ -179,6 +190,7 @@ void LooperCore::applyCommand(const Command& command) {
         }
         break;
     case CommandType::ToggleOverdub:
+        if (loopTransportConfig_.oneShot) break;
         if (state_ == LooperState::Playing) {
             state_ = LooperState::Overdubbing;
         } else if (state_ == LooperState::Overdubbing) {
@@ -208,8 +220,10 @@ bool LooperCore::validLoopTransportConfig(const LoopTransportConfig& config) noe
 
 bool LooperCore::setLoopTransportConfig(const LoopTransportConfig& config) noexcept {
     if (!validLoopTransportConfig(config)) return false;
+    if (loopTransportConfig_.oneShot != config.oneShot &&
+        (state_ == LooperState::Recording || state_ == LooperState::Playing || state_ == LooperState::Overdubbing)) return false;
     if (config.mode == LoopTransportMode::VinylFlick && sampleRate_ < 8000U) return false;
-    if (loopTransportConfig_.mode == config.mode &&
+    if (loopTransportConfig_.mode == config.mode && loopTransportConfig_.oneShot == config.oneShot &&
         loopTransportConfig_.beatOffsetBeats == config.beatOffsetBeats &&
         loopTransportConfig_.bpm == config.bpm &&
         loopTransportConfig_.crossfadeMs == config.crossfadeMs &&
@@ -314,7 +328,11 @@ void LooperCore::readPlayingFrame(PlaybackCursor& cursor, float& left, float& ri
         advanceVinylPlatter(cursor);
         cursor.vinylPosition = wrappedLoopPosition(cursor.vinylPosition + cursor.vinylSpeed);
     }
-    cursor.playhead = (cursor.playhead + 1U) % finalizedFrames_;
+    if (loopTransportConfig_.oneShot) {
+        ++cursor.playhead;
+    } else {
+        cursor.playhead = (cursor.playhead + 1U) % finalizedFrames_;
+    }
 }
 
 bool LooperCore::previewPlayback(float* destination, unsigned int frames,
@@ -326,6 +344,7 @@ bool LooperCore::previewPlayback(float* destination, unsigned int frames,
     if (state_ == LooperState::Playing) {
         auto cursor = playbackCursor();
         for (unsigned int frame = 0U; frame < frames; ++frame) {
+            if (loopTransportConfig_.oneShot && cursor.playhead >= finalizedFrames_) break;
             float left, right; readPlayingFrame(cursor, left, right);
             destination[static_cast<std::size_t>(frame) * outputChannels] = left;
             if (outputChannels == 2U) destination[static_cast<std::size_t>(frame) * 2U + 1U] = right;
@@ -362,6 +381,7 @@ ProcessStats LooperCore::process(
     ProcessStats stats;
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
+    const bool playbackWasActive = state_ == LooperState::Playing;
 
     auto cursor = playbackCursor();
     for (unsigned int frame = 0; frame < frames; ++frame) {
@@ -413,6 +433,10 @@ ProcessStats LooperCore::process(
         } else if (state_ == LooperState::Playing) {
             outputLeft = playbackLeft + (monitoringEnabled_ ? monitorLeft : 0.0f);
             outputRight = playbackRight + (monitoringEnabled_ ? monitorRight : 0.0f);
+            if (loopTransportConfig_.oneShot && cursor.playhead >= finalizedFrames_) {
+                state_ = LooperState::Stopped;
+                cursor.playhead = 0U;
+            }
         } else if (state_ == LooperState::Overdubbing) {
             const float mixedLeft = clampSample(playbackLeft + inputLeft);
             const float mixedRight = clampSample(playbackRight + inputRight);
@@ -457,7 +481,7 @@ ProcessStats LooperCore::process(
         }
     }
 
-    if (state_ == LooperState::Playing) commitPlaybackCursor(cursor);
+    if (playbackWasActive) commitPlaybackCursor(cursor);
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
     if (finalizedFrames_ > 0 && (state_ == LooperState::Playing || state_ == LooperState::Overdubbing)) {

@@ -94,6 +94,75 @@ describe('Native multi-track bridge client', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it('enables Native 1SHOT only after the applied revision and setting read back', async () => {
+    const config = { mode: 0, oneShot: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const returned = { ...config, oneShot: true };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] } }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [returned] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 4, loopTransportRequestedRevision: 4,
+          loopTransportAppliedRevision: 4, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: true }] }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    const status = await client.setOneShot(1, true);
+
+    expect(status.nativeMemory?.loopTransports[0]?.oneShot).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ trackId: 1, oneShot: true });
+  });
+
+  it('does not treat a callback-rejected requested 1SHOT value as applied', async () => {
+    const config = { mode: 0, oneShot: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const requested = { ...config, oneShot: true };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 8,
+          loopTransportAppliedRevision: 7, loopTransportFaultRevision: 8, loopTransportAppliedOneShot: false }] }) } as Response));
+    const client = new NativeBridgeClient();
+
+    await expect(client.setOneShot(1, true)).rejects.toThrow(/callback rejected/);
+    expect(client.getOneShot(1)).toBe(false);
+  });
+
+  it('does not treat a superseded requested 1SHOT value as applied', async () => {
+    const config = { mode: 0, oneShot: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const requested = { ...config, oneShot: true };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 9,
+          loopTransportAppliedRevision: 9, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: false }] }) } as Response));
+    const client = new NativeBridgeClient();
+
+    await expect(client.setOneShot(1, true)).rejects.toThrow(/superseded/);
+    expect(client.getOneShot(1)).toBe(false);
+  });
+
+  it('keeps the prior applied 1SHOT state visible after an acknowledgement timeout', async () => {
+    const config = { mode: 0, oneShot: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const requested = { ...config, oneShot: true };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 8,
+          loopTransportAppliedRevision: 7, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: false }] }) } as Response));
+    vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValue(2001);
+    const client = new NativeBridgeClient();
+
+    await expect(client.setOneShot(1, true)).rejects.toThrow(/acknowledgement timed out/);
+    expect(client.getOneShot(1)).toBe(false);
+    vi.restoreAllMocks();
+  });
+
   it('rejects invalid loop-transport track IDs and config values before making requests', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

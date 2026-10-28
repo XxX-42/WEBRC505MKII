@@ -55,8 +55,29 @@ def main():
         require(code == 200, status)
         code, status = request('/v1/engine/start', 'POST', {})
         require(code == 200, status)
-        baseline = status['projectContentRevision']
-        body = envelope(status)
+        status_code, source_status = request('/v1/status')
+        require(status_code == 200, source_status)
+        saved_transport = source_status['nativeMemory']['loopTransports'][1]
+        transport_modes = {0: 'off', 1: 'beatShift', 2: 'vinylFlick'}
+        source_transport = dict(saved_transport)
+        source_transport['mode'] = transport_modes[saved_transport['mode']]
+        code, requested_transport = request('/v1/native-loop-transport/config', 'POST',
+            {'trackId': 2, **source_transport, 'oneShot': True})
+        require(code == 200, requested_transport)
+        accepted_transport_revision = requested_transport['nativeTracks'][1]['loopTransportAcceptedRevision']
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            _, source_status = request('/v1/status')
+            track_transport = source_status['nativeTracks'][1]
+            if track_transport['loopTransportAppliedRevision'] == accepted_transport_revision:
+                break
+            time.sleep(.005)
+        require(track_transport['loopTransportAppliedRevision'] == accepted_transport_revision and
+                track_transport['loopTransportAppliedOneShot'] is True and
+                source_status['nativeMemory']['loopTransports'][1]['oneShot'] is True,
+                'Native 1SHOT did not round-trip through applied status before Memory export')
+        baseline = source_status['projectContentRevision']
+        body = envelope(source_status)
         malformed = [
             lambda meta: meta['extensions']['WEBRC']['nativeMemory'].update(recAction='INVALID'),
             lambda meta: meta.update(memoryNumber=0),
@@ -78,12 +99,12 @@ def main():
         ]
         for index, mutate in enumerate(malformed):
             code, rejected = request_project_archive(f'/v1/project/import?expectedContentRevision={baseline}', 'POST',
-                envelope(status, mutate=mutate), 'application/octet-stream')
+                envelope(source_status, mutate=mutate), 'application/octet-stream')
             require(code == 400, f'malformed external Memory case {index} accepted: {code} {rejected}')
             _, unchanged = request('/v1/status')
             require(unchanged['projectContentRevision'] == baseline and unchanged['nativeTracks'][0]['state'] == 'Empty',
                 f'malformed external Memory case {index} changed incumbent')
-        body = envelope(status, mutate=lambda meta: (meta.update(name='😀' * 12),
+        body = envelope(source_status, mutate=lambda meta: (meta.update(name='😀' * 12),
             meta['extensions']['WEBRC'].update({'opaque': {'nested': [1, {'vendorValue': True}]}}),
             meta['extensions']['WEBRC']['nativeMemory'].update(recAction='REC->DUB'),
             meta['semantics']['fields'].update({'record.recAction': {'availability': 'supported', 'value': 'REC->DUB'}}),
@@ -116,7 +137,7 @@ def main():
                     f'cancel media type {content_type}: {code} {cancelled}')
         require(request('/v1/status')[1]['projectContentRevision'] == baseline, 'cancel mutated incumbent')
         mismatched_bounce = lambda meta: meta['semantics']['fields']['track.3.bounceIn'].update(value=False)
-        code, rejected = request_project_archive(path, 'POST', envelope(status, mutate=mismatched_bounce), 'application/octet-stream')
+        code, rejected = request_project_archive(path, 'POST', envelope(source_status, mutate=mismatched_bounce), 'application/octet-stream')
         require(code == 400, ('inconsistent Bounce semantic field accepted', rejected))
         code, result = request_project_archive(path, 'POST', body, 'application/octet-stream')
         require(code == 202, result)
@@ -140,6 +161,9 @@ def main():
         require(after['nativeRhythm']['volume'] == 37, after['nativeRhythm'])
         require(after['nativeMemory']['bounce'] == {'bounceSw': True, 'bounceIn': [True, False, True, False, False],
             'bounceTrack': [False, True, True, False, True]}, after['nativeMemory'])
+        require(after['nativeMemory']['loopTransports'][1]['oneShot'] is True and
+                after['nativeTracks'][1]['loopTransportAppliedOneShot'] is True,
+                'Native Memory did not restore the requested 1SHOT mode to the callback-applied setting')
         require(after['nativeRecordPlay']['recAction'] == 'REC->DUB' and after['nativeRecordPlay']['requestedRevision'] == after['nativeRecordPlay']['appliedRevision'], after['nativeRecordPlay'])
         require(after['mixerLevels'] == [80, 90, 100, 110, 120, 130, 140], after['mixerLevels'])
         revision = after['projectContentRevision']

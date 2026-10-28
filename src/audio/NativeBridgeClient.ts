@@ -15,6 +15,18 @@ export type NativeLoopTransportStatus =
   | 'unsupportedOverdubbing'
   | 'unsupportedPitchProcessing';
 
+export interface NativeMemoryLoopTransport {
+  mode: number;
+  oneShot?: boolean;
+  beatOffsetBeats: number;
+  bpm: number;
+  crossfadeMs: number;
+  vinylSpeedPercent: number;
+  motorReturnSeconds: number;
+  brakePercent: number;
+  vinylMixPercent: number;
+}
+
 /** Real playback-only carrier source availability, when advertised by the host. */
 export type NativeVocoderCarrierStatus =
   | 'notRequested' | 'ready' | 'empty' | 'stopped'
@@ -23,6 +35,8 @@ export type NativeVocoderCarrierStatus =
 
 export interface NativeLoopTransportConfig {
   mode: NativeLoopTransportMode;
+  /** Native forward-only finite playback. Missing on older callers means OFF. */
+  oneShot?: boolean;
   beatOffsetBeats: number;
   bpm: number;
   crossfadeMs: number;
@@ -214,10 +228,17 @@ export interface NativeStatus {
     /** Monotonic loop-content revision; older hosts omit it. */
     contentRevision?: number;
     loopTransportStatus?: NativeLoopTransportStatus;
+    loopTransportRequestedRevision?: number;
+    loopTransportAppliedRevision?: number;
+    loopTransportFaultRevision?: number;
+    loopTransportAcceptedRevision?: number;
+    loopTransportAppliedOneShot?: boolean;
     vocoderCarrierStatus?: NativeVocoderCarrierStatus;
     history?: NativeTrackHistoryStatus;
     mark?: NativeTrackMarkStatus;
   }>;
+  /** Requested Native Memory source settings. Older bridge builds omit this. */
+  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[] };
   nativeHistory?: { budgetBytes: number; retainedBytes: number };
   /** Missing or unknown versions mean Native MARK SET/CLEAR is unavailable. */
   nativeMarkVersion?: number;
@@ -584,6 +605,7 @@ export class NativeTrackFxApplyAcknowledgementError extends Error {
 
 export class NativeBridgeClient {
   private readonly baseUrl: string;
+  private latestStatus: NativeStatus | null = null;
 
   constructor(baseUrl = nativeBridgeEndpoint()) {
     this.baseUrl = baseUrl;
@@ -598,7 +620,15 @@ export class NativeBridgeClient {
   }
 
   public async getStatus(): Promise<NativeStatus> {
-    return this.request<NativeStatus>('/v1/status');
+    const status = await this.request<NativeStatus>('/v1/status');
+    this.latestStatus = status;
+    return status;
+  }
+
+  public getOneShot(trackId: number): boolean | null {
+    assertNativeTrackId(trackId);
+    const value = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAppliedOneShot;
+    return typeof value === 'boolean' ? value : null;
   }
 
   /** Writes once and returns only after the Native audio callback has applied the requested revision. */
@@ -1078,6 +1108,43 @@ export class NativeBridgeClient {
     });
   }
 
+  /** Changes Native 1SHOT only after the callback confirms the requested revision and readback. */
+  public async setOneShot(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (typeof enabled !== 'boolean') throw new TypeError('Native 1SHOT must be a boolean.');
+    const current = (await this.getStatus()).nativeMemory?.loopTransports[trackId - 1];
+    if (!current || !Number.isInteger(current.mode)) throw new Error('This Native bridge does not advertise 1SHOT settings.');
+    const mode = current.mode === 0 ? 'off' : current.mode === 1 ? 'beatShift' : current.mode === 2 ? 'vinylFlick' : null;
+    if (!mode) throw new Error('Native loop transport readback contains an unsupported mode.');
+    let status = await this.setLoopTransport(trackId, { ...current, mode, oneShot: enabled });
+    const accepted = status.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAcceptedRevision;
+    if (typeof accepted !== 'number' || !Number.isSafeInteger(accepted) || accepted <= 0) {
+      throw new Error('Native bridge did not identify the accepted 1SHOT revision.');
+    }
+    const deadline = Date.now() + 2000;
+    for (;;) {
+      const track = status.nativeTracks?.find((item) => item.trackId === trackId);
+      const requested = track?.loopTransportRequestedRevision;
+      const applied = track?.loopTransportAppliedRevision;
+      const faulted = track?.loopTransportFaultRevision;
+      const appliedOneShot = track?.loopTransportAppliedOneShot;
+      const requestedOneShot = status.nativeMemory?.loopTransports[trackId - 1]?.oneShot;
+      if (typeof requested !== 'number' || typeof applied !== 'number' || typeof faulted !== 'number' ||
+          typeof appliedOneShot !== 'boolean' || typeof requestedOneShot !== 'boolean') {
+        throw new Error('Native bridge omitted 1SHOT revision or setting readback.');
+      }
+      if (faulted === accepted) throw new Error('Native callback rejected the 1SHOT setting; the prior setting remains active.');
+      if (requested > accepted || applied > accepted) throw new Error('Native 1SHOT request was superseded before callback acknowledgement.');
+      if (requested === accepted && applied === accepted && requestedOneShot === enabled && appliedOneShot === enabled) {
+        this.latestStatus = status;
+        return status;
+      }
+      if (Date.now() >= deadline) throw new Error('Native 1SHOT callback acknowledgement timed out; check the track setting before retrying.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      status = await this.getStatus();
+    }
+  }
+
   public async setNativeBounceSettings(settings: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }): Promise<NativeStatus> {
     if (typeof settings.bounceSw !== 'boolean' || settings.bounceIn.length !== 5 || settings.bounceTrack.length !== 5
       || settings.bounceIn.some((value) => typeof value !== 'boolean') || settings.bounceTrack.some((value) => typeof value !== 'boolean')) {
@@ -1330,6 +1397,7 @@ function assertNativeTrackId(trackId: number): void {
 /** Validate every Native endpoint before making a request, matching LooperCore's current transport ranges. */
 export function isNativeLoopTransportConfig(config: NativeLoopTransportConfig): boolean {
   return (config.mode === 'off' || config.mode === 'beatShift' || config.mode === 'vinylFlick')
+    && (config.oneShot === undefined || typeof config.oneShot === 'boolean')
     && Number.isFinite(config.beatOffsetBeats) && config.beatOffsetBeats >= -4 && config.beatOffsetBeats <= 4
     && Number.isFinite(config.bpm) && config.bpm >= 20 && config.bpm <= 300
     && Number.isFinite(config.crossfadeMs) && config.crossfadeMs >= 1 && config.crossfadeMs <= 10
