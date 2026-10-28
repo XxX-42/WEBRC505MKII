@@ -31,6 +31,8 @@ export interface MidiMessageEventLike {
 }
 
 export interface MidiInputLike {
+  /** Optional Web MIDI connection state; implementations without it remain testable. */
+  readonly state?: 'connected' | 'disconnected';
   addEventListener(type: 'midimessage', listener: (event: MidiMessageEventLike) => void): void;
   removeEventListener(type: 'midimessage', listener: (event: MidiMessageEventLike) => void): void;
 }

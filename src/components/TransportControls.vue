@@ -63,8 +63,22 @@
       >
         {{ clockSnapshot.connection === 'connecting' ? 'CONNECTING…' : clockSnapshot.connection === 'connected' ? 'DISCONNECT' : 'CONNECT' }}
       </button>
+      <select
+        v-if="clockSnapshot.connection === 'connected'"
+        class="midi-clock-input-select"
+        aria-label="MIDI clock input source"
+        data-testid="midi-clock-input-select"
+        :value="clockSnapshot.selectedInputKey ?? ''"
+        @change="selectMidiClockInput"
+      >
+        <option value="">Select MIDI input</option>
+        <option v-for="input in clockSnapshot.inputs" :key="input.key" :value="input.key">{{ input.name }}</option>
+      </select>
       <div class="midi-clock-status" role="status" aria-live="polite" data-testid="midi-clock-status">
         {{ midiClockStatus }}
+      </div>
+      <div v-if="clockSnapshot.selectedInputName" class="midi-clock-selected" data-testid="midi-clock-selected">
+        {{ clockSnapshot.selectedInputName }}
       </div>
     </div>
 
@@ -155,6 +169,7 @@ const midiClockStatus = computed(() => {
     case 'disconnected': return 'Clock monitor off';
   }
   if (snapshot.inputCount === 0) return 'Connected · no input port';
+  if (!snapshot.selectedInputKey) return 'Select one input to monitor';
   if (snapshot.signal === 'ambiguous') return 'Multiple clock sources · ambiguous';
   if (snapshot.signal === 'waiting') return 'Waiting for F8 clock';
   if (snapshot.signal === 'stale') return 'No recent F8 clock';
@@ -170,6 +185,13 @@ const refreshMidiClock = () => {
 const toggleMidiClock = async () => {
   if (clockSnapshot.value.connection === 'connected') midiClock.disconnect();
   else await midiClock.connect();
+  refreshMidiClock();
+};
+
+const selectMidiClockInput = (event: Event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  midiClock.selectInput(target.value || null);
   refreshMidiClock();
 };
 
@@ -408,6 +430,18 @@ onUnmounted(() => {
   font: 8px var(--font-mono);
   line-height: 1.25;
   text-align: center;
+}
+
+.midi-clock-input-select {
+  max-width: 180px;
+  min-width: 120px;
+}
+
+.midi-clock-selected {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .divider {
