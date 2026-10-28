@@ -738,7 +738,19 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       engine.setBrowserBounceSettings({ ...current, bounceIn });
     }, { disabled: !bounce || bounceBusy,
       reason: !bounce ? 'Bounce is unavailable in this audio mode.' : bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'Browser source audio is taken before Track FX.' }));
-    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in'].includes(field.key)) : fields);
+    const loopSyncBusy = !!(audioTrack as { historyBusy?: boolean } | undefined)?.historyBusy
+      || audioTrack?.state === 'RECORDING' || audioTrack?.state === 'OVERDUBBING';
+    fields.push(makeBooleanField('track-loop-sync', 'LOOP SYNC SW', audioTrack?.track.loopSyncSw === 'ON', (enabled) => {
+      if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the track again.');
+      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('Loop sync is unavailable in this audio mode.');
+      if ((audioTrack as { historyBusy?: boolean }).historyBusy || audioTrack.state === 'RECORDING' || audioTrack.state === 'OVERDUBBING') {
+        throw new Error('Finish recording or overdubbing before changing loop sync.');
+      }
+      audioTrack.track.loopSyncSw = enabled ? 'ON' : 'OFF';
+      audioTrack.updateSettings();
+    }, { disabled: engine.getMode() !== 'browser' || !audioTrack || loopSyncBusy,
+      reason: engine.getMode() !== 'browser' ? 'Native loop sync has no provider.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in', 'track-loop-sync'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {

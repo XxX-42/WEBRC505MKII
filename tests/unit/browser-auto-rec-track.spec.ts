@@ -66,10 +66,19 @@ describe('Browser AutoRec fail-closed boundaries', () => {
   });
   it('rejects measure-quantized AutoRec before creating a capture session and leaves existing loops alone', async () => {
     const h = harness(); const transport = Transport.getInstance();
+    h.track.track.loopSyncSw = 'ON';
     transport.masterTrackId = 2; transport.masterLoopLengthSamples = 176400;
     h.track.triggerRecord(); await Promise.resolve();
     expect(h.engine.beginInputCaptureSession).not.toHaveBeenCalled();
     expect(h.track.state).toBe(TrackState.EMPTY); expect(h.track.recordingDiagnostic).toMatch(/QUANTIZE OFF/);
+  });
+  it('allows AutoRec when LOOP SYNC is off even if a master track exists', async () => {
+    const h = harness(); const transport = Transport.getInstance();
+    transport.masterTrackId = 2; transport.masterLoopLengthSamples = 176400;
+    await h.track.startRecording();
+    expect(h.track.autoRecArmed).toBe(true);
+    expect(h.track.state).toBe(TrackState.REC_STANDBY);
+    h.track.triggerStop();
   });
   it('blocks semantic Memory replacement while armed and allows it after cancellation', async () => {
     const h = harness(); await h.track.startRecording();

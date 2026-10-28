@@ -142,4 +142,16 @@ describe('Classic existing audio controls', () => {
     const native = createEditor('recording', 'memory').editor;
     expect(native.fields.value.find(field => field.key === 'bounce')?.disabled).toBe(true);
   });
+  it('edits LOOP SYNC for the selected Browser track and rejects edits during recording', async () => {
+    const { editor } = createEditor('track');
+    editor.stepPage(1); await settle();
+    const sync = editor.fields.value.find(field => field.key === 'track-loop-sync')!;
+    expect(sync.disabled).toBe(false);
+    sync.setValue!(100); await settle(); await settle();
+    expect(fixture.engine.tracks[0].track.loopSyncSw).toBe('ON');
+    fixture.engine.tracks[0].state = 'RECORDING';
+    sync.setValue!(0); await settle(); await settle();
+    expect(fixture.engine.tracks[0].track.loopSyncSw).toBe('ON');
+    expect(editor.status.value).toContain('Finish recording');
+  });
 });

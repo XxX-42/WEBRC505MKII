@@ -210,6 +210,52 @@ describe('TrackAudio recording chunk assembly', () => {
     expect(overdub).toHaveBeenCalledOnce();
   });
 
+  it('does not quantize start or stop when this track has LOOP SYNC OFF', async () => {
+    const [{ TrackAudio }, { Track, TrackState }, { Transport }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = { context, trackMixNode: context.createGain(), tracks: [] as unknown[],
+      getRecordPlaySettings: () => ({ quantize: 'MEASURE' }) };
+    const transport = Transport.getInstance();
+    transport.stop(); transport.masterTrackId = 1; transport.masterLoopLengthSamples = 2048;
+    try {
+      const audio = new TrackAudio(engine as never, new Track(2), 1, null, null);
+      const start = vi.spyOn(audio, 'startRecording').mockResolvedValue(undefined);
+      const stop = vi.spyOn(audio, 'stopRecording').mockResolvedValue(undefined);
+      audio.triggerRecord();
+      expect(start).toHaveBeenCalledOnce();
+      expect(audio.state).toBe(TrackState.EMPTY);
+      audio.state = TrackState.RECORDING;
+      audio.triggerRecord();
+      expect(stop).toHaveBeenCalledOnce();
+      expect(audio.state).toBe(TrackState.RECORDING);
+    } finally {
+      transport.stop(); transport.masterTrackId = null; transport.masterLoopLengthSamples = 0;
+    }
+  });
+
+  it('keeps the recorded PCM length when LOOP SYNC is OFF even if another track is master', async () => {
+    const [{ TrackAudio }, { Track }, { Transport }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = { context, trackMixNode: context.createGain(), tracks: [] as unknown[], roundTripLatency: 0,
+      selectedInputDeviceId: null, selectedOutputDeviceId: null, selectedBufferFrames: 128 };
+    const transport = Transport.getInstance();
+    transport.stop(); transport.masterTrackId = 1; transport.masterLoopLengthSamples = 8;
+    try {
+      const audio = new TrackAudio(engine as never, new Track(2), 1, null, null);
+      const internal = audio as unknown as { processRecordedBuffer: (samples: Float32Array) => void; resumeAfterRecording: boolean; audioBuffer: AudioBuffer };
+      internal.resumeAfterRecording = false;
+      internal.processRecordedBuffer(Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+      expect(internal.audioBuffer.length).toBe(10);
+      expect(Array.from(internal.audioBuffer.getChannelData(0))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    } finally {
+      transport.stop(); transport.masterTrackId = null; transport.masterLoopLengthSamples = 0;
+    }
+  });
+
   it('recycles transferable chunks and finalizes only the captured frame range with counters', async () => {
     vi.resetModules();
     const [{ TrackAudio }, { Track }] = await Promise.all([
@@ -580,6 +626,7 @@ describe('TrackAudio recording chunk assembly', () => {
 
     try {
       const trackAudio = new TrackAudio(engine as never, new Track(1), 0, null, null);
+      trackAudio.track.loopSyncSw = 'ON';
       const privateApi = trackAudio as unknown as {
         processRecordedBuffer: (buffer: Float32Array) => void;
         resumeAfterRecording: boolean;

@@ -1916,7 +1916,7 @@ export class TrackAudio {
         }
 
         if (this.state === TrackState.REC_STANDBY) {
-            this.state = TrackState.STOPPED;
+            this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
             this.syncTransportState();
             return;
         }
@@ -1929,7 +1929,7 @@ export class TrackAudio {
     private scheduleRecordingStart() {
         if (this.disposed) return;
         if (this.engine.getBrowserAutoRecSettings?.().enabled) {
-            if (this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
+            if (this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
                 this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
                 return;
             }
@@ -1941,9 +1941,9 @@ export class TrackAudio {
         // ========================================
 
         // Check if there's a master track
-        if (this.engine.getRecordPlaySettings?.().quantize === 'OFF' || !this.transport.hasMasterTrack()) {
+        if (this.track.loopSyncSw !== 'ON' || this.engine.getRecordPlaySettings?.().quantize === 'OFF' || !this.transport.hasMasterTrack()) {
             // No quantization grid requested, or this take establishes the master
-            console.log(`Track ${this.track.id}: No master track - starting immediately`);
+            console.log(`Track ${this.track.id}: Starting recording immediately`);
             this.startRecording();
 
             // Start transport if it's not running
@@ -1990,9 +1990,9 @@ export class TrackAudio {
         // ========================================
 
         // Check if there's a master track
-        if (!this.transport.hasMasterTrack()) {
+        if (this.track.loopSyncSw !== 'ON' || !this.transport.hasMasterTrack()) {
             // The first take establishes the grid; OFF only disables start quantization.
-            console.log(`Track ${this.track.id}: Master track - stopping immediately`);
+            console.log(`Track ${this.track.id}: Stopping recording immediately`);
             this.stopRecording();
             return;
         }
@@ -2374,7 +2374,7 @@ export class TrackAudio {
             const autoRecEnabled = autoRec?.enabled === true;
             const bounceSourceMask = this.engine.getBrowserBounceSourceMask?.(this.trackIndex) ?? 0;
             const bounceEnabled = bounceSourceMask !== 0;
-            if (autoRecEnabled && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
+            if (autoRecEnabled && this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
                 this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
                 return;
             }
@@ -2981,7 +2981,7 @@ export class TrackAudio {
         let finalBufferLength = lengthSamples;
 
         const becomesMaster = !this.transport.hasMasterTrack();
-        if (!becomesMaster) {
+        if (!becomesMaster && this.track.loopSyncSw === 'ON') {
             const masterLength = this.transport.masterLoopLengthSamples;
             if (masterLength > 0 && Number.isFinite(masterLength)) {
                 const ratio = Math.max(1, Math.round(lengthSamples / masterLength));
