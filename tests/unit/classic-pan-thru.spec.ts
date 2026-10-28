@@ -33,7 +33,7 @@ beforeEach(() => {
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
     getBrowserAutoRecSettings: () => null,
-    getBrowserBounceSettings: () => null,
+    getBrowserBounceSettings: () => null, getNativeBounceSettings: () => null,
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
     getDevices: vi.fn(async () => ({ inputs: [], outputs: [] })) };
 });
@@ -117,7 +117,7 @@ describe('Classic existing audio controls', () => {
     const { editor } = createEditor('recording', 'memory');
     expect(editor.fields.value.find(field => field.key === 'record-quantize')?.disabled).toBe(false);
   });
-  it('binds Browser Bounce switches to the selected source and destination and keeps Native unavailable', async () => {
+  it('binds Browser Bounce switches to the selected source and destination and keeps Native unavailable without a provider', async () => {
     let bounce = { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] };
     fixture.engine.getBrowserBounceSettings = () => ({ ...bounce, bounceIn: [...bounce.bounceIn], bounceTrack: [...bounce.bounceTrack] });
     fixture.engine.setBrowserBounceSettings = vi.fn((value) => { bounce = value; });
