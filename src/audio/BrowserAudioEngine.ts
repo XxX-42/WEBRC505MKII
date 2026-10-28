@@ -249,7 +249,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     private readonly trackFxApplyErrors = ['', '', '', '', ''];
     private readonly trackFxApplyQueues = new Map<number, Promise<unknown>>();
     private readonly inputCaptureRecycleMessage = {
-        type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 0, chunkIndex: 0,
+        type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 0, inputGeneration: 0, chunkIndex: 0,
         channels: [] as Float32Array[],
     };
     private readonly inputCaptureRecycleTransfers: Transferable[] = [new ArrayBuffer(0), new ArrayBuffer(0)];
@@ -4035,6 +4035,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const recycle = this.inputCaptureRecycleMessage;
         recycle.trackIndex = message.trackIndex;
         recycle.sessionId = message.sessionId;
+        recycle.inputGeneration = message.inputGeneration;
         recycle.chunkIndex = message.chunkIndex;
         recycle.channels = channels;
         const transfers = this.inputCaptureRecycleTransfers;
@@ -4058,6 +4059,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const recycle = this.inputCaptureRecycleMessage;
         recycle.trackIndex = session.trackIndex;
         recycle.sessionId = session.sessionId;
+        recycle.inputGeneration = session.inputGeneration;
         recycle.chunkIndex = chunkIndex;
         recycle.channels = channels;
         const transfers = this.inputCaptureRecycleTransfers;

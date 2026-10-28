@@ -36,6 +36,10 @@ describe('Browser shared capture pool lifecycle', () => {
       type: 'CAPTURE_POOL_RELEASED', trackIndex: 0, sessionId: session.sessionId + 1,
       inputGeneration: session.inputGeneration,
     });
+    engine.handleInputCaptureMessage({
+      type: 'CAPTURE_POOL_RELEASED', trackIndex: 0, sessionId: session.sessionId,
+      inputGeneration: session.inputGeneration + 1,
+    });
     let settled = false;
     void waiting.then(() => { settled = true; });
     await Promise.resolve();

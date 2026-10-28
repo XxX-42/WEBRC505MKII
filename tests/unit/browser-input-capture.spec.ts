@@ -488,7 +488,7 @@ describe('Browser shared input capture worklet', () => {
 
     const chunk = capture.messages('RECORD_CHUNK')[0];
     capture.processor.port.receive({
-      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 4, chunkIndex: chunk.chunkIndex,
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 4, inputGeneration: 1, chunkIndex: chunk.chunkIndex,
       channels: [new Float32Array(2)],
     });
     capture.processor.port.receive({
@@ -498,7 +498,7 @@ describe('Browser shared input capture worklet', () => {
     expect(capture.messages('CAPTURE_ERROR').at(-1)?.reason).toBe('chunk-pool-not-reclaimed');
     // Session IDs cannot be reused to mutate a newer slot's pool lease.
     capture.processor.port.receive({
-      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 4, chunkIndex: chunk.chunkIndex,
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 4, inputGeneration: 1, chunkIndex: chunk.chunkIndex,
       channels: [new Float32Array(2)],
     });
     expect(capture.processor.slots[0].state).toBe('pending');
@@ -518,19 +518,60 @@ describe('Browser shared input capture worklet', () => {
 
     // A stale recycle from another session cannot release this pool lease.
     capture.processor.port.receive({
-      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 43, chunkIndex: chunk.chunkIndex,
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 43, inputGeneration: 1, chunkIndex: chunk.chunkIndex,
       channels: [new Float32Array(2), new Float32Array(2)],
     });
     expect(capture.processor.slots[0].state).toBe('aborting');
     expect(capture.messages('CAPTURE_POOL_RELEASED')).toHaveLength(0);
 
     capture.processor.port.receive({
-      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 44, chunkIndex: chunk.chunkIndex,
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 44, inputGeneration: 1, chunkIndex: chunk.chunkIndex,
       channels: [new Float32Array(2), new Float32Array(2)],
     });
     expect(capture.processor.slots[0].state).toBe('idle');
     expect(capture.messages('CAPTURE_POOL_RELEASED')).toEqual([{
       type: 'CAPTURE_POOL_RELEASED', trackIndex: 0, sessionId: 44, inputGeneration: 1,
+    }]);
+  });
+
+  it('keeps a completed slot leased when Clear runs between ordered chunk and complete messages', () => {
+    const capture = createCapture({ chunkSize: 2, chunkPoolSize: 1, preRollFrames: 4 });
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 45, inputGeneration: 1,
+      startFrame: 0, maxRecordingBytes: 256,
+    });
+    capture.process([1, 2]);
+    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 45, stopFrame: 2 });
+
+    const chunk = capture.messages('RECORD_CHUNK')[0];
+    expect(capture.messages('RECORD_COMPLETE')).toHaveLength(1);
+    expect(capture.processor.port.messages
+      .map(({ message }) => message.type)
+      .filter((type) => type === 'RECORD_CHUNK' || type === 'RECORD_COMPLETE'))
+      .toEqual(['RECORD_CHUNK', 'RECORD_COMPLETE']);
+    expect(capture.processor.slots[0].state).toBe('idle');
+    expect(capture.processor.slots[0].poolLeasePending).toBe(true);
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toHaveLength(0);
+
+    // The worklet emitted these in FIFO order. Main-thread Clear may run after
+    // handling the chunk message and before its next complete-message task;
+    // the retained chunk is returned only after that Clear has retired the
+    // session. The pool ACK must wait for this exact generation's return.
+    capture.processor.port.receive({ type: 'ABORT_CAPTURE', trackIndex: 0, sessionId: 45, inputGeneration: 1 });
+    capture.processor.port.receive({
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 45, inputGeneration: 0,
+      chunkIndex: chunk.chunkIndex, channels: [new Float32Array(2), new Float32Array(2)],
+    });
+    expect(capture.processor.slots[0].state).toBe('aborting');
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toHaveLength(0);
+
+    capture.processor.port.receive({
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 45, inputGeneration: 1,
+      chunkIndex: chunk.chunkIndex, channels: [new Float32Array(2), new Float32Array(2)],
+    });
+    expect(capture.processor.slots[0].state).toBe('idle');
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toEqual([{
+      type: 'CAPTURE_POOL_RELEASED', trackIndex: 0, sessionId: 45, inputGeneration: 1,
     }]);
   });
 
@@ -635,7 +676,7 @@ describe('Browser AutoRec sample trigger', () => {
   it('cancels an armed session without producing a take and allows rearming', () => {
     const c = createCapture(); c.process([0, 0, 0, 0]); c.process([0, 0, 0, 0]);
     c.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1, startFrame: 8, autoRecThreshold: 0.5 });
-    c.processor.port.receive({ type: 'ABORT_CAPTURE', trackIndex: 0, sessionId: 1 });
+    c.processor.port.receive({ type: 'ABORT_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1 });
     c.process([1, 1, 1, 1]);
     expect(c.messages('RECORD_CONFIGURED')).toHaveLength(0);
     expect(c.messages('RECORD_COMPLETE')).toHaveLength(0);

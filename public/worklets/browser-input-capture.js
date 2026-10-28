@@ -115,6 +115,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       sessionId: 0,
       inputGeneration: 0,
       state: 'idle',
+      poolLeasePending: false,
       autoRecThreshold: null,
       bounceSourceMask: 0,
       requestedStartFrame: 0,
@@ -218,7 +219,22 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     } else if (message.type === 'STOP_CAPTURE') {
       if (slot.sessionId === message.sessionId) this.requestStop(slot, message.stopFrame);
     } else if (message.type === 'ABORT_CAPTURE') {
-      if (slot.sessionId === message.sessionId) this.abortCapture(slot, 'capture-aborted');
+      if (slot.sessionId === message.sessionId && message.inputGeneration === slot.inputGeneration) {
+        if (slot.state === 'armed' || slot.state === 'pending' || slot.state === 'recording') {
+          this.abortCapture(slot, 'capture-aborted');
+        } else if (slot.poolLeasePending) {
+          slot.state = 'aborting';
+          if (this.poolAvailable(slot)) {
+            slot.poolLeasePending = false;
+            slot.state = 'idle';
+            this.postCapturePoolReleased(slot);
+          }
+        } else if (slot.state === 'idle' && this.poolAvailable(slot)) {
+          // Clear may arrive just after normal completion and after the last
+          // chunk was returned. Confirm the still-matching lease immediately.
+          this.postCapturePoolReleased(slot);
+        }
+      }
     } else if (message.type === 'RECYCLE_CHUNK') {
       this.recycleChunk(slot, message);
     }
@@ -421,6 +437,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
 
     slot.sessionId = message.sessionId;
     slot.inputGeneration = message.inputGeneration;
+    slot.poolLeasePending = false;
     slot.autoRecThreshold = message.autoRecThreshold === undefined ? null : message.autoRecThreshold;
     slot.bounceSourceMask = bounceSourceMask;
     slot.state = slot.autoRecThreshold === null ? 'pending' : 'armed';
@@ -630,7 +647,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
 
   recycleChunk(slot, message) {
     const index = message.chunkIndex;
-    if (message.sessionId !== slot.sessionId || !Number.isInteger(index)
+    if (message.sessionId !== slot.sessionId || message.inputGeneration !== slot.inputGeneration
+      || !Number.isInteger(index)
       || index < 0 || index >= slot.chunkBuffers.length || !Array.isArray(message.channels)
       || slot.chunkBuffers[index] !== null) return;
     const left = message.channels[0];
@@ -645,7 +663,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       pair[1] = slot.monoRightBuffers[index];
       slot.chunkBuffers[index] = pair;
     }
-    if (slot.state === 'aborting' && this.poolAvailable(slot)) {
+    if (slot.poolLeasePending && this.poolAvailable(slot)) {
+      slot.poolLeasePending = false;
       slot.state = 'idle';
       this.postCapturePoolReleased(slot);
     }
@@ -703,11 +722,15 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.inputGeneration = slot.inputGeneration;
     message.chunksSent = slot.chunksSent;
     this.port.postMessage(message);
-    slot.state = this.poolAvailable(slot) ? 'idle' : 'aborting';
+    slot.poolLeasePending = !this.poolAvailable(slot);
+    slot.state = slot.poolLeasePending ? 'aborting' : 'idle';
     if (slot.state === 'idle') this.postCapturePoolReleased(slot);
   }
 
   postCapturePoolReleased(slot) {
+    if (slot.state !== 'idle' || !this.poolAvailable(slot)
+      || !Number.isSafeInteger(slot.sessionId) || slot.sessionId <= 0
+      || !Number.isSafeInteger(slot.inputGeneration)) return;
     const message = slot.poolReleasedMessage;
     message.sessionId = slot.sessionId;
     message.inputGeneration = slot.inputGeneration;
@@ -748,7 +771,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     complete.chunksSent = slot.chunksSent;
     complete.status = slot.droppedFrames > 0 || slot.limitReached ? 'incomplete' : 'complete';
     this.port.postMessage(complete);
+    // A completed take can still have transferred chunks owned by the main
+    // thread. Keep the slot unavailable until every exact-generation buffer
+    // has returned, so a concurrent Clear can wait on the same release ACK as
+    // an explicit abort.
+    slot.poolLeasePending = !this.poolAvailable(slot);
     slot.state = 'idle';
+    if (!slot.poolLeasePending) this.postCapturePoolReleased(slot);
   }
 
   storePreRoll(frame, rawLeft, rawRight, processedLeft, processedRight, inputs, offset) {
