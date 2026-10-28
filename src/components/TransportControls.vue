@@ -52,6 +52,22 @@
       <div v-if="showBeatReason" class="module-note">{{ beatUnavailableReason }}</div>
     </div>
 
+    <div v-if="audioMode === 'browser'" class="midi-clock-module">
+      <div class="module-label">MIDI CLOCK</div>
+      <button
+        class="midi-clock-button"
+        type="button"
+        :disabled="clockSnapshot.connection === 'connecting'"
+        :aria-label="clockSnapshot.connection === 'connected' ? 'Disconnect MIDI clock input' : 'Connect MIDI clock input'"
+        @click="toggleMidiClock"
+      >
+        {{ clockSnapshot.connection === 'connecting' ? 'CONNECTING…' : clockSnapshot.connection === 'connected' ? 'DISCONNECT' : 'CONNECT' }}
+      </button>
+      <div class="midi-clock-status" role="status" aria-live="polite" data-testid="midi-clock-status">
+        {{ midiClockStatus }}
+      </div>
+    </div>
+
     <div class="divider"></div>
 
     <div class="thru-module">
@@ -91,6 +107,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
 import { TrackState, TransportState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
+import { MidiClockInputController, type MidiClockSnapshot } from '../audio/MidiClockInputController';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
 import BrowserAudioSettings from './BrowserAudioSettings.vue';
@@ -113,6 +130,9 @@ const monitoringError = monitoring.error;
 const monitoringPending = monitoring.pending;
 const monitoringReady = monitoring.ready;
 const monitoringDisabled = computed(() => !monitoringReady.value || monitoringPending.value);
+const midiClock = new MidiClockInputController({ onChange: () => refreshMidiClock() });
+const clockSnapshot = ref<MidiClockSnapshot>(midiClock.getSnapshot());
+let clockRefreshTimer: number | null = null;
 const thruAriaLabel = computed(() => monitoringPending.value
   ? 'Changing direct monitoring state'
   : !monitoringReady.value
@@ -125,6 +145,32 @@ const controlsDisabled = computed(() => !nativeReady.value);
 const beatDisabled = computed(() => controlsDisabled.value || !capabilities.supportsBeatFeedback);
 const beatUnavailableReason = capabilities.beatReason;
 const showBeatReason = computed(() => !capabilities.supportsBeatFeedback);
+const midiClockStatus = computed(() => {
+  const snapshot = clockSnapshot.value;
+  switch (snapshot.connection) {
+    case 'connecting': return 'Waiting for MIDI permission';
+    case 'unsupported': return 'Web MIDI unavailable';
+    case 'permission-denied': return 'MIDI permission denied';
+    case 'error': return 'MIDI input error';
+    case 'disconnected': return 'Clock monitor off';
+  }
+  if (snapshot.inputCount === 0) return 'Connected · no input port';
+  if (snapshot.signal === 'waiting') return 'Waiting for F8 clock';
+  if (snapshot.signal === 'stale') return 'No recent F8 clock';
+  if (snapshot.stability === 'stable') return 'Timing steady · monitor only';
+  if (snapshot.stability === 'unstable') return 'Timing varies · monitor only';
+  return 'F8 observed · checking timing';
+});
+
+const refreshMidiClock = () => {
+  clockSnapshot.value = midiClock.getSnapshot();
+};
+
+const toggleMidiClock = async () => {
+  if (clockSnapshot.value.connection === 'connected') midiClock.disconnect();
+  else await midiClock.connect();
+  refreshMidiClock();
+};
 
 const updateState = () => {
   bpm.value = transport.bpm;
@@ -263,6 +309,7 @@ const handleTap = () => {
 };
 
 onMounted(() => {
+  clockRefreshTimer = window.setInterval(refreshMidiClock, 250);
   transport.on('bpm-change', updateState);
   transport.on('beat', handleBeat);
   transport.on('start', handleTransportStart);
@@ -279,6 +326,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  midiClock.disconnect();
   transport.off('bpm-change', updateState);
   transport.off('beat', handleBeat);
   transport.off('start', handleTransportStart);
@@ -294,6 +342,7 @@ onUnmounted(() => {
     clearTimeout(tapFlashTimer);
   }
   unsubscribeStatus?.();
+  if (clockRefreshTimer !== null) window.clearInterval(clockRefreshTimer);
 });
 </script>
 
@@ -320,9 +369,44 @@ onUnmounted(() => {
 .bpm-module,
 .transport-controls,
 .beat-indicator-module,
+.midi-clock-module,
 .thru-module,
 .settings-module {
   min-height: 92px;
+}
+
+.midi-clock-module {
+  min-width: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.midi-clock-button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: #202326;
+  color: #d6d6d6;
+  font: 700 9px var(--font-mono);
+  letter-spacing: 0.6px;
+  cursor: pointer;
+}
+
+.midi-clock-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.midi-clock-status {
+  max-width: 140px;
+  color: rgba(240, 240, 240, 0.62);
+  font: 8px var(--font-mono);
+  line-height: 1.25;
+  text-align: center;
 }
 
 .divider {
