@@ -45,8 +45,10 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     rawSource.disconnect(captureNode);
     browser.inputFxChain.output.disconnect(captureNode);
     const pattern = Float32Array.from({ length: 4096 }, (_, i) => Math.fround((((i * 37) % 997) - 498) / 2048));
-    const inputBuffer = context.createBuffer(1, pattern.length, context.sampleRate);
+    const rightPattern = Float32Array.from({ length: 4096 }, (_, i) => Math.fround((((i * 71) % 991) - 495) / 2048));
+    const inputBuffer = context.createBuffer(2, pattern.length, context.sampleRate);
     inputBuffer.copyToChannel(pattern, 0);
+    inputBuffer.copyToChannel(rightPattern, 1);
     const signalStartFrame = Math.ceil((context.currentTime + 0.01) * context.sampleRate);
     const signal = context.createBufferSource();
     signal.buffer = inputBuffer; signal.loop = true;
@@ -115,7 +117,7 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     let maxError = 0;
     for (let index = 0; index < expectedLength; index += 1) {
       const patternIndex = ((expectedStartFrame - signalStartFrame + index) % pattern.length + pattern.length) % pattern.length;
-      maxError = Math.max(maxError, Math.abs(left[index]! - pattern[patternIndex]!), Math.abs(right[index]! - pattern[patternIndex]!));
+      maxError = Math.max(maxError, Math.abs(left[index]! - pattern[patternIndex]!), Math.abs(right[index]! - rightPattern[patternIndex]!));
     }
     if (maxError > 1e-7) throw new Error(`Quantized stereo PCM differs from known input pattern; max error=${maxError}; got=${left[0]},${left[1]},${left[2]} / ${right[0]},${right[1]},${right[2]}; expected=${pattern[((expectedStartFrame - signalStartFrame) % pattern.length + pattern.length) % pattern.length]}`);
 
