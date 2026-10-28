@@ -292,8 +292,12 @@ describe('Browser shared input capture worklet', () => {
 
   it('rejects a capture when a repeated frame coordinate advances PCM and the next callback skips a quantum, then rewarms', () => {
     const capture = createCapture({ preRollFrames: 8 });
-    capture.process([0, 1, 2, 3], undefined, 100);
-    capture.process([4, 5, 6, 7], undefined, 104);
+    const sinePcmAtLogicalStart = (startFrame: number) => Array.from({ length: 4 }, (_, offset) =>
+      Math.fround(Math.sin(2 * Math.PI * 997 * (startFrame + offset) / 44_100)));
+    const firstBlockPcm = sinePcmAtLogicalStart(0);
+    const previousBlockPcm = sinePcmAtLogicalStart(4);
+    capture.process(firstBlockPcm, undefined, 100);
+    capture.process(previousBlockPcm, undefined, 104);
     expect(capture.messages('INPUT_CAPTURE_READY')).toHaveLength(1);
 
     capture.processor.port.receive({
@@ -304,12 +308,12 @@ describe('Browser shared input capture worklet', () => {
     // Reuse the previous callback's frame coordinate but supply new PCM,
     // matching the observed Chromium anomaly. The worklet cannot map these
     // samples to the requested absolute frame with confidence.
-    const sinePcmAtLogicalStart = (startFrame: number) => Array.from({ length: 4 }, (_, offset) =>
-      Math.fround(Math.sin(2 * Math.PI * 997 * (startFrame + offset) / 44_100)));
     const repeatedCoordinatePcm = sinePcmAtLogicalStart(8);
-    expect(repeatedCoordinatePcm).not.toEqual(sinePcmAtLogicalStart(4));
+    expect(repeatedCoordinatePcm).not.toEqual(previousBlockPcm);
     capture.process(repeatedCoordinatePcm, undefined, 104);
     expect(capture.messages('CAPTURE_ERROR')).toHaveLength(0);
+    expect(Array.from({ length: 4 }, (_, offset) =>
+      capture.processor.readPreRoll(104 + offset, 0, 0))).toEqual(previousBlockPcm);
 
     // The following callback skips [108,112), intersecting the pending take.
     capture.process(sinePcmAtLogicalStart(12), undefined, 112);
@@ -331,7 +335,7 @@ describe('Browser shared input capture worklet', () => {
       latestAvailableFrame: 116, preRollValidFrames: 4, requiredPreRollFrames: 8,
     });
 
-    capture.process([20, 21, 22, 23], undefined, 116);
+    capture.process(sinePcmAtLogicalStart(16), undefined, 116);
     expect(capture.messages('INPUT_CAPTURE_READY')).toHaveLength(2);
     expect(capture.messages('INPUT_CAPTURE_READY').at(-1)).toMatchObject({
       captureReadyEpoch: 1, oldestAvailableFrame: 112, latestAvailableFrame: 120,
