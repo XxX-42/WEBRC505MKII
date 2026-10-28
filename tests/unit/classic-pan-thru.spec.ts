@@ -32,6 +32,7 @@ beforeEach(() => {
   fixture.engine = { tracks: [audio], monitoringEnabled: false, getMode: () => 'browser',
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
+    getBrowserAutoRecSettings: () => null,
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
     getDevices: vi.fn(async () => ({ inputs: [], outputs: [] })) };
 });
