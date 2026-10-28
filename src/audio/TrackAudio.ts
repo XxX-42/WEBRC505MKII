@@ -2411,10 +2411,13 @@ export class TrackAudio {
                 const onCaptureMessage = (message: unknown) => {
                     if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
                 };
-                captureSession = autoRecEnabled || bounceEnabled
+                captureSession = bounceEnabled
                     ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
                         undefined, autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined, bounceSourceMask)
-                    : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
+                    : autoRecEnabled
+                        ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
+                            undefined, browserAutoRecThreshold(autoRec!.sensitivity))
+                        : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
                     this.workletNode = captureSession.node;
@@ -3596,7 +3599,8 @@ export class TrackAudio {
 
             // Preserve the old muted-sink routing. The existing buffer source stays
             // audible while real-time overdub DSP and loop readback remain in the worklet.
-            input.connect(workletNode, 0, 0);
+            if (bounceSourceMix) input.connect(workletNode, 0, 0);
+            else input.connect(workletNode);
             bounceSourceMix?.node.connect(workletNode, 0, 1);
             this.overdubInputNode = input;
             this.overdubBounceSourceMix = bounceSourceMix;

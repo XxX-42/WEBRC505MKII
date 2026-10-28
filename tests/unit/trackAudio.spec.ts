@@ -559,7 +559,7 @@ describe('TrackAudio transport sync helpers', () => {
     (trackAudio as any).startOffset = 3 / context.sampleRate;
     engine.roundTripLatency = 1 / context.sampleRate;
     engine.selectedBufferFrames = 128;
-    trackAudio.isReverse = true;
+    trackAudio.isReverse = false;
     trackAudio.state = TrackState.PLAYING;
     setBrowserRecordingOffsetConfig(0.023, {
       inputDeviceId: null,
@@ -581,7 +581,7 @@ describe('TrackAudio transport sync helpers', () => {
       startOffsetSamples: 3,
       latencySamples: 1,
       recordingOffsetSamples: 1,
-      reverse: true,
+      reverse: false,
     });
     expect((init?.buffers as unknown[])).toHaveLength(3);
     expect(node?.port.posted[0]?.transferList).toHaveLength(10);
