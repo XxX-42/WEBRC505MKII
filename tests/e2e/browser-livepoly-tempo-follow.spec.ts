@@ -273,3 +273,196 @@ test('canceled LIVE_POLY follow leaves a moving LIVE_MONO playback cursor in Chr
   expect(result.after).toBeGreaterThan(result.before + 0.08);
   expect(result.pcmUnchanged).toBe(true);
 });
+
+test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 becomes stale', async ({ page }) => {
+  await page.addInitScript(() => {
+    const listeners = new Set<(event: { data: number[]; timeStamp: number }) => void>();
+    const input = {
+      name: 'Tempo Follow Controller',
+      addEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: { data: number[]; timeStamp: number }) => void) => listeners.delete(listener),
+      send: (data: number[], timeStamp: number) => listeners.forEach((listener) => listener({ data, timeStamp })),
+    };
+    const accessListeners = new Set<() => void>();
+    const access = {
+      inputs: { forEach: (callback: (port: typeof input) => void) => callback(input) },
+      addEventListener: (_type: string, listener: () => void) => accessListeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => accessListeners.delete(listener),
+    };
+    const permissionStatus = { state: 'granted', addEventListener: () => undefined, removeEventListener: () => undefined };
+    let bpm = 120;
+    Object.defineProperty(window, '__fakeTempoFollowMidi', { configurable: true, value: {
+      send: (data: number[], timeStamp: number) => input.send(data, timeStamp),
+      setBpm: (nextBpm: number) => { bpm = nextBpm; },
+      getBpm: () => bpm,
+    } });
+    Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => access });
+    Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => permissionStatus } });
+  });
+  await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
+
+  await page.evaluate(async () => {
+    const [{ AudioEngine }, { TrackState }] = await Promise.all([
+      import('/src/audio/AudioEngine.ts'),
+      import('/src/core/types.ts'),
+    ]);
+    const root = (document.querySelector('.app-root') as any)?.__vueParentComponent;
+    const engine = root?.setupState?.engine ?? AudioEngine.getInstance();
+    const track = engine.tracks[0] as any;
+    const context = (engine as any).browserEngine.context as AudioContext;
+    const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    const pcm = buffer.getChannelData(0);
+    for (let i = 0; i < pcm.length; i += 1) pcm[i] = 0.2 * Math.sin(2 * Math.PI * 220 * i / context.sampleRate);
+    track.audioBuffer = buffer;
+    track.originalRecordingBpmValue = 100;
+    track.state = TrackState.STOPPED;
+    await track.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await track.play();
+    if (!track.livePolyPitchActive) throw new Error('LIVE_POLY did not start for the MIDI tempo-follow E2E');
+  });
+
+  const followToggle = page.getByTestId('midi-livepoly-tempo-follow');
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    track.track.oneShot = 'ON';
+  });
+  await expect(followToggle).toBeDisabled();
+  await expect(page.getByTestId('midi-livepoly-tempo-follow-status')).toContainText('one-shot');
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    track.track.oneShot = 'OFF';
+    track.loopTransportFxSlots[0] = { type: 'BEAT SHIFT' };
+  });
+  await expect(followToggle).toBeDisabled();
+  await expect(page.getByTestId('midi-livepoly-tempo-follow-status')).toContainText('source-aware loop transport effect');
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    (AudioEngine.getInstance().tracks[0] as any).loopTransportFxSlots[0] = null;
+  });
+
+  await page.getByRole('button', { name: 'Connect MIDI clock input' }).click();
+  await page.getByTestId('midi-clock-input-select').selectOption({ label: 'Tempo Follow Controller' });
+  const pulseTimer = await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeTempoFollowMidi: { send(data: number[], timeStamp: number): void } }).__fakeTempoFollowMidi;
+    const startedAt = performance.now();
+    const source = fake as typeof fake & { getBpm(): number };
+    const period = () => 60_000 / source.getBpm() / 24;
+    let nextPulseAt = startedAt;
+    return window.setInterval(() => {
+      const now = performance.now();
+      while (nextPulseAt <= now) {
+        fake.send([0xf8], nextPulseAt);
+        nextPulseAt += period();
+      }
+    }, 2);
+  });
+  await expect(page.getByTestId('midi-clock-status')).toHaveText('Timing steady · monitor only', { timeout: 5_000 });
+  await expect(followToggle).toBeEnabled();
+  await followToggle.check();
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
+  }), { timeout: 5_000 }).toBe(120);
+  await page.evaluate(() => {
+    (window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } }).__fakeTempoFollowMidi.setBpm(112);
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
+  }), { timeout: 10_000 }).toBeCloseTo(112, 0);
+  await page.evaluate(() => {
+    (window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } }).__fakeTempoFollowMidi.setBpm(120);
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollowPending;
+  }), { timeout: 5_000 }).toBe(true);
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeTempoFollowMidi: { send(data: number[], timeStamp: number): void } }).__fakeTempoFollowMidi;
+    fake.send([0xfc], performance.now());
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return { follow: track.livePolyTempoFollow, pending: track.livePolyTempoFollowPending, state: track.state, rate: track.livePolyPitchPlaybackRate };
+  }), { timeout: 5_000 }).toMatchObject({ follow: null, pending: false, state: 'PLAYING', rate: 1 });
+  await page.evaluate(() => {
+    const fake = window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } };
+    fake.__fakeTempoFollowMidi.setBpm(120);
+  });
+  await expect(page.getByTestId('midi-clock-relative-phase')).toContainText('locked', { timeout: 5_000 });
+  await expect(followToggle).toBeEnabled();
+  await followToggle.check();
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
+  }), { timeout: 5_000 }).toBe(120);
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeTempoFollowMidi: { send(data: number[], timeStamp: number): void } }).__fakeTempoFollowMidi;
+    fake.send([0xfa], performance.now());
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return { follow: track.livePolyTempoFollow, rate: track.livePolyPitchPlaybackRate, state: track.state };
+  }), { timeout: 3_000 }).toMatchObject({ follow: null, rate: 1, state: 'PLAYING' });
+  await expect(page.getByTestId('midi-clock-relative-phase')).toContainText('locked', { timeout: 3_000 });
+  await expect(followToggle).toBeEnabled();
+  await followToggle.check();
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
+  }), { timeout: 3_000 }).toBe(120);
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeTempoFollowMidi: { send(data: number[], timeStamp: number): void } }).__fakeTempoFollowMidi;
+    fake.send([0xfc], performance.now());
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return { follow: track.livePolyTempoFollow, rate: track.livePolyPitchPlaybackRate, state: track.state };
+  }), { timeout: 3_000 }).toMatchObject({ follow: null, rate: 1, state: 'PLAYING' });
+  await expect(followToggle).toBeEnabled();
+  await followToggle.check();
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
+  }), { timeout: 3_000 }).toBe(120);
+  const pcmEvidence = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    const pcm = track.audioBuffer.getChannelData(0) as Float32Array;
+    let hash = 2166136261;
+    for (const sample of pcm) hash = Math.imul(hash ^ new Uint32Array(new Float32Array([sample]).buffer)[0]!, 16777619);
+    return { hash: hash >>> 0, revision: track.projectRevision, history: track.historyTotalRetainedBytes, rate: track.livePolyPitchPlaybackRate };
+  });
+  await page.evaluate((timer) => window.clearInterval(timer), pulseTimer);
+  await expect(followToggle).not.toBeChecked({ timeout: 5_000 });
+  await expect.poll(() => page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return { follow: track.livePolyTempoFollow, rate: track.livePolyPitchPlaybackRate, state: track.state };
+  }), { timeout: 3_000 }).toMatchObject({ follow: null, rate: 1, state: 'PLAYING' });
+  const pcmAfter = await page.evaluate(async () => {
+    const [{ AudioEngine }, { TrackState }] = await Promise.all([
+      import('/src/audio/AudioEngine.ts'),
+      import('/src/core/types.ts'),
+    ]);
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    const pcm = track.audioBuffer.getChannelData(0) as Float32Array;
+    let hash = 2166136261;
+    for (const sample of pcm) hash = Math.imul(hash ^ new Uint32Array(new Float32Array([sample]).buffer)[0]!, 16777619);
+    const evidence = { hash: hash >>> 0, revision: track.projectRevision, history: track.historyTotalRetainedBytes };
+    await track.stop();
+    await track.setLivePolyPitchEnabled(false);
+    track.audioBuffer = null;
+    track.originalRecordingBpmValue = null;
+    track.state = TrackState.EMPTY;
+    return evidence;
+  });
+  expect(pcmAfter).toEqual({ hash: pcmEvidence.hash, revision: pcmEvidence.revision, history: pcmEvidence.history });
+  expect(pcmEvidence.rate).toBe(1.2);
+});

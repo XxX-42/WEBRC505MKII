@@ -87,11 +87,24 @@
           <option value="rhythm" :disabled="hasCommittedBrowserLoops">RHYTHM</option>
         </select>
       </label>
+      <label class="midi-clock-sync-control">
+        LIVE_POLY loop tempo follow
+        <input
+          data-testid="midi-livepoly-tempo-follow"
+          type="checkbox"
+          :checked="midiTempoFollowEnabled"
+          :disabled="!canEnableMidiTempoFollow"
+          @change="toggleMidiTempoFollow"
+        />
+      </label>
       <div v-if="midiControlNotice" class="midi-clock-control-status" role="status" data-testid="midi-clock-control-notice">
         {{ midiControlNotice }}
       </div>
       <div v-if="midiSyncMode !== 'off' || hasCommittedBrowserLoops" class="midi-clock-control-status" role="status" data-testid="midi-clock-control-status">
         {{ midiControlStatus }}
+      </div>
+      <div class="midi-clock-control-status" role="status" data-testid="midi-livepoly-tempo-follow-status">
+        {{ midiTempoFollowNotice || midiTempoFollowStatus }}
       </div>
       <div class="midi-clock-status" role="status" aria-live="polite" data-testid="midi-clock-status">
         {{ midiClockStatus }}
@@ -100,7 +113,7 @@
         {{ midiClockPhaseStatus }}
       </div>
       <div class="midi-clock-phase-note">
-        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; an early FA waits up to 1 second for stable F8 evidence, then starts on pulse arrival. This delay is not sample-frame alignment; the FA frame projection remains diagnostic only.
+        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; an early FA waits up to 1 second for stable F8 evidence, then starts on pulse arrival. This delay is not sample-frame alignment; the FA frame projection remains diagnostic only. LIVE_POLY follow changes rate without aligning sample phase; if a retarget is interrupted, resume may be up to 400 ms behind the interrupted ramp.
       </div>
       <div
         v-if="clockSnapshot.selectedInputKey"
@@ -176,6 +189,7 @@ import {
   type BrowserMidiPendingStart,
 } from '../audio/BrowserMidiSyncControl';
 import { MidiClockInputController, type MidiClockRealtimeEvent, type MidiClockSnapshot } from '../audio/MidiClockInputController';
+import { getBrowserMidiTempoFollowEligibility, LatestTargetRunner } from '../audio/BrowserMidiTempoFollowPolicy';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
 import BrowserAudioSettings from './BrowserAudioSettings.vue';
@@ -211,6 +225,16 @@ const isMidiSyncRecordingTrack = (track: (typeof engine.tracks)[number]): boolea
   track.state === TrackState.RECORDING || track.state === TrackState.OVERDUBBING
   || track.state === TrackState.REC_STANDBY || track.state === TrackState.REC_FINISHING;
 const hasCommittedBrowserLoops = ref(engine.tracks.some(hasBrowserCommittedPhrase));
+const midiTempoFollowEligibilityRevision = ref(0);
+const midiTempoFollowEnabled = ref(false);
+const midiTempoFollowNotice = ref('');
+let midiTempoFollowTrack: (typeof engine.tracks)[number] | null = null;
+let lastMidiTempoFollowTarget: number | null = null;
+let midiTempoFollowTargetRunner: LatestTargetRunner<number> | null = null;
+let midiTempoFollowSession = 0;
+let midiTempoFollowSourceBpm: number | null = null;
+let midiTempoFollowProjectRevision: number | null = null;
+let midiTempoFollowSourceBuffer: AudioBuffer | null = null;
 const midiClock = new MidiClockInputController({
   onChange: () => refreshMidiClock(),
   getAudioAnchor: () => engine.getMidiAudioClockAnchor(),
@@ -226,6 +250,56 @@ const thruAriaLabel = computed(() => monitoringPending.value
 let unsubscribeStatus: (() => void) | null = null;
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
+const midiTempoFollowEligibility = computed(() => {
+  // TrackAudio is an engine-owned class instance rather than a Vue proxy.
+  // Refresh this eligibility snapshot on the MIDI status cadence.
+  midiTempoFollowEligibilityRevision.value;
+  if (audioMode.value !== 'browser') {
+    return { candidate: null, reason: 'Browser audio is required for MIDI LIVE_POLY tempo follow.' };
+  }
+  return getBrowserMidiTempoFollowEligibility(engine.tracks as unknown as readonly (
+    (typeof engine.tracks)[number] & {
+      hasCommittedPhrase?: boolean;
+      originalRecordingBpm?: number | null;
+      livePolyPitchActive?: boolean;
+      loopTransportActive?: boolean;
+      loopTransportUnavailableReason?: string | null;
+      track?: { oneShot?: 'ON' | 'OFF' };
+      livePolyPitchEnabled?: boolean;
+      livePolyTempoFollowPending?: boolean;
+      projectRevision?: number;
+      audioBuffer?: AudioBuffer | null;
+    }
+  )[]);
+});
+const midiTempoFollowCandidate = computed(() => midiTempoFollowEligibility.value.candidate);
+const canEnableMidiTempoFollow = computed(() => midiTempoFollowCandidate.value !== null
+  && clockSnapshot.value.connection === 'connected'
+  && !!clockSnapshot.value.selectedInputKey
+  && hasStableMidiClock(clockSnapshot.value)
+  && (midiTempoFollowEnabled.value || midiTempoFollowCandidate.value.track.livePolyTempoFollowPending !== true));
+const midiTempoFollowStatus = computed(() => {
+  if (!midiTempoFollowEnabled.value) return midiTempoFollowEligibility.value.reason
+    ?? 'Ready when a stable MIDI clock is selected.';
+  if (!midiTempoFollowCandidate.value) return `Stopped: ${midiTempoFollowEligibility.value.reason ?? 'loop is no longer eligible.'}`;
+  if (clockSnapshot.value.connection !== 'connected' || !clockSnapshot.value.selectedInputKey
+    || clockSnapshot.value.signal !== 'observed' || !hasStableMidiClock(clockSnapshot.value)) {
+    return 'Stopped: selected MIDI clock is unavailable or stale.';
+  }
+  return 'LIVE_POLY rate follows stable F8 tempo; sample phase is not aligned.';
+});
+const isCurrentMidiTempoFollowSession = (candidate: typeof midiTempoFollowCandidate.value): boolean => {
+  if (!candidate || candidate.track !== midiTempoFollowTrack
+    || candidate.sourceBpm !== midiTempoFollowSourceBpm) return false;
+  const track = candidate.track as typeof candidate.track & {
+    projectRevision?: number;
+    audioBuffer?: AudioBuffer | null;
+    livePolyPitchEnabled?: boolean;
+  };
+  return track.projectRevision === midiTempoFollowProjectRevision
+    && track.audioBuffer === midiTempoFollowSourceBuffer
+    && track.livePolyPitchEnabled === true;
+};
 const controlsDisabled = computed(() => !nativeReady.value);
 const beatDisabled = computed(() => controlsDisabled.value || !capabilities.supportsBeatFeedback);
 const beatUnavailableReason = capabilities.beatReason;
@@ -289,6 +363,17 @@ const midiStartFrameMappingStatus = computed(() => {
 const refreshMidiClock = () => {
   clockSnapshot.value = midiClock.getSnapshot();
   hasCommittedBrowserLoops.value = engine.tracks.some(hasBrowserCommittedPhrase);
+  midiTempoFollowEligibilityRevision.value += 1;
+  if (midiTempoFollowEnabled.value) {
+    const selected = clockSnapshot.value.selectedInputKey;
+    const sameSource = !!selected && selected === midiTempoFollowSourceKey;
+    if (!sameSource || clockSnapshot.value.connection !== 'connected'
+      || clockSnapshot.value.signal !== 'observed' || !hasStableMidiClock(clockSnapshot.value)
+      || !isCurrentMidiTempoFollowSession(midiTempoFollowCandidate.value)) {
+      void stopMidiTempoFollow(midiTempoFollowEligibility.value.reason
+        ?? 'Tempo follow stopped because the selected MIDI clock became unavailable, stale, or changed.');
+    }
+  }
   if (pendingMidiStart) {
     const pendingResult = updateBrowserMidiPendingStart(pendingMidiStart, {
       status: 'state',
@@ -326,9 +411,79 @@ const selectMidiClockInput = (event: Event) => {
   const target = event.target;
   if (!(target instanceof HTMLSelectElement)) return;
   midiControlEvidence = null;
+  if (midiTempoFollowEnabled.value) void stopMidiTempoFollow('Tempo follow stopped because the selected MIDI input changed.');
   cancelPendingMidiStart('MIDI Start canceled because the selected input changed.');
   midiClock.selectInput(target.value || null);
   refreshMidiClock();
+};
+
+let midiTempoFollowSourceKey: string | null = null;
+const toggleMidiTempoFollow = (event: Event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  if (!target.checked) {
+    void stopMidiTempoFollow('');
+    return;
+  }
+  const candidate = midiTempoFollowCandidate.value;
+  if (!candidate || !canEnableMidiTempoFollow.value) {
+    target.checked = false;
+    midiTempoFollowNotice.value = midiTempoFollowEligibility.value.reason
+      ?? 'Cannot enable until a stable MIDI clock is selected.';
+    return;
+  }
+  midiTempoFollowTrack = candidate.track;
+  midiTempoFollowSourceKey = clockSnapshot.value.selectedInputKey;
+  midiTempoFollowSourceBpm = candidate.sourceBpm;
+  const sourceTrack = candidate.track as typeof candidate.track & { projectRevision?: number; audioBuffer?: AudioBuffer | null };
+  midiTempoFollowProjectRevision = sourceTrack.projectRevision ?? null;
+  midiTempoFollowSourceBuffer = sourceTrack.audioBuffer ?? null;
+  midiTempoFollowEnabled.value = true;
+  lastMidiTempoFollowTarget = null;
+  const session = ++midiTempoFollowSession;
+  midiTempoFollowTargetRunner = new LatestTargetRunner<number>(async (targetBpm) => {
+    const currentCandidate = midiTempoFollowCandidate.value;
+    if (session !== midiTempoFollowSession || !midiTempoFollowEnabled.value
+      || !isCurrentMidiTempoFollowSession(currentCandidate)) return;
+    try {
+      await (candidate.track as typeof candidate.track & {
+        followLivePolyTempo: (sourceBpm: number, nextBpm: number) => Promise<unknown>;
+      }).followLivePolyTempo(candidate.sourceBpm, targetBpm);
+    } catch {
+      if (session === midiTempoFollowSession) {
+        await stopMidiTempoFollow('Tempo follow stopped because LIVE_POLY could not acknowledge a safe retarget.');
+      }
+    }
+  });
+  midiTempoFollowNotice.value = '';
+};
+
+const stopMidiTempoFollow = async (notice: string) => {
+  const track = midiTempoFollowTrack as (typeof engine.tracks)[number] & {
+    clearLivePolyTempoFollow?: () => Promise<void>;
+    stop?: () => void;
+    setLivePolyPitchEnabled?: (enabled: boolean) => Promise<void>;
+  } | null;
+  midiTempoFollowSession += 1;
+  midiTempoFollowTargetRunner?.invalidate();
+  midiTempoFollowTargetRunner = null;
+  midiTempoFollowEnabled.value = false;
+  midiTempoFollowTrack = null;
+  midiTempoFollowSourceBpm = null;
+  midiTempoFollowProjectRevision = null;
+  midiTempoFollowSourceBuffer = null;
+  midiTempoFollowSourceKey = null;
+  lastMidiTempoFollowTarget = null;
+  if (notice) midiTempoFollowNotice.value = notice;
+  if (!track?.clearLivePolyTempoFollow) return;
+  try {
+    await track.clearLivePolyTempoFollow();
+  } catch {
+    // A suspended context cannot acknowledge a safe reset ramp. Stop the loop
+    // and retire LIVE_POLY so a stale rate cannot continue after resume.
+    track.stop?.();
+    await track.setLivePolyPitchEnabled?.(false).catch(() => undefined);
+  }
 };
 
 const hasStableMidiClock = (snapshot: MidiClockSnapshot): boolean =>
@@ -410,6 +565,29 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
         && event.clock.rejectedIntervals === 0 && event.clock.tickPeriodMs !== null,
     });
     settlePendingMidiStart(pendingResult);
+  }
+  if (midiTempoFollowEnabled.value && event.sourceKey === midiTempoFollowSourceKey) {
+    if (event.status === 'start') {
+      void stopMidiTempoFollow('Tempo follow stopped by MIDI Start while clock phase reacquires.');
+    } else if (event.status === 'stop') {
+      void stopMidiTempoFollow('Tempo follow stopped by MIDI Stop.');
+    } else if (event.status === 'clock') {
+      const candidate = midiTempoFollowCandidate.value;
+      const targetBpm = event.clock.bpm;
+      if (!isCurrentMidiTempoFollowSession(candidate) || !event.clock.phaseLocked
+        || event.clock.inferredMissingTicks !== 0 || event.clock.rejectedIntervals !== 0
+        || targetBpm === null || targetBpm < 40 || targetBpm > 300
+        || targetBpm / (candidate?.sourceBpm ?? 1) < 0.5 || targetBpm / (candidate?.sourceBpm ?? 1) > 2) {
+        void stopMidiTempoFollow(midiTempoFollowEligibility.value.reason
+          ?? 'Tempo follow stopped because clock evidence or the loop tempo became invalid.');
+      } else {
+        const roundedBpm = Math.round(targetBpm * 100) / 100;
+        if (lastMidiTempoFollowTarget === null || Math.abs(lastMidiTempoFollowTarget - roundedBpm) >= 0.05) {
+          lastMidiTempoFollowTarget = roundedBpm;
+          midiTempoFollowTargetRunner?.offer(roundedBpm);
+        }
+      }
+    }
   }
   if (midiSyncMode.value === 'off' || audioMode.value !== 'browser') return;
   if (event.sourceKey !== clockSnapshot.value.selectedInputKey) return;
