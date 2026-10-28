@@ -1085,7 +1085,7 @@ export class NativeBridgeClient {
     }
     const status = await this.request<NativeStatus>('/v1/native-bounce/settings', { method: 'POST', body: JSON.stringify(settings) });
     const revision = status.nativeBounce?.requestedRevision;
-    if (!Number.isSafeInteger(revision) || !status.nativeBounce) throw new Error('Native bridge did not acknowledge Bounce settings.');
+    if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || !status.nativeBounce) throw new Error('Native bridge did not acknowledge Bounce settings.');
     if (status.nativeBounce.appliedRevision >= revision) return status;
     const deadline = Date.now() + 2500;
     let latest = status;
