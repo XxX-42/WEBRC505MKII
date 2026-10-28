@@ -11,6 +11,10 @@ function harness() {
   const engine = new BrowserAudioEngine({ context, loadDevicePreferences: false, deferTransportBpmChangeSubscription: true });
   engine.setBrowserAutoRecSettings({ enabled: true, sensitivity: 50 });
   vi.spyOn(engine, 'getInputCaptureRequestFrame').mockReturnValue(128);
+  // AutoRec starts only after the shared capture worklet confirms that its
+  // current input generation is ready. Keep this unit harness on that ready
+  // path; individual unavailable-input cases override the request frame below.
+  vi.spyOn(engine, 'waitForInputCaptureReady').mockResolvedValue();
   vi.spyOn(engine, 'getProcessedInputNode').mockResolvedValue(context.createGain());
   let listener: (message: unknown) => void = () => {};
   const node = { port: { postMessage: vi.fn() } } as unknown as AudioWorkletNode;
