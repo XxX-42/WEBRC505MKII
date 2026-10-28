@@ -43,7 +43,55 @@ class FakePermissionStatus implements MidiPermissionStatusLike {
   }
 }
 
+class FakeAudioContextClock {
+  state: 'running' | 'suspended' = 'running';
+  performanceTimeMs = 1_000;
+  audioTimeSeconds = 10;
+  private listeners = new Set<() => void>();
+  addEventListener(_type: 'statechange', listener: () => void): void { this.listeners.add(listener); }
+  removeEventListener(_type: 'statechange', listener: () => void): void { this.listeners.delete(listener); }
+  changeState(state: 'running' | 'suspended'): void {
+    this.state = state;
+    for (const listener of this.listeners) listener();
+  }
+}
+
 describe('MidiClockInputController', () => {
+  it('invalidates old frame anchors for suspend and resume between polling snapshots', async () => {
+    const input = new FakeInput('Clock');
+    const context = new FakeAudioContextClock();
+    const controller = new MidiClockInputController({
+      requestMIDIAccess: async () => new FakeAccess([input]),
+      now: () => context.performanceTimeMs,
+      getAudioAnchor: () => ({
+        performanceTimeMs: context.performanceTimeMs,
+        audioTimeSeconds: context.audioTimeSeconds,
+        sampleRate: 48_000,
+        contextKey: context,
+        contextState: context.state,
+      }),
+    });
+    await controller.connect();
+    controller.selectInput(controller.getSnapshot().inputs[0]!.key);
+    input.send([0xf8], context.performanceTimeMs);
+    expect(controller.getSnapshot().frameMapping.anchorCount).toBe(1);
+
+    context.performanceTimeMs = 1_250;
+    context.audioTimeSeconds = 10.25;
+    expect(controller.getSnapshot().frameMapping.anchorCount).toBe(2);
+
+    // Both statechange events occur before the next normal 250 ms diagnostic poll.
+    context.changeState('suspended');
+    context.changeState('running');
+    context.performanceTimeMs = 1_500;
+    context.audioTimeSeconds = 10.5;
+    input.send([0xf8], 1_490);
+    expect(controller.getSnapshot()).toMatchObject({
+      frameMapping: { ok: true, frame: 503_520, anchorCount: 1, driftPpm: null },
+    });
+    controller.disconnect();
+  });
+
   it('requests access only on connect and observes F8 without interpreting note messages as clock', async () => {
     const input = new FakeInput('Interface A');
     const access = new FakeAccess([input]);

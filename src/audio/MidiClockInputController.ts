@@ -91,6 +91,8 @@ export class MidiClockInputController {
   private readonly now: () => number;
   private readonly getAudioAnchor?: () => MidiAudioAnchor | null;
   private readonly frameMapper = new MidiAudioFrameMapper();
+  private observedAudioContext: object | null = null;
+  private audioContextStateListener: (() => void) | null = null;
   private connection: MidiInputState = 'disconnected';
   private access?: MidiAccessLike;
   private permissionStatus?: MidiPermissionStatusLike;
@@ -118,6 +120,13 @@ export class MidiClockInputController {
     if (this.permissionStatus?.state !== 'denied') return;
     this.disconnect();
     this.setConnection('permission-denied');
+  };
+
+  private readonly handleAudioContextStateChange = (): void => {
+    // A suspend/resume pair may happen between diagnostic polling ticks. Any
+    // state transition makes the old performance/audio affine model unusable.
+    this.frameMapper.reset();
+    this.onChange?.();
   };
 
   constructor(options: MidiClockInputOptions = {}) {
@@ -187,6 +196,7 @@ export class MidiClockInputController {
     this.selectedInputKey = null;
     this.phaseEstimator.reset();
     this.frameMapper.reset();
+    this.watchAudioContext(null);
     this.setConnection('disconnected');
     this.onChange?.();
   }
@@ -228,8 +238,13 @@ export class MidiClockInputController {
     const medianInterval = source ? this.median(source.intervals) : 0;
     const phase = source ? this.phaseEstimator.getSnapshot(nowMs) : null;
     const anchor = this.getAudioAnchor?.();
-    if (anchor) this.frameMapper.addAnchor(anchor);
-    else if (this.getAudioAnchor) this.frameMapper.reset();
+    if (anchor) {
+      this.watchAudioContext(anchor.contextKey);
+      this.frameMapper.addAnchor(anchor);
+    } else if (this.getAudioAnchor) {
+      this.frameMapper.reset();
+      this.watchAudioContext(null);
+    }
     const frameMapping = source?.lastTickAtMs !== null && source?.lastTickAtMs !== undefined
       ? this.frameMapper.map(source.lastTickAtMs, nowMs)
       : this.frameMapper.map(Number.NaN, nowMs);
@@ -303,6 +318,25 @@ export class MidiClockInputController {
     if (this.selectedInputKey && ![...this.portClocks.values()].some((clock) => clock.key === this.selectedInputKey)) {
       this.selectedInputKey = null;
     }
+  }
+
+  private watchAudioContext(contextKey: object | null): void {
+    if (this.observedAudioContext === contextKey) return;
+    if (this.observedAudioContext && this.audioContextStateListener) {
+      const previous = this.observedAudioContext as {
+        removeEventListener?: (type: 'statechange', listener: () => void) => void;
+      };
+      previous.removeEventListener?.('statechange', this.audioContextStateListener);
+    }
+    this.observedAudioContext = contextKey;
+    this.audioContextStateListener = null;
+    if (!contextKey) return;
+    const next = contextKey as {
+      addEventListener?: (type: 'statechange', listener: () => void) => void;
+    };
+    if (typeof next.addEventListener !== 'function') return;
+    this.audioContextStateListener = this.handleAudioContextStateChange;
+    next.addEventListener('statechange', this.audioContextStateListener);
   }
 
   private handleMessage(event: MidiMessageEventLike, input: MidiInputLike): void {
