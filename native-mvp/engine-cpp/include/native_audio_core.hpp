@@ -301,6 +301,10 @@ struct EngineStatus {
     unsigned int nativeRhythmSwingPercent = 50U;
     NativeRhythmQuantizeGrid nativeRhythmQuantizeGrid = NativeRhythmQuantizeGrid::Sixteenth;
     unsigned int nativeRhythmVolume = 50U;
+    NativeRhythmPhaseSnapshot nativeRhythmPhase{};
+    bool nativeRhythmPhaseSnapshotStable = false;
+    std::uint64_t nativeRhythmPhaseSnapshotRevision = 0U;
+    bool nativeRhythmFrameSchedulingAvailable = false;
     LooperState state = LooperState::Empty;
     unsigned int nativeLooperTrackCount = 0U;
     bool nativeLooperMultiTrackImplemented = false;
@@ -776,6 +780,9 @@ private:
         bool replaceParameters = false
     );
     void applyNativeRhythmCommands() noexcept;
+    void publishNativeRhythmPhase(std::uint64_t sampleFrame, bool allowAvailable = true) noexcept;
+    [[nodiscard]] NativeRhythmPhaseSnapshot readNativeRhythmPhase(bool& stable,
+        std::uint64_t& snapshotRevision) const noexcept;
     [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
     [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
@@ -1066,6 +1073,16 @@ private:
     std::atomic<bool> nativeTempoAppliedValid_{false};
     std::uint64_t callbackFrameCursor_ = 0;
     std::atomic<std::uint64_t> publishedCallbackFrameCursor_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseSnapshotSequence_{0U};
+    std::atomic<bool> nativeRhythmPhaseAvailable_{false};
+    std::atomic<std::uint64_t> nativeRhythmPhaseEpoch_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseSampleFrame_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseOriginFrame_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseMeasureOrdinal_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseMeasureStartFrame_{0U};
+    std::atomic<std::uint64_t> nativeRhythmPhaseNextMeasureFrame_{0U};
+    std::atomic<unsigned int> nativeRhythmPhaseMeterNumerator_{0U};
+    std::atomic<unsigned int> nativeRhythmPhaseMeterDenominator_{0U};
     std::atomic<bool> engineRunning_{false};
     std::atomic<bool> outputLowPassEnabled_{false};
     std::atomic<bool> outputHighPassEnabled_{false};

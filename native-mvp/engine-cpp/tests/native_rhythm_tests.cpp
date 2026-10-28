@@ -13,6 +13,23 @@
 
 using namespace webrc::native;
 
+namespace webrc::native {
+struct NativeRhythmEngineTestAccess {
+    static void setMeterForFrameMathTest(NativeRhythmEngine& engine,
+            unsigned int numerator, unsigned int denominator) {
+        engine.meterNumerator_ = numerator;
+        engine.meterDenominator_ = denominator;
+        engine.stepsPerBeat_ = 16U / denominator;
+        engine.stepsPerBar_ = numerator * engine.stepsPerBeat_;
+    }
+    static std::uint64_t frameForStep(NativeRhythmEngine& engine, std::uint64_t stepOrdinal) {
+        std::uint64_t frame = 0U;
+        assert(engine.scheduledFrameForStepOrdinal(stepOrdinal, frame));
+        return frame;
+    }
+};
+} // namespace webrc::native
+
 namespace {
 bool trackingAllocations = false;
 std::size_t allocationCount = 0U;
@@ -385,6 +402,106 @@ void testMeterAwareSampleFrameScheduling() {
     assert(engine.activeVoiceCount() == 0U);
 }
 
+void testRhythmPhaseSnapshotAndEpochReset() {
+    constexpr unsigned int sampleRate = 44100U;
+    constexpr double bpm = 127.3;
+    constexpr std::uint64_t origin = 321U;
+    NativeRhythmEngine engine;
+    assert(engine.prepare(sampleRate));
+    const auto preparedEpoch = engine.phaseEpoch();
+    assert(preparedEpoch != 0U);
+    assert(!engine.phaseSnapshotAt(origin).available);
+
+    NativeRhythmConfig config;
+    config.enabled = true;
+    config.bpm = bpm;
+    config.patternIndex = 12U; // 3/4
+    assert(engine.setConfig(config, origin));
+    const auto firstEpoch = engine.phaseEpoch();
+    assert(firstEpoch > preparedEpoch);
+    const auto firstMeasure = expectedSixteenthFrame(origin, 12U, sampleRate, bpm);
+    const auto secondMeasure = expectedSixteenthFrame(origin, 24U, sampleRate, bpm);
+    auto phase = engine.phaseSnapshotAt(origin);
+    assert(phase.available && phase.epoch == firstEpoch && phase.originFrame == origin);
+    assert(phase.sampleFrame == origin && phase.measureOrdinal == 0U);
+    assert(phase.measureStartFrame == origin && phase.nextMeasureFrame == firstMeasure);
+    assert(phase.meterNumerator == 3U && phase.meterDenominator == 4U);
+    phase = engine.phaseSnapshotAt(firstMeasure - 1U);
+    assert(phase.available && phase.measureOrdinal == 0U && phase.measureStartFrame == origin);
+    assert(phase.nextMeasureFrame == firstMeasure);
+    phase = engine.phaseSnapshotAt(firstMeasure);
+    assert(phase.available && phase.measureOrdinal == 1U && phase.measureStartFrame == firstMeasure);
+    assert(phase.nextMeasureFrame == secondMeasure);
+
+    config.volume = 37U;
+    assert(engine.setConfig(config, firstMeasure + 1U));
+    assert(engine.phaseEpoch() == firstEpoch); // A gain-only edit does not restart phase.
+
+    config.patternIndex = 229U; // 5/8
+    const std::uint64_t changedAt = secondMeasure + 17U;
+    assert(engine.setConfig(config, changedAt));
+    const auto changedEpoch = engine.phaseEpoch();
+    assert(changedEpoch > firstEpoch);
+    phase = engine.phaseSnapshotAt(changedAt);
+    assert(phase.available && phase.epoch == changedEpoch && phase.originFrame == changedAt);
+    assert(phase.measureOrdinal == 0U && phase.measureStartFrame == changedAt);
+    assert(phase.nextMeasureFrame == expectedSixteenthFrame(changedAt, 10U, sampleRate, bpm));
+    assert(phase.meterNumerator == 5U && phase.meterDenominator == 8U);
+
+    engine.reset();
+    assert(engine.phaseEpoch() > changedEpoch);
+    phase = engine.phaseSnapshotAt(0U);
+    assert(!phase.available && phase.epoch == engine.phaseEpoch());
+    config.patternIndex = 231U;
+    config.enabled = true;
+    constexpr std::uint64_t restartedOrigin = 900000U;
+    assert(engine.setConfig(config, restartedOrigin));
+    assert(engine.phaseEpoch() > changedEpoch);
+    phase = engine.phaseSnapshotAt(restartedOrigin);
+    assert(phase.available && phase.originFrame == restartedOrigin && phase.measureOrdinal == 0U);
+    assert(phase.nextMeasureFrame == expectedSixteenthFrame(restartedOrigin, 14U, sampleRate, bpm));
+
+    // Snapshot calculation itself stays allocation-free, including the 5/8
+    // fractional-BPM boundary path used by Native callback publication.
+    allocationCount = 0U;
+    trackingAllocations = true;
+    for (std::uint64_t measure = 0U; measure < 32U; ++measure) {
+        const auto boundary = expectedSixteenthFrame(restartedOrigin, measure * 14U, sampleRate, bpm);
+        const auto measured = engine.phaseSnapshotAt(boundary);
+        assert(measured.available && measured.measureOrdinal == measure);
+        assert(measured.measureStartFrame == boundary);
+    }
+    trackingAllocations = false;
+    assert(allocationCount == 0U);
+}
+
+void testPhaseMeasureBoundariesUseRendererRoundingOrder() {
+    constexpr unsigned int sampleRate = 44100U;
+    constexpr double bpm = 41.6;
+    NativeRhythmEngine engine;
+    assert(engine.prepare(sampleRate));
+    NativeRhythmConfig config;
+    config.enabled = true;
+    config.bpm = bpm;
+    assert(engine.setConfig(config, 0U));
+    // The metadata catalog has no 3/8 row; override only the meter dimensions
+    // here to exercise the known six-step rounding boundary independently of
+    // catalog coverage.
+    NativeRhythmEngineTestAccess::setMeterForFrameMathTest(engine, 3U, 8U);
+    constexpr std::uint64_t measureOrdinal = 169U;
+    constexpr std::uint64_t stepOrdinal = measureOrdinal * 6U;
+    const auto expectedBoundary = expectedSixteenthFrame(0U, stepOrdinal, sampleRate, bpm);
+    assert(expectedBoundary == 16124063U);
+    assert(NativeRhythmEngineTestAccess::frameForStep(engine, stepOrdinal) == expectedBoundary);
+    auto phase = engine.phaseSnapshotAt(expectedBoundary - 1U);
+    assert(phase.available && phase.measureOrdinal == measureOrdinal - 1U);
+    assert(phase.nextMeasureFrame == expectedBoundary);
+    phase = engine.phaseSnapshotAt(expectedBoundary);
+    assert(phase.available && phase.measureOrdinal == measureOrdinal);
+    assert(phase.measureStartFrame == expectedBoundary);
+    assert(phase.measureStartFrame == NativeRhythmEngineTestAccess::frameForStep(engine, stepOrdinal));
+}
+
 void testRhythmCallbackDoesNotAllocate() {
     NativeRhythmEngine engine;
     assert(engine.prepare(48000U));
@@ -695,6 +812,8 @@ int main() {
     testMetalEventsAndSeedsMatchTheBrowserCleanRoomTemplate();
     testEmptyDisabledRendererPassesThrough();
     testMeterAwareSampleFrameScheduling();
+    testRhythmPhaseSnapshotAndEpochReset();
+    testPhaseMeasureBoundariesUseRendererRoundingOrder();
     testRhythmCallbackDoesNotAllocate();
     testVariationsSectionsAndSixteenSyntheticKits();
     testSixteenKitProfilesRenderDeterministicallyInSixtyFourFrameBlocks();

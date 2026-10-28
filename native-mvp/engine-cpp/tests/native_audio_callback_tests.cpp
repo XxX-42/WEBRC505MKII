@@ -223,6 +223,21 @@ struct NativeAudioCoreTestAccess {
     static void setRunningForQueueTest(NativeAudioCore& core, bool running) {
         core.engineRunning_.store(running, std::memory_order_release);
     }
+    static void resetRhythmRuntimeForTest(NativeAudioCore& core) {
+        assert(core.currentConfig_.has_value());
+        assert(core.nativeRhythmEngine_.prepare(core.currentConfig_->sampleRate));
+        assert(core.nativeRhythmEngine_.setConfig(core.nativeRhythmConfig_, 0U));
+        core.resetRuntimeStateLocked();
+    }
+    static std::uint64_t beginRhythmPhaseWriteForTest(NativeAudioCore& core) {
+        const auto sequence = core.nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_acquire);
+        assert((sequence & 1U) == 0U);
+        core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 1U, std::memory_order_seq_cst);
+        return sequence;
+    }
+    static void endRhythmPhaseWriteForTest(NativeAudioCore& core, std::uint64_t sequence) {
+        core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 2U, std::memory_order_release);
+    }
 
     static void injectRejectedPerTrackControl(NativeAudioCore& core) {
         const auto revision = ++core.nativePerTrackSlotRevision_[0U][0U];
@@ -3007,10 +3022,285 @@ void testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance() 
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    auto initial = core.getStatus();
+    assert(initial.nativeRhythmPhaseSnapshotStable);
+    assert(!initial.nativeRhythmPhase.available);
+    assert(!initial.nativeRhythmFrameSchedulingAvailable);
+
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 127.3;
+    rhythm.patternIndex = 229U; // 5/8, ten sixteenth-grid steps per measure.
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    const auto callbackAllocationsBefore = trackedAllocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == callbackAllocationsBefore);
+
+    const auto status = core.getStatus();
+    const auto& phase = status.nativeRhythmPhase;
+    const double measureOffset = 10.0 * 48000.0 * 15.0 / rhythm.bpm;
+    const auto expectedNextMeasure = static_cast<std::uint64_t>(std::floor(measureOffset + 0.5));
+    assert(status.nativeRhythmPhaseSnapshotStable && status.nativeRhythmPhaseSnapshotRevision > 0U);
+    assert(phase.available && phase.epoch > initial.nativeRhythmPhase.epoch);
+    assert(phase.sampleFrame == frames && phase.originFrame == 0U);
+    assert(phase.measureOrdinal == 0U && phase.measureStartFrame == 0U);
+    assert(phase.nextMeasureFrame == expectedNextMeasure);
+    assert(phase.meterNumerator == 5U && phase.meterDenominator == 8U);
+    assert(!status.nativeRhythmFrameSchedulingAvailable);
+
+    const auto repeated = core.getStatus();
+    assert(repeated.nativeRhythmPhaseSnapshotRevision == status.nativeRhythmPhaseSnapshotRevision);
+    assert(repeated.nativeRhythmPhase.epoch == phase.epoch &&
+        repeated.nativeRhythmPhase.sampleFrame == phase.sampleFrame &&
+        repeated.nativeRhythmPhase.nextMeasureFrame == phase.nextMeasureFrame);
+    assert(!repeated.nativeRhythmFrameSchedulingAvailable);
+    const auto phaseWriteSequence = NativeAudioCoreTestAccess::beginRhythmPhaseWriteForTest(core);
+    const auto unstable = core.getStatus();
+    assert(!unstable.nativeRhythmPhaseSnapshotStable && !unstable.nativeRhythmPhase.available);
+    assert(unstable.nativeRhythmPhaseSnapshotRevision == 0U);
+    NativeAudioCoreTestAccess::endRhythmPhaseWriteForTest(core, phaseWriteSequence);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    NativeAudioCoreTestAccess::resetRhythmRuntimeForTest(core);
+    const auto reset = core.getStatus();
+    assert(reset.nativeRhythmPhaseSnapshotStable && !reset.nativeRhythmPhase.available);
+    assert(reset.nativeRhythmPhase.epoch > phase.epoch && reset.nativeRhythmPhase.sampleFrame == 0U);
+    assert(!reset.nativeRhythmFrameSchedulingAvailable);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    const auto restartAllocationsBefore = trackedAllocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == restartAllocationsBefore);
+    const auto restarted = core.getStatus();
+    assert(restarted.nativeRhythmPhase.available && restarted.nativeRhythmPhase.epoch == reset.nativeRhythmPhase.epoch);
+    assert(restarted.nativeRhythmPhase.sampleFrame == frames && restarted.nativeRhythmPhase.originFrame == 0U);
+    assert(!restarted.nativeRhythmFrameSchedulingAvailable);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeRhythmPhasePublicationUnderConcurrentStatusReads() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 139.7;
+    rhythm.patternIndex = 231U; // 7/8, fourteen sixteenth-grid steps per measure.
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+
+    constexpr unsigned int callbackCount = 2400U;
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    std::atomic<bool> started{false};
+    std::atomic<bool> done{false};
+    std::atomic<bool> readerSawPhase{false};
+    std::atomic<bool> invariantFailed{false};
+    std::thread callbackThread([&] {
+        started.store(true, std::memory_order_release);
+        for (unsigned int callback = 0U; callback < callbackCount; ++callback) {
+            if (NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) != 0) {
+                invariantFailed.store(true, std::memory_order_release);
+                break;
+            }
+            if (callback == 0U) {
+                unsigned int wait = 0U;
+                while (!readerSawPhase.load(std::memory_order_acquire) && wait++ < 100000U) {
+                    std::this_thread::yield();
+                }
+                if (!readerSawPhase.load(std::memory_order_acquire)) {
+                    invariantFailed.store(true, std::memory_order_release);
+                    break;
+                }
+            }
+        }
+        done.store(true, std::memory_order_release);
+    });
+
+    while (!started.load(std::memory_order_acquire)) std::this_thread::yield();
+    std::uint64_t priorSnapshotRevision = 0U;
+    unsigned int stableSnapshots = 0U;
+    while (!done.load(std::memory_order_acquire)) {
+        const auto status = core.getStatus();
+        if (!status.nativeRhythmPhaseSnapshotStable) continue;
+        ++stableSnapshots;
+        const auto& phase = status.nativeRhythmPhase;
+        if (phase.available) {
+            readerSawPhase.store(true, std::memory_order_release);
+            if (phase.epoch == 0U || phase.originFrame != 0U ||
+                phase.meterNumerator != 7U || phase.meterDenominator != 8U) {
+                invariantFailed.store(true, std::memory_order_release);
+                break;
+            }
+            const double measureFrames = 14.0 * 48000.0 * 15.0 / rhythm.bpm;
+            const auto estimatedMeasure = static_cast<std::uint64_t>(
+                std::floor(static_cast<double>(phase.sampleFrame) / measureFrames));
+            const auto frameAtMeasure = [&](std::uint64_t measure) {
+                const double offset = static_cast<double>(measure) * 14.0 * 48000.0 * 15.0 / rhythm.bpm;
+                return static_cast<std::uint64_t>(std::floor(offset + 0.5));
+            };
+            // The expected ordinal may differ by one only at a rounded sample
+            // boundary; validate the complete interval and deterministic frame
+            // equations instead of inferring from the floating ratio.
+            const auto start = frameAtMeasure(phase.measureOrdinal);
+            const auto next = frameAtMeasure(phase.measureOrdinal + 1U);
+            if (phase.measureStartFrame != start || phase.nextMeasureFrame != next ||
+                phase.sampleFrame < start || phase.sampleFrame >= next ||
+                phase.measureOrdinal > estimatedMeasure + 1U ||
+                estimatedMeasure > phase.measureOrdinal + 1U ||
+                status.nativeRhythmPhaseSnapshotRevision < priorSnapshotRevision ||
+                status.nativeRhythmFrameSchedulingAvailable) {
+                invariantFailed.store(true, std::memory_order_release);
+                break;
+            }
+            priorSnapshotRevision = status.nativeRhythmPhaseSnapshotRevision;
+        }
+    }
+    callbackThread.join();
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    assert(!invariantFailed.load(std::memory_order_acquire));
+    assert(stableSnapshots > 0U);
+    assert(priorSnapshotRevision > 0U);
+}
+
+void testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 137.3;
+    rhythm.patternIndex = 231U; // 7/8, fourteen sixteenth-grid steps per measure.
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+
+    constexpr unsigned int callbackFrames = 64U;
+    constexpr unsigned int configTransitions = 48U;
+    constexpr unsigned int tailCallbacks = 128U;
+    std::array<float, callbackFrames * 2U> output{};
+    std::atomic<bool> configDone{false};
+    std::atomic<bool> callbackDone{false};
+    std::atomic<bool> readerReady{false};
+    std::atomic<std::uint64_t> initialObservedEpoch{0U};
+    std::atomic<std::uint64_t> observedEpoch{0U};
+    std::atomic<bool> invariantFailed{false};
+    std::atomic<unsigned int> appliedAttempts{0U};
+    std::thread callbackThread([&] {
+        unsigned int tail = 0U;
+        while (!configDone.load(std::memory_order_acquire) || tail < tailCallbacks) {
+            if (NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), callbackFrames) != 0) {
+                invariantFailed.store(true, std::memory_order_release);
+                break;
+            }
+            if (configDone.load(std::memory_order_acquire)) ++tail;
+            std::this_thread::yield();
+        }
+        callbackDone.store(true, std::memory_order_release);
+    });
+
+    std::thread configThread([&] {
+        while (!readerReady.load(std::memory_order_acquire)) std::this_thread::yield();
+        const auto startingEpoch = initialObservedEpoch.load(std::memory_order_acquire);
+        for (unsigned int transition = 0U; transition < configTransitions; ++transition) {
+            NativeRhythmConfig next = rhythm;
+            // Keep tempo constant so each phase tuple can be checked with the
+            // same exact scheduler arithmetic while the meter epoch changes.
+            next.patternIndex = (transition & 1U) == 0U ? 229U : 231U;
+            for (;;) {
+                std::string configError;
+                if (core.setNativeRhythmConfig(next, configError)) break;
+                if (configError.find("queue is full") == std::string::npos) {
+                    invariantFailed.store(true, std::memory_order_release);
+                    configDone.store(true, std::memory_order_release);
+                    return;
+                }
+                std::this_thread::yield();
+            }
+            appliedAttempts.fetch_add(1U, std::memory_order_relaxed);
+            const auto expectedEpoch = startingEpoch + transition + 1U;
+            while (!invariantFailed.load(std::memory_order_acquire) &&
+                observedEpoch.load(std::memory_order_acquire) < expectedEpoch) {
+                std::this_thread::yield();
+            }
+            if (invariantFailed.load(std::memory_order_acquire)) {
+                configDone.store(true, std::memory_order_release);
+                return;
+            }
+        }
+        configDone.store(true, std::memory_order_release);
+    });
+
+    std::uint64_t priorEpoch = 0U;
+    std::uint64_t priorRevision = 0U;
+    unsigned int observedTransitions = 0U;
+    unsigned int stableSnapshots = 0U;
+    while (!callbackDone.load(std::memory_order_acquire)) {
+        const auto status = core.getStatus();
+        if (!status.nativeRhythmPhaseSnapshotStable) continue;
+        ++stableSnapshots;
+        const auto& phase = status.nativeRhythmPhase;
+        if (!phase.available) continue;
+        if (!readerReady.load(std::memory_order_relaxed)) {
+            initialObservedEpoch.store(phase.epoch, std::memory_order_relaxed);
+            observedEpoch.store(phase.epoch, std::memory_order_release);
+            readerReady.store(true, std::memory_order_release);
+        } else if (phase.epoch > observedEpoch.load(std::memory_order_relaxed)) {
+            observedEpoch.store(phase.epoch, std::memory_order_release);
+        }
+        const bool isFiveEight = phase.meterNumerator == 5U && phase.meterDenominator == 8U;
+        const bool isSevenEight = phase.meterNumerator == 7U && phase.meterDenominator == 8U;
+        if ((!isFiveEight && !isSevenEight) || phase.epoch == 0U || phase.originFrame > phase.sampleFrame ||
+            phase.epoch < priorEpoch ||
+            status.nativeRhythmPhaseSnapshotRevision < priorRevision ||
+            status.nativeRhythmFrameSchedulingAvailable) {
+            invariantFailed.store(true, std::memory_order_release);
+            break;
+        }
+        const std::uint64_t stepsPerMeasure = isFiveEight ? 10U : 14U;
+        const auto frameAtMeasure = [&](std::uint64_t measure) {
+            const auto stepOrdinal = measure * stepsPerMeasure;
+            const double offset = static_cast<double>(stepOrdinal) * 48000.0 * 15.0 / rhythm.bpm;
+            return phase.originFrame + static_cast<std::uint64_t>(std::floor(offset + 0.5));
+        };
+        const auto start = frameAtMeasure(phase.measureOrdinal);
+        const auto next = frameAtMeasure(phase.measureOrdinal + 1U);
+        if (phase.measureStartFrame != start || phase.nextMeasureFrame != next ||
+            phase.sampleFrame < start || phase.sampleFrame >= next) {
+            invariantFailed.store(true, std::memory_order_release);
+            break;
+        }
+        if (phase.epoch != priorEpoch) ++observedTransitions;
+        priorEpoch = phase.epoch;
+        priorRevision = status.nativeRhythmPhaseSnapshotRevision;
+    }
+    configThread.join();
+    callbackThread.join();
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    assert(!invariantFailed.load(std::memory_order_acquire));
+    assert(appliedAttempts.load(std::memory_order_relaxed) == configTransitions);
+    assert(stableSnapshots > 0U);
+    assert(observedTransitions == configTransitions + 1U);
+}
+
 int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testNativeOneShotOverdubAdmissionIsSideEffectFree();
     testMixerIndependentPcmGains();
+    testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable();
+    testNativeRhythmPhasePublicationUnderConcurrentStatusReads();
+    testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();

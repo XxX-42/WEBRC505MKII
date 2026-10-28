@@ -117,6 +117,7 @@ bool NativeRhythmEngine::setConfig(const NativeRhythmConfig& config, std::uint64
     // restarting the pattern clock or cutting off active drum voices.
     if (timingAndPatternUnchanged) return true;
 
+    advancePhaseEpoch();
     pattern_ = selectedPattern;
     meterNumerator_ = pattern_->meterNumerator;
     meterDenominator_ = pattern_->meterDenominator;
@@ -189,6 +190,7 @@ void NativeRhythmEngine::processAdditive(
 }
 
 void NativeRhythmEngine::reset() noexcept {
+    advancePhaseEpoch();
     config_.enabled = false;
     for (auto& voice : voices_) {
         voice.active = false;
@@ -196,6 +198,61 @@ void NativeRhythmEngine::reset() noexcept {
     timelineOriginFrame_ = 0;
     stepOrdinal_ = 0;
     nextStepFrame_ = 0;
+}
+
+NativeRhythmPhaseSnapshot NativeRhythmEngine::phaseSnapshotAt(std::uint64_t sampleFrame) const noexcept {
+    NativeRhythmPhaseSnapshot snapshot{};
+    snapshot.epoch = phaseEpoch_;
+    snapshot.sampleFrame = sampleFrame;
+    snapshot.originFrame = timelineOriginFrame_;
+    snapshot.meterNumerator = meterNumerator_;
+    snapshot.meterDenominator = meterDenominator_;
+    if (!config_.enabled || sampleRate_ == 0U || stepsPerBar_ == 0U || phaseEpoch_ == 0U ||
+        sampleFrame < timelineOriginFrame_ || !std::isfinite(config_.bpm) || config_.bpm <= 0.0) {
+        return snapshot;
+    }
+
+    const double framesPerMeasure = static_cast<double>(stepsPerBar_) *
+        static_cast<double>(sampleRate_) * 15.0 / config_.bpm;
+    if (!std::isfinite(framesPerMeasure) || framesPerMeasure <= 0.0) return snapshot;
+
+    const auto frameAtMeasure = [this](std::uint64_t measure,
+            std::uint64_t& absoluteFrame) noexcept -> bool {
+        if (measure > std::numeric_limits<std::uint64_t>::max() / stepsPerBar_) return false;
+        return scheduledFrameForStepOrdinal(measure * stepsPerBar_, absoluteFrame);
+    };
+
+    const auto elapsedFrames = sampleFrame - timelineOriginFrame_;
+    const double estimate = std::floor(static_cast<double>(elapsedFrames) / framesPerMeasure);
+    if (!std::isfinite(estimate) || estimate < 0.0 ||
+        estimate >= static_cast<double>(std::numeric_limits<std::uint64_t>::max())) return snapshot;
+    auto measure = static_cast<std::uint64_t>(estimate);
+    std::uint64_t measureStart = 0U;
+    std::uint64_t nextMeasure = 0U;
+    if (!frameAtMeasure(measure, measureStart)) return snapshot;
+    // Floating-point division can place an estimate one measure away at a
+    // rounded boundary. Correct at most two times; reject if still ambiguous.
+    for (unsigned int correction = 0U; correction < 2U && measureStart > sampleFrame; ++correction) {
+        if (measure == 0U) return snapshot;
+        --measure;
+        if (!frameAtMeasure(measure, measureStart)) return snapshot;
+    }
+    for (unsigned int correction = 0U; correction < 2U; ++correction) {
+        if (measure == std::numeric_limits<std::uint64_t>::max() ||
+            !frameAtMeasure(measure + 1U, nextMeasure)) return snapshot;
+        if (nextMeasure > sampleFrame) break;
+        ++measure;
+        measureStart = nextMeasure;
+    }
+    if (measureStart > sampleFrame || measure == std::numeric_limits<std::uint64_t>::max() ||
+        !frameAtMeasure(measure, measureStart) || !frameAtMeasure(measure + 1U, nextMeasure) ||
+        nextMeasure <= sampleFrame) return snapshot;
+
+    snapshot.available = true;
+    snapshot.measureOrdinal = measure;
+    snapshot.measureStartFrame = measureStart;
+    snapshot.nextMeasureFrame = nextMeasure;
+    return snapshot;
 }
 
 std::size_t NativeRhythmEngine::activeVoiceCount() const noexcept {
@@ -603,13 +660,26 @@ std::uint32_t NativeRhythmEngine::nextRandom(std::uint32_t& state) noexcept {
 }
 
 void NativeRhythmEngine::updateNextStepFrame() noexcept {
-    const double stepOffset = static_cast<double>(stepOrdinal_) *
-        static_cast<double>(sampleRate_) * 15.0 / config_.bpm;
-    if (!std::isfinite(stepOffset) || stepOffset >= static_cast<double>(std::numeric_limits<std::uint64_t>::max() - timelineOriginFrame_)) {
+    if (!scheduledFrameForStepOrdinal(stepOrdinal_, nextStepFrame_)) {
         nextStepFrame_ = std::numeric_limits<std::uint64_t>::max();
-        return;
     }
-    nextStepFrame_ = timelineOriginFrame_ + static_cast<std::uint64_t>(std::floor(stepOffset + 0.5));
+}
+
+bool NativeRhythmEngine::scheduledFrameForStepOrdinal(std::uint64_t stepOrdinal,
+        std::uint64_t& absoluteFrame) const noexcept {
+    if (sampleRate_ == 0U || !std::isfinite(config_.bpm) || config_.bpm <= 0.0) return false;
+    const double stepOffset = static_cast<double>(stepOrdinal) *
+        static_cast<double>(sampleRate_) * 15.0 / config_.bpm;
+    const auto remainingFrames = std::numeric_limits<std::uint64_t>::max() - timelineOriginFrame_;
+    if (!std::isfinite(stepOffset) || stepOffset < 0.0 || stepOffset >= static_cast<double>(remainingFrames)) return false;
+    const auto roundedOffset = static_cast<std::uint64_t>(std::floor(stepOffset + 0.5));
+    if (roundedOffset > remainingFrames) return false;
+    absoluteFrame = timelineOriginFrame_ + roundedOffset;
+    return true;
+}
+
+void NativeRhythmEngine::advancePhaseEpoch() noexcept {
+    if (phaseEpoch_ < std::numeric_limits<std::uint64_t>::max()) ++phaseEpoch_;
 }
 
 const char* nativeRhythmVariationToString(NativeRhythmVariation variation) noexcept {

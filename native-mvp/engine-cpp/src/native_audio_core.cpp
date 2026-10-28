@@ -30,6 +30,9 @@ static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
     "project-load revisions are updated on the audio callback and must remain lock-free");
 static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
     "original tempo metadata is published on the audio callback and must remain lock-free");
+static_assert(std::atomic<std::uint64_t>::is_always_lock_free &&
+    std::atomic<unsigned int>::is_always_lock_free && std::atomic<bool>::is_always_lock_free,
+    "Native Rhythm phase publication must use lock-free atomics on the audio callback");
 static_assert(std::atomic<unsigned int>::is_always_lock_free && std::atomic<bool>::is_always_lock_free,
     "callback telemetry uses only lock-free fixed-size atomics");
 
@@ -503,6 +506,11 @@ EngineStatus NativeAudioCore::getStatus() const {
     telemetry.p999UpperBoundNs=quantileUpperBound(1000U);
     status.callbackTicks = callbackTicks_.load(std::memory_order_acquire);
     status.nativeSampleFrame = publishedCallbackFrameCursor_.load(std::memory_order_acquire);
+    status.nativeRhythmPhase = readNativeRhythmPhase(status.nativeRhythmPhaseSnapshotStable,
+        status.nativeRhythmPhaseSnapshotRevision);
+    status.nativeRhythmPhase.available = status.nativeRhythmPhase.available &&
+        status.nativeRhythmPhaseSnapshotStable && status.engineRunning;
+    status.nativeRhythmFrameSchedulingAvailable = false;
     const auto collectOscVocSlots = [](const NativeEffectBank& bank,
                                        auto& destination) {
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
@@ -4251,6 +4259,7 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
     nativePitchFallbackReason_.store(NativePitchFallbackReason::NotRequested, std::memory_order_release);
     callbackFrameCursor_ = 0;
     publishedCallbackFrameCursor_.store(0U, std::memory_order_release);
+    publishNativeRhythmPhase(0U, false);
     loopSnapshotRequested_.store(false, std::memory_order_release);
     loopSnapshotAcknowledged_.store(false, std::memory_order_release);
     loopSnapshotReleaseRequested_.store(false, std::memory_order_release);
@@ -4463,6 +4472,61 @@ void NativeAudioCore::applyNativeRhythmCommands() noexcept {
             nativeTempoAppliedValid_.store(true, std::memory_order_release);
         }
     }
+}
+
+void NativeAudioCore::publishNativeRhythmPhase(std::uint64_t sampleFrame, bool allowAvailable) noexcept {
+    auto phase = nativeRhythmEngine_.phaseSnapshotAt(sampleFrame);
+    phase.available = phase.available && allowAvailable;
+    auto sequence = nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_relaxed);
+    if (sequence > std::numeric_limits<std::uint64_t>::max() - 2U) sequence = 0U;
+    // Pair this release fence with the reader's acquire fence: seeing any new
+    // payload then also orders the odd marker before the reader's second seq load.
+    nativeRhythmPhaseSnapshotSequence_.store(sequence + 1U, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
+    nativeRhythmPhaseAvailable_.store(phase.available, std::memory_order_relaxed);
+    nativeRhythmPhaseEpoch_.store(phase.epoch, std::memory_order_relaxed);
+    nativeRhythmPhaseSampleFrame_.store(phase.sampleFrame, std::memory_order_relaxed);
+    nativeRhythmPhaseOriginFrame_.store(phase.originFrame, std::memory_order_relaxed);
+    nativeRhythmPhaseMeasureOrdinal_.store(phase.measureOrdinal, std::memory_order_relaxed);
+    nativeRhythmPhaseMeasureStartFrame_.store(phase.measureStartFrame, std::memory_order_relaxed);
+    nativeRhythmPhaseNextMeasureFrame_.store(phase.nextMeasureFrame, std::memory_order_relaxed);
+    nativeRhythmPhaseMeterNumerator_.store(phase.meterNumerator, std::memory_order_relaxed);
+    nativeRhythmPhaseMeterDenominator_.store(phase.meterDenominator, std::memory_order_relaxed);
+    nativeRhythmPhaseSnapshotSequence_.store(sequence + 2U, std::memory_order_release);
+}
+
+NativeRhythmPhaseSnapshot NativeAudioCore::readNativeRhythmPhase(bool& stable,
+        std::uint64_t& snapshotRevision) const noexcept {
+    stable = false;
+    snapshotRevision = 0U;
+    NativeRhythmPhaseSnapshot phase{};
+    // A bounded seqlock read keeps UI/status readers from waiting on the audio
+    // callback. If it races repeated callback publications, report unavailable.
+    for (unsigned int attempt = 0U; attempt < 4U; ++attempt) {
+        const auto before = nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_acquire);
+        if ((before & 1U) != 0U) continue;
+        phase.available = nativeRhythmPhaseAvailable_.load(std::memory_order_relaxed);
+        phase.epoch = nativeRhythmPhaseEpoch_.load(std::memory_order_relaxed);
+        phase.sampleFrame = nativeRhythmPhaseSampleFrame_.load(std::memory_order_relaxed);
+        phase.originFrame = nativeRhythmPhaseOriginFrame_.load(std::memory_order_relaxed);
+        phase.measureOrdinal = nativeRhythmPhaseMeasureOrdinal_.load(std::memory_order_relaxed);
+        phase.measureStartFrame = nativeRhythmPhaseMeasureStartFrame_.load(std::memory_order_relaxed);
+        phase.nextMeasureFrame = nativeRhythmPhaseNextMeasureFrame_.load(std::memory_order_relaxed);
+        phase.meterNumerator = nativeRhythmPhaseMeterNumerator_.load(std::memory_order_relaxed);
+        phase.meterDenominator = nativeRhythmPhaseMeterDenominator_.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        // If a payload read observed this writer's relaxed stores, this acquire
+        // fence synchronizes with its release fence and makes the odd sequence
+        // visible to the following sequence load.
+        const auto after = nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_relaxed);
+        if (before == after && (after & 1U) == 0U) {
+            stable = true;
+            snapshotRevision = after / 2U;
+            return phase;
+        }
+    }
+    phase.available = false;
+    return phase;
 }
 
 void NativeAudioCore::applyNativePitchCommands() noexcept {
@@ -5171,6 +5235,7 @@ int NativeAudioCore::handleAudioCallback(
     );
     callbackFrameCursor_ += nBufferFrames;
     publishedCallbackFrameCursor_.store(callbackFrameCursor_, std::memory_order_release);
+    publishNativeRhythmPhase(callbackFrameCursor_);
 
     looperState_.store(static_cast<int>(stats.state), std::memory_order_release);
     loopProgress_.store(stats.loopProgress, std::memory_order_release);
@@ -5248,6 +5313,7 @@ int NativeAudioCore::handleInputAudioCallback(
         xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
         callbackFrameCursor_ += nBufferFrames;
         publishedCallbackFrameCursor_.store(callbackFrameCursor_, std::memory_order_release);
+        publishNativeRhythmPhase(callbackFrameCursor_, false);
         nativePitchActive_.store(false, std::memory_order_release);
         nativePitchFallbackReason_.store(pitchPlaybackRequested
             ? NativePitchFallbackReason::PlaybackBufferUnavailable
@@ -5276,6 +5342,7 @@ int NativeAudioCore::handleInputAudioCallback(
     );
     callbackFrameCursor_ += nBufferFrames;
     publishedCallbackFrameCursor_.store(callbackFrameCursor_, std::memory_order_release);
+    publishNativeRhythmPhase(callbackFrameCursor_);
 
     if (!outputQueue_.push(block)) {
         telemetryAudioQueueOverflow_.fetch_add(1U,std::memory_order_relaxed);

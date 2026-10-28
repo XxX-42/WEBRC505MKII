@@ -1,0 +1,69 @@
+# Native LOOP SYNC and recording quantization
+
+## Current Native capability
+
+Native LOOP SYNC and REC QUANTIZE are unavailable. The Classic editor disables
+the LOOP SYNC switch outside Browser mode. The Native bridge advertises
+`nativeRecordPlay.quantizeAvailable: false`, and the Native adapter rejects a
+quantize write. Native now exposes its Rhythm phase read-only, but it does not
+yet cover every supported grid source or schedule recording transitions at a
+future callback frame. The quantize and LOOP SYNC controls remain disabled.
+
+Native publishes a read-only Rhythm phase snapshot containing the callback
+sample frame, phase epoch, origin, measure ordinal and boundaries, and meter.
+The snapshot comes from the callback-owned Rhythm timeline; a bounded lock-free
+atomic publication lets status readers reject an unstable snapshot without
+making the callback wait. Rhythm reconfiguration and runtime reset advance the
+phase epoch. Track status still does not provide a recording-origin frame plus
+a persisted measure length from which another track's phrase phase can be
+recovered. The current record/stop control path acknowledges callback-applied
+commands, but does not schedule them at a requested future measure frame. The
+bridge explicitly reports absolute-frame REC/STOP scheduling as unavailable.
+BPM or a callback frame counter alone is not evidence of a measure boundary.
+
+## Roland behavior that informs a future implementation
+
+The [RC-505mkII Parameter Guide v1.3+](https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf)
+describes LOOP SYNC as using memory tempo or a synchronized track for recording
+and playback. Its MEASURE mode starts at a measure and adjusts recorded track
+length in measure units; LOOP LENGTH mode uses the configured loop length. The
+guide describes TEMPO SYNC separately as changing playback speed, with PITCH or
+XFADE behavior.
+
+REC QUANTIZE applies only to recording and only on LOOP SYNC tracks. MEASURE
+aligns the recording start to a measure. OFF starts immediately, while stop
+still aligns the take to the measure length of an existing LOOP SYNC track or
+Rhythm. The documented grid sources are running Rhythm, an already-recorded
+LOOP SYNC track, or MIDI Sync.
+
+The guide describes REVERSE and 1SHOT separately, but does not specify their
+interaction with LOOP SYNC recording quantization. Native must not infer that
+those combinations are supported from the availability of reverse or one-shot
+playback controls. Until their interaction is documented and an implementation
+has evidence for it, synchronized recording must fail closed when either mode
+is active.
+
+## Requirements before enabling Native controls
+
+- Publish one authoritative phase source and its revision. For Rhythm, expose
+  the callback-owned measure origin and meter; for an existing synchronized
+  track, retain its recording-origin frame and measure-count/length metadata;
+  for MIDI Sync, consume and validate a clock phase rather than only BPM or
+  observed pulse count.
+- Schedule REC start and stop against that phase in the audio callback, with
+  requested, applied, cancelled, and faulted acknowledgements tied to the same
+  phase/settings revision. A main-thread timer or a command acknowledged only
+  at an arbitrary callback boundary is not quantized recording.
+- Preserve incumbent PCM if a scheduled start/stop becomes stale, is cancelled,
+  or loses its phase source. Do not silently fall back to immediate recording
+  while reporting quantization as enabled.
+- Establish supported and unsupported combinations for reverse and 1SHOT from
+  documented behavior or explicit software/hardware evidence before enabling
+  those modes with LOOP SYNC.
+- Validate software callback scheduling separately from device timing,
+  physical RC-505 behavior, acoustic latency, and long-run drift. Do not call a
+  callback-frame schedule hardware sample-accurate without matching evidence.
+
+The Browser implementation and its narrower phase constraints are documented
+in [BROWSER_LOOP_SYNC.md](BROWSER_LOOP_SYNC.md). Its software-path tests do not
+validate the Native callback or physical hardware.

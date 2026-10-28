@@ -41,6 +41,20 @@ struct NativeRhythmConfig {
     unsigned int volume = 50U;
 };
 
+// Read-only projection of the callback-owned Native Rhythm timeline. Frame
+// bounds use the same rounded sixteenth-grid scheduler as rendered events.
+struct NativeRhythmPhaseSnapshot {
+    bool available = false;
+    std::uint64_t epoch = 0U;
+    std::uint64_t sampleFrame = 0U;
+    std::uint64_t originFrame = 0U;
+    std::uint64_t measureOrdinal = 0U;
+    std::uint64_t measureStartFrame = 0U;
+    std::uint64_t nextMeasureFrame = 0U;
+    unsigned int meterNumerator = 0U;
+    unsigned int meterDenominator = 0U;
+};
+
 // Clean-room procedural renderer whose meter and descriptive style cues come
 // from the metadata-only Browser catalog. It never reads or reconstructs
 // factory MIDI, event sequences, or samples. All DSP state is fixed-size and
@@ -87,8 +101,11 @@ public:
     [[nodiscard]] unsigned int stepsPerBar() const noexcept { return stepsPerBar_; }
     [[nodiscard]] std::uint64_t nextScheduledStepFrame() const noexcept { return nextStepFrame_; }
     [[nodiscard]] std::uint64_t scheduledStepOrdinal() const noexcept { return stepOrdinal_; }
+    [[nodiscard]] std::uint64_t phaseEpoch() const noexcept { return phaseEpoch_; }
+    [[nodiscard]] NativeRhythmPhaseSnapshot phaseSnapshotAt(std::uint64_t sampleFrame) const noexcept;
 
 private:
+    friend struct NativeRhythmEngineTestAccess;
     enum class Instrument : std::uint8_t {
         Kick = 0,
         Snare,
@@ -144,6 +161,9 @@ private:
     [[nodiscard]] static std::uint32_t mixSeed(std::uint32_t value) noexcept;
     [[nodiscard]] static std::uint32_t nextRandom(std::uint32_t& state) noexcept;
     void updateNextStepFrame() noexcept;
+    [[nodiscard]] bool scheduledFrameForStepOrdinal(std::uint64_t stepOrdinal,
+        std::uint64_t& absoluteFrame) const noexcept;
+    void advancePhaseEpoch() noexcept;
 
     static constexpr std::size_t kMaxVoices = 16;
     std::array<Voice, kMaxVoices> voices_{};
@@ -157,6 +177,7 @@ private:
     std::uint64_t timelineOriginFrame_ = 0;
     std::uint64_t stepOrdinal_ = 0;
     std::uint64_t nextStepFrame_ = 0;
+    std::uint64_t phaseEpoch_ = 0U;
     std::uint32_t patternSeed_ = 0U;
     std::uint32_t eventOrdinal_ = 0U;
     std::uint64_t eventSeedBar_ = 0U;

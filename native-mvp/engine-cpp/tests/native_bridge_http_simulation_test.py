@@ -444,6 +444,13 @@ def main():
                 initial_rhythm.get("quantizeGrid") == "1/16" and
                 initial_rhythm.get("volume") == 50,
                 f"Native rhythm defaults/configuration were not reported: {initial_rhythm}")
+        initial_phase = initial_rhythm.get("phase", {})
+        require(initial_phase.get("version") == 1 and
+                initial_phase.get("snapshotStable") is True and
+                initial_phase.get("available") is False and
+                initial_phase.get("frameSchedulingAvailable") is False and
+                bool(initial_phase.get("frameSchedulingReason")),
+                f"Native Rhythm phase/scheduling capability was not explicit: {initial_phase}")
         require(engine_status.get("nativeLooperTrackCount") == 5 and
                 engine_status.get("nativeLooperMultiTrackImplemented") is True and
                 engine_status.get("nativeLooperTracksStereo") is True,
@@ -542,6 +549,15 @@ def main():
                 rhythm.get("section") == "fill" and rhythm.get("swingPercent") == 75 and
                 rhythm.get("quantizeGrid") == "1/4" and rhythm.get("volume") == 73,
                 f"Native rhythm config/status round trip was incomplete: {rhythm}")
+        phase = rhythm.get("phase", {})
+        require(phase.get("version") == 1 and
+                phase.get("snapshotStable") is True and
+                phase.get("frameSchedulingAvailable") is False and
+                bool(phase.get("frameSchedulingReason")) and
+                isinstance(phase.get("epoch"), int) and
+                isinstance(phase.get("sampleFrame"), int) and
+                isinstance(phase.get("nextMeasureFrame"), int),
+                f"Native Rhythm phase snapshot or unavailable scheduler status was incomplete: {phase}")
         for field_value, expected in (("swingPercent", 76), ("quantizeGrid", "1/32"), ("volume", 101)):
             status, error = request("/v1/native-rhythm/config", "POST", {field_value: expected})
             require(status == 400 and field_value in error.get("error", ""),

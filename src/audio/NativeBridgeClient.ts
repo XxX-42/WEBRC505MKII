@@ -311,6 +311,22 @@ export interface NativeStatus {
     tempoRequestedRevision?: number;
     tempoAppliedRevision?: number;
     tempoAppliedValid?: boolean;
+    phase?: {
+      version: 1;
+      available: boolean;
+      snapshotStable: boolean;
+      snapshotRevision: number;
+      epoch: number;
+      sampleFrame: number;
+      originFrame: number;
+      measureOrdinal: number;
+      measureStartFrame: number;
+      nextMeasureFrame: number;
+      meterNumerator: number;
+      meterDenominator: number;
+      frameSchedulingAvailable: false;
+      frameSchedulingReason: string;
+    };
     patternSource: 'metadata-only-240-pattern-catalog';
     statusNote: string;
   };
