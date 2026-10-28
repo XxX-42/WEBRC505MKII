@@ -72,7 +72,7 @@ describe('Native Rubber Band HQ WAV export', () => {
           memoryBudgetBytes: 128 * 1024 * 1024, format: 'pcm24',
         }),
       }));
-    expect(metadata).toEqual(TRACK_METADATA);
+    expect(metadata).toEqual({ ...TRACK_METADATA, originalTempoBpm: null });
     expect(rendered).toMatchObject({ ...TRACK_METADATA, engine: 'R2', latencySamples: 0 });
     expect(rendered.samples).toEqual(samples);
   });
