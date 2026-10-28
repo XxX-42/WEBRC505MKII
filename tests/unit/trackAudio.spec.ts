@@ -157,6 +157,56 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.recordingDiagnostic).toContain('cancelled before the worklet start acknowledgement');
   });
 
+  it('preserves incumbent PCM and undo history when the shared worklet rejects a discontinuous take', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const seed = (offset: number) => Float32Array.from({ length: 256 }, (_, frame) =>
+      Math.fround(Math.sin(frame * 0.031) * 0.2 + offset));
+    (trackAudio as any).processRecordedBuffers([seed(0.1)]);
+    (trackAudio as any).processRecordedBuffers([seed(-0.1)]);
+    trackAudio.stop();
+
+    const incumbent = (trackAudio as any).audioBuffer as AudioBuffer;
+    const incumbentPcm = Array.from(incumbent.getChannelData(0));
+    const historyBefore = {
+      canUndo: trackAudio.canUndo,
+      canRedo: trackAudio.canRedo,
+      retainedBytes: trackAudio.historyTotalRetainedBytes,
+    };
+    expect(historyBefore.canUndo).toBe(true);
+
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 86, inputGeneration: 5, startFrame: 16_000,
+    };
+    let receiveCaptureMessage: ((message: unknown) => void) | null = null;
+    engine.getInputCaptureRequestFrame = () => session.startFrame;
+    engine.beginInputCaptureSession = vi.fn((_trackIndex: number, _startFrame: number,
+      listener: (message: unknown) => void) => {
+      receiveCaptureMessage = listener;
+      return session;
+    });
+
+    await trackAudio.startRecording();
+    expect(receiveCaptureMessage).not.toBeNull();
+    receiveCaptureMessage!({
+      type: 'CAPTURE_ERROR', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      reason: 'input-frame-discontinuity', requestedStartFrame: session.startFrame,
+      callbackFrameStart: session.startFrame + 256, callbackFrameCount: 128,
+      previousCallbackEndFrame: session.startFrame + 128, preRollEndAtCallbackStart: session.startFrame + 128,
+      preRollCapacityFrames: 8_192, preRollValidFrames: 8_192, sampleRate: context.sampleRate,
+    });
+
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('input-frame-discontinuity');
+    expect((trackAudio as any).audioBuffer).toBe(incumbent);
+    expect(Array.from(incumbent.getChannelData(0))).toEqual(incumbentPcm);
+    expect({
+      canUndo: trackAudio.canUndo,
+      canRedo: trackAudio.canRedo,
+      retainedBytes: trackAudio.historyTotalRetainedBytes,
+    }).toEqual(historyBefore);
+  });
+
   it('uses the worklet start-frame ACK to enter RECORDING without waiting for a chunk', async () => {
     const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';

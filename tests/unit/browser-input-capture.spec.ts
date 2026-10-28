@@ -290,6 +290,55 @@ describe('Browser shared input capture worklet', () => {
     });
   });
 
+  it('rejects a capture when a repeated frame coordinate advances PCM and the next callback skips a quantum, then rewarms', () => {
+    const capture = createCapture({ preRollFrames: 8 });
+    capture.process([0, 1, 2, 3], undefined, 100);
+    capture.process([4, 5, 6, 7], undefined, 104);
+    expect(capture.messages('INPUT_CAPTURE_READY')).toHaveLength(1);
+
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 85, inputGeneration: 1,
+      startFrame: 108, maxRecordingBytes: 256,
+    });
+
+    // Reuse the previous callback's frame coordinate but supply new PCM,
+    // matching the observed Chromium anomaly. The worklet cannot map these
+    // samples to the requested absolute frame with confidence.
+    const sinePcmAtLogicalStart = (startFrame: number) => Array.from({ length: 4 }, (_, offset) =>
+      Math.fround(Math.sin(2 * Math.PI * 997 * (startFrame + offset) / 44_100)));
+    const repeatedCoordinatePcm = sinePcmAtLogicalStart(8);
+    expect(repeatedCoordinatePcm).not.toEqual(sinePcmAtLogicalStart(4));
+    capture.process(repeatedCoordinatePcm, undefined, 104);
+    expect(capture.messages('CAPTURE_ERROR')).toHaveLength(0);
+
+    // The following callback skips [108,112), intersecting the pending take.
+    capture.process(sinePcmAtLogicalStart(12), undefined, 112);
+
+    expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({
+      sessionId: 85, reason: 'input-frame-discontinuity', requestedStartFrame: 108,
+      callbackFrameStart: 112, callbackFrameCount: 4, previousCallbackEndFrame: 108,
+      preRollEndAtCallbackStart: 108,
+    });
+    expect(capture.messages('RECORD_ABORTED').at(-1)).toMatchObject({ sessionId: 85 });
+    expect(capture.messages('RECORD_CONFIGURED')).toHaveLength(0);
+    expect(capture.messages('INPUT_CAPTURE_NOT_READY').at(-1)).toMatchObject({
+      reason: 'input-frame-discontinuity', frameStart: 112,
+    });
+
+    capture.processor.port.receive({ type: 'CHECK_CAPTURE_READINESS', inputGeneration: 1 });
+    expect(capture.messages('CAPTURE_READINESS_STATE').at(-1)).toMatchObject({
+      ready: false, captureReadyEpoch: 1, oldestAvailableFrame: 112,
+      latestAvailableFrame: 116, preRollValidFrames: 4, requiredPreRollFrames: 8,
+    });
+
+    capture.process([20, 21, 22, 23], undefined, 116);
+    expect(capture.messages('INPUT_CAPTURE_READY')).toHaveLength(2);
+    expect(capture.messages('INPUT_CAPTURE_READY').at(-1)).toMatchObject({
+      captureReadyEpoch: 1, oldestAvailableFrame: 112, latestAvailableFrame: 120,
+      preRollValidFrames: 8, requiredPreRollFrames: 8,
+    });
+  });
+
   it('keeps a future scheduled capture across a gap that ends before its requested frame', () => {
     const capture = createCapture({ chunkSize: 4, preRollFrames: 8 });
     capture.process([0, 1, 2, 3], undefined, 100);
