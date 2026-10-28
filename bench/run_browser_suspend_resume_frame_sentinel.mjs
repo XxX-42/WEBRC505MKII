@@ -34,11 +34,14 @@ const captureOriginal = await readFile(capturePath, 'utf8');
 const captureConfigLine = '    const config = options.processorOptions || {};';
 if (captureOriginal.split(captureConfigLine).length !== 2) throw new Error('Expected exactly one capture worklet processor-options read to instrument.');
 const captureWithProbe = captureOriginal.replace(captureConfigLine,
-  `${captureConfigLine}\n    this.__sentinel = config.__sentinel;\n    this.__sentinelSlot = config.__sentinelSlot;`);
+  `${captureConfigLine}\n    this.__sentinel = config.__sentinel;\n    this.__sentinelSlot = config.__sentinelSlot;\n    this.__pcmMeta = new Int32Array(config.__pcmMetaBuffer);\n    this.__pcmSamples = new Float32Array(config.__pcmSamplesBuffer);`);
 const frameEndLine = '    const frameEnd = frameStart + frames;';
 if (captureWithProbe.split(frameEndLine).length !== 2) throw new Error('Expected exactly one capture worklet frame-end calculation to instrument.');
-const captureInstrumented = captureWithProbe.replace(frameEndLine,
+const captureBaseInstrumented = captureWithProbe.replace(frameEndLine,
   `    {\n      const sequence = Atomics.add(this.__sentinel, this.__sentinelSlot, 1);\n      const base = 2 + (this.__sentinelSlot * 20000 + sequence) * 3;\n      if (sequence < 20000) {\n        const raw = rawLeft;\n        const nonSilent = !!raw && (raw[0] !== 0 || raw[31] !== 0 || raw[63] !== 0 || raw[95] !== 0);\n        Atomics.store(this.__sentinel, base, frameStart);\n        Atomics.store(this.__sentinel, base + 1, frames);\n        Atomics.store(this.__sentinel, base + 2, Number(nonSilent));\n      }\n    }\n` + frameEndLine);
+if (captureBaseInstrumented.split(frameEndLine).length !== 2) throw new Error('Expected exactly one frame-end line to record PCM.');
+const captureInstrumented = captureBaseInstrumented.replace(frameEndLine,
+  `    {\n      const pcmSequence = Atomics.add(this.__pcmMeta, 0, 1);\n      if (pcmSequence < 20000) {\n        const pcmBase = 1 + pcmSequence * 3;\n        const sampleCount = rawLeft ? Math.min(rawLeft.length, frames, 256) : 0;\n        Atomics.store(this.__pcmMeta, pcmBase, frameStart);\n        Atomics.store(this.__pcmMeta, pcmBase + 1, frames);\n        Atomics.store(this.__pcmMeta, pcmBase + 2, sampleCount);\n        const sampleBase = pcmSequence * 256;\n        for (let sample = 0; sample < sampleCount; sample += 1) this.__pcmSamples[sampleBase + sample] = rawLeft[sample];\n      }\n    }\n` + frameEndLine);
 const sourceHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
 const instrumentedCaptureSha256 = createHash('sha256').update(captureInstrumented).digest('hex');
 const globalSentinel = `class ContextFrameSentinel extends AudioWorkletProcessor {
@@ -87,6 +90,10 @@ try {
     const capacity = 20_000;
     const sentinelBuffer = new SharedArrayBuffer((2 + 2 * capacity * 3) * Int32Array.BYTES_PER_ELEMENT);
     const sentinel = new Int32Array(sentinelBuffer);
+    const pcmMetaBuffer = new SharedArrayBuffer((1 + capacity * 3) * Int32Array.BYTES_PER_ELEMENT);
+    const pcmSamplesBuffer = new SharedArrayBuffer(capacity * 256 * Float32Array.BYTES_PER_ELEMENT);
+    const pcmMeta = new Int32Array(pcmMetaBuffer);
+    const pcmSamples = new Float32Array(pcmSamplesBuffer);
     const count = (slot) => Atomics.load(sentinel, slot);
     const readFrames = (slot) => {
       const total = Math.min(count(slot), capacity);
@@ -98,11 +105,28 @@ try {
       }
       return frames;
     };
+    const readPcmFrames = () => {
+      const total = Math.min(Atomics.load(pcmMeta, 0), capacity);
+      const records = new Array(total);
+      for (let index = 0; index < total; index += 1) {
+        const meta = 1 + index * 3;
+        const sampleCount = Atomics.load(pcmMeta, meta + 2);
+        const samples = new Array(sampleCount);
+        const sampleBase = index * 256;
+        for (let sample = 0; sample < sampleCount; sample += 1) samples[sample] = pcmSamples[sampleBase + sample];
+        records[index] = {
+          frameStart: Atomics.load(pcmMeta, meta),
+          frames: Atomics.load(pcmMeta, meta + 1),
+          samples,
+        };
+      }
+      return records;
+    };
     const origin = new URL(baseUrl);
     await context.audioWorklet.addModule(new URL('/global-sentinel.js', origin));
     await context.audioWorklet.addModule(new URL('/capture-instrumented.js', origin));
     const globalNode = new AudioWorkletNode(context, 'rc505-context-frame-sentinel', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { sentinel, slot: 0 } });
-    const captureNode = new AudioWorkletNode(context, 'rc505-input-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { __sentinel: sentinel, __sentinelSlot: 1 } });
+    const captureNode = new AudioWorkletNode(context, 'rc505-input-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { __sentinel: sentinel, __sentinelSlot: 1, __pcmMetaBuffer: pcmMetaBuffer, __pcmSamplesBuffer: pcmSamplesBuffer } });
     const oscillator = new OscillatorNode(context, { frequency: 997 });
     const mute = new GainNode(context, { gain: 0 });
     const log = { lifecycle: [], sampleRate: context.sampleRate };
@@ -140,7 +164,7 @@ try {
     oscillator.stop();
     globalNode.disconnect(); captureNode.disconnect(); mute.disconnect();
     await context.close();
-    return { global: readFrames(0), capture: readFrames(1), lifecycle: log.lifecycle, sampleRate: log.sampleRate, final };
+    return { global: readFrames(0), capture: readFrames(1), pcm: readPcmFrames(), lifecycle: log.lifecycle, sampleRate: log.sampleRate, final };
   }, { baseUrl, cycles, sampleRate });
 
   const analyze = (entries) => {
@@ -156,6 +180,98 @@ try {
   const globalGaps = analyze(run.global);
   const captureGaps = analyze(run.capture);
   const signature = (gap) => `${gap.previousFrameStart}/${gap.previousFrames}/${gap.currentFrameStart}/${gap.deltaFrames}`;
+  const fitPhase = (samples, frequencyHz) => {
+    let cosineSum = 0;
+    let sineSum = 0;
+    const angularStep = 2 * Math.PI * frequencyHz / run.sampleRate;
+    for (let sample = 0; sample < samples.length; sample += 1) {
+      const angle = angularStep * sample;
+      cosineSum += samples[sample] * Math.cos(angle);
+      sineSum += samples[sample] * Math.sin(angle);
+    }
+    return Math.atan2(cosineSum, sineSum);
+  };
+  const wrapRadians = (value) => {
+    while (value <= -Math.PI) value += 2 * Math.PI;
+    while (value > Math.PI) value -= 2 * Math.PI;
+    return value;
+  };
+  const phaseAdvanceCheck = (first, second, frameCount) => {
+    if (first.samples.length !== first.frames || second.samples.length !== second.frames
+      || first.samples.length === 0 || second.samples.length === 0) return null;
+    const phaseAdvance = wrapRadians(fitPhase(second.samples, 997) - fitPhase(first.samples, 997));
+    const expectedAdvance = wrapRadians(2 * Math.PI * 997 * frameCount / run.sampleRate);
+    return {
+      firstFrameStart: first.frameStart,
+      secondFrameStart: second.frameStart,
+      expectedSourceFrameAdvance: frameCount,
+      fittedPhaseAdvanceRadians: phaseAdvance,
+      expected997HzAdvanceRadians: expectedAdvance,
+      phaseErrorRadians: wrapRadians(phaseAdvance - expectedAdvance),
+    };
+  };
+  const pcmWindows = [];
+  const phaseContinuityErrors = [];
+  for (let index = 1; index < run.capture.length; index += 1) {
+    const previous = run.capture[index - 1];
+    const current = run.capture[index];
+    if (current.frameStart !== previous.frameStart + previous.frames) continue;
+    const previousPcm = run.pcm[index - 1];
+    const currentPcm = run.pcm[index];
+    if (previousPcm.samples.length !== previous.frames || currentPcm.samples.length !== current.frames) continue;
+    const phaseAdvance = wrapRadians(fitPhase(currentPcm.samples, 997) - fitPhase(previousPcm.samples, 997));
+    const expectedAdvance = wrapRadians(2 * Math.PI * 997 * previous.frames / run.sampleRate);
+    phaseContinuityErrors.push(wrapRadians(phaseAdvance - expectedAdvance));
+  }
+  for (let index = 1; index < run.capture.length; index += 1) {
+    const previous = run.capture[index - 1];
+    const current = run.capture[index];
+    const deltaFrames = current.frameStart - (previous.frameStart + previous.frames);
+    if (deltaFrames === 0) continue;
+    const previousPcm = run.pcm[index - 1];
+    const currentPcm = run.pcm[index];
+    let comparison = null;
+    if (current.frameStart === previous.frameStart && previous.frames === current.frames
+      && previousPcm.samples.length === currentPcm.samples.length && previousPcm.samples.length > 0) {
+      let maxAbsDifference = 0;
+      let squaredDifference = 0;
+      for (let sample = 0; sample < previousPcm.samples.length; sample += 1) {
+        const difference = currentPcm.samples[sample] - previousPcm.samples[sample];
+        maxAbsDifference = Math.max(maxAbsDifference, Math.abs(difference));
+        squaredDifference += difference * difference;
+      }
+      const phaseAdvance = wrapRadians(fitPhase(currentPcm.samples, 997) - fitPhase(previousPcm.samples, 997));
+      const expectedAdvance = 2 * Math.PI * 997 * previous.frames / run.sampleRate;
+      comparison = {
+        comparedSamples: previousPcm.samples.length,
+        maxAbsDifference,
+        rmsDifference: Math.sqrt(squaredDifference / previousPcm.samples.length),
+        fittedPhaseAdvanceRadians: phaseAdvance,
+        expected997HzAdvanceOneQuantumRadians: expectedAdvance,
+        fittedPhaseAdvanceErrorRadians: wrapRadians(phaseAdvance - expectedAdvance),
+        interpretation: maxAbsDifference < 1e-7 ? 'PCM_IDENTICAL' : 'PCM_DIFFERS_CHECK_PHASE_FOR_ONE_QUANTUM_ADVANCE',
+      };
+    }
+    pcmWindows.push({
+      callbackIndex: index,
+      deltaFrames,
+      previous: { frameStart: previousPcm.frameStart, frames: previousPcm.frames, samples: previousPcm.samples },
+      current: { frameStart: currentPcm.frameStart, frames: currentPcm.frames, samples: currentPcm.samples },
+      next: run.pcm[index + 1]
+        ? { frameStart: run.pcm[index + 1].frameStart, frames: run.pcm[index + 1].frames, samples: run.pcm[index + 1].samples }
+        : null,
+      completePcmRecorded: previousPcm.samples.length === previousPcm.frames
+        && currentPcm.samples.length === currentPcm.frames,
+      overlapComparison: comparison,
+      sampleSequenceChecks: {
+        previousToRepeatedCoordinateBlock: comparison ? phaseAdvanceCheck(previousPcm, currentPcm, previous.frames) : null,
+        repeatedCoordinateBlockToNext: run.pcm[index + 1]
+          ? phaseAdvanceCheck(currentPcm, run.pcm[index + 1], current.frames) : null,
+        previousToNext: run.pcm[index + 1]
+          ? phaseAdvanceCheck(previousPcm, run.pcm[index + 1], previous.frames + current.frames) : null,
+      },
+    });
+  }
   const sharedDiscontinuities = globalGaps.filter((gap) => captureGaps.some((captureGap) => signature(captureGap) === signature(gap)));
   const classification = globalGaps.length === 0 && captureGaps.length === 0
     ? 'NO_GAP_REPRODUCED'
@@ -182,6 +298,21 @@ try {
     },
     classification,
     coincidentContextAndCaptureDiscontinuities: sharedDiscontinuities,
+    pcmEvidence: {
+      input: 'raw mono channel 0 from generated 997 Hz OscillatorNode',
+      recordedFramesPerCallbackCapacity: 256,
+      completeCallbackPcmRecords: run.pcm.filter((record) => record.samples.length === record.frames).length,
+      incompleteCallbackPcmRecords: run.pcm.filter((record) => record.samples.length !== record.frames).length,
+      contiguousPhaseCheck: {
+        consecutiveCallbacksCompared: phaseContinuityErrors.length,
+        maxAbsPhaseErrorRadians: phaseContinuityErrors.length ? Math.max(...phaseContinuityErrors.map(Math.abs)) : null,
+        medianAbsPhaseErrorRadians: phaseContinuityErrors.length
+          ? [...phaseContinuityErrors.map(Math.abs)].sort((left, right) => left - right)[Math.floor(phaseContinuityErrors.length / 2)] : null,
+        expectedAdvanceAt997Hz: '2π * 997 Hz * callback frame count / sample rate, modulo 2π',
+      },
+      anomalyWindows: pcmWindows,
+      interpretation: 'Sample equality distinguishes identical PCM from a repeated frame coordinate containing new waveform data. The fitted phase comparison tests the specific hypothesis that the new block advanced exactly one 128-frame quantum. This is an oscillator-specific software probe, not a microphone or hardware clock measurement.',
+    },
     lifecycle: run.lifecycle,
     final: run.final,
     limits: [
