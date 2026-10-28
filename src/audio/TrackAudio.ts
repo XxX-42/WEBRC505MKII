@@ -2403,15 +2403,13 @@ export class TrackAudio {
 
             if (requestedCaptureFrame !== null && this.engine.beginInputCaptureSession) {
                 let captureSession: InputCaptureSession | null = null;
-                captureSession = this.engine.beginInputCaptureSession(
-                    this.trackIndex,
-                    requestedCaptureFrame,
-                    (message) => {
-                        if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
-                    },
-                    undefined,
-                    autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined,
-                );
+                const onCaptureMessage = (message: unknown) => {
+                    if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
+                };
+                captureSession = autoRecEnabled
+                    ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
+                        undefined, browserAutoRecThreshold(autoRec!.sensitivity))
+                    : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
                     this.workletNode = captureSession.node;
