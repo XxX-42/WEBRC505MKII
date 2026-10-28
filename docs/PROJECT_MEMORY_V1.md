@@ -55,11 +55,20 @@ any live track is changed.
   loop storage, five full-capacity candidate stores, the encoded archive, decoded PCM,
   retained undo PCM, and a fixed process margin. This is an estimate of known allocations,
   not an operating-system RSS limit; large projects can be rejected before any loop changes.
-- Native import returns a host generation before waiting for callback commit. If a status
-  response is lost after acceptance, the LCD keeps the generation and offers status-only
-  reconciliation without re-uploading PCM. If the initial upload acknowledgement is lost
-  before a generation is returned, the result is explicitly unknown and the UI warns against
-  retrying until the Native host state is checked.
+- Before any Native upload, the app persists a random operation ID, operation-start content
+  revision, host incarnation, and SHA-256 of the exact incoming archive beside the pre-import
+  recovery snapshot. The host binds that ID to the same archive digest and revision in one
+  serialized acceptance path. Repeating the same ID and fingerprint returns its original
+  generation; changing either fingerprint field is rejected.
+- Native status recovery queries by operation ID and requires an exact operation ID, host
+  incarnation, archive digest, and operation-start revision match. A missing operation or
+  evicted core status is not evidence of rejection or cancellation; the candidate stays
+  unresolved, write actions remain blocked, and the UI still offers current-project and
+  pre-import snapshot export. A pre-import snapshot can be restored only after exact committed
+  status is verified, and it remains stored until that restore transaction commits.
+- Host status history is bounded to 256 accepted import operations per process incarnation.
+  When the bound is reached, new imports fail closed until the host restarts. A restart changes
+  incarnation, so old operation IDs cannot be mistaken for generations in the new process.
 - Browser import currently uses a 4 GiB estimate for resident PCM, history, archive,
   decoded samples, and candidate AudioBuffers. This estimates those known PCM
   allocations; it is not a hard bound on browser/AudioContext heap overhead.

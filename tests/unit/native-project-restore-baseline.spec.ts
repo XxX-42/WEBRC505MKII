@@ -68,6 +68,7 @@ describe('Native project-load operation-start snapshot', () => {
           masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
         projectTransportMutationRevision: 0 },
       () => true,
+      'c'.repeat(32),
     )).rejects.toThrow(/does not advertise ProjectArchive v2 support/);
     expect(beginProjectArchiveImport).not.toHaveBeenCalled();
   });

@@ -28,6 +28,8 @@
 #include <stdexcept>
 #include <string_view>
 #include <thread>
+#include <mutex>
+#include <unordered_map>
 
 #include "httplib.h"
 #include "nlohmann/json.hpp"
@@ -66,6 +68,25 @@ const std::string& hostIncarnationId() {
 bool requestMatchesHostIncarnation(const httplib::Request& request) {
     return request.get_header_value_count("X-Native-Host-Incarnation") == 1U &&
         request.get_header_value("X-Native-Host-Incarnation") == hostIncarnationId();
+}
+
+bool isOperationId(const std::string& value) {
+    return value.size() == 32U && std::all_of(value.begin(), value.end(), [](unsigned char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+    });
+}
+
+struct NativeImportOperationRecord {
+    std::string archiveSha256;
+    std::uint64_t expectedProjectContentRevision = 0U;
+    std::uint64_t generation = 0U;
+};
+constexpr std::size_t kNativeImportOperationLimit = 256U;
+
+std::mutex& nativeImportOperationsMutex() { static std::mutex value; return value; }
+std::unordered_map<std::string, NativeImportOperationRecord>& nativeImportOperations() {
+    static std::unordered_map<std::string, NativeImportOperationRecord> value;
+    return value;
 }
 
 bool exactMemoryKeys(const json& value, std::initializer_list<const char*> keys) {
@@ -1283,6 +1304,7 @@ void enableLoopbackCors(httplib::Server& server) {
             if (!requestedHeaders.empty()) {
                 bool sawContentType = false;
                 bool sawHostIncarnation = false;
+                bool sawOperationId = false;
                 std::istringstream headerStream(requestedHeaders);
                 std::string token;
                 bool validHeaders = true;
@@ -1299,6 +1321,7 @@ void enableLoopbackCors(httplib::Server& server) {
                     });
                     if (token == "content-type" && !sawContentType) sawContentType = true;
                     else if (token == "x-native-host-incarnation" && !sawHostIncarnation) sawHostIncarnation = true;
+                    else if (token == "x-native-operation-id" && !sawOperationId) sawOperationId = true;
                     else {
                         validHeaders = false;
                         break;
@@ -1306,14 +1329,14 @@ void enableLoopbackCors(httplib::Server& server) {
                 }
                 if (!validHeaders) {
                     response.status = 400;
-                    writeError(response, "Native bridge CORS only allows Content-Type and X-Native-Host-Incarnation request headers.");
+                    writeError(response, "Native bridge CORS only allows Content-Type, X-Native-Host-Incarnation, and X-Native-Operation-Id request headers.");
                     return httplib::Server::HandlerResponse::Handled;
                 }
             }
 
             response.status = 204;
             response.set_header("Access-Control-Allow-Methods", "GET, POST");
-            response.set_header("Access-Control-Allow-Headers", "Content-Type, X-Native-Host-Incarnation");
+            response.set_header("Access-Control-Allow-Headers", "Content-Type, X-Native-Host-Incarnation, X-Native-Operation-Id");
             response.set_header("Access-Control-Max-Age", "600");
             return httplib::Server::HandlerResponse::Handled;
         }
@@ -1450,6 +1473,12 @@ int main() {
             writeError(response, "Native host incarnation changed or is unsupported; project import was not accepted.");
             return;
         }
+        const auto operationId = request.get_header_value("X-Native-Operation-Id");
+        if (request.get_header_value_count("X-Native-Operation-Id") != 1U || !isOperationId(operationId)) {
+            response.status = 400;
+            writeError(response, "Native project import requires one client-persisted 128-bit X-Native-Operation-Id.");
+            return;
+        }
         if (normalizedHeaderValue(request.get_header_value("Content-Type")) != "application/octet-stream") {
             response.status = 415;
             writeError(response, "Native project import requires an application/octet-stream archive body.");
@@ -1533,6 +1562,24 @@ int main() {
             return;
         }
 
+        const auto archiveSha256 = projectArchiveSha256(archiveBytes.data(), archiveBytes.size());
+        {
+            std::lock_guard<std::mutex> lock(nativeImportOperationsMutex());
+            const auto existing = nativeImportOperations().find(operationId);
+            if (existing != nativeImportOperations().end()) {
+                if (existing->second.archiveSha256 != archiveSha256 ||
+                    existing->second.expectedProjectContentRevision != expectedProjectContentRevision) {
+                    response.status = 409;
+                writeError(response, "Native project import operation ID is already bound to a different request fingerprint.");
+                    return;
+                }
+                response.status = 202;
+                writeJson(response, json{{"ok", true}, {"generation", existing->second.generation},
+                    {"hostIncarnationId", hostIncarnationId()}, {"operationId", operationId}, {"duplicate", true}});
+                return;
+            }
+        }
+
         std::unique_ptr<NativeMemorySettings> memory;
         std::string memoryError;
         std::array<unsigned int, 2U> semanticMeter{};
@@ -1553,14 +1600,37 @@ int main() {
         }
         std::uint64_t generation = 0U;
         std::string error;
-        if (!engine.beginProjectArchiveImport(
-                std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory))) {
-            response.status = 409;
-            writeError(response, error);
-            return;
+        {
+            std::lock_guard<std::mutex> lock(nativeImportOperationsMutex());
+            const auto existing = nativeImportOperations().find(operationId);
+            if (existing != nativeImportOperations().end()) {
+                if (existing->second.archiveSha256 != archiveSha256 ||
+                    existing->second.expectedProjectContentRevision != expectedProjectContentRevision) {
+                    response.status = 409;
+                    writeError(response, "Native project import operation ID is already bound to a different request fingerprint.");
+                    return;
+                }
+                response.status = 202;
+                writeJson(response, json{{"ok", true}, {"generation", existing->second.generation},
+                    {"hostIncarnationId", hostIncarnationId()}, {"operationId", operationId}, {"duplicate", true}});
+                return;
+            }
+            if (nativeImportOperations().size() >= kNativeImportOperationLimit) {
+                response.status = 503;
+                writeError(response, "Native import operation status capacity is exhausted; restart the host before submitting another import.");
+                return;
+            }
+            if (!engine.beginProjectArchiveImport(
+                    std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory))) {
+                response.status = 409;
+                writeError(response, error);
+                return;
+            }
+            nativeImportOperations().emplace(operationId, NativeImportOperationRecord{archiveSha256, expectedProjectContentRevision, generation});
         }
         response.status = 202;
-        writeJson(response, json{{"ok", true}, {"generation", generation}, {"hostIncarnationId", hostIncarnationId()}});
+        writeJson(response, json{{"ok", true}, {"generation", generation}, {"hostIncarnationId", hostIncarnationId()},
+            {"operationId", operationId}, {"duplicate", false}});
     });
 
     server.Post("/v1/project/import/commit", [&engine](const httplib::Request& request, httplib::Response& response) {
@@ -1595,6 +1665,42 @@ int main() {
             return;
         }
         writeJson(response, projectImportStatusToJson(status));
+    });
+
+    server.Get("/v1/project/import/status-by-operation", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409;
+            writeError(response, "Native host incarnation changed or is unsupported; operation status is unavailable.");
+            return;
+        }
+        const auto operationId = request.get_param_value("operationId");
+        if (request.get_param_value_count("operationId") != 1U || !isOperationId(operationId)) {
+            response.status = 400;
+            writeError(response, "Operation status requires one valid 128-bit operationId.");
+            return;
+        }
+        NativeImportOperationRecord operation;
+        {
+            std::lock_guard<std::mutex> lock(nativeImportOperationsMutex());
+            const auto found = nativeImportOperations().find(operationId);
+            if (found == nativeImportOperations().end()) {
+                response.status = 404;
+                writeError(response, "Native project import operation is not known in this host incarnation; absence does not prove the request was rejected.");
+                return;
+            }
+            operation = found->second;
+        }
+        const auto status = engine.getProjectArchiveImportStatus(operation.generation);
+        if (!status.found) {
+            response.status = 404;
+            writeError(response, "Native project import operation status was evicted; absence does not prove cancellation.");
+            return;
+        }
+        auto result = projectImportStatusToJson(status);
+        result["operationId"] = operationId;
+        result["archiveSha256"] = operation.archiveSha256;
+        result["expectedProjectContentRevision"] = operation.expectedProjectContentRevision;
+        writeJson(response, result);
     });
 
     server.Post("/v1/project/import/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {

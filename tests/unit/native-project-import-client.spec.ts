@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NativeBridgeClient, NativeProjectImportIndeterminateError, NativeProjectImportOutcomeUnknownError } from '../../src/audio/NativeBridgeClient';
 
 const HOST_ID = 'a'.repeat(32);
+const OPERATION_ID = 'b'.repeat(32);
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return {
@@ -14,15 +15,15 @@ function jsonResponse(payload: unknown, status = 200): Response {
 describe('Native project import bridge client', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('uploads exact raw archive bytes and validates the host generation', async () => {
+  it('uploads exact raw archive bytes with the persisted operation ID and validates its host binding', async () => {
     const archive = new Uint8Array([0x52, 0x43, 0x35, 0x30, 0x35, 0x50, 0x41, 0, 1, 0, 0, 0]);
-    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, generation: 17, hostIncarnationId: HOST_ID }));
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, generation: 17, hostIncarnationId: HOST_ID, operationId: OPERATION_ID }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, 42, HOST_ID)).resolves.toEqual({ generation: 17, hostIncarnationId: HOST_ID });
+    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, 42, HOST_ID, OPERATION_ID)).resolves.toEqual({ generation: 17, hostIncarnationId: HOST_ID, operationId: OPERATION_ID });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/project/import?expectedContentRevision=42', expect.objectContaining({
       method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream', 'X-Native-Host-Incarnation': HOST_ID },
+      headers: { 'Content-Type': 'application/octet-stream', 'X-Native-Host-Incarnation': HOST_ID, 'X-Native-Operation-Id': OPERATION_ID },
       body: archive,
     }));
   });
@@ -31,7 +32,7 @@ describe('Native project import bridge client', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('connection reset'); }));
     const archive = new Uint8Array([0x52, 0x43, 0x35, 0x30, 0x35, 0x50, 0x41, 0, 1, 0, 0, 0]);
 
-    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, 42, HOST_ID))
+    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, 42, HOST_ID, OPERATION_ID))
       .rejects.toMatchObject<Partial<NativeProjectImportOutcomeUnknownError>>({
         name: 'NativeProjectImportOutcomeUnknownError',
         message: expect.stringContaining('request outcome is unknown'),
@@ -43,8 +44,9 @@ describe('Native project import bridge client', () => {
     vi.stubGlobal('fetch', fetchMock);
     const archive = new Uint8Array([0x52, 0x43, 0x35, 0x30, 0x35, 0x50, 0x41, 0, 1, 0, 0, 0]);
 
-    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, Number.NaN, HOST_ID)).rejects.toThrow(/operation-start content revision/i);
-    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, Number.MAX_SAFE_INTEGER + 1, HOST_ID)).rejects.toThrow(/operation-start content revision/i);
+    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, Number.NaN, HOST_ID, OPERATION_ID)).rejects.toThrow(/operation-start content revision/i);
+    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, Number.MAX_SAFE_INTEGER + 1, HOST_ID, OPERATION_ID)).rejects.toThrow(/operation-start content revision/i);
+    await expect(new NativeBridgeClient().beginProjectArchiveImport(archive, 42, HOST_ID, 'bad')).rejects.toThrow(/persisted 128-bit operation ID/i);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -161,5 +163,23 @@ describe('Native project import bridge client', () => {
         generation: 43,
         message: expect.stringContaining('cancel response lost'),
       });
+  });
+
+  it('queries unresolved acceptance by exact operation ID and host incarnation', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, operationId: OPERATION_ID, archiveSha256: 'c'.repeat(64),
+      expectedProjectContentRevision: 42, generation: 51, state: 'pending', hostIncarnationId: HOST_ID }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(new NativeBridgeClient().getProjectArchiveImportStatusByOperationId(OPERATION_ID, HOST_ID))
+      .resolves.toMatchObject({ operationId: OPERATION_ID, archiveSha256: 'c'.repeat(64), expectedProjectContentRevision: 42,
+        generation: 51, state: 'pending', hostIncarnationId: HOST_ID });
+    expect(fetchMock).toHaveBeenCalledWith(`http://127.0.0.1:17755/v1/project/import/status-by-operation?operationId=${OPERATION_ID}`,
+      expect.objectContaining({ headers: { 'X-Native-Host-Incarnation': HOST_ID } }));
+  });
+
+  it('rejects an operation status bound to another incarnation or ID', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ ok: true, operationId: 'd'.repeat(32), archiveSha256: 'c'.repeat(64),
+      expectedProjectContentRevision: 42, generation: 51, state: 'pending', hostIncarnationId: 'e'.repeat(32) })));
+    await expect(new NativeBridgeClient().getProjectArchiveImportStatusByOperationId(OPERATION_ID, HOST_ID))
+      .rejects.toThrow(/invalid operation status binding/i);
   });
 });

@@ -3732,6 +3732,8 @@ void NativeAudioCore::finalizeProjectImportLocked() {
         }
         reclaimInactiveHistoryPcmLocked();
     }
+    projectImportHistory_[projectImportLastGeneration_] = NativeProjectImportStatus{
+        true, projectImportLastGeneration_, projectImportLastState_, projectImportLastError_, projectImportLastContentRevision_};
     projectImportTransactionPointer_.store(nullptr, std::memory_order_release);
     projectImportTransaction_.reset();
     projectImportActiveGeneration_.store(0U, std::memory_order_release);
@@ -3748,6 +3750,8 @@ NativeProjectImportStatus NativeAudioCore::getProjectArchiveImportStatus(std::ui
         (state == NativeProjectImportState::Committed || state == NativeProjectImportState::Cancelled)) {
         finalizeProjectImportLocked();
         state = projectImportLastState_;
+        const auto remembered = projectImportHistory_.find(generation);
+        if (remembered != projectImportHistory_.end()) return remembered->second;
         return {true, generation, state, projectImportLastError_, projectImportLastContentRevision_};
     }
     if (activeGeneration == generation &&
@@ -3757,6 +3761,8 @@ NativeProjectImportStatus NativeAudioCore::getProjectArchiveImportStatus(std::ui
     if (projectImportLastGeneration_ == generation) {
         return {true, generation, projectImportLastState_, projectImportLastError_, projectImportLastContentRevision_};
     }
+    const auto remembered = projectImportHistory_.find(generation);
+    if (remembered != projectImportHistory_.end()) return remembered->second;
     return {};
 }
 
@@ -3772,8 +3778,10 @@ bool NativeAudioCore::cancelProjectArchiveImport(
         status = projectImportLastGeneration_ == generation
             ? NativeProjectImportStatus{true, generation, projectImportLastState_, projectImportLastError_}
             : NativeProjectImportStatus{};
-        error = status.found ? std::string{} : "Native project import generation was not found.";
-        return status.found;
+        error = !status.found ? "Native project import generation was not found."
+            : status.state == NativeProjectImportState::Cancelled ? std::string{}
+            : "Native project import is no longer pending and cannot be cancelled.";
+        return status.found && status.state == NativeProjectImportState::Cancelled;
     }
     auto expected = projectImportState_.load(std::memory_order_acquire);
     if ((expected == NativeProjectImportState::Prepared || expected == NativeProjectImportState::Pending) && projectImportState_.compare_exchange_strong(

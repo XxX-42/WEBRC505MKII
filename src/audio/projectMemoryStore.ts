@@ -2,12 +2,14 @@ import { PROJECT_ARCHIVE_LIMITS } from './projectArchive';
 
 export const PROJECT_MEMORY_SLOT_COUNT = 99;
 const DATABASE_NAME = 'webrc505-project-memory';
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 const METADATA_STORE = 'slot-metadata';
 const PAYLOAD_STORE = 'slot-payloads';
 const RECOVERY_STORE = 'native-import-recovery';
 const RECOVERY_METADATA_STORE = 'native-import-recovery-metadata';
+const OPERATION_INTENT_STORE = 'native-import-operation-intents';
 const RECOVERY_ACTIVE_KEY = 'active-native-import-recovery';
+const RECOVERY_SEQUENCE_KEY = 'native-import-recovery-sequence';
 
 export interface ProjectMemoryMetadata {
   readonly slot: number;
@@ -33,6 +35,9 @@ export interface ProjectRecoveryMetadata {
   readonly ownerSessionId: string;
   /** Missing only on pre-incarnation records; such candidates cannot be reconciled safely. */
   readonly sourceHostIncarnationId?: string;
+  readonly requestExpectedProjectContentRevision?: number;
+  readonly requestArchiveSha256?: string;
+  readonly supersedesOperationId?: string;
   readonly generation?: number;
   readonly availableAtProjectContentRevision?: number;
   readonly committedProjectContentRevision?: number;
@@ -91,6 +96,7 @@ export class ProjectMemoryStore {
         if (!database.objectStoreNames.contains(PAYLOAD_STORE)) database.createObjectStore(PAYLOAD_STORE, { keyPath: 'slot' });
         if (!database.objectStoreNames.contains(RECOVERY_STORE)) database.createObjectStore(RECOVERY_STORE);
         if (!database.objectStoreNames.contains(RECOVERY_METADATA_STORE)) database.createObjectStore(RECOVERY_METADATA_STORE);
+        if (!database.objectStoreNames.contains(OPERATION_INTENT_STORE)) database.createObjectStore(OPERATION_INTENT_STORE);
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Could not open the project-memory database'));
@@ -100,6 +106,54 @@ export class ProjectMemoryStore {
       throw error;
     });
     return this.databasePromise;
+  }
+
+  /** Persist a Native operation identity before the archive request can leave the page. */
+  public async persistNativeImportOperationIntent(operationId: string, hostIncarnationId: string,
+      expectedProjectContentRevision: number, archiveSha256: string): Promise<void> {
+    if (!/^[0-9a-f]{32}$/i.test(operationId) || !/^[0-9a-f]{32}$/i.test(hostIncarnationId)) {
+      throw new RangeError('Native import operation intent identity is invalid.');
+    }
+    if (!Number.isSafeInteger(expectedProjectContentRevision) || expectedProjectContentRevision < 0 || !/^[0-9a-f]{64}$/i.test(archiveSha256)) {
+      throw new RangeError('Native import operation request fingerprint is invalid.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction(OPERATION_INTENT_STORE, 'readwrite');
+    transaction.objectStore(OPERATION_INTENT_STORE).put({ operationId, hostIncarnationId, expectedProjectContentRevision, archiveSha256, createdAt: Date.now() }, operationId);
+    await transactionCompletion(transaction);
+  }
+
+  public async clearNativeImportOperationIntent(operationId: string): Promise<void> {
+    const database = await this.openDatabase();
+    const transaction = database.transaction(OPERATION_INTENT_STORE, 'readwrite');
+    transaction.objectStore(OPERATION_INTENT_STORE).delete(operationId);
+    await transactionCompletion(transaction);
+  }
+
+  public async readNativeImportOperationIntent(operationId: string): Promise<{ operationId: string; hostIncarnationId: string;
+    expectedProjectContentRevision: number; archiveSha256: string; createdAt: number } | null> {
+    const database = await this.openDatabase();
+    const transaction = database.transaction(OPERATION_INTENT_STORE, 'readonly');
+    const request = transaction.objectStore(OPERATION_INTENT_STORE).get(operationId) as IDBRequest<{ operationId: string; hostIncarnationId: string;
+      expectedProjectContentRevision: number; archiveSha256: string; createdAt: number } | undefined>;
+    const [record] = await Promise.all([requestResult(request), transactionCompletion(transaction)]);
+    if (!record || record.operationId !== operationId || !/^[0-9a-f]{32}$/i.test(record.hostIncarnationId) ||
+        !Number.isSafeInteger(record.expectedProjectContentRevision) || record.expectedProjectContentRevision < 0 ||
+        !/^[0-9a-f]{64}$/i.test(record.archiveSha256) || !Number.isFinite(record.createdAt)) return null;
+    return record;
+  }
+
+  public async listNativeImportOperationIntents(): Promise<readonly { operationId: string; hostIncarnationId: string;
+    expectedProjectContentRevision: number; archiveSha256: string; createdAt: number }[]> {
+    const database = await this.openDatabase();
+    const transaction = database.transaction(OPERATION_INTENT_STORE, 'readonly');
+    const request = transaction.objectStore(OPERATION_INTENT_STORE).getAll() as IDBRequest<Array<{
+      operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string; createdAt: number
+    }>>;
+    const [records] = await Promise.all([requestResult(request), transactionCompletion(transaction)]);
+    return records.filter((record) => /^[0-9a-f]{32}$/i.test(record.operationId) && /^[0-9a-f]{32}$/i.test(record.hostIncarnationId) &&
+      Number.isSafeInteger(record.expectedProjectContentRevision) && record.expectedProjectContentRevision >= 0 &&
+      /^[0-9a-f]{64}$/i.test(record.archiveSha256) && Number.isFinite(record.createdAt));
   }
 
   public async listMetadata(): Promise<readonly ProjectMemoryMetadata[]> {
@@ -194,7 +248,7 @@ export class ProjectMemoryStore {
     'availableAtProjectTransportMutationRevision' | 'availableAtModeGeneration' | 'availableAtHostIncarnationId'>,
     archive: ArrayBuffer | Uint8Array): Promise<ProjectRecoveryMetadata> {
     const { operationId, name, bpm, archiveVersion, sourceProjectContentRevision,
-      sourceProjectTransportMutationRevision, sourceModeGeneration, ownerSessionId, generation } = input;
+      sourceProjectTransportMutationRevision, sourceModeGeneration, ownerSessionId, generation, supersedesOperationId } = input;
     const view = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
     if (typeof operationId !== 'string' || operationId.length < 16 || typeof ownerSessionId !== 'string' || ownerSessionId.length < 16 ||
         typeof name !== 'string' || name.trim().length === 0 || !Number.isFinite(bpm) || bpm < 40 || bpm > 300 ||
@@ -209,30 +263,62 @@ export class ProjectMemoryStore {
     const exactBuffer = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength
       ? view.buffer as ArrayBuffer
       : view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
-    const metadata: ProjectRecoveryMetadata = {
-      operationId, name: name.trim(), bpm, savedAt: Date.now(), archiveBytes: exactBuffer.byteLength, archiveVersion,
+    const baseMetadata: Omit<ProjectRecoveryMetadata, 'savedAt'> = {
+      operationId, name: name.trim(), archiveBytes: exactBuffer.byteLength, archiveVersion, bpm,
       state: 'staged', sourceProjectContentRevision, sourceProjectTransportMutationRevision, ownerSessionId,
       sourceHostIncarnationId: input.sourceHostIncarnationId,
       sourceModeGeneration,
+      ...(supersedesOperationId === undefined ? {} : { supersedesOperationId }),
       ...(generation === undefined ? {} : { generation }),
     };
     const database = await this.openDatabase();
     const transaction = database.transaction([RECOVERY_STORE, RECOVERY_METADATA_STORE], 'readwrite');
-    transaction.objectStore(RECOVERY_STORE).put(exactBuffer, operationId);
-    transaction.objectStore(RECOVERY_METADATA_STORE).put(metadata, operationId);
+    const metadataStore = transaction.objectStore(RECOVERY_METADATA_STORE);
+    const sequenceRequest = metadataStore.get(RECOVERY_SEQUENCE_KEY) as IDBRequest<number | undefined>;
+    let metadata!: ProjectRecoveryMetadata;
+    sequenceRequest.onsuccess = () => {
+      const savedAt = Math.max(Date.now(), (Number.isSafeInteger(sequenceRequest.result) ? sequenceRequest.result! : 0) + 1);
+      metadata = { ...baseMetadata, savedAt };
+      transaction.objectStore(RECOVERY_STORE).put(exactBuffer, operationId);
+      metadataStore.put(metadata, operationId);
+      metadataStore.put(savedAt, RECOVERY_SEQUENCE_KEY);
+    };
     await transactionCompletion(transaction);
     return metadata;
   }
 
   public async markNativeImportRecoveryPending(operationId: string, generation?: number): Promise<void> {
     const database = await this.openDatabase();
-    const transaction = database.transaction(RECOVERY_METADATA_STORE, 'readwrite');
+    const transaction = database.transaction([RECOVERY_STORE, RECOVERY_METADATA_STORE], 'readwrite');
     const store = transaction.objectStore(RECOVERY_METADATA_STORE);
     const request = store.get(operationId) as IDBRequest<ProjectRecoveryMetadata | undefined>;
     request.onsuccess = () => {
       const metadata = request.result;
       if (!metadata || metadata.state === 'active') { transaction.abort(); return; }
       store.put({ ...metadata, state: 'pending', ...(generation === undefined ? {} : { generation }) }, operationId);
+    };
+    await transactionCompletion(transaction);
+  }
+
+  public async bindNativeImportRequest(operationId: string, expectedProjectContentRevision: number, archiveSha256: string): Promise<void> {
+    if (typeof operationId !== 'string' || operationId.length < 16 || !Number.isSafeInteger(expectedProjectContentRevision) ||
+        expectedProjectContentRevision < 0 || !/^[0-9a-f]{64}$/i.test(archiveSha256)) {
+      throw new RangeError('Native import request fingerprint is invalid.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction([RECOVERY_STORE, RECOVERY_METADATA_STORE], 'readwrite');
+    const store = transaction.objectStore(RECOVERY_METADATA_STORE);
+    const request = store.get(operationId) as IDBRequest<ProjectRecoveryMetadata | undefined>;
+    request.onsuccess = () => {
+      const metadata = request.result;
+      if (!metadata || metadata.state !== 'staged' ||
+          (metadata.requestExpectedProjectContentRevision !== undefined && metadata.requestExpectedProjectContentRevision !== expectedProjectContentRevision) ||
+          (metadata.requestArchiveSha256 !== undefined && metadata.requestArchiveSha256 !== archiveSha256)) {
+        transaction.abort();
+        return;
+      }
+      store.put({ ...metadata, requestExpectedProjectContentRevision: expectedProjectContentRevision,
+        requestArchiveSha256: archiveSha256 }, operationId);
     };
     await transactionCompletion(transaction);
   }
@@ -264,7 +350,7 @@ export class ProjectMemoryStore {
       throw new RangeError('Native recovery commit guard is invalid.');
     }
     const database = await this.openDatabase();
-    const transaction = database.transaction(RECOVERY_METADATA_STORE, 'readwrite');
+    const transaction = database.transaction([RECOVERY_STORE, RECOVERY_METADATA_STORE], 'readwrite');
     const store = transaction.objectStore(RECOVERY_METADATA_STORE);
     const candidateRequest = store.get(operationId) as IDBRequest<ProjectRecoveryMetadata | undefined>;
     let published: ProjectRecoveryMetadata | null = null;
@@ -289,6 +375,10 @@ export class ProjectMemoryStore {
         store.put(published!, operationId);
         store.put(operationId, RECOVERY_ACTIVE_KEY);
         if (typeof previousId === 'string' && previousId !== operationId) store.delete(previousId);
+        if (typeof candidate.supersedesOperationId === 'string' && candidate.supersedesOperationId !== operationId) {
+          transaction.objectStore(RECOVERY_STORE).delete(candidate.supersedesOperationId);
+          store.delete(candidate.supersedesOperationId);
+        }
       };
     };
     await transactionCompletion(transaction);
@@ -301,7 +391,20 @@ export class ProjectMemoryStore {
     const transaction = database.transaction(RECOVERY_METADATA_STORE, 'readonly');
     const request = transaction.objectStore(RECOVERY_METADATA_STORE).getAll() as IDBRequest<ProjectRecoveryMetadata[]>;
     const [records] = await Promise.all([requestResult(request), transactionCompletion(transaction)]);
-    return records.find((entry) => entry.state === 'pending') ?? null;
+    return records.filter((entry) => entry.state === 'pending' || entry.state === 'staged')
+      .sort((left, right) => right.savedAt - left.savedAt)[0] ?? null;
+  }
+
+  public async readNativeImportRecoveryCandidate(operationId: string): Promise<{ metadata: ProjectRecoveryMetadata; archive: ArrayBuffer } | null> {
+    const database = await this.openDatabase();
+    const transaction = database.transaction([RECOVERY_STORE, RECOVERY_METADATA_STORE], 'readonly');
+    const metadataRequest = transaction.objectStore(RECOVERY_METADATA_STORE).get(operationId) as IDBRequest<ProjectRecoveryMetadata | undefined>;
+    const archiveRequest = transaction.objectStore(RECOVERY_STORE).get(operationId) as IDBRequest<ArrayBuffer | undefined>;
+    const [metadata, archive] = await Promise.all([requestResult(metadataRequest), requestResult(archiveRequest), transactionCompletion(transaction)]);
+    if (!metadata || !(archive instanceof ArrayBuffer) || metadata.operationId !== operationId || metadata.archiveBytes !== archive.byteLength ||
+        (metadata.state !== 'pending' && metadata.state !== 'staged') || !Number.isSafeInteger(metadata.archiveBytes) ||
+        (metadata.archiveVersion !== 1 && metadata.archiveVersion !== 2)) return null;
+    return { metadata: { ...metadata }, archive };
   }
 
   /** Any leftover staged candidate may represent a crash after upload began; never overwrite it blindly. */

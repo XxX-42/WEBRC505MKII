@@ -873,6 +873,7 @@ private:
     std::string projectImportLastError_;
     std::atomic<std::uint64_t> projectImportCommittedContentRevision_{0U};
     std::uint64_t projectImportLastContentRevision_ = 0U;
+    std::map<std::uint64_t, NativeProjectImportStatus> projectImportHistory_;
     std::atomic<bool> projectImportCancelledByCallback_{false};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeBounceSourceScratch_{};

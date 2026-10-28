@@ -262,8 +262,11 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const memoryName = ref('MEMORY 01');
   const memoryNotice = ref('PCM + BPM + LOOP/SIGNATURE · ARCHIVE VERSION SHOWN ON SAVE/EXPORT');
   const pendingNativeImportGeneration = ref<number | null>(null);
+  const pendingNativeImportOperationId = ref<string | null>(null);
+  const nativeImportInFlight = ref(false);
   const memorySlots = ref<readonly ProjectMemoryMetadata[]>([]);
   const nativeImportRecovery = ref<ProjectRecoveryMetadata | null>(null);
+  const pendingNativeImportRecovery = ref<ProjectRecoveryMetadata | null>(null);
   const memoryStorageReady = ref(typeof indexedDB !== 'undefined');
   let memoryMetadataRevision = 0;
   let editRevision = 0;
@@ -859,14 +862,17 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const revision = ++memoryMetadataRevision;
     if (!memoryStorageReady.value) return;
     try {
-      const [saved, recovery, pendingRecovery] = await Promise.all([
+      const [saved, recovery, pendingRecovery, pendingOperation] = await Promise.all([
         projectMemory.list(), projectMemory.getNativeImportRecoveryMetadata(), projectMemory.getPendingNativeImportRecovery(),
+        projectMemory.getPendingNativeImportOperation(),
       ]);
       if (revision !== memoryMetadataRevision) return;
       memorySlots.value = saved;
       nativeImportRecovery.value = recovery;
+      pendingNativeImportRecovery.value = pendingRecovery;
       pendingNativeImportGeneration.value = Number.isSafeInteger(pendingRecovery?.generation)
-        ? pendingRecovery!.generation! : null;
+        ? pendingRecovery!.generation! : pendingOperation?.generation ?? null;
+      pendingNativeImportOperationId.value = pendingOperation?.operationId ?? null;
       const metadata = saved.find((entry) => entry.slot === slot) ?? null;
       memoryName.value = metadata?.name ?? `MEMORY ${String(slot).padStart(2, '0')}`;
       memoryNotice.value = metadata
@@ -916,9 +922,11 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
 
   async function loadMemorySlot(): Promise<void> {
     memoryNotice.value = `VALIDATING SLOT ${String(memorySlot.value).padStart(2, '0')} ARCHIVE`;
+    nativeImportInFlight.value = engine.getMode() === 'native';
     try {
       const loaded = await projectMemory.load(memorySlot.value);
       pendingNativeImportGeneration.value = null;
+      pendingNativeImportOperationId.value = null;
       memoryName.value = loaded.name;
       await refreshMemoryMetadata(memorySlot.value);
       memoryNotice.value = `LOADED V${loaded.archiveVersion} ${loaded.name} · ${loaded.tracksWithAudio}/5 LOOPS · PRE-IMPORT RECOVERY SAVED`;
@@ -928,6 +936,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       const generation = typeof error === 'object' && error !== null && 'generation' in error &&
         Number.isSafeInteger(error.generation) && Number(error.generation) > 0 ? Number(error.generation) : null;
       if (generation !== null) pendingNativeImportGeneration.value = generation;
+      if (error instanceof NativeProjectImportOutcomeUnknownError) pendingNativeImportOperationId.value = (await projectMemory.getPendingNativeImportRecovery())?.operationId ?? null;
       await refreshMemoryMetadata(memorySlot.value);
       const recoveryUnavailable = typeof error === 'object' && error !== null && 'recoveryUnavailable' in error && error.recoveryUnavailable === true;
       memoryNotice.value = archiveCommitted
@@ -939,18 +948,22 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
           : error instanceof NativeProjectImportOutcomeUnknownError
             ? `IMPORT OUTCOME UNKNOWN · NO GENERATION ACK · EXPORT CURRENT PROJECT TO PRESERVE IT; IMPORT/RESTORE STAYS BLOCKED`
             : `LOAD FAILED · ${message}`;
+    } finally {
+      nativeImportInFlight.value = false;
     }
   }
 
   async function restoreNativeImportRecovery(): Promise<void> {
-    const recovery = nativeImportRecovery.value;
+    const recovery = nativeImportRecovery.value ?? pendingNativeImportRecovery.value;
     if (!recovery) return;
     const sizeMiB = (recovery.archiveBytes / (1024 * 1024)).toFixed(1);
     if (!(await confirmAction(`Restore the saved pre-import Native project (${recovery.name}, ${sizeMiB} MiB)? This replaces all five current loops and transport metadata.`))) return;
     memoryNotice.value = 'RESTORING PRE-IMPORT PROJECT RECOVERY';
+    nativeImportInFlight.value = true;
     try {
       const restored = await projectMemory.restoreNativeImportRecovery();
       pendingNativeImportGeneration.value = null;
+      pendingNativeImportOperationId.value = null;
       memoryName.value = restored.name;
       await refreshMemoryMetadata(memorySlot.value);
       memoryNotice.value = `RECOVERED ${restored.name} · ${restored.tracksWithAudio}/5 LOOPS · ARCHIVE RESTORE ACKNOWLEDGED`;
@@ -960,6 +973,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       const generation = typeof error === 'object' && error !== null && 'generation' in error &&
         Number.isSafeInteger(error.generation) && Number(error.generation) > 0 ? Number(error.generation) : null;
       if (generation !== null) pendingNativeImportGeneration.value = generation;
+      if (error instanceof NativeProjectImportOutcomeUnknownError) pendingNativeImportOperationId.value = (await projectMemory.getPendingNativeImportRecovery())?.operationId ?? null;
       await refreshMemoryMetadata(memorySlot.value);
       memoryNotice.value = archiveCommitted
         ? `PCM RECOVERY RESTORE COMMITTED · UI SYNC FAILED · GEN ${generation ?? 'UNKNOWN'} · ${message}`
@@ -968,26 +982,37 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
           : error instanceof NativeProjectImportOutcomeUnknownError
             ? 'RECOVERY RESTORE OUTCOME UNKNOWN · NO GENERATION ACK · EXPORT CURRENT PROJECT TO PRESERVE IT; IMPORT/RESTORE STAYS BLOCKED'
             : `RECOVERY FAILED · ${message}`;
+    } finally {
+      nativeImportInFlight.value = false;
     }
   }
 
   async function checkNativeProjectImportStatus(): Promise<void> {
     const generation = pendingNativeImportGeneration.value;
-    if (generation === null) return;
-    memoryNotice.value = `CHECKING NATIVE IMPORT GENERATION ${generation}`;
+    const operationId = pendingNativeImportOperationId.value;
+    if (operationId === null) return;
+    memoryNotice.value = generation === null ? 'CHECKING NATIVE IMPORT OPERATION' : `CHECKING NATIVE IMPORT GENERATION ${generation}`;
     try {
-      const reconciliation = await projectMemory.reconcileNativeImportRecovery(generation);
+      const reconciliation = await projectMemory.reconcileNativeImportRecovery(operationId);
+      const resolvedGeneration = reconciliation.generation ?? (await projectMemory.getPendingNativeImportOperation())?.generation ?? generation;
       if (reconciliation.state === 'committed') {
-        pendingNativeImportGeneration.value = null;
+        if (reconciliation.recoveryAvailable) {
+          pendingNativeImportGeneration.value = null;
+          pendingNativeImportOperationId.value = null;
+        } else if (resolvedGeneration !== null && resolvedGeneration !== undefined) {
+          pendingNativeImportGeneration.value = resolvedGeneration;
+        }
         await refreshMemoryMetadata(memorySlot.value);
         memoryNotice.value = reconciliation.recoveryAvailable
-          ? `NATIVE IMPORT COMMITTED · GEN ${generation} · RECOVERY VERIFIED · CHECK AUDIO AND TRANSPORT STATUS`
-          : `NATIVE IMPORT COMMITTED · GEN ${generation} · RECOVERY UNAVAILABLE · NO UNDO SNAPSHOT PUBLISHED`;
+          ? `NATIVE IMPORT COMMITTED · GEN ${resolvedGeneration ?? 'UNKNOWN'} · RECOVERY VERIFIED · CHECK AUDIO AND TRANSPORT STATUS`
+          : `NATIVE IMPORT COMMITTED · GEN ${resolvedGeneration ?? 'UNKNOWN'} · RECOVERY UNAVAILABLE · NO UNDO SNAPSHOT PUBLISHED`;
       } else if (reconciliation.state === 'cancelled') {
         pendingNativeImportGeneration.value = null;
-        memoryNotice.value = `IMPORT CANCELLED · GEN ${generation} · ARCHIVE NOT COMMITTED; CHECK ANY NEWER LIVE EDITS`;
+        pendingNativeImportOperationId.value = null;
+        memoryNotice.value = `IMPORT CANCELLED · GEN ${resolvedGeneration ?? 'UNKNOWN'} · ARCHIVE NOT COMMITTED; CHECK ANY NEWER LIVE EDITS`;
       } else {
-        memoryNotice.value = `IMPORT ${reconciliation.state.toUpperCase()} · GEN ${generation} · CHECK AGAIN, DO NOT REUPLOAD`;
+        if (resolvedGeneration !== null && resolvedGeneration !== undefined) pendingNativeImportGeneration.value = resolvedGeneration;
+        memoryNotice.value = `IMPORT ${reconciliation.state.toUpperCase()} · ${resolvedGeneration ? `GEN ${resolvedGeneration}` : 'OPERATION ID RETAINED'} · CHECK AGAIN, DO NOT REUPLOAD`;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -997,7 +1022,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         ? recoveryUnavailable
           ? `PCM IMPORT COMMITTED · RECOVERY UNAVAILABLE · NO UNDO SNAPSHOT PUBLISHED · GEN ${generation} · ${message}`
           : `PCM IMPORT COMMITTED · UI SYNC FAILED · GEN ${generation} · ${message}`
-        : `IMPORT STATUS UNKNOWN · GEN ${generation} · CHECK AGAIN BEFORE RETRY`;
+        : `IMPORT STATUS UNKNOWN · ${generation === null ? 'OPERATION ID RETAINED' : `GEN ${generation}`} · CHECK AGAIN; DO NOT REUPLOAD`;
     }
   }
 
@@ -1024,6 +1049,25 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       : `EXPORTED V1 ${name} · NATIVE-COMPATIBLE PCM/TEMPO`;
   }
 
+  async function exportPendingNativeImportRecovery(): Promise<void> {
+    try {
+      const { metadata, archive } = await projectMemory.exportPendingNativeImportRecovery();
+      const blob = new Blob([archive], { type: 'application/x-rc505-project' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeName = metadata.name.normalize('NFKD').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'Native-pre-import-recovery';
+      link.href = url;
+      link.download = `${safeName}-pre-import.rc505proj`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      memoryNotice.value = `EXPORTED PRESERVED PRE-IMPORT SNAPSHOT · ${metadata.name} · OPERATION ${metadata.operationId}`;
+    } catch (error) {
+      memoryNotice.value = `PRE-IMPORT EXPORT FAILED · ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
   async function importMemoryFile(): Promise<void> {
     memoryNotice.value = 'IMPORTING PROJECT FILE · VALIDATING PCM AND PREPARING AUDIO';
     const picker = document.createElement('input');
@@ -1041,6 +1085,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         memoryNotice.value = 'IMPORT CANCELLED · NO CHANGES MADE';
         return;
       }
+      nativeImportInFlight.value = engine.getMode() === 'native';
       try {
         const loaded = await projectMemory.importFile(file);
         pendingNativeImportGeneration.value = null;
@@ -1064,6 +1109,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
             : error instanceof NativeProjectImportOutcomeUnknownError
               ? `IMPORT OUTCOME UNKNOWN · NO GENERATION ACK · EXPORT CURRENT PROJECT TO PRESERVE IT; IMPORT/RESTORE STAYS BLOCKED`
               : `IMPORT FAILED · ${message}`;
+      } finally {
+        nativeImportInFlight.value = false;
       }
     } finally {
       picker.remove();
@@ -1074,7 +1121,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const storageAvailable = memoryStorageReady.value;
     const reason = !storageAvailable ? 'IndexedDB is unavailable in this browser context.' : '';
     const saved = memorySlots.value.find((entry) => entry.slot === memorySlot.value);
-    const disabled = editPending.value || pendingNativeImportGeneration.value !== null;
+    const disabled = editPending.value || nativeImportInFlight.value || pendingNativeImportOperationId.value !== null;
     const audioReady = engine.getUiStatus().ready;
     const browserLoopsCanBeExportedWithoutAudio = engine.getMode() === 'browser' && engine.hasUnsavedLoops();
     const exportAllowed = audioReady || browserLoopsCanBeExportedWithoutAudio;
@@ -1086,7 +1133,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       : 'Audio engine is not running and ready.';
     const browserArchiveHasKnownSourceTempo = engine.getMode() === 'browser'
       && engine.tracks.some((track) => (track as { originalRecordingBpm?: number | null }).originalRecordingBpm != null);
-    const unresolvedImportNeedsPreservation = pendingNativeImportGeneration.value !== null;
+    const unresolvedImportNeedsPreservation = pendingNativeImportOperationId.value !== null;
     const archiveCompatibilityReason = engine.getMode() !== 'browser'
       ? 'Native export writes ProjectArchive v1, compatible with older Native hosts.'
       : browserArchiveHasKnownSourceTempo
@@ -1106,14 +1153,20 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         reason: !storageAvailable ? reason : archiveCompatibilityReason,
       }),
       makeActionField('memory-check-import-status', 'CHECK IMPORT STATUS', checkNativeProjectImportStatus, {
-        disabled: editPending.value || pendingNativeImportGeneration.value === null,
-        reason: pendingNativeImportGeneration.value === null ? 'No acknowledged Native import generation is pending status recovery.' : 'Checks the accepted generation without uploading or changing PCM again.',
+        disabled: editPending.value || nativeImportInFlight.value || pendingNativeImportOperationId.value === null,
+        reason: pendingNativeImportOperationId.value === null ? 'No unresolved Native import operation is pending status recovery.' : 'Checks the exact persisted operation ID without uploading or changing PCM again.',
       }),
       makeActionField('memory-restore-native-recovery', 'RESTORE PRE-IMPORT', restoreNativeImportRecovery, {
-        disabled: disabled || !audioReady || engine.getMode() !== 'native' || !nativeImportRecovery.value,
+        disabled: nativeImportInFlight.value || !audioReady || engine.getMode() !== 'native' ||
+          (!nativeImportRecovery.value && !pendingNativeImportRecovery.value),
         reason: engine.getMode() !== 'native' ? 'Native pre-import recovery is available only in Native mode.'
-          : !nativeImportRecovery.value ? 'No persisted pre-import Native project archive is available.'
+          : (!nativeImportRecovery.value && !pendingNativeImportRecovery.value) ? 'No persisted pre-import Native project archive is available.'
             : !audioReady ? audioUnavailableReason : 'Restores a durable project archive through the Native project transaction; this is not real-time track undo.',
+      }),
+      makeActionField('memory-export-preimport-recovery', 'EXPORT PRE-IMPORT', exportPendingNativeImportRecovery, {
+        disabled: nativeImportInFlight.value || !pendingNativeImportRecovery.value,
+        reason: pendingNativeImportRecovery.value ? 'Exports the preserved pre-import archive without requiring an accepted generation receipt.'
+          : 'No unresolved pre-import snapshot is available.',
       }),
       makeActionField('memory-load-slot', 'LOAD SLOT', loadMemorySlot, { disabled: !storageAvailable || disabled || !saved || !audioReady, reason: !storageAvailable ? reason : !saved ? 'Selected memory slot is empty.' : !audioReady ? audioUnavailableReason : 'Loads PCM, BPM, master loop, and time signature; FX, kits, and patterns remain unchanged.' }),
       makeActionField('memory-import-file', 'IMPORT PROJECT FILE', importMemoryFile, { disabled: disabled || !audioReady, reason: !audioReady ? audioUnavailableReason : '' }),

@@ -57,6 +57,7 @@ function makeEngine(initial: Uint8Array) {
   const engine = {
     getMode: () => 'native',
     getNativeProjectArchiveImportStatus: vi.fn(async (value: number) => ({ state: 'pending' as const, generation: value, hostIncarnationId })),
+    getNativeProjectArchiveImportStatusByOperationId: vi.fn(async () => ({ state: 'unavailable' as const, generation: 1, hostIncarnationId })),
     captureProjectRestoreOperationToken,
     exportProjectArchive: vi.fn(async () => new Uint8Array(bytes.slice(0))),
     restoreProjectArchive: vi.fn(async (_project: unknown, incoming: ArrayBuffer | Uint8Array) => {
@@ -86,6 +87,10 @@ function makeStore() {
       stages.set(input.operationId, { metadata, archive: buffer });
       return metadata;
     }),
+    readNativeImportRecoveryCandidate: vi.fn(async (operationId: string) => {
+      const entry = stages.get(operationId);
+      return entry ? { metadata: entry.metadata, archive: entry.archive } : null;
+    }),
     publishNativeImportRecovery: vi.fn(async (operationId: string, guard: any) => {
       const entry = stages.get(operationId);
       if (!entry) throw new Error('missing staged recovery');
@@ -95,11 +100,16 @@ function makeStore() {
         availableAtModeGeneration: guard.modeGeneration,
         availableAtHostIncarnationId: guard.hostIncarnationId };
       activeId = operationId;
+      if (entry.metadata.supersedesOperationId) stages.delete(entry.metadata.supersedesOperationId);
       return entry.metadata;
     }),
     markNativeImportRecoveryPending: vi.fn(async (operationId: string, generation?: number) => {
       const entry = stages.get(operationId)!;
       entry.metadata = { ...entry.metadata, state: 'pending', generation };
+    }),
+    bindNativeImportRequest: vi.fn(async (operationId: string, expectedProjectContentRevision: number, archiveSha256: string) => {
+      const entry = stages.get(operationId)!;
+      entry.metadata = { ...entry.metadata, requestExpectedProjectContentRevision: expectedProjectContentRevision, requestArchiveSha256: archiveSha256 };
     }),
     discardNativeImportRecoveryStage: vi.fn(async (operationId: string) => { stages.delete(operationId); }),
     readNativeImportRecovery: vi.fn(async () => activeId ? stages.get(activeId)! : null),
@@ -194,10 +204,13 @@ describe('Native project import recovery', () => {
     expect(await api.getPendingNativeImportRecovery()).toMatchObject({ state: 'pending', generation: 77 });
 
     setRevisions(11, 5);
+    const bound77 = await api.getPendingNativeImportRecovery();
     engine.restoreProjectArchive.mockImplementation(async () => ({ generation: 77, projectContentRevision: 11, projectTransportMutationRevision: 5 }));
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 77,
-      hostIncarnationId: 'b'.repeat(32), projectContentRevision: 11, committedProjectContentRevision: 11, projectTransportMutationRevision: 5 } as any);
-    await expect(memory.reconcileNativeImportRecovery(77)).resolves.toMatchObject({ state: 'committed', recoveryAvailable: true });
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 77,
+      hostIncarnationId: 'b'.repeat(32), projectContentRevision: 11, committedProjectContentRevision: 11, projectTransportMutationRevision: 5,
+      operationId: bound77!.operationId, expectedProjectContentRevision: bound77!.requestExpectedProjectContentRevision,
+      archiveSha256: bound77!.requestArchiveSha256 } as any);
+    await expect(memory.reconcileNativeImportRecovery('c3759dbdbf3d46ebaea98a37c3d64e63')).resolves.toMatchObject({ state: 'committed', recoveryAvailable: true });
     expect(api.publishNativeImportRecovery).toHaveBeenCalledTimes(1);
   });
 
@@ -307,7 +320,7 @@ describe('Native project import recovery', () => {
     expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
   });
 
-  it('discards a staged recovery after the exact generation is committed but transport reconciliation is unavailable', async () => {
+  it('preserves the only pre-import archive when commit lacks a safe transport receipt', async () => {
     installWebLock();
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e66');
     const incumbent = await archive('Incumbent', 0.25);
@@ -317,16 +330,20 @@ describe('Native project import recovery', () => {
     api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
       archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
     engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(78));
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 78, hostIncarnationId: 'b'.repeat(32),
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 78, hostIncarnationId: 'b'.repeat(32),
       projectContentRevision: 11, recoveryUnavailable: true } as any);
     const memory = new ProjectMemory(engine as any, store);
 
     await expect(memory.load(1)).rejects.toMatchObject({ generation: 78, name: 'NativeProjectImportIndeterminateError' });
     expect(await api.getPendingNativeImportRecovery()).toMatchObject({ state: 'pending', generation: 78 });
-    await expect(memory.reconcileNativeImportRecovery(78)).resolves.toMatchObject({ state: 'committed', recoveryAvailable: false });
-    expect(await api.getUnresolvedNativeImportRecovery()).toBeNull();
+    const bound78 = await api.getPendingNativeImportRecovery();
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 78, hostIncarnationId: 'b'.repeat(32),
+      projectContentRevision: 11, recoveryUnavailable: true, operationId: bound78!.operationId,
+      expectedProjectContentRevision: bound78!.requestExpectedProjectContentRevision, archiveSha256: bound78!.requestArchiveSha256 } as any);
+    await expect(memory.reconcileNativeImportRecovery('c3759dbdbf3d46ebaea98a37c3d64e66')).resolves.toMatchObject({ state: 'committed', recoveryAvailable: false });
+    expect(await api.getUnresolvedNativeImportRecovery()).toMatchObject({ state: 'pending', operationId: 'c3759dbdbf3d46ebaea98a37c3d64e66' });
     expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
-    expect(api.discardNativeImportRecoveryStage).toHaveBeenCalledTimes(1);
+    expect(api.discardNativeImportRecoveryStage).not.toHaveBeenCalled();
   });
 
   it('restores a pending generation after page reload and checks its exact host status', async () => {
@@ -339,19 +356,23 @@ describe('Native project import recovery', () => {
     api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
       archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
     engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(79));
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 79, hostIncarnationId: 'b'.repeat(32),
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 79, hostIncarnationId: 'b'.repeat(32),
       projectContentRevision: 11, recoveryUnavailable: true } as any);
     const firstPage = new ProjectMemory(engine as any, store);
     await expect(firstPage.load(1)).rejects.toMatchObject({ generation: 79 });
     api.changePendingOwner('previous-page-session-id');
+    const bound79 = await api.getPendingNativeImportRecovery();
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 79, hostIncarnationId: 'b'.repeat(32),
+      projectContentRevision: 11, recoveryUnavailable: true, operationId: bound79!.operationId,
+      expectedProjectContentRevision: bound79!.requestExpectedProjectContentRevision, archiveSha256: bound79!.requestArchiveSha256 } as any);
 
     const reloadedPage = new ProjectMemory(engine as any, store);
     await expect(reloadedPage.getPendingNativeImportRecovery()).resolves.toMatchObject({ state: 'pending', generation: 79 });
-    await expect(reloadedPage.reconcileNativeImportRecovery(79)).resolves.toMatchObject({
+    await expect(reloadedPage.reconcileNativeImportRecovery('c3759dbdbf3d46ebaea98a37c3d64e67')).resolves.toMatchObject({
       state: 'committed', recoveryAvailable: false,
     });
-    expect(engine.getNativeProjectArchiveImportStatus).toHaveBeenCalledExactlyOnceWith(79, 'b'.repeat(32));
-    expect(await api.getUnresolvedNativeImportRecovery()).toBeNull();
+    expect(engine.getNativeProjectArchiveImportStatusByOperationId).toHaveBeenCalledExactlyOnceWith('c3759dbdbf3d46ebaea98a37c3d64e67', 'b'.repeat(32));
+    expect(await api.getUnresolvedNativeImportRecovery()).toMatchObject({ state: 'pending', operationId: 'c3759dbdbf3d46ebaea98a37c3d64e67' });
     expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
   });
 
@@ -372,15 +393,46 @@ describe('Native project import recovery', () => {
 
     // The restarted host reuses generation 80 and the same content/transport
     // revisions, but its cryptographic incarnation differs.
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 80,
-      hostIncarnationId: 'c'.repeat(32), projectContentRevision: 11,
+    const bound80 = await api.getPendingNativeImportRecovery();
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 80,
+      hostIncarnationId: 'c'.repeat(32), projectContentRevision: 11, operationId: bound80!.operationId,
+      expectedProjectContentRevision: bound80!.requestExpectedProjectContentRevision, archiveSha256: bound80!.requestArchiveSha256,
       committedProjectContentRevision: 11, projectTransportMutationRevision: 5 } as any);
-    await expect(memory.reconcileNativeImportRecovery(80)).resolves.toMatchObject({ state: 'unavailable', recoveryAvailable: false });
-    expect(engine.getNativeProjectArchiveImportStatus).toHaveBeenCalledWith(80, 'b'.repeat(32));
-    expect(api.getPendingNativeImportRecovery).toHaveReturnedTimes(2);
+    await expect(memory.reconcileNativeImportRecovery('c3759dbdbf3d46ebaea98a37c3d64e68')).resolves.toMatchObject({ state: 'unavailable', recoveryAvailable: false });
+    expect(engine.getNativeProjectArchiveImportStatusByOperationId).toHaveBeenCalledWith('c3759dbdbf3d46ebaea98a37c3d64e68', 'b'.repeat(32));
+    expect(api.getPendingNativeImportRecovery).toHaveBeenCalled();
     expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
     expect(api.discardNativeImportRecoveryStage).not.toHaveBeenCalled();
     expect(await api.getUnresolvedNativeImportRecovery()).toMatchObject({ state: 'pending', generation: 80,
       sourceHostIncarnationId: 'b'.repeat(32) });
+  });
+
+  it('exports and restores a pre-import snapshot only after exact operation fingerprint commit proof', async () => {
+    installWebLock();
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e69');
+    const incumbent = await archive('Incumbent', 0.25);
+    const incoming = await archive('Incoming', 0.5);
+    const { engine, setRevisions } = makeEngine(incumbent);
+    const { store, api } = makeStore();
+    api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
+      archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
+    engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(81));
+    const memory = new ProjectMemory(engine as any, store);
+    await expect(memory.load(1)).rejects.toMatchObject({ generation: 81 });
+    const pending = await api.getPendingNativeImportRecovery();
+    const exported = await memory.exportPendingNativeImportRecovery();
+    expect(exported.archive).toEqual(arrayBuffer(incumbent));
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'committed', generation: 81,
+      hostIncarnationId: 'b'.repeat(32), projectContentRevision: 11, operationId: pending!.operationId,
+      expectedProjectContentRevision: pending!.requestExpectedProjectContentRevision, archiveSha256: pending!.requestArchiveSha256 } as any);
+    setRevisions(11, 5);
+    engine.restoreProjectArchive.mockImplementation(async () => {
+      setRevisions(12, 6);
+      return { generation: 82, hostIncarnationId: 'b'.repeat(32),
+        projectContentRevision: 12, committedProjectContentRevision: 12, projectTransportMutationRevision: 6 } as any;
+    });
+    await expect(memory.restoreNativeImportRecovery()).resolves.toMatchObject({ name: 'Incumbent' });
+    await expect(api.getUnresolvedNativeImportRecovery()).resolves.toBeNull();
+    expect(api.publishNativeImportRecovery).toHaveBeenCalledTimes(1);
   });
 });

@@ -1054,6 +1054,7 @@ export class AudioEngine {
     project: ProjectArchive,
     archive: ArrayBuffer | Uint8Array,
     operationToken: ProjectRestoreOperationToken,
+    nativeOperationId?: string,
   ): Promise<NativeProjectImportCommitReceipt | null> {
     if (operationToken.mode !== this.currentMode || operationToken.modeGeneration !== this.modeGeneration) {
       throw new Error('Project load canceled because the audio mode changed while the archive was being read; retry in the selected audio mode');
@@ -1076,7 +1077,7 @@ export class AudioEngine {
           // than losing track of an accepted import.
           return false;
         }
-      });
+      }, nativeOperationId ?? '');
     }
     if (!operationToken.browser) throw new Error('Browser project load is missing its operation-start revision guard');
     this.browser.restoreProjectArchive(project, archive.byteLength, operationToken.browser);
@@ -1111,6 +1112,11 @@ export class AudioEngine {
   public async getNativeProjectArchiveImportStatus(generation: number, expectedHostIncarnationId?: string): Promise<NativeProjectImportStatus> {
     if (this.currentMode !== 'native') throw new Error('Native project-import status is only available in Native audio mode.');
     return this.nativeEngine.getProjectArchiveImportStatus(generation, expectedHostIncarnationId);
+  }
+
+  public async getNativeProjectArchiveImportStatusByOperationId(operationId: string, expectedHostIncarnationId: string): Promise<NativeProjectImportStatus> {
+    if (this.currentMode !== 'native') throw new Error('Native project-import status is only available in Native audio mode.');
+    return this.nativeEngine.getProjectArchiveImportStatusByOperationId(operationId, expectedHostIncarnationId);
   }
 
   public async recordTrack() {

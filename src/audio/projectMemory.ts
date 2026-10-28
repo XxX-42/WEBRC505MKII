@@ -10,7 +10,7 @@ import { Transport } from '../core/Transport';
 import { withProjectArchiveMutationLock } from './projectArchiveMutationLock';
 import type { ProjectRestoreOperationToken, NativeProjectRestoreToken, NativeProjectImportCommitReceipt } from './projectArchive';
 import { NativeProjectImportIndeterminateError, NativeProjectImportOutcomeUnknownError,
-  isNativeHostIncarnationId, type NativeProjectImportState } from './NativeBridgeClient';
+  isNativeHostIncarnationId, nativeProjectArchiveSha256, type NativeProjectImportState } from './NativeBridgeClient';
 
 export interface ProjectMemoryLoadResult {
   readonly name: string;
@@ -26,6 +26,13 @@ export interface ProjectMemorySaveResult extends ProjectMemoryMetadata {
 export interface NativeProjectImportReconciliationResult {
   readonly state: NativeProjectImportState;
   readonly recoveryAvailable: boolean;
+  readonly generation?: number;
+}
+
+export interface NativeProjectImportOperationIdentity {
+  readonly operationId: string;
+  readonly hostIncarnationId: string;
+  readonly generation?: number;
 }
 
 export class ProjectMemory {
@@ -50,6 +57,17 @@ export class ProjectMemory {
     return this.store.getPendingNativeImportRecovery();
   }
 
+  public async getPendingNativeImportOperation(): Promise<NativeProjectImportOperationIdentity | null> {
+    const recovery = await this.store.getPendingNativeImportRecovery();
+    if (recovery && isNativeHostIncarnationId(recovery.sourceHostIncarnationId)) {
+      return { operationId: recovery.operationId, hostIncarnationId: recovery.sourceHostIncarnationId,
+        ...(recovery.generation === undefined ? {} : { generation: recovery.generation }) };
+    }
+    const intents = await this.store.listNativeImportOperationIntents();
+    const intent = intents[0];
+    return intent ? { operationId: intent.operationId, hostIncarnationId: intent.hostIncarnationId } : null;
+  }
+
   public async getNativeImportRecoveryMetadata(): Promise<ProjectRecoveryMetadata | null> {
     const metadata = await this.store.readNativeImportRecoveryMetadata();
     if (!metadata) return null;
@@ -63,41 +81,72 @@ export class ProjectMemory {
     }
   }
 
+  public async exportPendingNativeImportRecovery(): Promise<{ metadata: ProjectRecoveryMetadata; archive: ArrayBuffer }> {
+    const pending = await this.store.getPendingNativeImportRecovery();
+    if (!pending) throw new Error('No unresolved pre-import snapshot is available to export.');
+    const candidate = await this.store.readNativeImportRecoveryCandidate(pending.operationId);
+    if (!candidate) throw new Error('The unresolved pre-import snapshot is incomplete and cannot be exported.');
+    return candidate;
+  }
+
   /** Resolve a staged recovery only from the host's authoritative generation status. */
-  public async reconcileNativeImportRecovery(generation: number): Promise<NativeProjectImportReconciliationResult> {
+  public async reconcileNativeImportRecovery(operationId: string): Promise<NativeProjectImportReconciliationResult> {
     return withProjectArchiveMutationLock(async () => {
       const pending = await this.store.getPendingNativeImportRecovery();
-      if (!pending || pending.generation !== generation) {
-        throw new Error('No matching Native recovery candidate is pending for this generation.');
+      if (!pending || pending.operationId !== operationId) {
+        const intent = await this.store.readNativeImportOperationIntent(operationId);
+        if (!intent) throw new Error('No matching Native import operation is pending for this operation ID.');
+        const status = await this.engine.getNativeProjectArchiveImportStatusByOperationId(operationId, intent.hostIncarnationId);
+        if (status.operationId !== operationId || status.hostIncarnationId !== intent.hostIncarnationId ||
+            status.expectedProjectContentRevision !== intent.expectedProjectContentRevision || status.archiveSha256 !== intent.archiveSha256) {
+          return { state: 'unavailable', recoveryAvailable: false };
+        }
+        if (status.state === 'cancelled') await this.store.clearNativeImportOperationIntent(operationId);
+        // The semantic Memory runtime's intent has no pre-import recovery
+        // archive. A committed status is exact, but local sync recovery is not;
+        // retain the intent and keep further imports blocked.
+        return { state: status.state, recoveryAvailable: false, generation: status.generation };
       }
       if (!isNativeHostIncarnationId(pending.sourceHostIncarnationId)) {
-        return { state: 'unavailable', recoveryAvailable: false };
+        return { state: 'unavailable', recoveryAvailable: false, ...(pending.generation === undefined ? {} : { generation: pending.generation }) };
       }
-      const status = await this.engine.getNativeProjectArchiveImportStatus(generation, pending.sourceHostIncarnationId);
+      if (!Number.isSafeInteger(pending.requestExpectedProjectContentRevision) ||
+          typeof pending.requestArchiveSha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(pending.requestArchiveSha256)) {
+        throw new Error('Persisted Native request fingerprint is missing; the unresolved import remains locked.');
+      }
+      const status = await this.engine.getNativeProjectArchiveImportStatusByOperationId(operationId, pending.sourceHostIncarnationId);
       if (status.state === 'unavailable' || !isNativeHostIncarnationId(status.hostIncarnationId) ||
-          status.hostIncarnationId !== pending.sourceHostIncarnationId) {
-        return { state: 'unavailable', recoveryAvailable: false };
+          status.hostIncarnationId !== pending.sourceHostIncarnationId || status.operationId !== operationId ||
+          status.expectedProjectContentRevision !== pending.requestExpectedProjectContentRevision ||
+          status.archiveSha256 !== pending.requestArchiveSha256) {
+        return { state: 'unavailable', recoveryAvailable: false, generation: status.generation };
       }
       if (status.state === 'cancelled') {
         await this.store.discardNativeImportRecoveryStage(pending.operationId);
-        return { state: status.state, recoveryAvailable: false };
+        return { state: status.state, recoveryAvailable: false, generation: status.generation };
       }
-      if (status.state !== 'committed') return { state: status.state, recoveryAvailable: false };
+      if (status.state !== 'committed') {
+        await this.store.markNativeImportRecoveryPending(operationId, status.generation);
+        return { state: status.state, recoveryAvailable: false, generation: status.generation };
+      }
       if (status.recoveryUnavailable === true) {
-        await this.store.discardNativeImportRecoveryStage(pending.operationId);
-        return { state: status.state, recoveryAvailable: false };
+        // Keep the only pre-import archive. Without this page's exact transport
+        // receipt it cannot be safely published or restored, but deletion would
+        // destroy the user's rollback bytes after a confirmed host commit.
+        await this.store.markNativeImportRecoveryPending(operationId, status.generation);
+        return { state: status.state, recoveryAvailable: false, generation: status.generation };
       }
       if (status.projectContentRevision === undefined || status.projectTransportMutationRevision === undefined) {
         throw new Error('Committed generation lacks an exact host and transport receipt; recovery remains unavailable.');
       }
       await this.publishCommittedCandidate(pending, {
-        generation,
+        generation: status.generation,
         hostIncarnationId: status.hostIncarnationId!,
         projectContentRevision: status.projectContentRevision,
         committedProjectContentRevision: status.committedProjectContentRevision ?? status.projectContentRevision,
         projectTransportMutationRevision: status.projectTransportMutationRevision,
       });
-      return { state: status.state, recoveryAvailable: true };
+      return { state: status.state, recoveryAvailable: true, generation: status.generation };
     });
   }
 
@@ -162,6 +211,8 @@ export class ProjectMemory {
 
   private async restoreNativeImportRecoveryLocked(): Promise<ProjectMemoryLoadResult> {
     if (this.engine.getMode() !== 'native') throw new Error('Native import recovery is available only in Native mode.');
+    const unresolved = await this.store.getPendingNativeImportRecovery();
+    if (unresolved) return this.restorePendingNativeImportRecoveryLocked(unresolved);
     const operationToken = await this.engine.captureProjectRestoreOperationToken();
     await this.assertNoUnresolvedImport();
     const saved = await this.store.readNativeImportRecovery();
@@ -177,11 +228,45 @@ export class ProjectMemory {
     const staged = await this.stageNativeRecoveryCandidate(operationToken);
     if (!staged) throw new Error('Native recovery candidate was not staged; the project was not restored.');
     try {
-      const receipt = await this.engine.restoreProjectArchive(project, saved.archive, operationToken);
+      if (!operationToken.native) throw new Error('Native recovery restore lost its operation-start host token.');
+      await this.store.bindNativeImportRequest(staged.operationId, operationToken.native.projectContentRevision,
+        await nativeProjectArchiveSha256(saved.archive));
+      const receipt = await this.engine.restoreProjectArchive(project, saved.archive, operationToken, staged.operationId);
       if (!receipt) throw new Error('Native recovery did not return a committed host receipt.');
       await this.publishCommittedCandidate(staged, receipt);
     } catch (error) {
       await this.handleUncommittedStage(staged, error);
+      throw error;
+    }
+    return { name: project.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length, archiveVersion: project.version };
+  }
+
+  private async restorePendingNativeImportRecoveryLocked(pending: ProjectRecoveryMetadata): Promise<ProjectMemoryLoadResult> {
+    if (pending.state !== 'pending' || !isNativeHostIncarnationId(pending.sourceHostIncarnationId) ||
+        !Number.isSafeInteger(pending.requestExpectedProjectContentRevision) ||
+        typeof pending.requestArchiveSha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(pending.requestArchiveSha256)) {
+      throw new Error('The pre-import snapshot remains preserved, but its pending operation is not proven committed; check status before restore.');
+    }
+    const status = await this.engine.getNativeProjectArchiveImportStatusByOperationId(pending.operationId, pending.sourceHostIncarnationId);
+    if (status.state !== 'committed' || status.operationId !== pending.operationId ||
+        status.hostIncarnationId !== pending.sourceHostIncarnationId ||
+        status.expectedProjectContentRevision !== pending.requestExpectedProjectContentRevision ||
+        status.archiveSha256 !== pending.requestArchiveSha256) {
+      throw new Error('The pre-import snapshot remains preserved; restore requires an exact committed host operation and request fingerprint.');
+    }
+    const saved = await this.store.readNativeImportRecoveryCandidate(pending.operationId);
+    if (!saved) throw new Error('The unresolved pre-import archive is missing or invalid; it was not replaced.');
+    if (saved.archive.byteLength !== saved.metadata.archiveBytes) throw new Error('Native pre-import archive length does not match its metadata.');
+    const project = await decodeProjectArchive(saved.archive);
+    const operationToken = await this.engine.captureProjectRestoreOperationToken();
+    if (operationToken.mode !== 'native' || !operationToken.native ||
+        operationToken.native.hostIncarnationId !== pending.sourceHostIncarnationId) {
+      throw new Error('Native host incarnation changed; pre-import recovery remains preserved and was not uploaded.');
+    }
+    const staged = await this.stageNativeRecoveryCandidate(operationToken, pending.operationId);
+    try {
+      await this.commitImport(project, saved.archive, operationToken, staged);
+    } catch (error) {
       throw error;
     }
     return { name: project.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length, archiveVersion: project.version };
@@ -194,11 +279,15 @@ export class ProjectMemory {
   private async commitImport(project: ProjectArchive, archive: ArrayBuffer | Uint8Array,
     operationToken: ProjectRestoreOperationToken, staged: ProjectRecoveryMetadata | null): Promise<void> {
     if (!staged) {
+      if (operationToken.mode === 'native') throw new Error('Native import requires a durable pre-import recovery candidate.');
       await this.engine.restoreProjectArchive(project, archive, operationToken);
       return;
     }
     try {
-      const receipt = await this.engine.restoreProjectArchive(project, archive, operationToken);
+      if (operationToken.mode !== 'native' || !operationToken.native) throw new Error('Native recovery candidate lost its operation-start host token.');
+      await this.store.bindNativeImportRequest(staged.operationId, operationToken.native.projectContentRevision,
+        await nativeProjectArchiveSha256(archive));
+      const receipt = await this.engine.restoreProjectArchive(project, archive, operationToken, staged.operationId);
       if (!receipt) throw new Error('Native archive import did not return a committed host receipt.');
       await this.publishCommittedCandidate(staged, receipt);
     } catch (error) {
@@ -207,7 +296,8 @@ export class ProjectMemory {
     }
   }
 
-  private async stageNativeRecoveryCandidate(operationToken: ProjectRestoreOperationToken): Promise<ProjectRecoveryMetadata | null> {
+  private async stageNativeRecoveryCandidate(operationToken: ProjectRestoreOperationToken,
+      supersedesOperationId?: string): Promise<ProjectRecoveryMetadata | null> {
     if (operationToken.mode !== 'native') return null;
     const initial = operationToken.native;
     if (!initial) throw new Error('Native recovery requires an authoritative project revision token.');
@@ -234,6 +324,7 @@ export class ProjectMemory {
       sourceHostIncarnationId: initial.hostIncarnationId,
       sourceModeGeneration: operationToken.modeGeneration,
       ownerSessionId: this.sessionId,
+      ...(supersedesOperationId === undefined ? {} : { supersedesOperationId }),
     }, archive);
     try {
       const afterStage = await this.engine.captureProjectRestoreOperationToken();
@@ -337,7 +428,7 @@ function createSecureId(): string {
   if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
     throw new Error('Secure project recovery identifiers are unavailable; Native recovery is disabled.');
   }
-  return crypto.randomUUID();
+  return crypto.randomUUID().replace(/-/g, '').toLowerCase();
 }
 
 function assertSameNativeOperationToken(expected: ProjectRestoreOperationToken, actual: ProjectRestoreOperationToken): void {

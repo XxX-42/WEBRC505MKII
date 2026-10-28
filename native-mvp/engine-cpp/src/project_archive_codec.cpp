@@ -727,6 +727,11 @@ std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project, std::
 
 } // namespace
 
+std::string projectArchiveSha256(const std::uint8_t* bytes, std::size_t byteLength) {
+    if (bytes == nullptr && byteLength != 0U) throw std::invalid_argument("SHA-256 input is null.");
+    return sha256Hex(bytes, byteLength);
+}
+
 std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project, ProjectArchiveEncodeOptions options) {
     try {
         return encodeImpl(project, options.version);

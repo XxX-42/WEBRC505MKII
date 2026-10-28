@@ -81,4 +81,7 @@ struct ProjectArchiveDecodeResult {
     const std::vector<std::uint8_t>& bytes
 ) noexcept;
 
+/** SHA-256 of an exact byte span, used to bind idempotency keys to payloads. */
+[[nodiscard]] std::string projectArchiveSha256(const std::uint8_t* bytes, std::size_t byteLength);
+
 } // namespace webrc::native

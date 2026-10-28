@@ -16,6 +16,7 @@ import urllib.request
 
 
 HOST_URL = f"http://127.0.0.1:{os.environ.get('WEBRC_NATIVE_BRIDGE_PORT', '17755')}"
+_operation_sequence = 0
 
 
 def request(path, method="GET", body=None, headers=None):
@@ -72,10 +73,14 @@ def request_binary(path, method, body):
         return error.code, error.headers, error.read()
 
 
-def request_project_archive(path, method="POST", body=None, content_type=None, host_incarnation_id=None):
+def request_project_archive(path, method="POST", body=None, content_type=None, host_incarnation_id=None, include_operation_id=True):
+    global _operation_sequence
     headers = {"Origin": "http://localhost:5173"}
     if path.startswith("/v1/project/import"):
         headers["X-Native-Host-Incarnation"] = host_incarnation_id or request("/v1/status")[1]["hostIncarnationId"]
+    if urllib.parse.urlsplit(path).path == "/v1/project/import" and method == "POST" and include_operation_id:
+        _operation_sequence += 1
+        headers["X-Native-Operation-Id"] = f"{_operation_sequence:032x}"
     if content_type is not None:
         headers["Content-Type"] = content_type
     # Header validation may reject an invalid import before consuming its large
@@ -1661,6 +1666,10 @@ def main():
             "/v1/project/import?expectedContentRevision=stale", "POST", invalid_archive, "application/octet-stream")
         require(status == 400 and "expectedContentRevision" in malformed_revision.get("error", ""),
                 f"Native project import accepted a malformed start revision: {malformed_revision}")
+        status, missing_operation_id = request_project_archive(project_import_path, "POST", valid_archive,
+            "application/octet-stream", host_incarnation_id=host_incarnation, include_operation_id=False)
+        require(status == 400 and "operation-id" in missing_operation_id.get("error", "").lower(),
+                f"Native project import accepted a request without its client-persisted operation ID: {missing_operation_id}")
         status, duplicate_revision = request_project_archive(
             f"{project_import_path}&expectedContentRevision={project_revision}",
             "POST", invalid_archive, "application/octet-stream")
@@ -1695,11 +1704,12 @@ def main():
         status, headers, _ = request_with_headers("/v1/project/import", "OPTIONS", {
             "Origin": browser_origin,
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "content-type,x-native-host-incarnation",
+            "Access-Control-Request-Headers": "content-type,x-native-host-incarnation,x-native-operation-id",
         })
         allowed_headers = headers.get("Access-Control-Allow-Headers", "").lower()
         require(status == 204 and headers.get("Access-Control-Allow-Origin") == browser_origin and
-                "content-type" in allowed_headers and "x-native-host-incarnation" in allowed_headers,
+                "content-type" in allowed_headers and "x-native-host-incarnation" in allowed_headers and
+                "x-native-operation-id" in allowed_headers,
                 f"browser Native import preflight was rejected: HTTP {status}, allow-headers={allowed_headers!r}")
         status, _, _ = request_with_headers("/v1/project/import", "OPTIONS", {
             "Origin": browser_origin,
@@ -1710,9 +1720,55 @@ def main():
 
         status, accepted = request_project_archive(
             project_import_path, "POST", valid_archive, "application/octet-stream")
-        require(status == 202 and accepted.get("ok") is True and accepted.get("generation", 0) > 0,
+        require(status == 202 and accepted.get("ok") is True and accepted.get("generation", 0) > 0 and
+                accepted.get("operationId") == f"{_operation_sequence:032x}",
                 f"valid archive was not staged as a generation: HTTP {status} {accepted}")
         generation = accepted["generation"]
+        operation_id = accepted["operationId"]
+        # An exact replay with the same persisted ID and bytes must resolve to
+        # the same host generation instead of submitting a second callback job.
+        # Explicitly replay the original ID; the helper's automatic ID allocator
+        # is intentionally bypassed for this idempotency assertion.
+        replay_headers = {"Origin": "http://localhost:5173", "Content-Type": "application/octet-stream",
+            "X-Native-Host-Incarnation": host_incarnation, "X-Native-Operation-Id": operation_id}
+        replay_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive, method="POST", headers=replay_headers)
+        with urllib.request.urlopen(replay_request, timeout=15) as replay_response:
+            replay_status, replay = replay_response.status, json.loads(replay_response.read().decode("utf-8"))
+        require(replay_status == 202 and replay.get("generation") == generation and replay.get("duplicate") is True,
+                f"same-ID replay created a new import instead of returning its original generation: {replay}")
+        revision_conflict = urllib.request.Request(HOST_URL + f"/v1/project/import?expectedContentRevision={project_revision + 1}",
+            data=valid_archive, method="POST", headers=replay_headers)
+        try:
+            urllib.request.urlopen(revision_conflict, timeout=15)
+            raise AssertionError("same operation ID with a different expected revision was accepted")
+        except urllib.error.HTTPError as error:
+            require(error.code == 409, f"same operation ID with a different revision did not fail closed: {error.code}")
+        conflict_headers = dict(replay_headers)
+        conflict_headers["X-Native-Operation-Id"] = operation_id
+        conflicting_bytes = valid_archive[:-1] + bytes([valid_archive[-1] ^ 0x01])
+        conflicting = urllib.request.Request(HOST_URL + project_import_path, data=conflicting_bytes,
+            method="POST", headers=conflict_headers)
+        try:
+            urllib.request.urlopen(conflicting, timeout=15)
+            raise AssertionError("same operation ID with a different digest was accepted")
+        except urllib.error.HTTPError as error:
+            require(error.code == 409, f"same operation ID with a different digest did not fail closed: {error.code}")
+        status, by_operation = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={operation_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 200 and by_operation.get("operationId") == operation_id and
+                by_operation.get("generation") == generation and by_operation.get("hostIncarnationId") == host_incarnation and
+                by_operation.get("expectedProjectContentRevision") == project_revision and
+                by_operation.get("archiveSha256") == hashlib.sha256(valid_archive).hexdigest(),
+                f"operation status was not bound to exact operation ID and host incarnation: {by_operation}")
+        status, unknown_operation = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={'f' * 32}", "GET", host_incarnation_id=host_incarnation)
+        require(status == 404 and "absence does not prove" in unknown_operation.get("error", ""),
+                f"unknown operation status did not remain explicitly unresolved: {unknown_operation}")
+        status, stale_operation = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={operation_id}", "GET", host_incarnation_id="0" * 32)
+        require(status == 409 and "incarnation" in stale_operation.get("error", "").lower(),
+                f"operation query did not fail closed across host incarnation: {stale_operation}")
         status, pending = request_project_archive(
             f"/v1/project/import/status?generation={generation}", "GET")
         require(status == 200 and pending.get("ok") is True and pending.get("generation") == generation and
@@ -1785,6 +1841,13 @@ def main():
         if cancel_status == 200:
             require(cancel_terminal.get("state") == "cancelled",
                     f"successful cancellation did not remain terminal: {cancel_terminal}")
+        status, first_terminal_by_operation = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={operation_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 200 and first_terminal_by_operation.get("operationId") == operation_id and
+                first_terminal_by_operation.get("generation") == generation and
+                first_terminal_by_operation.get("state") == "committed",
+                f"terminal status for an earlier generation was lost after a later import: {first_terminal_by_operation}")
 
         status, unknown_generation = request_project_archive(
             "/v1/project/import/status?generation=18446744073709551615", "GET")

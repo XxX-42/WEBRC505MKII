@@ -1,5 +1,6 @@
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { createNativeRc505MemoryRuntime } from './NativeRc505MemoryRuntime';
+import { ProjectMemoryStore } from './projectMemoryStore';
 import type { Rc505MemoryRuntime } from './Rc505Memory';
 import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
@@ -940,6 +941,11 @@ export class NativeAudioEngine {
         }
         this.emitAll();
       },
+      persistOperationIntent: (operationId, hostIncarnationId, expectedProjectContentRevision, archiveSha256) =>
+        new ProjectMemoryStore().persistNativeImportOperationIntent(operationId, hostIncarnationId, expectedProjectContentRevision, archiveSha256),
+      readOperationIntent: (operationId) => new ProjectMemoryStore().readNativeImportOperationIntent(operationId),
+      listOperationIntents: () => new ProjectMemoryStore().listNativeImportOperationIntents(),
+      clearOperationIntent: (operationId) => new ProjectMemoryStore().clearNativeImportOperationIntent(operationId),
       pendingEdits: () => this.nativeFxSyncRunning || this.nativeFxSyncScheduled || this.nativeCatalogFxDirtySlots.size > 0,
       install: (status) => {
         this.nativeCatalogFxDirtySlots.clear();
@@ -1124,10 +1130,14 @@ export class NativeAudioEngine {
     archive: ArrayBuffer | Uint8Array,
     operationStart: NativeProjectRestoreToken,
     operationStillCurrent: () => boolean,
+    operationId?: string,
   ): Promise<NativeProjectImportCommitReceipt> {
     const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
     if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new Error('Project archive is empty or exceeds the supported Native import size');
+    }
+    if (typeof operationId !== 'string' || !/^[0-9a-f]{32}$/i.test(operationId)) {
+      throw new Error('Native import requires its securely generated and persisted operation ID; no upload was attempted.');
     }
     const currentHostStatus = await this.bridge.getStatus();
     if (!isNativeHostIncarnationId(operationStart.hostIncarnationId) ||
@@ -1168,7 +1178,7 @@ export class NativeAudioEngine {
     }
     let acceptance: { generation: number; hostIncarnationId: string };
     try {
-      acceptance = await this.bridge.beginProjectArchiveImport(bytes, operationStart.projectContentRevision, operationStart.hostIncarnationId);
+      acceptance = await this.bridge.beginProjectArchiveImport(bytes, operationStart.projectContentRevision, operationStart.hostIncarnationId, operationId);
     } catch (error) {
       if (error instanceof NativeProjectImportIndeterminateError) {
         this.pendingProjectImportSync.set(error.generation, {
@@ -1230,6 +1240,20 @@ export class NativeAudioEngine {
         projectTransportMutationRevision: receipt.projectTransportMutationRevision };
     }
     else if (status.state === 'cancelled') this.pendingProjectImportSync.delete(generation);
+    return status;
+  }
+
+  public async getProjectArchiveImportStatusByOperationId(operationId: string, expectedHostIncarnationId: string): Promise<NativeProjectImportStatus> {
+    const status = await this.bridge.getProjectArchiveImportStatusByOperationId(operationId, expectedHostIncarnationId);
+    const local = this.pendingProjectImportSync.get(status.generation);
+    if (status.state === 'committed') {
+      if (!local) return { ...status, recoveryUnavailable: true };
+      const receipt = await this.synchronizeCommittedProjectArchive(status.generation, status.projectContentRevision!);
+      return { ...status, committedProjectContentRevision: status.projectContentRevision,
+        projectContentRevision: receipt.projectContentRevision,
+        projectTransportMutationRevision: receipt.projectTransportMutationRevision };
+    }
+    if (status.state === 'cancelled') this.pendingProjectImportSync.delete(status.generation);
     return status;
   }
 

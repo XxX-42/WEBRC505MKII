@@ -1,7 +1,8 @@
 import { Transport } from '../core/Transport';
 import { decodeProjectArchive } from './projectArchive';
 import { Rc505MemoryCommittedError, encodeRc505Memory, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryField, type Rc505MemoryRuntime } from './Rc505Memory';
-import { isNativeHostIncarnationId, type NativeBridgeClient, type NativeCatalogSlotStatus, type NativeDubMode, type NativeStatus } from './NativeBridgeClient';
+import { isNativeHostIncarnationId, nativeProjectArchiveSha256, type NativeBridgeClient, type NativeCatalogSlotStatus, type NativeDubMode, type NativeStatus } from './NativeBridgeClient';
+import { ProjectMemoryStore } from './projectMemoryStore';
 
 export interface NativeMemoryPort {
   bridge: NativeBridgeClient;
@@ -15,6 +16,10 @@ export interface NativeMemoryPort {
   /** Host publication is confirmed; invalidate previous-generation UI ACKs before any readback. */
   committed?(generation: number): void;
   pendingEdits?(): boolean;
+  persistOperationIntent?(operationId: string, hostIncarnationId: string, expectedProjectContentRevision: number, archiveSha256: string): Promise<void>;
+  readOperationIntent?(operationId: string): Promise<{ operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string } | null>;
+  listOperationIntents?(): Promise<readonly { operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string }[]>;
+  clearOperationIntent?(operationId: string): Promise<void>;
 }
 const copyJson = (value: unknown): Rc505Json => JSON.parse(JSON.stringify(value)) as Rc505Json;
 
@@ -280,7 +285,36 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       if (revision() !== expectedRevision || transport.projectMutationRevision !== operationStartTransportMutationRevision) {
         throw new Error('Native Memory or transport changed during preparation; no import was submitted.');
       }
-      const acceptance = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!, expectedHostIncarnationId);
+      const operationIntentStore = new ProjectMemoryStore();
+      const oldIntents = port.listOperationIntents
+        ? await port.listOperationIntents()
+        : await operationIntentStore.listNativeImportOperationIntents();
+      for (const oldIntent of oldIntents) {
+        if (oldIntent.hostIncarnationId !== expectedHostIncarnationId) {
+          throw new Error('A previous Native Memory operation belongs to another host incarnation; preserve it and resolve status before another import.');
+        }
+        const oldStatus = await port.bridge.getProjectArchiveImportStatusByOperationId(oldIntent.operationId, oldIntent.hostIncarnationId);
+        if (oldStatus.operationId !== oldIntent.operationId || oldStatus.hostIncarnationId !== oldIntent.hostIncarnationId ||
+            oldStatus.expectedProjectContentRevision !== oldIntent.expectedProjectContentRevision || oldStatus.archiveSha256 !== oldIntent.archiveSha256) {
+          throw new Error('A previous Native Memory operation fingerprint did not match the host; no new import was submitted.');
+        }
+        if (oldStatus.state !== 'cancelled') {
+          throw new Error(`Native Memory operation ${oldIntent.operationId} remains ${oldStatus.state}; query/export it before another import.`);
+        }
+        await operationIntentStore.clearNativeImportOperationIntent(oldIntent.operationId);
+      }
+      const operationId = createNativeMemoryOperationId();
+      const archiveSha256 = await nativeProjectArchiveSha256(bytes);
+      if (port.persistOperationIntent) await port.persistOperationIntent(operationId, expectedHostIncarnationId, expectedHostRevision!, archiveSha256);
+      else await operationIntentStore.persistNativeImportOperationIntent(operationId, expectedHostIncarnationId, expectedHostRevision!, archiveSha256);
+      const persistedIntent = port.readOperationIntent
+        ? await port.readOperationIntent(operationId)
+        : await operationIntentStore.readNativeImportOperationIntent(operationId);
+      if (!persistedIntent || persistedIntent.operationId !== operationId || persistedIntent.hostIncarnationId !== expectedHostIncarnationId ||
+          persistedIntent.expectedProjectContentRevision !== expectedHostRevision || persistedIntent.archiveSha256 !== archiveSha256) {
+        throw new Error('Native Memory operation intent did not round-trip from durable storage; no archive was uploaded.');
+      }
+      const acceptance = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!, expectedHostIncarnationId, operationId);
       const { generation } = acceptance;
       let releaseTransportSync = port.suppressTransportSync?.() ?? (() => undefined);
       const releaseSuppression = (): void => {
@@ -379,6 +413,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           transport.measureLength = savedTransport.measureLengthSeconds;
           transport.masterLoopLengthSamples = savedTransport.masterLoopLengthSamples;
           transport.setBpm(document.semantics.tempo);
+          if (port.clearOperationIntent) await port.clearOperationIntent(operationId);
+          else await operationIntentStore.clearNativeImportOperationIntent(operationId);
           } catch (error) {
             const detail = error instanceof Error ? error.message : String(error);
             throw new Rc505MemoryCommittedError(`Native Memory generation ${generation} committed; application synchronization failed: ${detail}`, generation, { cause: error });
@@ -398,4 +434,11 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       };
     },
   };
+}
+
+function createNativeMemoryOperationId(): string {
+  if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
+    throw new Error('Secure Native Memory operation identifiers are unavailable; no archive was uploaded.');
+  }
+  return crypto.randomUUID().replace(/-/g, '').toLowerCase();
 }

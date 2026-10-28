@@ -6,6 +6,7 @@ import { createNativeRc505MemoryRuntime } from '../../src/audio/NativeRc505Memor
 import { Rc505MemoryCommittedError, decodeRc505Memory } from '../../src/audio/Rc505Memory';
 import { encodeProjectArchive } from '../../src/audio/projectArchive';
 import { Transport } from '../../src/core/Transport';
+import { ProjectMemoryStore } from '../../src/audio/projectMemoryStore';
 import type { NativeBridgeClient, NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 function fixture(archiveBpm = 120) {
@@ -38,13 +39,22 @@ function fixture(archiveBpm = 120) {
   let edits = 0;
   const bridge = {
     getStatus: vi.fn(async () => status),
-    beginProjectArchiveImport: vi.fn(async () => ({ generation: 19, hostIncarnationId })),
+    beginProjectArchiveImport: vi.fn(async (_archive: unknown, _revision: number, _host: string, operationId: string) => ({ generation: 19, hostIncarnationId, operationId })),
+    getProjectArchiveImportStatusByOperationId: vi.fn(async (operationId: string) => ({ ok: true, generation: 12,
+      state: 'pending' as const, operationId, hostIncarnationId, expectedProjectContentRevision: 7, archiveSha256: 'b'.repeat(64) })),
     commitPreparedMemory: vi.fn(async () => { status = { ...status, projectContentRevision: 8 }; }),
     waitForProjectArchiveImport: vi.fn(async () => ({ state: 'committed', hostIncarnationId })),
     cancelProjectArchiveImport: vi.fn(async () => undefined),
   };
   const install = vi.fn();
   const committed = vi.fn();
+  let persistedIntent: { operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string } | null = null;
+  const persistOperationIntent = vi.fn(async (operationId: string, boundHost: string, expectedProjectContentRevision: number, archiveSha256: string) => {
+    persistedIntent = { operationId, hostIncarnationId: boundHost, expectedProjectContentRevision, archiveSha256 };
+  });
+  const readOperationIntent = vi.fn(async () => persistedIntent);
+  const listOperationIntents = vi.fn(async () => persistedIntent ? [persistedIntent] : []);
+  const clearOperationIntent = vi.fn(async (operationId: string) => { if (persistedIntent?.operationId === operationId) persistedIntent = null; });
   const publish = vi.fn((value: NativeStatus) => { cached = value; });
   const syncRhythmBpm = vi.fn(async (bpm: number) => {
     status = { ...status, nativeRhythm: { ...status.nativeRhythm!, bpm } };
@@ -52,15 +62,26 @@ function fixture(archiveBpm = 120) {
   });
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
     status: () => cached, editRevision: () => String(edits), publish, install, committed, syncRhythmBpm,
+    persistOperationIntent, readOperationIntent, clearOperationIntent, listOperationIntents,
     archive: () => encodeProjectArchive({ name: '', bpm: archiveBpm, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, install, committed, publish, syncRhythmBpm, hostStatus: () => status,
+  return { runtime, bridge, install, committed, persistOperationIntent, readOperationIntent, clearOperationIntent, listOperationIntents, publish, syncRhythmBpm, hostStatus: () => status,
     restartHost: (hostIncarnationId: string) => { status = { ...status, hostIncarnationId }; cached = status; },
     edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
 
-beforeEach(() => vi.stubGlobal('crypto', webcrypto));
+beforeEach(() => {
+  vi.stubGlobal('crypto', webcrypto);
+  const intents = new Map<string, { operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string }>();
+  vi.spyOn(ProjectMemoryStore.prototype, 'persistNativeImportOperationIntent').mockImplementation(async (operationId, hostIncarnationId, expectedProjectContentRevision, archiveSha256) => {
+    intents.set(operationId, { operationId, hostIncarnationId, expectedProjectContentRevision, archiveSha256 });
+  });
+  vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportOperationIntent').mockImplementation(async (operationId) => intents.get(operationId) ?? null);
+  vi.spyOn(ProjectMemoryStore.prototype, 'clearNativeImportOperationIntent').mockImplementation(async (operationId) => { intents.delete(operationId); });
+  vi.spyOn(ProjectMemoryStore.prototype, 'listNativeImportOperationIntents').mockImplementation(async () => [...intents.values()]);
+});
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   const transport = Transport.getInstance();
   transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
   transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(120);
@@ -219,7 +240,33 @@ describe('Native semantic Memory runtime', () => {
     for (const transport of (document.extensions.WEBRC.nativeMemory as any).loopTransports) delete transport.oneShot;
     const prepared = await h.runtime.prepare(document, h.runtime.revision());
     expect(h.bridge.beginProjectArchiveImport).toHaveBeenCalledOnce();
+    const operationId = h.bridge.beginProjectArchiveImport.mock.calls[0]![3];
+    expect(operationId).toMatch(/^[0-9a-f]{32}$/);
+    expect(h.persistOperationIntent).toHaveBeenCalledOnce();
+    expect(h.persistOperationIntent.mock.calls[0]!.slice(0, 3)).toEqual([operationId, 'a'.repeat(32), 7]);
+    expect(h.persistOperationIntent.mock.calls[0]![3]).toMatch(/^[0-9a-f]{64}$/);
+    expect(h.readOperationIntent).toHaveBeenCalledExactlyOnceWith(operationId);
     await prepared.dispose();
+  });
+  it('does not upload when operation intent persistence or readback fails', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    h.persistOperationIntent.mockRejectedValueOnce(new Error('IndexedDB write failed'));
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/IndexedDB write failed/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+    h.persistOperationIntent.mockResolvedValueOnce(undefined);
+    h.readOperationIntent.mockResolvedValueOnce(null);
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/did not round-trip from durable storage/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it('blocks a new Native Memory upload while a prior operation intent is unresolved', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    h.listOperationIntents.mockResolvedValueOnce([{ operationId: 'f'.repeat(32), hostIncarnationId: 'a'.repeat(32),
+      expectedProjectContentRevision: 7, archiveSha256: 'b'.repeat(64) }]);
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/remains pending/);
+    expect(h.bridge.getProjectArchiveImportStatusByOperationId).toHaveBeenCalledExactlyOnceWith('f'.repeat(32), 'a'.repeat(32));
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
   });
   it('prepares an intact envelope, commits once, and leaves ACK reclamation to the host', async () => {
     const { runtime, bridge } = fixture();
