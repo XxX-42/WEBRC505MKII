@@ -35,6 +35,7 @@ const pitchHarness = vi.hoisted(() => {
     scheduleLoop: vi.fn(async () => undefined),
     scheduleSegment: vi.fn(async () => undefined),
     setPitch: vi.fn(async () => undefined),
+    setPlaybackRate: vi.fn(async (toRate: number) => ({ startTime: 0, endTime: 0.4, fromRate: 1, toRate })),
     startProcessing: vi.fn(async () => undefined),
     stopProcessing: vi.fn(async () => undefined),
     port,
@@ -65,6 +66,7 @@ vi.mock('../../src/audio/pitch', () => ({
 describe('TrackAudio KeepPitch opt-in routing', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.useRealTimers();
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 0));
     pitchHarness.createLivePolyPitchNode.mockClear();
     pitchHarness.createLiveMonoPitchNode.mockClear();
@@ -76,6 +78,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
       pitchHarness.node.scheduleLoop,
       pitchHarness.node.scheduleSegment,
       pitchHarness.node.setPitch,
+      pitchHarness.node.setPlaybackRate,
       pitchHarness.node.startProcessing,
       pitchHarness.node.stopProcessing,
       pitchHarness.node.releaseWasmMemory,
@@ -131,6 +134,16 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     return { context, sourceNodes, trackAudio, TrackState, Transport: Transport.getInstance() };
   }
 
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+  }
+
   it('routes an opted-in loop through Signalsmith internal buffers with measured latency', async () => {
     const { context, sourceNodes, trackAudio, TrackState, Transport } = await makeTrack();
     Transport.stop();
@@ -161,6 +174,170 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(trackAudio.livePolyPitchLatencySamples).toBe(6_720);
     expect(trackAudio.livePolyPitchLatencySeconds).toBeCloseTo(6_720 / context.sampleRate);
     expect(trackAudio.state).toBe(TrackState.PLAYING);
+  });
+
+  it('blocks REC and overdub while a LIVE_POLY rate-change ACK is pending', async () => {
+    const { context, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await trackAudio.play();
+    vi.useFakeTimers();
+    const pending = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    pitchHarness.node.setPlaybackRate.mockImplementationOnce(() => pending.promise);
+
+    const operation = trackAudio.followLivePolyTempo(100, 125);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
+    trackAudio.triggerRecord();
+
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect(trackAudio.recordingDiagnostic).toContain('Wait for or stop LIVE_POLY tempo follow');
+    await trackAudio.startRecording();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    await expect(trackAudio.followLivePolyTempo(100, 120)).rejects.toThrow(/already pending/);
+
+    pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect(trackAudio.recordingDiagnostic).toContain('Wait for or stop LIVE_POLY tempo follow');
+    (context as any).currentTime = 0.5;
+    await vi.advanceTimersByTimeAsync(11);
+    await expect(operation).resolves.toMatchObject({ rateRatio: 1.25, targetBpm: 125 });
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('clears a pending retarget after its old ACK, then commits only the unity-rate reset', async () => {
+    const { context, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await trackAudio.play();
+    vi.useFakeTimers();
+    const pendingFollow = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    const pendingReset = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    pitchHarness.node.setPlaybackRate
+      .mockImplementationOnce(() => pendingFollow.promise)
+      .mockImplementationOnce(() => pendingReset.promise);
+
+    const follow = trackAudio.followLivePolyTempo(100, 125);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
+    const clear = trackAudio.clearLivePolyTempoFollow();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
+    pendingFollow.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    await expect(follow).rejects.toThrow(/playback changed during tempo retarget/);
+    await Promise.resolve();
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(2);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenLastCalledWith(1, expect.objectContaining({ durationSeconds: 0.4 }));
+    pendingReset.resolve({ startTime: 1, endTime: 1.4, fromRate: 1.25, toRate: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect(trackAudio.recordingDiagnostic).toContain('Wait for or stop LIVE_POLY tempo follow');
+    (context as any).currentTime = 1.5;
+    await vi.advanceTimersByTimeAsync(11);
+    await clear;
+
+    expect(trackAudio.livePolyTempoFollow).toBeNull();
+    expect(trackAudio['livePolyPitchPlaybackRate']).toBe(1);
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('keeps REC gated when clear cancels a ramp ACK that was awaiting its audio-clock end', async () => {
+    const { context, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await trackAudio.play();
+    vi.useFakeTimers();
+    const pendingFollow = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    const pendingReset = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    pitchHarness.node.setPlaybackRate
+      .mockImplementationOnce(() => pendingFollow.promise)
+      .mockImplementationOnce(() => pendingReset.promise);
+
+    const follow = trackAudio.followLivePolyTempo(100, 125);
+    pendingFollow.resolve({ startTime: 0.14, endTime: 0.54, fromRate: 1, toRate: 1.25 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
+
+    const clear = trackAudio.clearLivePolyTempoFollow();
+    await Promise.resolve();
+    await Promise.resolve();
+    await expect(follow).rejects.toThrow(/cancelled|state changed|playback changed during tempo retarget/);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(2);
+    pendingReset.resolve({ startTime: 0.2, endTime: 0.6, fromRate: 1.25, toRate: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect(trackAudio.recordingDiagnostic).toContain('Wait for or stop LIVE_POLY tempo follow');
+    (context as any).currentTime = 0.7;
+    await vi.advanceTimersByTimeAsync(11);
+    await clear;
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('does not let a late rate ACK revive a stopped or disposed track', async () => {
+    const { context, trackAudio, TrackState, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    trackAudio['startOffset'] = 0.2;
+    await trackAudio.play();
+    const pending = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    pitchHarness.node.setPlaybackRate.mockImplementationOnce(() => pending.promise);
+
+    const operation = trackAudio.followLivePolyTempo(100, 125);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
+    const rateOptions = pitchHarness.node.setPlaybackRate.mock.calls[0]![1] as { onProgress?: (progress: unknown) => void };
+    rateOptions.onProgress?.({ startTime: 0.14, fromRate: 1, scheduledTime: 0.3, scheduledRate: 1.125 });
+    (context as any).currentTime = 0.35;
+    trackAudio.stop();
+    expect(trackAudio['startOffset']).toBeCloseTo(0.2, 8);
+    expect(trackAudio.livePolyPitchFallbackReason).toContain('phase continuity across the uncertain ramp is not guaranteed');
+    pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    await expect(operation).rejects.toThrow(/playback changed during tempo retarget/);
+    expect(trackAudio.livePolyTempoFollow).toBeNull();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+
+    const secondPending = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    await trackAudio.play();
+    pitchHarness.node.setPlaybackRate.mockImplementationOnce(() => secondPending.promise);
+    const secondOperation = trackAudio.followLivePolyTempo(100, 125);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(2);
+    (context as any).state = 'closed';
+    trackAudio.dispose();
+    secondPending.resolve({ startTime: 2, endTime: 2.4, fromRate: 1, toRate: 1.25 });
+    await expect(secondOperation).rejects.toThrow(/playback changed during tempo retarget/);
+    expect(trackAudio.livePolyTempoFollow).toBeNull();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+  });
+
+  it('invalidates an in-flight retarget when changing pitch mode', async () => {
+    const { trackAudio, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await trackAudio.play();
+    const pending = deferred<{ startTime: number; endTime: number; fromRate: number; toRate: number }>();
+    pitchHarness.node.setPlaybackRate.mockImplementationOnce(() => pending.promise);
+
+    const operation = trackAudio.followLivePolyTempo(100, 125);
+    expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
+    await trackAudio.setLivePolyPitchEnabled(false);
+    pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    await expect(operation).rejects.toThrow(/playback changed during tempo retarget/);
+
+    expect(trackAudio.livePolyPitchActive).toBe(false);
+    expect(trackAudio.livePolyTempoFollow).toBeNull();
+    expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
+    expect(trackAudio.livePolyPitchFallbackReason).toContain('phase continuity across the interrupted LIVE_POLY tempo ramp is not guaranteed');
   });
 
   it('schedules a finite LIVE_POLY segment and uses audio-clock completion for one-shot playback', async () => {

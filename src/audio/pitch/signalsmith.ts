@@ -95,6 +95,15 @@ export interface LivePolyPitchRateRampOptions {
   readonly durationSeconds?: number;
   /** Lets the owning track cancel future ramp points after a route/state change. */
   readonly isCurrent?: () => boolean;
+  /** Called after each time-map point is acknowledged by the AudioWorklet. */
+  readonly onProgress?: (progress: LivePolyPitchRateRampProgress) => void;
+}
+
+export interface LivePolyPitchRateRampProgress {
+  readonly startTime: number;
+  readonly fromRate: number;
+  readonly scheduledTime: number;
+  readonly scheduledRate: number;
 }
 
 export interface LivePolyPitchRateRampResult {
@@ -619,6 +628,12 @@ export async function createLivePolyPitchNode(
               loopEnd: loop.loopEndSeconds,
             });
             scheduledRates.push(rate);
+            ramp.onProgress?.({
+              startTime,
+              fromRate: currentRate,
+              scheduledTime: outputTime,
+              scheduledRate: rate,
+            });
           }
         } catch (error) {
           const lastScheduled = scheduledRates[scheduledRates.length - 1];

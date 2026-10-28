@@ -164,7 +164,7 @@ test('TrackAudio tempo API requires explicit source BPM and leaves loop PCM/hist
     await new Promise((resolve) => window.setTimeout(resolve, 700));
     track.triggerRecord();
     const recordBlocked = track.state === TrackState.PLAYING
-      && /Stop LIVE_POLY tempo follow/.test(track.recordingDiagnostic ?? '');
+      && /Wait for or stop LIVE_POLY tempo follow/.test(track.recordingDiagnostic ?? '');
     const unchanged = pcmView.every((sample: number, index: number) => sample === pcmBefore[index]);
     const projectRevisionAfter = track.projectRevision;
     const historyBytesAfter = track.historyTotalRetainedBytes;

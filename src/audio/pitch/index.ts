@@ -8,6 +8,9 @@ export type {
   LivePolyPitchNode,
   LivePolyPitchLoopOptions,
   LivePolyPitchOptions,
+  LivePolyPitchRateRampOptions,
+  LivePolyPitchRateRampProgress,
+  LivePolyPitchRateRampResult,
   OfflinePitchOptions,
   OfflinePitchResult,
 } from './signalsmith';
