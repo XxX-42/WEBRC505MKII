@@ -3020,7 +3020,7 @@ export class TrackAudio {
             this.syncTransportState();
         }
 
-        if (this.resumeAfterRecording && this.engine.getRecordPlaySettings?.().recAction === 'REC->DUB' && this.state === TrackState.PLAYING) {
+        if (this.resumeAfterRecording && this.track.oneShot !== 'ON' && this.engine.getRecordPlaySettings?.().recAction === 'REC->DUB' && this.state === TrackState.PLAYING) {
             // Let recording finalization release its capture session before reserving overdub.
             queueMicrotask(() => { if (!this.disposed && !this.pendingClear && this.state === TrackState.PLAYING) this.triggerRecord(); });
         }

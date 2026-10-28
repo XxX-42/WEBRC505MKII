@@ -235,6 +235,30 @@ describe('TrackAudio recording chunk assembly', () => {
     }
   });
 
+  it('does not retrigger or overdub 1SHOT after recording with REC->DUB', async () => {
+    const [{ TrackAudio }, { Track }, { Transport }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = { context, trackMixNode: context.createGain(), tracks: [] as unknown[], roundTripLatency: 0,
+      selectedInputDeviceId: null, selectedOutputDeviceId: null, selectedBufferFrames: 128,
+      getRecordPlaySettings: () => ({ recAction: 'REC->DUB' }) };
+    const transport = Transport.getInstance();
+    transport.stop(); transport.masterTrackId = 1; transport.masterLoopLengthSamples = 8;
+    try {
+      const audio = new TrackAudio(engine as never, new Track(2), 1, null, null);
+      audio.track.oneShot = 'ON';
+      const play = vi.spyOn(audio, 'play').mockResolvedValue();
+      const trigger = vi.spyOn(audio, 'triggerRecord');
+      (audio as any).processRecordedBuffer(new Float32Array([1, 2, 3, 4]));
+      await Promise.resolve();
+      expect(play).toHaveBeenCalledOnce();
+      expect(trigger).not.toHaveBeenCalled();
+    } finally {
+      transport.stop(); transport.masterTrackId = null; transport.masterLoopLengthSamples = 0;
+    }
+  });
+
   it('keeps the recorded PCM length when LOOP SYNC is OFF even if another track is master', async () => {
     const [{ TrackAudio }, { Track }, { Transport }] = await Promise.all([
       import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
