@@ -8,20 +8,24 @@ const anchor = (performanceTimeMs: number, audioTimeSeconds: number, contextKey 
 });
 
 describe('MidiAudioFrameMapper', () => {
-  it('maps normal performance-time offset to the corresponding audio frame', () => {
+  it('does not claim a precise mapping until several anchors span enough time', () => {
     const mapper = new MidiAudioFrameMapper();
-    mapper.addAnchor(anchor(1_000, 10));
-    const mapped = mapper.map(1_025, 1_030);
-    expect(mapped).toMatchObject({ ok: true, frame: 481_200, reason: null, driftPpm: null, anchorCount: 1 });
+    expect(mapper.addAnchor(anchor(1_000, 10))).toMatchObject({ ok: true, reason: 'insufficient-drift-evidence', driftPpm: null });
+    expect(mapper.addAnchor(anchor(1_100, 10.1005))).toMatchObject({ ok: true, reason: 'insufficient-drift-evidence', driftPpm: null });
+    expect(mapper.map(1_050, 1_100)).toMatchObject({ ok: false, frame: null, reason: 'insufficient-drift-evidence', driftPpm: null });
+    mapper.addAnchor(anchor(3_000, 12));
+    expect(mapper.addAnchor(anchor(4_000, 13))).toMatchObject({ ok: true, reason: null });
+    expect(mapper.map(4_025, 4_030)).toMatchObject({ ok: true, frame: 625_198, driftPpm: expect.any(Number), anchorCount: 4 });
   });
 
   it('estimates bounded clock drift from multiple anchors', () => {
     const mapper = new MidiAudioFrameMapper();
     mapper.addAnchor(anchor(1_000, 10));
-    mapper.addAnchor(anchor(2_000, 11.0005));
-    const mapped = mapper.map(2_500, 2_510);
+    mapper.addAnchor(anchor(4_000, 13.0015));
+    mapper.addAnchor(anchor(7_000, 16.003));
+    const mapped = mapper.map(7_500, 7_510);
     expect(mapped.ok).toBe(true);
-    expect(mapped.frame).toBe(552_036);
+    expect(mapped.frame).toBe(792_156);
     expect(mapped.driftPpm).toBeCloseTo(500, 0);
   });
 
@@ -30,11 +34,15 @@ describe('MidiAudioFrameMapper', () => {
     mapper.addAnchor(anchor(1_000, 10));
     expect(mapper.addAnchor(anchor(1_010, 10.01, contextA, 'suspended')).reason).toBe('context-suspended');
     expect(mapper.map(1_010, 1_010).reason).toBe('context-suspended');
-    expect(mapper.addAnchor(anchor(2_000, 12)).ok).toBe(true);
-    expect(mapper.map(2_000, 2_010).ok).toBe(true);
-    expect(mapper.addAnchor(anchor(3_000, 20, contextB)).reason).toBe('context-changed');
-    expect(mapper.addAnchor(anchor(3_100, 20.1, contextB)).ok).toBe(true);
-    expect(mapper.map(3_100, 3_110).ok).toBe(true);
+    expect(mapper.addAnchor(anchor(2_000, 12)).reason).toBe('insufficient-drift-evidence');
+    mapper.addAnchor(anchor(4_000, 14));
+    expect(mapper.addAnchor(anchor(6_000, 16)).reason).toBe(null);
+    expect(mapper.map(6_000, 6_010).ok).toBe(true);
+    expect(mapper.addAnchor(anchor(7_000, 20, contextB)).reason).toBe('context-changed');
+    expect(mapper.addAnchor(anchor(8_000, 21, contextB)).reason).toBe('insufficient-drift-evidence');
+    mapper.addAnchor(anchor(10_000, 23, contextB));
+    expect(mapper.addAnchor(anchor(12_000, 25, contextB)).reason).toBe(null);
+    expect(mapper.map(12_000, 12_010).ok).toBe(true);
   });
 
   it('fails explicitly for late and future event timestamps', () => {
@@ -49,16 +57,51 @@ describe('MidiAudioFrameMapper', () => {
     mapper.addAnchor(anchor(1_000, 10));
     expect(mapper.addAnchor(anchor(1_250, 10)).reason).toBe('invalid-anchor');
     expect(mapper.map(1_200, 1_250)).toMatchObject({ ok: false, frame: null, reason: 'invalid-anchor' });
-    expect(mapper.addAnchor(anchor(1_500, 10.5)).ok).toBe(true);
+    expect(mapper.addAnchor(anchor(1_500, 10.5)).reason).toBe('insufficient-drift-evidence');
   });
 
-  it('rejects an outlying anchor without silently manufacturing a frame', () => {
+  it('keeps collecting after a short-baseline apparent drift and later recovers', () => {
     const mapper = new MidiAudioFrameMapper();
     mapper.addAnchor(anchor(1_000, 10));
-    mapper.addAnchor(anchor(1_100, 10.1));
-    expect(mapper.addAnchor(anchor(1_200, 11)).reason).toBe('outlier-anchor');
-    expect(mapper.map(1_150, 1_150)).toMatchObject({ ok: false, frame: null, reason: 'outlier-anchor' });
-    expect(mapper.addAnchor(anchor(1_200, 10.2)).ok).toBe(true);
-    expect(mapper.map(1_200, 1_200).ok).toBe(true);
+    expect(mapper.addAnchor(anchor(1_100, 10.1005)).reason).toBe('insufficient-drift-evidence');
+    expect(mapper.addAnchor(anchor(3_000, 12)).reason).toBe('insufficient-drift-evidence');
+    expect(mapper.addAnchor(anchor(4_000, 13)).reason).toBe(null);
+    expect(mapper.map(4_000, 4_000).ok).toBe(true);
+  });
+
+  it('allows an explicit reset to discard insufficient or polluted samples before resampling', () => {
+    const mapper = new MidiAudioFrameMapper();
+    mapper.addAnchor(anchor(1_000, 10));
+    mapper.addAnchor(anchor(1_100, 10.1005));
+    expect(mapper.map(1_050, 1_050).reason).toBe('insufficient-drift-evidence');
+
+    mapper.reset();
+    expect(mapper.map(1_050, 1_050).reason).toBe('unanchored');
+    mapper.addAnchor(anchor(2_000, 20));
+    mapper.addAnchor(anchor(4_000, 22));
+    expect(mapper.addAnchor(anchor(6_000, 24)).reason).toBe(null);
+    expect(mapper.map(6_000, 6_000).ok).toBe(true);
+  });
+
+  it('does not treat render-quantized clock edges as trusted short-term drift', () => {
+    const mapper = new MidiAudioFrameMapper();
+    mapper.addAnchor(anchor(1_000, 10));
+    expect(mapper.addAnchor(anchor(1_100, 10.102667)).reason).toBe('insufficient-drift-evidence');
+    expect(mapper.addAnchor(anchor(2_000, 11.002667)).reason).toBe('insufficient-drift-evidence');
+    expect(mapper.map(2_000, 2_000)).toMatchObject({ ok: false, frame: null, driftPpm: null });
+    expect(mapper.addAnchor(anchor(4_000, 13.002667)).reason).toBe(null);
+    expect(Math.abs(mapper.map(4_000, 4_000).driftPpm ?? Infinity)).toBeLessThanOrEqual(2_000);
+  });
+
+  it('rejects continuous outliers after a trusted fit and accepts a valid resample', () => {
+    const mapper = new MidiAudioFrameMapper();
+    mapper.addAnchor(anchor(1_000, 10));
+    mapper.addAnchor(anchor(3_000, 12));
+    mapper.addAnchor(anchor(5_000, 14));
+    expect(mapper.addAnchor(anchor(6_000, 15.2)).reason).toBe('outlier-anchor');
+    expect(mapper.addAnchor(anchor(6_100, 15.5)).reason).toBe('outlier-anchor');
+    expect(mapper.map(5_500, 5_500)).toMatchObject({ ok: false, frame: null, reason: 'outlier-anchor' });
+    expect(mapper.addAnchor(anchor(6_000, 15)).reason).toBe(null);
+    expect(mapper.map(6_000, 6_000).ok).toBe(true);
   });
 });

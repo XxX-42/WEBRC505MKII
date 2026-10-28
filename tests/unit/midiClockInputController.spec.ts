@@ -116,7 +116,7 @@ describe('MidiClockInputController', () => {
     context.audioTimeSeconds = 10.5;
     input.send([0xf8], 1_490);
     expect(controller.getSnapshot()).toMatchObject({
-      frameMapping: { ok: true, frame: 503_520, anchorCount: 1, driftPpm: null },
+      frameMapping: { ok: false, frame: null, reason: 'insufficient-drift-evidence', anchorCount: 1, driftPpm: null },
     });
     controller.disconnect();
   });

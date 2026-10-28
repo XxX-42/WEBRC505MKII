@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { startBrowserAudio } from './uiHelpers';
 
 test('renders the MIDI clock control only in the Tech interface', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
@@ -46,6 +47,7 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => permissionStatus } });
   });
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const status = page.getByTestId('midi-clock-status');
   await expect(status).toHaveText('Clock monitor off');
@@ -67,6 +69,14 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     transport.setBpm(137);
     return { bpm: transport.bpm, state: transport.state, phaseRevision: transport.masterPhaseRevision };
   });
+
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
+    const timer = window.setInterval(() => fake.send([0xf8], performance.now()), 20);
+    Object.defineProperty(window, '__midiEvidencePulseTimer', { configurable: true, value: timer });
+  });
+  await expect(frameMapping).toContainText('Audio frame mapping unavailable · insufficient-drift-evidence');
+  await page.evaluate(() => window.clearInterval((window as unknown as { __midiEvidencePulseTimer: number }).__midiEvidencePulseTimer));
 
   await page.evaluate(() => {
     const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;

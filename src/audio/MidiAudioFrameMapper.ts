@@ -30,6 +30,8 @@ export interface MidiAudioFrameMapperOptions {
   readonly historySize?: number;
   readonly maxAnchorResidualMs?: number;
   readonly maxDriftPpm?: number;
+  /** Minimum clock span needed before a drift fit is trusted. */
+  readonly minDriftEvidenceMs?: number;
   readonly maxEventAgeMs?: number;
   readonly maxFutureMs?: number;
 }
@@ -37,6 +39,9 @@ export interface MidiAudioFrameMapperOptions {
 const DEFAULT_HISTORY = 32;
 const DEFAULT_RESIDUAL_MS = 8;
 const DEFAULT_MAX_DRIFT_PPM = 2_000;
+// currentTime may advance in render-quantum-sized steps. A multi-second span
+// prevents one quantized edge from looking like meaningful clock drift.
+const DEFAULT_MIN_DRIFT_EVIDENCE_MS = 3_000;
 const DEFAULT_EVENT_AGE_MS = 250;
 const DEFAULT_FUTURE_MS = 100;
 
@@ -50,6 +55,7 @@ export class MidiAudioFrameMapper {
   private readonly historySize: number;
   private readonly maxAnchorResidualMs: number;
   private readonly maxDriftPpm: number;
+  private readonly minDriftEvidenceMs: number;
   private readonly maxEventAgeMs: number;
   private readonly maxFutureMs: number;
   private anchors: Array<{ performanceTimeMs: number; audioTimeSeconds: number }> = [];
@@ -61,10 +67,12 @@ export class MidiAudioFrameMapper {
     this.historySize = options.historySize ?? DEFAULT_HISTORY;
     this.maxAnchorResidualMs = options.maxAnchorResidualMs ?? DEFAULT_RESIDUAL_MS;
     this.maxDriftPpm = options.maxDriftPpm ?? DEFAULT_MAX_DRIFT_PPM;
+    this.minDriftEvidenceMs = options.minDriftEvidenceMs ?? DEFAULT_MIN_DRIFT_EVIDENCE_MS;
     this.maxEventAgeMs = options.maxEventAgeMs ?? DEFAULT_EVENT_AGE_MS;
     this.maxFutureMs = options.maxFutureMs ?? DEFAULT_FUTURE_MS;
-    if (!Number.isInteger(this.historySize) || this.historySize < 2) throw new RangeError('historySize must be an integer >= 2');
-    if (!(this.maxAnchorResidualMs > 0) || !(this.maxDriftPpm > 0) || !(this.maxEventAgeMs > 0) || !(this.maxFutureMs >= 0)) {
+    if (!Number.isInteger(this.historySize) || this.historySize < 3) throw new RangeError('historySize must be an integer >= 3');
+    if (!(this.maxAnchorResidualMs > 0) || !(this.maxDriftPpm > 0) || !(this.minDriftEvidenceMs > 0)
+      || !(this.maxEventAgeMs > 0) || !(this.maxFutureMs >= 0)) {
       throw new RangeError('mapper limits must be positive (maxFutureMs may be zero)');
     }
   }
@@ -106,28 +114,28 @@ export class MidiAudioFrameMapper {
         this.failure = 'invalid-anchor';
         return this.result(null, false, this.failure);
       }
+      // Until the retained anchors span enough time, a slope outside the
+      // allowed range is not evidence of a bad anchor: clock quantization can
+      // dominate short intervals. Keep sampling, but never map from that fit.
       const fit = this.fit();
-      if (this.anchors.length >= 2 && !fit) {
-        this.failure = 'outlier-anchor';
-        return this.result(null, false, this.failure);
-      }
-      if (this.anchors.length >= 2 && fit && Math.abs(this.predictAudioMs(anchor.performanceTimeMs, fit) - anchor.audioTimeSeconds * 1000) > this.maxAnchorResidualMs) {
+      if (fit && Math.abs(this.predictAudioMs(anchor.performanceTimeMs, fit) - anchor.audioTimeSeconds * 1000) > this.maxAnchorResidualMs) {
         this.failure = 'outlier-anchor';
         return this.result(null, false, this.failure);
       }
     }
     this.anchors.push(anchor);
     if (this.anchors.length > this.historySize) this.anchors.shift();
-    this.failure = null;
-    return this.result(null, true, null);
+    this.failure = this.fit() ? null : 'insufficient-drift-evidence';
+    return this.result(null, true, this.failure);
   }
 
   map(timestampMs: number, nowPerformanceTimeMs: number): MidiAudioFrameMapResult {
-    if (this.failure) return this.result(null, false, this.failure);
+    if (this.failure && this.failure !== 'insufficient-drift-evidence') return this.result(null, false, this.failure);
     if (!Number.isFinite(timestampMs) || !Number.isFinite(nowPerformanceTimeMs)) return this.result(null, false, 'invalid-anchor');
-    if (!this.anchors.length || this.sampleRate === null) return this.result(null, false, 'unanchored');
     if (nowPerformanceTimeMs - timestampMs > this.maxEventAgeMs) return this.result(null, false, 'stale-event');
     if (timestampMs - nowPerformanceTimeMs > this.maxFutureMs) return this.result(null, false, 'future-event');
+    if (this.failure) return this.result(null, false, this.failure);
+    if (!this.anchors.length || this.sampleRate === null) return this.result(null, false, 'unanchored');
     const fit = this.fit();
     if (!fit) return this.result(null, false, 'unanchored');
     const audioTimeMs = this.predictAudioMs(timestampMs, fit);
@@ -146,11 +154,9 @@ export class MidiAudioFrameMapper {
   }
 
   private fit(): { slope: number; intercept: number } | null {
-    if (!this.anchors.length) return null;
-    if (this.anchors.length === 1) {
-      const anchor = this.anchors[0]!;
-      return { slope: 1, intercept: anchor.audioTimeSeconds * 1000 - anchor.performanceTimeMs };
-    }
+    if (this.anchors.length < 3) return null;
+    const spanMs = this.anchors[this.anchors.length - 1]!.performanceTimeMs - this.anchors[0]!.performanceTimeMs;
+    if (spanMs < this.minDriftEvidenceMs) return null;
     const origin = this.anchors[0]!.performanceTimeMs;
     const x = this.anchors.map((a) => a.performanceTimeMs - origin);
     const y = this.anchors.map((a) => a.audioTimeSeconds * 1000);
