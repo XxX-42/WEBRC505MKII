@@ -53,7 +53,9 @@ function fixture(archiveBpm = 120) {
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
     status: () => cached, editRevision: () => String(edits), publish, install, committed, syncRhythmBpm,
     archive: () => encodeProjectArchive({ name: '', bpm: archiveBpm, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, install, committed, publish, syncRhythmBpm, hostStatus: () => status, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
+  return { runtime, bridge, install, committed, publish, syncRhythmBpm, hostStatus: () => status,
+    restartHost: (hostIncarnationId: string) => { status = { ...status, hostIncarnationId }; cached = status; },
+    edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -369,6 +371,39 @@ describe('Native semantic Memory runtime', () => {
     await expect(prepared.commit()).rejects.toMatchObject({ committed: true });
     await prepared.dispose();
     expect((await runtime.capture()).extensions.WEBRC.vendorOpaque).toEqual({ committedMetadata: true });
+  });
+  it('drops preserved opaque semantics when capture observes a different host incarnation', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    document.extensions.WEBRC.vendorOpaque = { sourceHost: 'first' };
+    document.semantics.fields['track.1.pan'] = { availability: 'unknown', value: null, reason: 'first-host-specific metadata' };
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    await prepared.commit();
+    await prepared.dispose();
+    expect((await h.runtime.capture()).extensions.WEBRC.vendorOpaque).toEqual({ sourceHost: 'first' });
+    expect((await h.runtime.capture()).semantics.fields['track.1.pan']?.reason).toBe('first-host-specific metadata');
+
+    h.restartHost('c'.repeat(32));
+    const afterRestart = await h.runtime.capture();
+    expect(afterRestart.extensions.WEBRC.vendorOpaque).toBeUndefined();
+    expect(afterRestart.semantics.fields['track.1.pan']?.reason).toBe('Native host does not implement this hardware setting.');
+  });
+  it('replaces preserved opaque semantics at committed ACK even if later readback fails', async () => {
+    const h = fixture();
+    const first = await h.runtime.capture();
+    first.extensions.WEBRC.vendorOpaque = { project: 'A' };
+    const firstCandidate = await h.runtime.prepare(first, h.runtime.revision());
+    await firstCandidate.commit(); await firstCandidate.dispose();
+    expect((await h.runtime.capture()).extensions.WEBRC.vendorOpaque).toEqual({ project: 'A' });
+
+    const second = await h.runtime.capture();
+    second.extensions.WEBRC.vendorOpaque = { project: 'B' };
+    const secondCandidate = await h.runtime.prepare(second, h.runtime.revision());
+    h.bridge.getStatus.mockRejectedValueOnce(new Error('post-commit status read failed'));
+    await expect(secondCandidate.commit()).rejects.toMatchObject({ committed: true });
+    await secondCandidate.dispose();
+
+    expect((await h.runtime.capture()).extensions.WEBRC.vendorOpaque).toEqual({ project: 'B' });
   });
   it('does not adopt opaque metadata from a cancelled candidate', async () => {
     const { runtime } = fixture();

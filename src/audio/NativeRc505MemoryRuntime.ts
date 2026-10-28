@@ -130,7 +130,11 @@ function outputSettings(status: NativeStatus): Rc505Json {
 export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505MemoryRuntime {
   let preservedExtensions: Record<string, Rc505Json> = {};
   let preservedFields: Rc505MemoryDocument['semantics']['fields'] = {};
-  const revision = () => `${port.status()?.projectContentRevision ?? 'unknown'}:${Transport.getInstance().projectMutationRevision}:${port.editRevision()}`;
+  let preservedHostIncarnationId: string | null = null;
+  const revision = () => {
+    const status = port.status();
+    return `${status?.hostIncarnationId ?? 'unknown'}:${status?.projectContentRevision ?? 'unknown'}:${Transport.getInstance().projectMutationRevision}:${port.editRevision()}`;
+  };
   const assertStopped = (status: NativeStatus | null) => { const result = stopped(status); if (!result.allowed) throw new Error(result.reason); };
   return {
     revision,
@@ -138,6 +142,14 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
     capture: async () => {
       if (port.pendingEdits?.()) throw new Error('Wait for pending Native FX edits before Memory capture.');
       const initial = await port.bridge.getStatus();
+      if (!isNativeHostIncarnationId(initial.hostIncarnationId)) throw new Error('Native host incarnation is unavailable; Memory semantics cannot be safely captured.');
+      if (preservedHostIncarnationId !== null && preservedHostIncarnationId !== initial.hostIncarnationId) {
+        // Opaque data is meaningful only for the host that acknowledged its
+        // import. A restarted host starts with a fresh semantic namespace.
+        preservedExtensions = {};
+        preservedFields = {};
+        preservedHostIncarnationId = null;
+      }
       if (!Number.isSafeInteger(initial.projectContentRevision) || initial.projectContentRevision! >= Number.MAX_SAFE_INTEGER) throw new Error('Native Memory revision is unavailable or exhausted.');
       assertStopped(initial);
       const settings = nativeSettings(initial);
@@ -150,7 +162,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const archive = await port.archive();
       const after = await port.bridge.getStatus();
       assertStopped(after);
-      if (before !== after.projectContentRevision || after.projectContentRevisionSnapshotStable !== true
+      if (initial.hostIncarnationId !== after.hostIncarnationId || before !== after.projectContentRevision || after.projectContentRevisionSnapshotStable !== true
         || local !== port.editRevision() || transportRevision !== Transport.getInstance().projectMutationRevision) {
         throw new Error('Native Memory changed during capture.');
       }
@@ -278,6 +290,12 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           const result = await port.bridge.waitForProjectArchiveImport(generation, acceptance.hostIncarnationId, 10_000);
           if (result.state === 'unavailable') throw new Error('Native host restarted during Memory commit; status is unverifiable and no follow-up sync was applied.');
           if (result.state !== 'committed') throw new Error(result.error || 'Native Memory generation was not committed.');
+          // The same-incarnation committed ACK makes B the authoritative
+          // opaque payload even if later readback or local synchronization
+          // fails. Never let a prior candidate A leak into future captures.
+          preservedExtensions = targetExtensions;
+          preservedFields = targetFields;
+          preservedHostIncarnationId = acceptance.hostIncarnationId;
           state = 'committed';
           try {
           port.committed?.(generation);
@@ -334,6 +352,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
                 // final same-incarnation readback.
                 preservedExtensions = targetExtensions;
                 preservedFields = targetFields;
+                preservedHostIncarnationId = acceptance.hostIncarnationId;
                 port.publish(finalStatus, false);
                 port.install?.(finalStatus);
                 break;
