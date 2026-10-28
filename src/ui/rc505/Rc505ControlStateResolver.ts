@@ -1,6 +1,9 @@
 import type { Rc505ControlLayer, Rc505LedColor, Rc505ResolvedControlState } from './rc505ControlTypes';
 import type { TrackFxApplyStatus } from '../../audio/TrackFxApplyStatus';
 
+/** AUTO REC is documented as blinking rapidly; the manual gives no cadence. */
+export const RC505_AUTO_REC_LED_BLINK_PERIOD_MS = 500;
+
 export interface Rc505TrackControlInput {
   state: string;
   hasPhrase: boolean | null;
@@ -9,6 +12,7 @@ export interface Rc505TrackControlInput {
   ready: boolean;
   recordReady?: boolean;
   recordUnavailableReason?: string;
+  autoRecArmed?: boolean;
   layer: Rc505ControlLayer;
   history: { canUndo: boolean; canRedo: boolean; busy: boolean; unavailableReason?: string };
   mark?: { supported: boolean; exists: boolean; canSet: boolean; canClear: boolean; busy: boolean; unavailableReason: string | null };
@@ -43,7 +47,15 @@ export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
   const colors: Record<string, Rc505LedColor> = { RECORDING: 'red', PLAYING: 'green', OVERDUBBING: 'yellow' };
   const record = resolved('REC_PLAY', ready && input.recordReady !== false, colors[input.state] ?? 'off', false,
     input.recordUnavailableReason || 'Audio input or transport is not ready.');
-  if (input.state === 'REC_STANDBY' || input.state === 'REC_FINISHING') record.blink = 'UNVERIFIED';
+  if (input.state === 'REC_STANDBY' && input.autoRecArmed === true) {
+    // Red and 500ms are visual engineering approximations; only rapid blinking is official.
+    record.ledColor = 'red';
+    record.ledOn = true;
+    record.ledBlinkPeriodMs = RC505_AUTO_REC_LED_BLINK_PERIOD_MS;
+    record.blink = 'ENGINEERING_APPROXIMATION';
+  } else if (input.state === 'REC_STANDBY' || input.state === 'REC_FINISHING') {
+    record.blink = 'UNVERIFIED';
+  }
   const fx = input.fxApplyState;
   const fxSupported = fx ? fx.available && !fx.pending && !fx.controlFaulted : input.fxApplySupported === true;
   const fxApplied = fx ? fx.available && !fx.controlFaulted && fx.applied : input.fxApplied === true;

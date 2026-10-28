@@ -369,11 +369,24 @@ test('Browser Auto Rec arms the shared worklet and records only after the input 
     const track = audio.tracks[0] as any;
     await track.startRecording();
     if (track.state !== 'REC_STANDBY' || !track.autoRecArmed) throw new Error('Auto Rec did not enter recording standby');
+    const recButton = document.querySelector<HTMLElement>('.track-strip[data-track-id="1"] [data-panel-control="record-play"]');
+    const waitForButton = async (predicate: (button: HTMLElement) => boolean, label: string) => {
+      const deadline = Date.now() + 2_000;
+      while (Date.now() < deadline && recButton && !predicate(recButton)) await new Promise((resolve) => setTimeout(resolve, 10));
+      if (!recButton || !predicate(recButton)) throw new Error(`Classic REC/PLAY LED did not reach ${label}`);
+    };
+    await waitForButton(button => button.classList.contains('led-blinking'), 'AUTO REC armed blink');
+    if (recButton?.getAttribute('data-led-color') !== 'red'
+      || recButton?.getAttribute('data-led-blink-period-ms') !== '500'
+      || recButton?.style.getPropertyValue('--led-blink-period') !== '500ms') {
+      throw new Error('AUTO REC blink did not use the documented red/500ms engineering approximation');
+    }
     await new Promise((resolve) => setTimeout(resolve, 200));
     gain.gain.setValueAtTime(0.6, context.currentTime);
     const deadline = Date.now() + 4_000;
     while (Date.now() < deadline && track.state !== 'RECORDING') await new Promise((resolve) => setTimeout(resolve, 10));
     if (track.state !== 'RECORDING' || track.autoRecArmed) throw new Error('Input trigger did not acknowledge recording');
+    await waitForButton(button => !button.classList.contains('led-blinking') && button.getAttribute('data-led-color') === 'red', 'steady recording light');
     await new Promise((resolve) => setTimeout(resolve, 250));
     await track.stopRecording();
     oscillator.stop();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveRc505FxSlot, resolveRc505TrackControls, type Rc505TrackControlInput } from '../../src/ui/rc505/Rc505ControlStateResolver';
+import { RC505_AUTO_REC_LED_BLINK_PERIOD_MS, resolveRc505FxSlot, resolveRc505TrackControls, type Rc505TrackControlInput } from '../../src/ui/rc505/Rc505ControlStateResolver';
 
 const base: Rc505TrackControlInput = { state: 'EMPTY', hasPhrase: false, selected: false, available: true, ready: true, layer: 'NORMAL', history: { canUndo: false, canRedo: false, busy: false } };
 describe('Classic hardware control semantics', () => {
@@ -10,6 +10,15 @@ describe('Classic hardware control semantics', () => {
   });
   it.each([['RECORDING', 'red'], ['PLAYING', 'green'], ['OVERDUBBING', 'yellow'], ['STOPPED', 'off'], ['EMPTY', 'off']])('resolves %s transport to %s', (state, color) => {
     expect(resolveRc505TrackControls({ ...base, state }).record.ledColor).toBe(color);
+  });
+  it('blinks only an explicitly AutoRec-armed standby button using a labeled visual approximation', () => {
+    expect(resolveRc505TrackControls({ ...base, state: 'REC_STANDBY', autoRecArmed: true }).record)
+      .toMatchObject({ ledOn: true, ledColor: 'red', ledBlinkPeriodMs: RC505_AUTO_REC_LED_BLINK_PERIOD_MS, blink: 'ENGINEERING_APPROXIMATION' });
+    expect(resolveRc505TrackControls({ ...base, state: 'REC_STANDBY', autoRecArmed: false }).record)
+      .toMatchObject({ ledOn: false, blink: 'UNVERIFIED' });
+    const finishing = resolveRc505TrackControls({ ...base, state: 'REC_FINISHING', autoRecArmed: true }).record;
+    expect(finishing).toMatchObject({ ledOn: false, blink: 'UNVERIFIED' });
+    expect(finishing).not.toHaveProperty('ledBlinkPeriodMs');
   });
   it('does not invent shared per-track FX application or alias missing Mark actions', () => {
     expect(resolveRc505TrackControls(base).fx).toMatchObject({ enabled: false, ledOn: false, hardwareRole: 'TRACK_FX_APPLY' });

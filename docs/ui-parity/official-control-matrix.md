@@ -28,7 +28,7 @@ Status: **PARTIAL**. This document records official-source evidence for Classic 
 | STOP held for at least 2 seconds clears a track | Owner’s Manual p. 5 | OFFICIAL_CONFIRMED | The manual explicitly gives a 2-second hold. |
 | REC/PLAY/DUB/STOP default LED colors | Owner’s Manual p. 5; Parameter Guide v1.3 p. 33 | OFFICIAL_CONFIRMED | Owner’s Manual describes REC red, PLAY green, DUB yellow, STOP unlit. Parameter Guide names the default DUB color AMBER and allows configurable colors. Preserve the source terminology discrepancy rather than silently equating it. |
 | Configurable track-button LED colors | Parameter Guide v1.3 p. 33 | OFFICIAL_CONFIRMED | Available colors are OFF, RED, GREEN, AMBER, BLUE, PURPLE, CYAN, WHITE. Default role colors include REC red, PLAY green, DUB amber, STOP off, and BLANK/no phrase off. |
-| AUTO REC standby indication | Parameter Guide v1.3 p. 4 | OFFICIAL_CONFIRMED | With AUTO REC on, pressing REC/PLAY makes the button blink rapidly; when performance input begins, it lights and recording starts. Standby blink color and exact blink cadence are not specified. |
+| AUTO REC standby indication | Parameter Guide v1.3 p. 4 | OFFICIAL_CONFIRMED | With AUTO REC on, pressing REC/PLAY makes the button blink rapidly; when performance input begins, it lights and recording starts. Standby blink color and exact blink cadence are not specified. Classic Browser renders red at a 500ms period as an explicitly labeled engineering approximation, and only while `autoRecArmed` is true. |
 | Delayed stop indication | Parameter Guide v1.3 p. 2 | OFFICIAL_CONFIRMED | In STOP MODE FADE/LOOP, REC/PLAY blinks until playback stops; another STOP stops immediately. Blink color/pattern details are unspecified. |
 | Quantized recording completion indication | Parameter Guide v1.3 p. 4 | UNKNOWN | QUANTIZE can align recording completion to a measure, but the cited parameter description does not specify a distinct REC/PLAY LED color or pattern while waiting for that completion. |
 | Undo/redo secondary control layer | Owner’s Manual pp. 5, 9 | OFFICIAL_CONFIRMED | When UNDO/REDO is lit: FX = MARK CLEAR, TRACK = MARK SET, STOP = MARK BACK, REC/PLAY = UNDO/REDO. In this mode REC/PLAY green means undo available, red means redo available, off means neither. |
@@ -47,6 +47,7 @@ Status: **PARTIAL**. This document records official-source evidence for Classic 
 | Right arrow advances through the seven Play variations and wraps after TRACK FX | INFERRED / user specification | Official p. 8 gives the seven numbered screens and says arrows switch variations, but does not define forward direction or wrap. |
 | FX EDIT long press threshold = 1500 ms | INFERRED / engineering choice | No official duration was found. |
 | STOP clear hold threshold = 2000 ms | OFFICIAL_CONFIRMED | Matches the Owner’s Manual p. 5 “2 seconds” instruction. |
+| AUTO REC armed LED styling = red, 500ms period | ENGINEERING_APPROXIMATION | Official Parameter Guide p. 4 confirms rapid blinking while armed, but does not specify color or cadence. This approximation is scoped to an explicit AutoRec-armed state, not generic quantized REC_STANDBY. |
 
 ## Official sources
 

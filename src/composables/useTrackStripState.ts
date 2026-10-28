@@ -42,6 +42,7 @@ const isLivePitchMode = (value: unknown): value is LivePitchMode => (
 export function useTrackStripState(trackId: number) {
   const engine = AudioEngine.getInstance();
   const trackAudio = engine.tracks[trackId - 1]!;
+  const isAutoRecArmed = () => (trackAudio as unknown as { autoRecArmed?: boolean }).autoRecArmed === true;
   const livePitchTrack = trackAudio as unknown as LivePitchTrack;
   const readAudioMode = () => typeof engine.getMode === 'function' ? engine.getMode() : 'browser';
   const getLivePitchStorageKey = () => {
@@ -77,6 +78,7 @@ export function useTrackStripState(trackId: number) {
   const classicControls = useRc505Controls();
 
   const trackState = ref(trackAudio.state);
+  const autoRecArmed = ref(isAutoRecArmed());
   const runtimeRevision = ref(0);
   const currentAudioMode = ref(readAudioMode());
   const playLevel = ref(trackAudio.track.playLevel);
@@ -341,6 +343,7 @@ export function useTrackStripState(trackId: number) {
 
   const syncTrackUi = () => {
     trackState.value = trackAudio.state;
+    autoRecArmed.value = isAutoRecArmed();
     currentAudioMode.value = readAudioMode();
     trackCapabilities.value = engine.getTrackCapabilities(trackId);
     const nativeRenderer = typeof engine.getNativeHqRenderer === 'function'
@@ -639,6 +642,7 @@ export function useTrackStripState(trackId: number) {
 
   return {
     trackState,
+    autoRecArmed,
     runtimeRevision,
     playLevel,
     trackAvailable,

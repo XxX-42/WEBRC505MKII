@@ -106,6 +106,8 @@
           size="lg"
           :led-color="resolvedControls.record.ledColor"
           :led-on="resolvedControls.record.ledOn"
+          :led-blink-period-ms="resolvedControls.record.ledBlinkPeriodMs ?? 0"
+          :data-led-blink-period-ms="resolvedControls.record.ledBlinkPeriodMs ?? 0"
           :disabled="!resolvedControls.record.enabled"
           :disabled-reason="resolvedControls.record.unavailableReason || recordActionDisabledReason"
           :aria-label="undoLayer ? `Track ${trackId} ${resolvedControls.record.hardwareRole}` : 'Record or play track'"
@@ -164,6 +166,7 @@ const trackDrawerOpen = computed(() => device.state.page === 'track' && device.c
 const trackController = useTrackStripState(props.trackId);
 const {
   trackState,
+  autoRecArmed,
   runtimeRevision,
   playLevel,
   trackTransportEnabled,
@@ -219,6 +222,7 @@ const resolvedControls = computed(() => {
   const history = audioEngine.getTrackHistoryStatus?.(props.trackId) ?? { canUndo: false, canRedo: false, busy: false };
   return resolveRc505TrackControls({
     state: trackState.value,
+    autoRecArmed: autoRecArmed.value,
     hasPhrase: audioEngine.getTrackHasPhrase?.(props.trackId) ?? null,
     selected: isCurrentTrack.value, available: trackAvailable.value,
     ready: trackTransportReady.value, recordReady: recordActionReady.value,

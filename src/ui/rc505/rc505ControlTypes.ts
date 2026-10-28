@@ -8,6 +8,8 @@ export interface Rc505ResolvedControlState {
   ledColor: Rc505LedColor;
   hardwareRole: string;
   unavailableReason: string;
-  /** Never invent a frequency where the hardware documentation gives none. */
-  blink?: 'UNVERIFIED';
+  /** Distinguishes observed semantics from an explicit visual approximation. */
+  blink?: 'UNVERIFIED' | 'ENGINEERING_APPROXIMATION';
+  /** Period used only when the state explicitly calls for a rendered blink. */
+  ledBlinkPeriodMs?: number;
 }
