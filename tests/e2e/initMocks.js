@@ -105,6 +105,25 @@
     }
   }
 
+  // TrackAudio adds an independent, silent two-channel meter branch to each
+  // track after the shared post-fader FX routing was introduced. Preserve the
+  // real WebAudio API surface used by that route in application E2E tests.
+  class MockChannelSplitterNode extends MockAudioNode {}
+
+  class MockAnalyserNode extends MockAudioNode {
+    constructor() {
+      super();
+      this.fftSize = 2048;
+      this.smoothingTimeConstant = 0.8;
+      this.channelCount = 2;
+      this.channelCountMode = 'max';
+    }
+
+    getFloatTimeDomainData(samples) {
+      samples.fill(0);
+    }
+  }
+
   class MockAudioBuffer {
     constructor(channels, length, sampleRate) {
       this.numberOfChannels = channels;
@@ -178,6 +197,14 @@
 
     createMediaStreamSource() {
       return new MockAudioNode();
+    }
+
+    createChannelSplitter() {
+      return new MockChannelSplitterNode();
+    }
+
+    createAnalyser() {
+      return new MockAnalyserNode();
     }
 
     createBuffer(channels, length, sampleRate) {

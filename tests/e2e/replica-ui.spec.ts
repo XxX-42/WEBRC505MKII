@@ -31,7 +31,7 @@ test('replica keeps the physical control inventory and warns below readable view
     await expect(face.locator('.track-strip[data-track-id="1"] .stop-disc')).toHaveCSS('opacity', '0.62');
     if (viewport.width === 1366) {
       const memoryCells = page.locator('.lcd-data-rows .lcd-data-row span');
-      expect(await memoryCells.allTextContents()).toEqual(['MEMORY NO.', '—', 'MEMORY DATA', 'PARTIAL', 'NUMBER SOURCE', 'UNAVAILABLE']);
+      expect(await memoryCells.allTextContents()).toEqual(['MEMORY NO.', '--', 'NAME', '—', 'MEMORY DATA', 'EDITED · PARTIAL']);
       expect(await memoryCells.evaluateAll((elements) => elements.every((element) => {
         return element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight;
       }))).toBe(true);
@@ -60,7 +60,17 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   await expect(screen).toBeVisible();
   await expect(screen).toContainText(/SYSTEM|MENU|SETTINGS/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
-  await expect(face.locator('[data-panel-control="screen-encoder-3"]')).toBeFocused();
+  // INPUT is unavailable in Browser mode, so keyboard focus skips its
+  // disabled encoder and lands on OUTPUT, the first operable menu item.
+  const inputEncoder = face.locator('[data-panel-control="screen-encoder-1"]');
+  const outputEncoder = face.locator('[data-panel-control="screen-encoder-2"]');
+  await expect(inputEncoder).toHaveAttribute('tabindex', '-1');
+  await expect(outputEncoder).toBeFocused();
+  await outputEncoder.press('Enter');
+  await expect(screen).toHaveAttribute('data-classic-screen', 'editor-output');
+  await expect(screen).toContainText('OUTPUT');
+  await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
+  await expect(outputEncoder).toBeFocused();
   await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await expect(menu).toBeFocused();
 
@@ -87,7 +97,8 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   await expect(rhythmEdit).toBeFocused();
 
   const loop = face.getByTestId('physical-loop-button');
-  await loop.click();
+  await loop.focus();
+  await loop.press('Enter');
   await expect(screen).toHaveAttribute('data-classic-screen', 'loop-root');
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   await expect(face.locator('[data-panel-control="screen-encoder-1"]')).toBeFocused();
@@ -96,8 +107,13 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
 
   const trackOne = face.locator('.track-strip[data-track-id="1"]');
   const perTrackFx = trackOne.locator('[data-track-control="fx"]');
-  await expect(perTrackFx).toBeDisabled();
+  await expect(perTrackFx).toBeEnabled();
   await expect(perTrackFx).toHaveAttribute('data-hardware-role', 'TRACK_FX_APPLY');
+  const fxWasApplied = await perTrackFx.getAttribute('data-led-on');
+  await perTrackFx.click();
+  await expect(perTrackFx).toHaveAttribute('data-led-on', fxWasApplied === 'true' ? 'false' : 'true');
+  await perTrackFx.click();
+  await expect(perTrackFx).toHaveAttribute('data-led-on', fxWasApplied ?? 'false');
   await openClassicFxEditor(page, 'track');
   await expect(screen).toHaveAttribute('data-classic-screen', 'editor-track-fx');
   await expect(screen).toContainText(/TRACK FX/i);
@@ -123,12 +139,12 @@ test('LCD Input FX exposes slot, type, active and named parameters across PAGE s
   await expect(activeField.getByTestId('lcd-field-active')).toHaveAttribute('aria-pressed', 'true');
 
   const gainField = await findLcdField(page, 'input-gainPercent');
-  await expect(screen.locator('.lcd-row.top')).toContainText('2/3');
+  await expect(screen.locator('.lcd-row.top')).toContainText('2/4');
   await setLcdRange(page, 'input-gainPercent', 73);
   await expect(gainField.getByTestId('lcd-field-input-gainPercent')).toHaveValue('73');
 
   await page.getByRole('button', { name: 'Next display page', exact: true }).click();
-  await expect(screen.locator('.lcd-row.top')).toContainText('3/3');
+  await expect(screen.locator('.lcd-row.top')).toContainText('3/4');
   await expect(screen.locator('.lcd-field-grid [data-field-key^="input-"]')).toHaveCount(2);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });
