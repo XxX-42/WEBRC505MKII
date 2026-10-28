@@ -52,9 +52,11 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
     const messages: any[] = [];
     let resolveReady!: (message: any) => void;
     let resolveComplete!: (message: any) => void;
+    let resolveReleased!: (message: any) => void;
     let rejectComplete!: (error: Error) => void;
     const ready = new Promise<any>((resolve) => { resolveReady = resolve; });
     const complete = new Promise<any>((resolve, reject) => { resolveComplete = resolve; rejectComplete = reject; });
+    const released = new Promise<any>((resolve) => { resolveReleased = resolve; });
     const handleMessage = (message: any) => {
       messages.push({ type: message.type, reason: message.reason, sessionId: message.sessionId,
         startFrame: message.startFrame, stopFrame: message.stopFrame,
@@ -69,13 +71,16 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
         };
         const returnedChannels = [new Float32Array(1024), new Float32Array(1024)];
         node.port.postMessage({
-          type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 1, chunkIndex: message.chunkIndex,
+          type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: message.sessionId,
+          inputGeneration: message.inputGeneration, chunkIndex: message.chunkIndex,
           channels: returnedChannels,
         }, returnedChannels.map((channel) => channel.buffer));
       } else if (message.type === 'INPUT_CAPTURE_READY') {
         resolveReady(message);
       } else if (message.type === 'RECORD_COMPLETE') {
         resolveComplete(message);
+      } else if (message.type === 'CAPTURE_POOL_RELEASED') {
+        resolveReleased(message);
       } else if (message.type === 'CAPTURE_ERROR' || message.type === 'RECORD_ABORTED') {
         rejectComplete(new Error(`capture aborted: ${JSON.stringify(messages)}`));
       }
@@ -129,6 +134,10 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
       complete,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`recording completion timed out: ${JSON.stringify(messages)}`)), 5_000)),
     ]);
+    const poolRelease = await Promise.race([
+      released,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('capture pool release timed out')), 5_000)),
+    ]);
     await context.close();
     const expectedOffset = startFrame - sourceStartFrame;
     const expectedStopOffset = stopFrame - sourceStartFrame;
@@ -138,7 +147,7 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
       ready: messages.find((message) => message.type === 'INPUT_CAPTURE_READY'),
       expectedLeft: Array.from(leftSignal.subarray(expectedOffset, expectedStopOffset)),
       expectedRight: Array.from(rightSignal.subarray(expectedOffset, expectedStopOffset)),
-      completed, chunks: messages,
+      completed, poolRelease, chunks: messages,
     };
   });
 
@@ -149,6 +158,7 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
     channelCount: 2,
     status: 'complete',
   });
+  expect(capture.poolRelease).toMatchObject({ trackIndex: 0, sessionId: 1, inputGeneration: 1 });
   const chunks = capture.chunks.filter((message) => message.type === 'RECORD_CHUNK');
   expect(capture.readinessHandlingDelayMs).toBe(50);
   expect(capture.ready).toMatchObject({
