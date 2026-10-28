@@ -71,13 +71,38 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     return { bpm: transport.bpm, state: transport.state, phaseRevision: transport.masterPhaseRevision };
   });
 
-  await page.evaluate(() => {
+  const midiPulseTimer = await page.evaluate(() => {
     const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
-    const timer = window.setInterval(() => fake.send([0xf8], performance.now()), 20);
-    Object.defineProperty(window, '__midiEvidencePulseTimer', { configurable: true, value: timer });
+    const start = performance.now();
+    const periodMs = 60_000 / 120 / 24;
+    let tick = 0;
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      while (start + tick * periodMs <= now) {
+        fake.send([0xf8], start + tick * periodMs);
+        tick += 1;
+      }
+    }, 2);
+    return timer;
   });
   await expect(frameMapping).toContainText('Audio frame mapping unavailable · insufficient-drift-evidence');
-  await page.evaluate(() => window.clearInterval((window as unknown as { __midiEvidencePulseTimer: number }).__midiEvidencePulseTimer));
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
+    fake.send([0xfa], performance.now());
+  });
+  await expect(startFrameMapping).toContainText('MIDI Start (FA): observed · frame estimate unavailable · insufficient-drift-evidence');
+
+  // Keep the MIDI clock active while the real AudioContext clock is sampled for >3 seconds.
+  // The early FA must remain unavailable; only a fresh FA can use the later fit.
+  await page.waitForTimeout(3_400);
+  await expect(startFrameMapping).toContainText('MIDI Start (FA): observed · frame estimate unavailable · insufficient-drift-evidence');
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
+    fake.send([0xfa], performance.now());
+  });
+  await expect(startFrameMapping).toContainText('MIDI Start (FA): read-only frame estimate');
+  await page.evaluate((timer) => window.clearInterval(timer), midiPulseTimer);
 
   await page.evaluate(() => {
     const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;

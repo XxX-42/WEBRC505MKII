@@ -121,7 +121,7 @@ describe('MidiClockInputController', () => {
     controller.disconnect();
   });
 
-  it('projects selected MIDI Start to an audio frame for diagnostics and clears it on context interruption', async () => {
+  it('keeps an early MIDI Start unavailable after later fit evidence and maps only a fresh Start', async () => {
     const input = new FakeInput('Clock');
     const context = new FakeAudioContextClock();
     const controller = new MidiClockInputController({
@@ -145,9 +145,28 @@ describe('MidiClockInputController', () => {
     input.send([0xfa], 1_240);
     expect(controller.getSnapshot()).toMatchObject({
       lastStartAtMs: 1_240,
-      startFrameMapping: { ok: true, frame: 491_520, reason: null, anchorCount: 2 },
+      startFrameMapping: { ok: false, frame: null, reason: 'insufficient-drift-evidence', anchorCount: 2, driftPpm: null },
       tickCount: 0,
       phaseState: 'waiting',
+    });
+
+    for (const timeMs of [2_000, 3_000, 4_000]) {
+      context.performanceTimeMs = timeMs;
+      context.audioTimeSeconds = 10 + (timeMs - 1_000) / 1_000;
+      input.send([0xf8], timeMs - 10);
+      const snapshot = controller.getSnapshot();
+      expect(snapshot.startFrameMapping).toMatchObject({
+        ok: false, frame: null, reason: 'insufficient-drift-evidence', driftPpm: null,
+      });
+    }
+    expect(controller.getSnapshot()).toMatchObject({
+      startFrameMapping: { ok: false, reason: 'insufficient-drift-evidence' },
+    });
+
+    input.send([0xfa], 4_000);
+    expect(controller.getSnapshot()).toMatchObject({
+      lastStartAtMs: 4_000,
+      startFrameMapping: { ok: true, frame: 624_000, reason: null, anchorCount: 5 },
     });
 
     context.changeState('suspended');

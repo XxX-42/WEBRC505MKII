@@ -21,8 +21,12 @@ describe('MidiAudioFrameMapper', () => {
   it('treats an identical repeated clock sample as an idempotent anchor', () => {
     const mapper = new MidiAudioFrameMapper();
     mapper.addAnchor(anchor(1_000, 10));
-    expect(mapper.addAnchor(anchor(1_000, 10))).toMatchObject({ ok: true, reason: null, anchorCount: 1 });
-    expect(mapper.map(1_025, 1_030)).toMatchObject({ ok: true, frame: 481_200, reason: null, anchorCount: 1 });
+    expect(mapper.addAnchor(anchor(1_000, 10))).toMatchObject({
+      ok: true, reason: 'insufficient-drift-evidence', driftPpm: null, anchorCount: 1,
+    });
+    expect(mapper.map(1_025, 1_030)).toMatchObject({
+      ok: false, frame: null, reason: 'insufficient-drift-evidence', driftPpm: null, anchorCount: 1,
+    });
   });
 
   it('estimates bounded clock drift from multiple anchors', () => {

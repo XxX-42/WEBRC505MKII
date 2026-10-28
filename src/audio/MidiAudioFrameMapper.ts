@@ -114,8 +114,7 @@ export class MidiAudioFrameMapper {
       // one task. Treat an identical repeat as a no-op instead of poisoning
       // an otherwise valid map with a zero-duration anchor.
       if (elapsedMs === 0 && audioElapsedMs === 0) {
-        this.failure = null;
-        return this.result(null, true, null);
+        return this.result(null, true, this.failure);
       }
       if (!(elapsedMs > 0) || !(audioElapsedMs > 0)) {
         this.failure = 'invalid-anchor';
