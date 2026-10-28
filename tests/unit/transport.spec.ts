@@ -82,6 +82,22 @@ describe('Transport events', () => {
     expect(transport.projectMutationRevision).toBeGreaterThan(afterStart);
   });
 
+  it('quantizes from a nonzero verified audio frame and fails closed when the phase is cleared', async () => {
+    vi.resetModules();
+    const { Transport } = await import('../../src/core/Transport');
+    const transport = Transport.getInstance();
+    transport.stop();
+    transport.setMasterTrack(2, 2, 48_000, 96_000);
+
+    expect(transport.getNextMeasureStartFrame(123_456)).toBeNull();
+    expect(transport.establishMasterPhaseOrigin(2, 23_040, 48_000)).toBe(true);
+    expect(transport.getNextMeasureStartFrame(123_456)).toBe(167_040);
+    expect(transport.getNextMeasureStartFrame(119_040)).toBe(119_040);
+
+    transport.clearMasterPhaseOrigin();
+    expect(transport.getNextMeasureStartFrame(123_456)).toBeNull();
+  });
+
   it.each([
     { numerator: 6, denominator: 8, expectedSeconds: 1.5 },
     { numerator: 3, denominator: 4, expectedSeconds: 1.5 },

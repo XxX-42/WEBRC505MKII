@@ -10,6 +10,9 @@ export class Transport {
     private masterTrackIdValue: number | null = null;
     private masterLoopLengthSamplesValue = 0;
     private measureLengthValue = 0;
+    /** Audio-clock frame at which the current Browser master loop began. */
+    private masterPhaseOriginFrameValue: number | null = null;
+    private masterMeasureFramesValue: number | null = null;
 
     /** Monotonic epoch for values captured by project-load transactions. */
     public get projectMutationRevision(): number { return this.projectMutationRevisionValue; }
@@ -25,6 +28,7 @@ export class Transport {
     public get bpm(): number { return this.bpmValue; }
     public set bpm(value: number) {
         if (this.bpmValue === value) return;
+        this.clearMasterPhaseOrigin();
         this.bpmValue = value;
         this.noteProjectMutation();
     }
@@ -32,6 +36,7 @@ export class Transport {
     public get timeSignature(): readonly [number, number] { return this.timeSignatureValue; }
     public set timeSignature(value: [number, number]) {
         if (this.timeSignatureValue[0] === value[0] && this.timeSignatureValue[1] === value[1]) return;
+        this.clearMasterPhaseOrigin();
         this.timeSignatureValue = Object.freeze([value[0], value[1]]);
         this.noteProjectMutation();
         this.emit('time-signature-change');
@@ -55,6 +60,7 @@ export class Transport {
     public get masterTrackId(): number | null { return this.masterTrackIdValue; }
     public set masterTrackId(value: number | null) {
         if (this.masterTrackIdValue === value) return;
+        this.clearMasterPhaseOrigin();
         this.masterTrackIdValue = value;
         this.noteProjectMutation();
     }
@@ -62,6 +68,7 @@ export class Transport {
     public get masterLoopLengthSamples(): number { return this.masterLoopLengthSamplesValue; }
     public set masterLoopLengthSamples(value: number) {
         if (this.masterLoopLengthSamplesValue === value) return;
+        this.clearMasterPhaseOrigin();
         this.masterLoopLengthSamplesValue = value;
         this.noteProjectMutation();
     }
@@ -69,8 +76,39 @@ export class Transport {
     public get measureLength(): number { return this.measureLengthValue; }
     public set measureLength(value: number) {
         if (this.measureLengthValue === value) return;
+        this.clearMasterPhaseOrigin();
         this.measureLengthValue = value;
         this.noteProjectMutation();
+    }
+
+    /**
+     * Publish a phase only when a caller can tie it to an actual audio source
+     * start. Wall-clock Transport events are deliberately not phase evidence.
+     */
+    public establishMasterPhaseOrigin(trackId: number, frame: number, measureFrames: number): boolean {
+        if (trackId !== this.masterTrackId || !Number.isSafeInteger(frame) || frame < 0
+            || !Number.isSafeInteger(measureFrames) || measureFrames <= 0 || this.masterLoopLengthSamples <= 0) return false;
+        this.masterPhaseOriginFrameValue = frame;
+        this.masterMeasureFramesValue = measureFrames;
+        return true;
+    }
+
+    public clearMasterPhaseOrigin(): void {
+        this.masterPhaseOriginFrameValue = null;
+        this.masterMeasureFramesValue = null;
+    }
+
+    /** Return the next measure boundary on the established audio-frame timeline. */
+    public getNextMeasureStartFrame(currentFrame: number): number | null {
+        const origin = this.masterPhaseOriginFrameValue;
+        const measureFrames = this.masterMeasureFramesValue;
+        if (origin === null || measureFrames === null || !Number.isSafeInteger(currentFrame) || currentFrame < 0
+            || !Number.isSafeInteger(origin) || !Number.isSafeInteger(measureFrames) || measureFrames <= 0) return null;
+        if (currentFrame <= origin) return origin;
+        const elapsed = currentFrame - origin;
+        const measures = Math.ceil(elapsed / measureFrames);
+        const boundary = origin + measures * measureFrames;
+        return Number.isSafeInteger(boundary) ? boundary : null;
     }
 
     private constructor() { }
@@ -121,6 +159,7 @@ export class Transport {
     public stop() {
         if (this.state === TransportState.STOPPED) return;
         this.state = TransportState.STOPPED;
+        this.clearMasterPhaseOrigin();
         if (this.clockInterval) {
             clearInterval(this.clockInterval);
             this.clockInterval = null;
@@ -257,6 +296,7 @@ export class Transport {
         this.masterTrackId = null;
         this.masterLoopLengthSamples = 0;
         this.measureLength = 0;
+        this.clearMasterPhaseOrigin();
         console.log('Master track reset');
     }
 

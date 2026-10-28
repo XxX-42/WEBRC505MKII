@@ -132,6 +132,30 @@ describe('TrackAudio transport sync helpers', () => {
     expect(Transport.state).toBe(TransportState.PLAYING);
   });
 
+  it('cancels a future frame-quantized capture and keeps the previous loop', async () => {
+    const { engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = createMockAudioContext().createBuffer(1, 256, 48_000);
+    (trackAudio as any).audioBuffer = previous;
+    trackAudio.state = TrackState.RECORDING;
+    (trackAudio as any).isRecording = true;
+    const session = {
+      node: { port: { postMessage: vi.fn(), onmessage: null }, disconnect: vi.fn() },
+      trackIndex: 0, sessionId: 7, inputGeneration: 3, startFrame: 900,
+    };
+    (trackAudio as any).recordingCaptureSession = session;
+    engine.getInputCaptureRequestFrame = () => 899;
+    engine.abortInputCaptureSession = vi.fn();
+    engine.releaseInputCaptureSession = vi.fn();
+
+    trackAudio.triggerStop();
+
+    expect(engine.abortInputCaptureSession).toHaveBeenCalledWith(session);
+    expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('cancelled before its audio start frame');
+  });
+
   it('plays one-shot PCM once, stops at source completion and retriggers from the directional head', async () => {
     const { context, TrackState, trackAudio } = await createTrackAudioHarness();
     const nodes = installPlaybackNodeSpies(context);

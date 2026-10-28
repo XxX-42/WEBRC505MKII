@@ -17,6 +17,8 @@ export interface BrowserBounceSourceMix {
 
 export interface IAudioEngine {
     getRecordPlaySettings?(): RecordPlaySettings;
+    /** True only when the Browser's internal rhythm source is currently running. */
+    isBrowserRhythmRunning?(): boolean;
     context: AudioContext;
     trackMixNode: GainNode;
     roundTripLatency: number;
