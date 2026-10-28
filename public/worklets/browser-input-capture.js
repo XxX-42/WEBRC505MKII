@@ -166,6 +166,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       },
       errorMessage: {
         type: 'CAPTURE_ERROR', trackIndex, sessionId: 0, inputGeneration: 0,
+        startRejected: false,
         reason: '', requestedStartFrame: 0, stopFrame: 0,
         oldestAvailableFrame: 0, latestAvailableFrame: 0,
         startReceivedFrame: 0, requestAgeAtStartFrames: 0,
@@ -176,6 +177,9 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       abortedMessage: {
         type: 'RECORD_ABORTED', trackIndex, sessionId: 0, inputGeneration: 0,
         chunksSent: 0,
+      },
+      poolReleasedMessage: {
+        type: 'CAPTURE_POOL_RELEASED', trackIndex, sessionId: 0, inputGeneration: 0,
       },
     };
   }
@@ -363,7 +367,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     // eviction and makes an expired request immediately diagnosable.
     const startReceivedFrame = this.preRollEndFrame;
     if (slot.state !== 'idle') {
-      this.postError(slot, message.sessionId, 'track-capture-busy', message.startFrame, 0, message.inputGeneration, startReceivedFrame);
+      this.postError(slot, message.sessionId, 'track-capture-busy', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     slot.startReceivedFrame = startReceivedFrame;
@@ -377,21 +381,21 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       || (bounceSourceMask & (1 << slot.trackIndex)) !== 0
       || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration
       || !Number.isSafeInteger(message.captureReadyEpoch)) {
-      this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     if (message.captureReadyEpoch !== this.captureReadyEpoch) {
-      this.postError(slot, message.sessionId, 'capture-readiness-epoch-changed', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'capture-readiness-epoch-changed', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     if (message.autoRecThreshold === undefined
       && message.startFrame < this.preRollEndFrame
       && (!this.captureReadySent || this.preRollValidFrames < this.readyPreRollFrames)) {
-      this.postError(slot, message.sessionId, 'capture-preroll-not-ready', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'capture-preroll-not-ready', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     if (!this.inputReady) {
-      this.postError(slot, message.sessionId, 'input-not-ready', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'input-not-ready', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     // A media input can remain connected while the AudioWorklet timeline is
@@ -400,18 +404,18 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     // beyond the current callback boundary needs no pre-roll and can remain
     // scheduled; any earlier start requires a fresh, fully warmed range.
     if (!this.poolAvailable(slot)) {
-      this.postError(slot, message.sessionId, 'chunk-pool-not-reclaimed', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'chunk-pool-not-reclaimed', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
     const requestedBytes = this.positiveInteger(message.maxRecordingBytes, this.maxRecordingBytes);
     if (requestedBytes > this.maxRecordingBytes) {
-      this.postError(slot, message.sessionId, 'recording-budget-exceeds-cap', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'recording-budget-exceeds-cap', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
 
     const oldestAvailableFrame = this.preRollEndFrame - this.preRollValidFrames;
     if (message.autoRecThreshold === undefined && message.startFrame < oldestAvailableFrame) {
-      this.postError(slot, message.sessionId, 'request-frame-outside-preroll', message.startFrame, 0, message.inputGeneration);
+      this.postError(slot, message.sessionId, 'request-frame-outside-preroll', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
     }
 
@@ -443,10 +447,11 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.activeChunkOffset = 0;
   }
 
-  postError(slot, sessionId, reason, requestedStartFrame = 0, stopFrame = 0, inputGeneration = slot.inputGeneration, startReceivedFrame = slot.startReceivedFrame) {
+  postError(slot, sessionId, reason, requestedStartFrame = 0, stopFrame = 0, inputGeneration = slot.inputGeneration, startReceivedFrame = slot.startReceivedFrame, startRejected = false) {
     const message = slot.errorMessage;
     message.sessionId = sessionId;
     message.inputGeneration = Number.isSafeInteger(inputGeneration) ? inputGeneration : this.inputGeneration;
+    message.startRejected = startRejected;
     message.reason = reason;
     message.requestedStartFrame = Number.isSafeInteger(requestedStartFrame) ? requestedStartFrame : 0;
     message.stopFrame = Number.isSafeInteger(stopFrame) ? stopFrame : 0;
@@ -640,7 +645,10 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       pair[1] = slot.monoRightBuffers[index];
       slot.chunkBuffers[index] = pair;
     }
-    if (slot.state === 'aborting' && this.poolAvailable(slot)) slot.state = 'idle';
+    if (slot.state === 'aborting' && this.poolAvailable(slot)) {
+      slot.state = 'idle';
+      this.postCapturePoolReleased(slot);
+    }
   }
 
   poolAvailable(slot) {
@@ -696,6 +704,14 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.chunksSent = slot.chunksSent;
     this.port.postMessage(message);
     slot.state = this.poolAvailable(slot) ? 'idle' : 'aborting';
+    if (slot.state === 'idle') this.postCapturePoolReleased(slot);
+  }
+
+  postCapturePoolReleased(slot) {
+    const message = slot.poolReleasedMessage;
+    message.sessionId = slot.sessionId;
+    message.inputGeneration = slot.inputGeneration;
+    this.port.postMessage(message);
   }
 
   completeCapture(slot, requestedFrames) {

@@ -431,7 +431,7 @@ describe('Browser shared input capture worklet', () => {
       startFrame: 0, maxRecordingBytes: 256,
     });
     expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({
-      reason: 'request-frame-outside-preroll',
+      reason: 'request-frame-outside-preroll', startRejected: true,
       requestedStartFrame: 0,
       startReceivedFrame: 8,
       requestAgeAtStartFrames: 8,
@@ -454,7 +454,7 @@ describe('Browser shared input capture worklet', () => {
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 30, inputGeneration: 1,
       startFrame: 0, maxRecordingBytes: 256,
     });
-    expect(capture.messages('CAPTURE_ERROR').at(-1)?.reason).toBe('request-frame-outside-preroll');
+    expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({ reason: 'request-frame-outside-preroll', startRejected: true });
 
     // The refusal must leave the slot reusable. A caller that starts a new
     // take at a frame still present in the ring receives the exact PCM.
@@ -484,7 +484,7 @@ describe('Browser shared input capture worklet', () => {
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 5, inputGeneration: 1,
       startFrame: 2, maxRecordingBytes: 256,
     });
-    expect(capture.messages('CAPTURE_ERROR').at(-1)?.reason).toBe('chunk-pool-not-reclaimed');
+    expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({ reason: 'chunk-pool-not-reclaimed', startRejected: true });
 
     const chunk = capture.messages('RECORD_CHUNK')[0];
     capture.processor.port.receive({
@@ -502,6 +502,36 @@ describe('Browser shared input capture worklet', () => {
       channels: [new Float32Array(2)],
     });
     expect(capture.processor.slots[0].state).toBe('pending');
+  });
+
+  it('confirms an aborted session only after its exact pool has been reclaimed and the slot is idle', () => {
+    const capture = createCapture({ chunkSize: 2, chunkPoolSize: 1, preRollFrames: 4 });
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 44, inputGeneration: 1,
+      startFrame: 0, maxRecordingBytes: 256,
+    });
+    capture.process([1, 2]);
+    const chunk = capture.messages('RECORD_CHUNK')[0];
+    capture.processor.port.receive({ type: 'ABORT_CAPTURE', trackIndex: 0, sessionId: 44, inputGeneration: 1 });
+    expect(capture.processor.slots[0].state).toBe('aborting');
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toHaveLength(0);
+
+    // A stale recycle from another session cannot release this pool lease.
+    capture.processor.port.receive({
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 43, chunkIndex: chunk.chunkIndex,
+      channels: [new Float32Array(2), new Float32Array(2)],
+    });
+    expect(capture.processor.slots[0].state).toBe('aborting');
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toHaveLength(0);
+
+    capture.processor.port.receive({
+      type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 44, chunkIndex: chunk.chunkIndex,
+      channels: [new Float32Array(2), new Float32Array(2)],
+    });
+    expect(capture.processor.slots[0].state).toBe('idle');
+    expect(capture.messages('CAPTURE_POOL_RELEASED')).toEqual([{
+      type: 'CAPTURE_POOL_RELEASED', trackIndex: 0, sessionId: 44, inputGeneration: 1,
+    }]);
   });
 
   it('applies an explicit per-session frame budget to a bounded startup-backfill capture', () => {

@@ -33,6 +33,8 @@ export interface IAudioEngine {
     getInputCaptureRequestFrame?(): number | null;
     /** Wait for the shared Browser capture ring to finish warming after a timeline gap. */
     waitForInputCaptureReady?(): Promise<void>;
+    /** Wait for an aborted shared-capture slot to return its exact worklet pool before reuse. */
+    waitForInputCaptureSlot?(trackIndex: number): Promise<void>;
     getBrowserAutoRecSettings?(): Readonly<BrowserAutoRecSettings>;
     getBrowserBounceSettings?(): Readonly<BrowserBounceSettings>;
     getBrowserBounceSourceMask?(destinationTrackIndex: number): number;

@@ -233,6 +233,109 @@ test('Browser engine records connected stereo input through its shared tap', asy
   expect(recorded.diagnostic).toBeNull();
 });
 
+test('Clear followed by immediate REC waits for the old shared capture pool release', async ({ page }) => {
+  await page.goto('/?audio=browser');
+  await startBrowserAudio(page);
+
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const audio = AudioEngine.getInstance();
+    const browser = (audio as any).browser;
+    const context = browser.context as AudioContext;
+    const track = audio.tracks[0] as any;
+    const source = new OscillatorNode(context, { frequency: 440 });
+    const gain = context.createGain(); gain.gain.value = 0.2;
+    source.connect(gain).connect(browser.inputFxChain.input);
+    source.start();
+
+    const waitFor = async (predicate: () => boolean, label: string, timeoutMs = 8_000) => {
+      const deadline = performance.now() + timeoutMs;
+      while (performance.now() < deadline) {
+        if (predicate()) return;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      throw new Error(`Timed out waiting for ${label}; state=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
+    };
+
+    await track.startRecording();
+    const oldSession = track.recordingCaptureSession;
+    if (!oldSession) throw new Error('The old take did not reserve the production shared capture worklet');
+    const port = oldSession.node.port as any;
+    const originalHandler = port.onmessage;
+    const heldChunks: MessageEvent[] = [];
+    port.onmessage = (event: MessageEvent) => {
+      if (event.data?.type === 'RECORD_CHUNK' && event.data.sessionId === oldSession.sessionId) {
+        heldChunks.push(event);
+        return;
+      }
+      originalHandler?.call(port, event);
+    };
+    await waitFor(() => heldChunks.length > 0, 'a real shared-capture chunk in flight to the main thread');
+
+    track.clear();
+    const immediateStart = track.startRecording();
+    await waitFor(() => track.recordingStarting === true, 'the immediate REC request to enter its pool-release wait');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (track.recordingCaptureSession !== null || heldChunks.length === 0) {
+      port.onmessage = originalHandler;
+      throw new Error(`REC bypassed the pool-release barrier: held=${heldChunks.length}, session=${track.recordingCaptureSession?.sessionId ?? 'none'}`);
+    }
+
+    // Return the exact old session buffers. The worklet acknowledges pool
+    // availability only after this transfer, then the new REC may reserve.
+    for (const held of heldChunks) originalHandler?.call(port, held);
+    await immediateStart;
+    port.onmessage = originalHandler;
+    const newSession = track.recordingCaptureSession;
+    if (!newSession || newSession.sessionId === oldSession.sessionId) {
+      throw new Error('The immediate REC did not receive a fresh shared session after old-pool reclamation');
+    }
+    await waitFor(() => track.recordingCaptureStartAcknowledged === true, 'the new worklet start acknowledgement');
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    await track.stopRecording();
+    await waitFor(() => track.recordingCaptureSession === null && !track.isFinalizingRecording && !!track.audioBuffer,
+      'new shared take finalization');
+    const frames = track.audioBuffer?.length ?? 0;
+
+    // A later user Stop while waiting on another retired pool must invalidate
+    // that pending REC. Delivering the old chunk may release the pool, but it
+    // must not revive the canceled start.
+    track.clear();
+    await track.startRecording();
+    const canceledSession = track.recordingCaptureSession;
+    if (!canceledSession) throw new Error('The cancellation fixture did not reserve a shared session');
+    const cancelPort = canceledSession.node.port as any;
+    const cancelHandler = cancelPort.onmessage;
+    const cancelChunks: MessageEvent[] = [];
+    cancelPort.onmessage = (event: MessageEvent) => {
+      if (event.data?.type === 'RECORD_CHUNK' && event.data.sessionId === canceledSession.sessionId) {
+        cancelChunks.push(event);
+        return;
+      }
+      cancelHandler?.call(cancelPort, event);
+    };
+    await waitFor(() => cancelChunks.length > 0, 'a second shared chunk held across user cancellation');
+    track.clear();
+    const canceledStart = track.startRecording();
+    await waitFor(() => track.recordingStarting === true, 'the second REC pool-release wait');
+    track.triggerStop();
+    for (const held of cancelChunks) cancelHandler?.call(cancelPort, held);
+    await canceledStart;
+    cancelPort.onmessage = cancelHandler;
+    await waitFor(() => track.recordingCaptureSession === null && !track.recordingStarting,
+      'canceled REC to remain canceled after pool reclamation');
+    const canceledState = { recording: track.isRecording, state: track.state, hasBuffer: !!track.audioBuffer };
+    source.stop();
+    return { oldSessionId: oldSession.sessionId, newSessionId: newSession.sessionId,
+      heldChunkCount: heldChunks.length, frames, canceledState };
+  });
+
+  expect(result.newSessionId).not.toBe(result.oldSessionId);
+  expect(result.heldChunkCount).toBeGreaterThan(0);
+  expect(result.frames).toBeGreaterThan(2_000);
+  expect(result.canceledState).toEqual({ recording: false, state: 'EMPTY', hasBuffer: false });
+});
+
 test('Browser Bounce records a selected source track into the destination loop', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);

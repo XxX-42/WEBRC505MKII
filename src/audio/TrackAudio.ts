@@ -245,6 +245,7 @@ type RecordingWorkletMessage =
         type: 'CAPTURE_ERROR' | 'RECORD_ABORTED';
         sessionId: number;
         inputGeneration: number;
+        startRejected?: boolean;
         reason?: string;
         chunksSent?: number;
         requestedStartFrame?: number;
@@ -2503,6 +2504,23 @@ export class TrackAudio {
             }
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+            if (this.engine.waitForInputCaptureSlot) {
+                try {
+                    await this.engine.waitForInputCaptureSlot(this.trackIndex);
+                } catch (error) {
+                    if (generation !== this.recordingStartGeneration) return;
+                    this.recordingDiagnostic = `Shared input capture could not reuse its bounded pool: ${error instanceof Error ? error.message : String(error)}. Existing loops are preserved.`;
+                    this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+                    this.syncTransportState();
+                    return;
+                }
+                if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+                // Immediate starts have no requested boundary to preserve.
+                // Sample only after the old session's pool has been returned.
+                if (quantizedStartFrame === undefined) {
+                    requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+                }
+            }
             if (quantizedStartFrame !== undefined) {
                 if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
                     this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
@@ -2809,7 +2827,7 @@ export class TrackAudio {
                         + ` rate=${message.sampleRate ?? 'unknown'} Hz.`
                     : '';
                 this.recordingDiagnostic = `Shared input capture failed: ${message.reason || 'unknown error'}.${timing} The previous track audio was kept; recording can be retried.`;
-                this.abortSharedRecording(captureSession, true);
+                this.abortSharedRecording(captureSession, message.startRejected !== true);
                 if (retryBeforeStartAck && this.engine.waitForInputCaptureReady) {
                     const retryGeneration = this.recordingStartGeneration;
                     const retrySuppressionGeneration = this.recordingStartRetrySuppressionGeneration;

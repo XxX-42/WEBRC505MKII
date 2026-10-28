@@ -223,7 +223,14 @@ export class BrowserAudioEngine implements IAudioEngine {
     private readonly inputCaptureSessions = new Map<number, {
         readonly session: InputCaptureSession;
         readonly listener: (message: unknown) => void;
+        retiring: boolean;
     }>();
+    private readonly inputCaptureSlotWaiters = new Map<number, Set<{
+        readonly inputGeneration: number;
+        resolve: () => void;
+        reject: (error: Error) => void;
+        timeout: ReturnType<typeof setTimeout>;
+    }>>();
     private readonly inputCaptureReadyWaiters = new Map<number, { resolve: () => void; reject: (error: Error) => void }>();
     private readonly inputCaptureRewarmWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
     private readonly trackFxApplyWaiters = new Map<string, {
@@ -3788,6 +3795,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             return null;
         }
         const generation = ++this.inputCaptureGeneration;
+        this.rejectInputCaptureSlotWaiters(new Error('The input generation changed while waiting to reuse the shared capture pool.'));
         this.inputCaptureReady = false;
         this.inputCaptureReadyGeneration = 0;
         this.inputCaptureReadyEpoch = null;
@@ -3915,11 +3923,42 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
         const trackIndex = message.trackIndex;
         const record = Number.isInteger(trackIndex) ? this.inputCaptureSessions.get(trackIndex) : undefined;
+        if (message.type === 'CAPTURE_POOL_RELEASED') {
+            if (record?.retiring && record.session.sessionId === message.sessionId
+                && record.session.inputGeneration === message.inputGeneration) {
+                this.inputCaptureSessions.delete(trackIndex);
+                const waiters = this.inputCaptureSlotWaiters.get(trackIndex);
+                if (waiters) {
+                    this.inputCaptureSlotWaiters.delete(trackIndex);
+                    for (const waiter of waiters) {
+                        clearTimeout(waiter.timeout);
+                        if (waiter.inputGeneration === message.inputGeneration
+                            && waiter.inputGeneration === this.inputCaptureGeneration) waiter.resolve();
+                        else waiter.reject(new Error('The input device changed while the shared capture pool was being reclaimed.'));
+                    }
+                }
+            }
+            return;
+        }
         if (!record || record.session.sessionId !== message.sessionId
             || record.session.inputGeneration !== message.inputGeneration) {
             if (message.type === 'RECORD_CHUNK') this.recycleUnclaimedInputCaptureChunk(message);
             return;
         }
+        // A rejected START_CAPTURE never acquired the worklet slot, so its
+        // CAPTURE_ERROR is terminal for this request but has no pool lease to
+        // retire or acknowledge.
+        if (message.type === 'CAPTURE_ERROR' && message.startRejected === true) {
+            this.recordInputCaptureError(message);
+            record.listener(message);
+            this.emitStatus();
+            return;
+        }
+        if (record.retiring) {
+            if (message.type === 'RECORD_CHUNK') this.recycleUnclaimedInputCaptureChunk(message);
+            return;
+        }
+        if (message.type === 'CAPTURE_ERROR' || message.type === 'RECORD_ABORTED') record.retiring = true;
         if (message.type === 'CAPTURE_ERROR') this.recordInputCaptureError(message);
         record.listener(message);
         if (message.type === 'CAPTURE_ERROR') this.emitStatus();
@@ -4330,7 +4369,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             if (autoRecThreshold !== undefined && message.type === 'RECORD_CONFIGURED'
                 && Number.isSafeInteger(message.requestedStartFrame) && message.requestedStartFrame >= startFrame) effectiveStartFrame = message.requestedStartFrame;
             listener(message);
-        } });
+        }, retiring: false });
         try {
             node.port.postMessage({
                 type: 'START_CAPTURE', trackIndex, sessionId: session.sessionId,
@@ -4367,6 +4406,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     public abortInputCaptureSession(session: InputCaptureSession): void {
         const record = this.inputCaptureSessions.get(session.trackIndex);
         if (!record || record.session.sessionId !== session.sessionId || record.session.node !== session.node) return;
+        record.retiring = true;
         try {
             session.node.port.postMessage({
                 type: 'ABORT_CAPTURE', trackIndex: session.trackIndex,
@@ -4377,9 +4417,36 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     public releaseInputCaptureSession(session: InputCaptureSession): void {
         const record = this.inputCaptureSessions.get(session.trackIndex);
-        if (record?.session.sessionId === session.sessionId && record.session.node === session.node) {
+        if (record?.session.sessionId === session.sessionId && record.session.node === session.node && !record.retiring) {
             this.inputCaptureSessions.delete(session.trackIndex);
         }
+    }
+
+    public waitForInputCaptureSlot(trackIndex: number): Promise<void> {
+        const record = this.inputCaptureSessions.get(trackIndex);
+        if (!record?.retiring) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            let waiters = this.inputCaptureSlotWaiters.get(trackIndex);
+            if (!waiters) this.inputCaptureSlotWaiters.set(trackIndex, waiters = new Set());
+            const waiter = {
+                inputGeneration: this.inputCaptureGeneration,
+                resolve: () => { waiters?.delete(waiter); resolve(); },
+                reject: (error: Error) => { waiters?.delete(waiter); reject(error); },
+                timeout: setTimeout(() => {
+                    waiters?.delete(waiter);
+                    if (waiters?.size === 0) this.inputCaptureSlotWaiters.delete(trackIndex);
+                    reject(new Error('The shared input-capture pool was not reclaimed before the bounded slot wait expired.'));
+                }, 2_000),
+            };
+            waiters.add(waiter);
+        });
+    }
+
+    private rejectInputCaptureSlotWaiters(error: Error): void {
+        for (const waiters of this.inputCaptureSlotWaiters.values()) {
+            for (const waiter of waiters) { clearTimeout(waiter.timeout); waiter.reject(error); }
+        }
+        this.inputCaptureSlotWaiters.clear();
     }
 
     private disposeInputCaptureTap(reason: string): void {
@@ -4399,6 +4466,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.recordInputCaptureError(message);
             record.listener(message);
         }
+        this.rejectInputCaptureSlotWaiters(new Error(reason));
         this.inputCaptureSessions.clear();
         const node = this.inputCaptureNode;
         if (node) {
