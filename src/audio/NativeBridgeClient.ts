@@ -222,8 +222,6 @@ export interface NativeStatus {
   lastError: string;
   loopProgress: number;
   nativeLooperTrackCount?: number;
-  /** Explicit host capability; absent on older Native binaries. */
-  projectArchiveV2Supported?: boolean;
   nativeLooperMultiTrackImplemented?: boolean;
   nativeLooperTracksStereo?: boolean;
   nativeLooperMaxRecordSeconds?: number;
