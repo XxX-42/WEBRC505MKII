@@ -374,7 +374,9 @@ export class TrackAudio {
     private livePolyTempoFollowPending = false;
     private livePolyTempoFollowPendingPromise: Promise<unknown> | null = null;
     private livePolyTempoFollowWaitCancel: (() => void) | null = null;
+    /** Predicted source cursor at the scheduled ramp start; an interrupted 400 ms ramp may roll back within that window. */
     private livePolyTempoFollowStableOffset: number | null = null;
+    private livePolyTempoFollowRampStartTime: number | null = null;
     private livePolyTempoFollowInterrupted = false;
     private livePolyPlaybackBaseRate = 1;
     private livePolyPlaybackRateAnchorTime = 0;
@@ -1599,10 +1601,12 @@ export class TrackAudio {
         const sourceRevision = this.projectPcmRevision;
         const playbackRevision = this.playbackRevision;
         const node = this.livePolyPitchNode!;
-        const stableOffset = this.getCurrentPlaybackPosition();
+        const rampStartTime = this.engine.context.currentTime + node.latencySeconds;
+        const stableOffset = this.getLivePolyPlaybackPositionAtAudioTime(rampStartTime);
         const generation = ++this.livePolyTempoFollowGeneration;
         this.livePolyTempoFollowPending = true;
         this.livePolyTempoFollowStableOffset = stableOffset;
+        this.livePolyTempoFollowRampStartTime = rampStartTime;
         const isCurrent = (): boolean => !this.disposed && this.audioBuffer === sourceBuffer
             && this.projectPcmRevision === sourceRevision && this.playbackRevision === playbackRevision
             && this.state === TrackState.PLAYING && this.livePolyPitchEnabledInternal
@@ -1644,6 +1648,7 @@ export class TrackAudio {
                 this.livePolyTempoFollowPending = false;
                 this.livePolyTempoFollowPendingPromise = null;
                 this.livePolyTempoFollowStableOffset = null;
+                this.livePolyTempoFollowRampStartTime = null;
             }
         }
         return this.livePolyTempoFollow!;
@@ -1678,11 +1683,21 @@ export class TrackAudio {
             && this.livePolyPitchNode === node && this.livePolyPitchActiveInternal
             && this.engine.context.state === 'running';
         try {
-            await superseded?.catch(() => undefined);
+            let supersededRampWasFullyScheduled = true;
+            if (superseded) {
+                try { await superseded; }
+                catch { supersededRampWasFullyScheduled = false; }
+            }
             if (this.livePolyTempoFollowGeneration !== generation || !this.livePolyTempoFollowPending) {
                 throw new Error('Track state changed while clearing pending tempo follow.');
             }
+            if (superseded && !supersededRampWasFullyScheduled) {
+                throw new Error('An interrupted LIVE_POLY ramp was only partially scheduled; playback is stopped because its exact reader phase is uncertain. Clear tempo follow again after stopping the track.');
+            }
             if (node && this.livePolyPitchActiveInternal && this.state === TrackState.PLAYING) {
+                const rampStartTime = this.engine.context.currentTime + node.latencySeconds;
+                this.livePolyTempoFollowRampStartTime = rampStartTime;
+                this.livePolyTempoFollowStableOffset = this.getLivePolyPlaybackPositionAtAudioTime(rampStartTime);
                 const operation = node.setPlaybackRate(1, {
                     durationSeconds: 0.4,
                     isCurrent,
@@ -1710,17 +1725,21 @@ export class TrackAudio {
                 this.livePolyTempoFollowPending = false;
                 this.livePolyTempoFollowPendingPromise = null;
                 this.livePolyTempoFollowStableOffset = null;
+                this.livePolyTempoFollowRampStartTime = null;
             }
         }
     }
 
     private resetLivePolyTempoFollowForModeChange(): void {
-        if (this.livePolyTempoFollowPending && this.livePolyTempoFollowStableOffset !== null) {
-            this.startOffset = this.livePolyTempoFollowStableOffset;
+        const interruptionOffset = this.getLivePolyTempoFollowInterruptionOffset();
+        if (this.livePolyTempoFollowPending && interruptionOffset !== null) {
+            this.startOffset = interruptionOffset;
             this.livePolyTempoFollowInterrupted = true;
-            this.livePolyPitchFallbackReasonValue = 'LIVE_POLY tempo follow was interrupted by a mode change; source phase continuity across the uncertain ramp is not guaranteed.';
+            this.livePolyPitchFallbackReasonValue = 'LIVE_POLY tempo follow was interrupted by a mode change; playback resumes from the ramp-start checkpoint (up to 400 ms behind the interrupted ramp), and exact phase continuity is not guaranteed.';
         }
         this.invalidateLivePolyTempoFollowOperation();
+        this.livePolyTempoFollowStableOffset = null;
+        this.livePolyTempoFollowRampStartTime = null;
         if (this.livePolyTempoFollowValue) {
             this.livePolyTempoFollowValue = null;
             this.livePolyPitchPlaybackRate = 1;
@@ -1733,6 +1752,24 @@ export class TrackAudio {
         this.livePolyTempoFollowWaitCancel = null;
         this.livePolyTempoFollowPending = false;
         this.livePolyTempoFollowPendingPromise = null;
+    }
+
+    private getLivePolyTempoFollowInterruptionOffset(): number | null {
+        if (!this.livePolyTempoFollowPending || this.livePolyTempoFollowStableOffset === null) return null;
+        const rampStartTime = this.livePolyTempoFollowRampStartTime;
+        if (rampStartTime !== null && this.engine.context.currentTime < rampStartTime) {
+            // Before the scheduled rate ramp begins, the existing source timeline is still authoritative.
+            return this.getCurrentPlaybackPosition();
+        }
+        return this.livePolyTempoFollowStableOffset;
+    }
+
+    private getLivePolyPlaybackPositionAtAudioTime(time: number): number {
+        const duration = this.audioBuffer?.duration ?? 0;
+        if (duration <= 0) return 0;
+        const sourceAdvance = this.livePolyPlaybackSourceAdvanceAtAnchor
+            + this.integrateLivePolyPlaybackRate(this.livePolyPlaybackRateAnchorTime, time);
+        return wrapLoopPhase(this.startOffset + sourceAdvance, duration);
     }
 
     private waitForLivePolyRampEnd(endTime: number, generation: number, isCurrent: () => boolean): Promise<void> {
@@ -3939,6 +3976,9 @@ export class TrackAudio {
         this.sourceNode = source;
         if (oneShot) this.attachOneShotEnd(source, revision);
         this.liveMonoPitchActiveInternal = true;
+        // LIVE_MONO advances from its BufferSource clock and must not inherit
+        // the frozen LIVE_POLY interruption cursor after a route switch.
+        this.livePolyTempoFollowInterrupted = false;
         this.liveMonoPitchFallbackReasonValue = null;
         this.startTime = this.engine.context.currentTime;
         this.state = TrackState.PLAYING;
@@ -4104,14 +4144,14 @@ export class TrackAudio {
     public stop() {
         if (this.disposed) return;
         const tempoFollowWasPending = this.livePolyTempoFollowPending;
-        const pendingStableOffset = this.livePolyTempoFollowStableOffset;
+        const pendingStableOffset = this.getLivePolyTempoFollowInterruptionOffset();
         this.invalidateLivePolyTempoFollowOperation();
         if (this.track.id === this.transport.masterTrackId) this.transport.clearMasterPhaseOrigin();
         if (this.autoRecArmed) this.abortRecording();
         if (tempoFollowWasPending && pendingStableOffset !== null) {
             this.startOffset = pendingStableOffset;
             this.livePolyTempoFollowInterrupted = true;
-            this.livePolyPitchFallbackReasonValue = 'Pending LIVE_POLY tempo follow was interrupted; playback resumes from the last stable source offset, and source phase continuity across the uncertain ramp is not guaranteed.';
+            this.livePolyPitchFallbackReasonValue = 'Pending LIVE_POLY tempo follow was interrupted; playback resumes from the ramp-start checkpoint (up to 400 ms behind the interrupted ramp), and exact phase continuity is not guaranteed.';
         } else if (this.livePolyPitchActiveInternal && this.audioBuffer && !this.isReverse
             && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {
             this.startOffset = this.getCurrentPlaybackPosition();
@@ -4141,6 +4181,7 @@ export class TrackAudio {
         this.releaseLiveMonoPitchNodeForReuse();
         this.state = TrackState.STOPPED;
         this.livePolyTempoFollowStableOffset = null;
+        this.livePolyTempoFollowRampStartTime = null;
     }
 
     /** True means cleared, or queued until the overdub's final patch acknowledgement. */

@@ -223,3 +223,53 @@ test('TrackAudio tempo API requires explicit source BPM and leaves loop PCM/hist
   expect(result.projectRevisionAfter).toBe(result.projectRevisionBefore);
   expect(result.historyBytesAfter).toBe(result.historyBytesBefore);
 });
+
+test('canceled LIVE_POLY follow leaves a moving LIVE_MONO playback cursor in Chromium', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+
+  const result = await page.evaluate(async () => {
+    const [{ AudioEngine }, { TrackState }] = await Promise.all([
+      import('/src/audio/AudioEngine.ts'),
+      import('/src/core/types.ts'),
+    ]);
+    const appRoot = (document.querySelector('.app-root') as any)?.__vueParentComponent;
+    const engine = appRoot?.setupState?.engine ?? AudioEngine.getInstance();
+    const browserEngine = (engine as any).browserEngine;
+    if (!browserEngine?.context || engine.getMode() !== 'browser') throw new Error('Browser audio engine is not ready');
+    const track = engine.tracks[0] as any;
+    const context = browserEngine.context as AudioContext;
+    const loop = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    const pcm = loop.getChannelData(0);
+    for (let frame = 0; frame < pcm.length; frame += 1) {
+      pcm[frame] = 0.25 * Math.sin(2 * Math.PI * 220 * frame / context.sampleRate);
+    }
+    const pcmBefore = pcm.slice();
+    const originalBuffer = track.audioBuffer;
+    track.audioBuffer = loop;
+    track.state = TrackState.STOPPED;
+    await track.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+    await track.play();
+    const canceledFollow = track.followLivePolyTempo(100, 125).then(
+      () => false,
+      () => true,
+    );
+    await track.setLiveMonoPitchEnabled(true);
+    const canceled = await canceledFollow;
+    const liveMonoActive = track.liveMonoPitchActive;
+    const before = track.getCurrentPlaybackPosition();
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+    const after = track.getCurrentPlaybackPosition();
+    const pcmUnchanged = pcm.every((sample: number, index: number) => sample === pcmBefore[index]);
+    await track.stop();
+    await track.setLiveMonoPitchEnabled(false);
+    track.audioBuffer = originalBuffer;
+    track.state = originalBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+    return { canceled, liveMonoActive, before, after, pcmUnchanged };
+  });
+
+  expect(result.canceled).toBe(true);
+  expect(result.liveMonoActive).toBe(true);
+  expect(result.after).toBeGreaterThan(result.before + 0.08);
+  expect(result.pcmUnchanged).toBe(true);
+});

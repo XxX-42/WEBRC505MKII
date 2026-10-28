@@ -299,8 +299,8 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     rateOptions.onProgress?.({ startTime: 0.14, fromRate: 1, scheduledTime: 0.3, scheduledRate: 1.125 });
     (context as any).currentTime = 0.35;
     trackAudio.stop();
-    expect(trackAudio['startOffset']).toBeCloseTo(0.2, 8);
-    expect(trackAudio.livePolyPitchFallbackReason).toContain('phase continuity across the uncertain ramp is not guaranteed');
+    expect(trackAudio['startOffset']).toBeCloseTo(0.34, 8);
+    expect(trackAudio.livePolyPitchFallbackReason).toContain('up to 400 ms behind the interrupted ramp');
     pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
     await expect(operation).rejects.toThrow(/playback changed during tempo retarget/);
     expect(trackAudio.livePolyTempoFollow).toBeNull();
@@ -320,8 +320,8 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
   });
 
-  it('invalidates an in-flight retarget when changing pitch mode', async () => {
-    const { trackAudio, Transport } = await makeTrack();
+  it('invalidates an in-flight retarget and resumes a moving LIVE_MONO cursor after mode change', async () => {
+    const { context, trackAudio, Transport } = await makeTrack();
     Transport.stop();
     await trackAudio.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
     await trackAudio.play();
@@ -330,14 +330,18 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
 
     const operation = trackAudio.followLivePolyTempo(100, 125);
     expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
-    await trackAudio.setLivePolyPitchEnabled(false);
+    await trackAudio.setLiveMonoPitchEnabled(true);
     pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
     await expect(operation).rejects.toThrow(/playback changed during tempo retarget/);
 
     expect(trackAudio.livePolyPitchActive).toBe(false);
+    expect(trackAudio.liveMonoPitchActive).toBe(true);
     expect(trackAudio.livePolyTempoFollow).toBeNull();
     expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
-    expect(trackAudio.livePolyPitchFallbackReason).toContain('phase continuity across the interrupted LIVE_POLY tempo ramp is not guaranteed');
+    expect(trackAudio['livePolyTempoFollowInterrupted']).toBe(false);
+    (context as any).currentTime = 0.25;
+    expect(trackAudio.getCurrentPlaybackPosition()).toBeCloseTo(0.25, 4);
+    expect(trackAudio.livePolyPitchFallbackReason).toContain('exact phase continuity is not guaranteed');
   });
 
   it('schedules a finite LIVE_POLY segment and uses audio-clock completion for one-shot playback', async () => {
