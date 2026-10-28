@@ -241,16 +241,22 @@ def test_per_track_catalog_contract():
 
 
 def main():
+    global HOST_URL
     if len(sys.argv) != 2:
         raise SystemExit("usage: native_bridge_http_simulation_test.py <native_bridge_host_simulation>")
+    bridge_port = os.environ.get("WEBRC_NATIVE_BRIDGE_PORT", "17755")
+    HOST_URL = f"http://127.0.0.1:{bridge_port}"
     # Simulation-only fault injection exercises failure before the host claims
     # a generation. Production builds do not read this variable.
     os.environ["WEBRC_NATIVE_TEST_FAIL_IMPORT_LEDGER_OPERATION_ID"] = "e" * 32
     os.environ["WEBRC_NATIVE_TEST_THROW_BEFORE_IMPORT_BEGIN_OPERATION_ID"] = "d" * 32
     os.environ["WEBRC_NATIVE_TEST_THROW_DURING_IMPORT_BEGIN_OPERATION_ID"] = "b" * 32
     os.environ["WEBRC_NATIVE_TEST_THROW_AFTER_IMPORT_BEGIN_OPERATION_ID"] = "c" * 32
+    host_environment = os.environ.copy()
+    host_environment["WEBRC_NATIVE_BRIDGE_PORT"] = bridge_port
     process = subprocess.Popen(
         [sys.argv[1]],
+        env=host_environment,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
     )

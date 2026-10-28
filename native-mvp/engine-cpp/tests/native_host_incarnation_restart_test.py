@@ -69,6 +69,10 @@ def submit_archive(base, host_id, archive):
     path = f"/v1/project/import?expectedContentRevision={status['projectContentRevision']}"
     code, accepted = request(base, path, "POST", archive, {
         "X-Native-Host-Incarnation": host_id,
+        # The import protocol requires a client-persisted identity on every
+        # POST; this receipt is intentionally reused only across distinct host
+        # incarnations to test stale-generation rejection.
+        "X-Native-Operation-Id": "00000000000000000000000000000001",
         "Origin": "http://localhost:5173",
     })
     if code != 202:
