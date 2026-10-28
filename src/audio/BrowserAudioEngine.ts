@@ -4392,10 +4392,12 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.inputCaptureWarmupReason = '';
         this.rejectInputCaptureRewarmWaiters(new Error(reason));
         for (const [trackIndex, record] of this.inputCaptureSessions) {
-            record.listener({
+            const message = {
                 type: 'CAPTURE_ERROR', trackIndex, sessionId: record.session.sessionId,
                 inputGeneration: record.session.inputGeneration, reason,
-            });
+            };
+            this.recordInputCaptureError(message);
+            record.listener(message);
         }
         this.inputCaptureSessions.clear();
         const node = this.inputCaptureNode;

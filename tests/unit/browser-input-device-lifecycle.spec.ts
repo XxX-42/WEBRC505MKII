@@ -370,6 +370,16 @@ describe('Browser input device lifecycle', () => {
     expect(track.recordingDiagnostic).toContain('input-device-ended');
     expect(engine.getUiStatus()).toMatchObject({ inputReady: false, inputState: 'error' });
     expect(engine.getUiStatus().inputError).toContain('ended or disconnected');
+    expect(engine.getUiStatus().lastInputCaptureError).toMatchObject({
+      reason: 'input-device-ended',
+      trackIndex: 0,
+      inputGeneration: expect.any(Number),
+      sessionId: expect.any(Number),
+      worklet: {
+        callbackFrameStart: null,
+        callbackFrameCount: null,
+      },
+    });
   });
 
   it('aborts the legacy recorder on active-track end when shared capture is unavailable', async () => {
