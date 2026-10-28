@@ -226,11 +226,16 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
     public setBrowserBounceSettings(settings: BrowserBounceSettings): void {
         assertBrowserBounceSettings(settings);
+        // The source mask is fixed for each capture session. Do not advertise
+        // a new route as active until the current recording has finished.
+        if (this.tracks.some(track => track.historyBusy || track.state === 'RECORDING' || track.state === 'OVERDUBBING')) {
+            throw new Error('Finish or cancel recording and overdubbing before changing Bounce routing.');
+        }
         this.browserBounceSettings = normalizeBrowserBounceSettings(settings);
     }
     private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
     public getRecordPlaySettings(): RecordPlaySettings {
-        return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: false });
+        return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: true });
     }
     public setRecordPlaySettings(patch: RecordPlaySettingsPatch): void {
         assertRecordPlaySettings(patch);

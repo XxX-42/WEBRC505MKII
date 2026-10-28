@@ -281,6 +281,74 @@ test('Browser Bounce records a selected source track into the destination loop',
   expect(result.every((channel) => channel.length > 0 && channel.rms > 0.05)).toBe(true);
 });
 
+test('Classic LCD Bounce controls route another playing track into the destination', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const { TrackAudio } = await import('/src/audio/TrackAudio.ts');
+    const audio = AudioEngine.getInstance();
+    const browser = (audio as any).browser;
+    const context = browser.context as AudioContext;
+    const silentInput = context.createMediaStreamDestination();
+    const mute = context.createGain(); mute.gain.value = 0;
+    const silence = new OscillatorNode(context, { frequency: 80 });
+    silence.connect(mute).connect(silentInput); silence.start();
+    await browser.replaceInputStream(silentInput.stream);
+    await audio.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'OFF' });
+    const buffer = context.createBuffer(2, 4096, context.sampleRate);
+    buffer.getChannelData(0).fill(0.2); buffer.getChannelData(1).fill(-0.3);
+    const result = TrackAudio.restoreProjectBuffersAtomically(browser.tracks, [null, buffer, null, null, null]);
+    if (!result.ok) throw new Error(result.reason);
+  });
+  await page.waitForFunction(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    return AudioEngine.getInstance().getUiStatus().inputCaptureReady;
+  });
+  const button = (key: string) => page.locator(`[data-panel-control="${key}"]`);
+  const lcd = page.getByTestId('rc505-lcd-screen');
+  await button('loop').click(); await button('screen-encoder-1').click();
+  await expect(lcd).toHaveAttribute('data-classic-screen', 'editor-track');
+  await button('page-next').click();
+  await page.getByTestId('lcd-field-track-bounce-in').click();
+  await expect(page.getByTestId('lcd-field-track-bounce-in')).toHaveAttribute('aria-pressed', 'true');
+  await button('exit').click(); await button('screen-encoder-2').click();
+  await button('page-next').click();
+  await page.getByTestId('lcd-field-bounce-sw').click();
+  await page.getByTestId('lcd-field-bounce-track-2').click();
+  await expect(page.getByTestId('lcd-field-bounce-track-2')).toHaveAttribute('aria-pressed', 'true');
+  await button('exit').click(); await button('exit').click();
+  const track = (id: number) => page.locator(`.track-strip[data-track-id="${id}"] [data-panel-control="record-play"]`);
+  await track(2).click();
+  await expect.poll(() => page.evaluate(async () => (await import('/src/audio/AudioEngine.ts')).AudioEngine.getInstance().tracks[1]!.state)).toBe('PLAYING');
+  await track(1).click();
+  await expect.poll(() => page.evaluate(async () => (await import('/src/audio/AudioEngine.ts')).AudioEngine.getInstance().tracks[0]!.state)).toBe('RECORDING');
+  await button('loop').click(); await button('screen-encoder-2').click(); await button('page-next').click();
+  await expect(page.getByTestId('lcd-field-bounce-sw')).toBeDisabled();
+  await button('exit').click(); await button('exit').click();
+  await page.waitForTimeout(300);
+  await track(1).click();
+  await page.waitForFunction(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const target = AudioEngine.getInstance().tracks[0] as any;
+    return target.state === 'PLAYING' && !!target.audioBuffer;
+  });
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const audio = AudioEngine.getInstance();
+    const pcm = audio.tracks[0]!.getProjectPcmSnapshot()!;
+    return { settings: audio.getBrowserBounceSettings(), channels: pcm.channelData.map((channel) => {
+      let sum = 0; for (const sample of channel) sum += sample * sample; return Math.sqrt(sum / channel.length);
+    }) };
+  });
+  expect(result.settings?.bounceIn[0]).toBe(true);
+  expect(result.settings?.bounceTrack[1]).toBe(true);
+  expect(result.channels).toHaveLength(2);
+  expect(result.channels[0]).toBeGreaterThan(0.05);
+  expect(result.channels[1]).toBeGreaterThan(0.05);
+});
+
 test('Browser Auto Rec arms the shared worklet and records only after the input trigger', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);

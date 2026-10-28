@@ -6,7 +6,7 @@ export interface RecordPlaySettings {
   readonly recAction: 'REC->DUB' | 'REC->PLAY' | null;
   readonly quantize: 'OFF' | 'MEASURE' | null;
   readonly autoRecAvailable: boolean;
-  readonly bounceAvailable: false;
+  readonly bounceAvailable: boolean;
 }
 export type RecordPlaySettingsPatch = Partial<Pick<RecordPlaySettings, 'recAction' | 'quantize'>>;
 export function assertRecordPlaySettings(patch: RecordPlaySettingsPatch): void {

@@ -279,6 +279,14 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const currentTrackFx = computed(() => trackFx.activeFx.value);
   const currentTrackId = computed(() => focus.state.currentTrackId);
   const currentTrackController = computed(() => getDeviceTrackController(currentTrackId.value));
+  const browserBounceBusy = () => {
+    if (engine.getMode() !== 'browser') return false;
+    // Track controllers poll render state; reading their revisions keeps the
+    // LCD disabled state current even when a different track starts recording.
+    for (let id = 1; id <= 5; id += 1) getDeviceTrackController(id)?.runtimeRevision.value;
+    return engine.tracks.some((track) => (track as { historyBusy?: boolean }).historyBusy
+      || track.state === 'RECORDING' || track.state === 'OVERDUBBING');
+  };
   const pageIndex = computed(() => device.state.editorPageIndex);
   const pageCount = computed(() => device.state.editorPageCount);
   const fieldOptions = (labels: readonly string[]): DeviceScreenOption[] => labels.map((label, value) => ({ label, value }));
@@ -681,6 +689,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const rendererIndex = rendererOptions.findIndex((option) => option.label === controller.hqNativeEngine.value);
     const pan = audioTrack?.track.pan ?? 'CENTER';
     const panValue = pan === 'CENTER' ? 0 : (pan.startsWith('L') ? -1 : 1) * Number(pan.slice(1));
+    const bounce = engine.getBrowserBounceSettings();
+    const bounceTarget = currentTrackId.value;
+    const bounceBusy = browserBounceBusy();
     const fields: DeviceScreenField[] = [
       makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
       makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
@@ -719,7 +730,15 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       format: (value) => value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
       disabled: engine.getMode() !== 'browser' || !audioTrack,
       reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
-    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan'].includes(field.key)) : fields);
+    fields.push(makeBooleanField('track-bounce-in', 'BOUNCE IN', bounce?.bounceIn[bounceTarget - 1] === true, (enabled) => {
+      if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the destination again.');
+      const current = engine.getBrowserBounceSettings();
+      if (!current) throw new Error('Bounce is unavailable in this audio mode.');
+      const bounceIn = [...current.bounceIn]; bounceIn[bounceTarget - 1] = enabled;
+      engine.setBrowserBounceSettings({ ...current, bounceIn });
+    }, { disabled: !bounce || bounceBusy,
+      reason: !bounce ? 'Bounce is unavailable in this audio mode.' : bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'Browser source audio is taken before Track FX.' }));
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {
@@ -1050,6 +1069,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       }
       const settings = engine.getRecordPlaySettings?.();
       const quantizeAvailable = settings?.quantizeAvailable ?? (engine.getMode?.() === 'browser' && settings?.available === true);
+      const bounce = engine.getBrowserBounceSettings();
+      const bounceBusy = browserBounceBusy();
       return chunks([
         makeEnumField('rec-action', 'REC ACTION', settings?.recAction === 'REC->DUB' ? 0 : 1,
           fieldOptions(['REC→DUB', 'REC→PLAY']), value => engine.setRecordPlaySettings({ recAction: value === 0 ? 'REC->DUB' : 'REC->PLAY' }),
@@ -1067,7 +1088,19 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
               { min: 1, max: 100, step: 1, disabled: !autoRec.enabled, reason: autoRec.enabled ? approximation : 'Turn AUTO REC SW ON to edit sensitivity.' }),
           ];
         })() : [makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'Browser Auto Rec is available only in Browser audio mode.' })]),
-        makeActionField('bounce', 'BOUNCE', () => {}, { disabled: true, reason: 'Hardware Bounce selection has no complete recording provider.' }),
+        ...(bounce ? [
+          makeBooleanField('bounce-sw', 'BOUNCE SW', bounce.bounceSw, (enabled) => {
+            const current = engine.getBrowserBounceSettings();
+            if (!current) throw new Error('Bounce is unavailable in this audio mode.');
+            engine.setBrowserBounceSettings({ ...current, bounceSw: enabled });
+          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'Browser source audio is taken before Track FX.' }),
+          ...bounce.bounceTrack.map((enabled, index) => makeBooleanField(`bounce-track-${index + 1}`, `BOUNCE TRACK ${index + 1}`, enabled, (next) => {
+            const current = engine.getBrowserBounceSettings();
+            if (!current) throw new Error('Bounce is unavailable in this audio mode.');
+            const bounceTrack = [...current.bounceTrack]; bounceTrack[index] = next;
+            engine.setBrowserBounceSettings({ ...current, bounceTrack });
+          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'A destination track cannot record itself.' })),
+        ] : [makeActionField('bounce', 'BOUNCE', () => {}, { disabled: true, reason: 'Bounce is unavailable in this audio mode.' })]),
       ]);
     }
     switch (device.state.page) {

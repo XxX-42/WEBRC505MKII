@@ -27,6 +27,17 @@ describe('Browser semantic Memory', () => {
     const { engine } = harness();
     expect(engine.getBrowserAutoRecSettings().enabled).toBe(false);
     expect(engine.getRecordPlaySettings().autoRecAvailable).toBe(true);
+    expect(engine.getRecordPlaySettings().bounceAvailable).toBe(true);
+  });
+  it('rejects Bounce route changes during recording and keeps the confirmed configuration', () => {
+    const { engine } = harness();
+    const before = engine.getBrowserBounceSettings();
+    engine.tracks[0]!.state = 'RECORDING';
+    expect(() => engine.setBrowserBounceSettings({ ...before, bounceSw: true })).toThrow(/Finish or cancel/);
+    expect(engine.getBrowserBounceSettings()).toEqual(before);
+    engine.tracks[0]!.state = 'STOPPED';
+    engine.setBrowserBounceSettings({ ...before, bounceSw: true });
+    expect(engine.getBrowserBounceSettings().bounceSw).toBe(true);
   });
   it('uses independent stereo analyser channels for nonzero pre-shared-FX meters', () => {
     const { engine } = harness();

@@ -33,6 +33,7 @@ beforeEach(() => {
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
     getBrowserAutoRecSettings: () => null,
+    getBrowserBounceSettings: () => null,
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
     getDevices: vi.fn(async () => ({ inputs: [], outputs: [] })) };
 });
@@ -115,5 +116,30 @@ describe('Classic existing audio controls', () => {
       quantize: 'MEASURE', autoRecAvailable: false, bounceAvailable: false }));
     const { editor } = createEditor('recording', 'memory');
     expect(editor.fields.value.find(field => field.key === 'record-quantize')?.disabled).toBe(false);
+  });
+  it('binds Browser Bounce switches to the selected source and destination and keeps Native unavailable', async () => {
+    let bounce = { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] };
+    fixture.engine.getBrowserBounceSettings = () => ({ ...bounce, bounceIn: [...bounce.bounceIn], bounceTrack: [...bounce.bounceTrack] });
+    fixture.engine.setBrowserBounceSettings = vi.fn((value) => { bounce = value; });
+    fixture.engine.getRecordPlaySettings = () => ({ available: true, reason: '', recAction: 'REC->PLAY', quantize: 'OFF', autoRecAvailable: false, bounceAvailable: true });
+    const recording = createEditor('recording', 'memory').editor;
+    recording.fields.value.find(field => field.key === 'bounce-sw')!.setValue!(100);
+    await settle(); await settle();
+    expect(bounce.bounceSw).toBe(true);
+    recording.stepPage(1); await settle();
+    recording.fields.value.find(field => field.key === 'bounce-track-2')!.setValue!(100);
+    await settle(); await settle();
+    expect(bounce.bounceTrack).toEqual([false, true, false, false, false]);
+    panel.goHome();
+    const track = createEditor('track').editor;
+    track.stepPage(1); await settle();
+    track.fields.value.find(field => field.key === 'track-bounce-in')!.setValue!(100);
+    await settle(); await settle();
+    expect(bounce.bounceIn).toEqual([true, false, false, false, false]);
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getBrowserBounceSettings = () => null;
+    panel.goHome();
+    const native = createEditor('recording', 'memory').editor;
+    expect(native.fields.value.find(field => field.key === 'bounce')?.disabled).toBe(true);
   });
 });
