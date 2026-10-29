@@ -23,8 +23,9 @@ history pins, and project imports are held out while a scheduled transition is
 pending. The callback path uses fixed storage and does not allocate or lock.
 
 This is a limited software command path, not a complete Native feature. The
-bridge reports `nativeRhythmFrameScheduling.available: true` for the explicitly
-bounded next-measure command only. It accepts an empty-track REC with REC ACTION
+bridge reports `nativeRhythmFrameScheduling.available: false` because the
+explicitly bounded next-measure route is not the complete feature. The internal
+route accepts an empty-track REC with REC ACTION
 set to REC->PLAY and a STOP on a recording track. It intentionally rejects
 1SHOT and REVERSE. The UI does not call this path yet. Track status still does not
 provide a recording-origin frame plus persisted measure metadata from which a

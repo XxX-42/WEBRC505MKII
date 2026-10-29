@@ -22,7 +22,7 @@ def until(predicate, timeout=8):
 def phase(status):
     value = status['nativeRhythm']['phase']
     require(value['available'] is True and value['snapshotStable'] is True, value)
-    require(value['frameSchedulingAvailable'] is True, value)
+    require(value['frameSchedulingAvailable'] is False, value)
     require(value['nextMeasureFrame'] > value['sampleFrame'], value)
     return {'trackId': 2, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
         'phaseEpoch': value['epoch'], 'settingsRevision': status['nativeRhythm']['tempoAppliedRevision']}
@@ -49,7 +49,7 @@ def main():
         # A frame scheduler endpoint is not equivalent to the complete user
         # feature. REC QUANTIZE stays unavailable until all mode semantics land.
         require(initial['nativeRecordPlay']['quantizeAvailable'] is False, initial)
-        require(initial['nativeLoopFrameScheduling']['available'] is True, initial)
+        require(initial['nativeLoopFrameScheduling']['available'] is False, initial)
 
         malformed = [
             {},
@@ -68,9 +68,9 @@ def main():
                 ('invalid cancel request accepted', body))
 
         config = {'backend': 'WASAPI', 'inputDeviceId': 'WASAPI:1', 'outputDeviceId': 'WASAPI:1',
-            'sampleRate': 48000, 'bufferFrames': 64, 'monitoringEnabled': False}
+            'sampleRate': 48000, 'bufferFrames': 1024, 'monitoringEnabled': False}
         require(request('/v1/config/apply', 'POST', config)[0] == 200, 'engine config failed')
-        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 120})
+        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300})
         require(code == 200, rhythm)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'engine start failed')
         ready = until(phase_has_headroom)
@@ -102,7 +102,9 @@ def main():
         stop_revision = accepted_stop['nativeLoopFrameScheduling']['acceptedRevision']
         stopped = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == stop_revision
             and value['nativeTracks'][1]['state'] == 'Stopped')
-        require(stopped['nativeRecordPlay']['quantizeAvailable'] is False, stopped)
+        require(stopped['nativeRecordPlay']['quantizeAvailable'] is False and
+            stopped['nativeLoopFrameScheduling']['available'] is False and
+            stopped['nativeRhythm']['phase']['frameSchedulingAvailable'] is False, stopped)
         print('Native Rhythm schedule HTTP: field validation, cancel/status ACK, callback REC/STOP ACK; full quantize capability remains false')
     finally:
         process.terminate()

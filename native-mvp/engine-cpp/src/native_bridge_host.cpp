@@ -912,7 +912,7 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
-        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", true},
+        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", false},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},

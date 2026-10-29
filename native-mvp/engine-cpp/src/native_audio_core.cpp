@@ -522,7 +522,9 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRhythmPhaseSnapshotRevision);
     status.nativeRhythmPhase.available = status.nativeRhythmPhase.available &&
         status.nativeRhythmPhaseSnapshotStable && status.engineRunning;
-    status.nativeRhythmFrameSchedulingAvailable = true;
+    // The internal scheduler route is only a prototype subset, not a full
+    // user-facing REC QUANTIZE capability.
+    status.nativeRhythmFrameSchedulingAvailable = false;
     const auto collectOscVocSlots = [](const NativeEffectBank& bank,
                                        auto& destination) {
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
