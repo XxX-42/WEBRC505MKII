@@ -38,6 +38,8 @@ def main():
     process = subprocess.Popen([sys.argv[1]], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
         for _ in range(100):
+            if process.poll() is not None:
+                raise AssertionError(('Native bridge simulation host exited during startup', process.returncode))
             try:
                 if request('/health')[0] == 200:
                     break
@@ -68,9 +70,9 @@ def main():
                 ('invalid cancel request accepted', body))
 
         config = {'backend': 'WASAPI', 'inputDeviceId': 'WASAPI:1', 'outputDeviceId': 'WASAPI:1',
-            'sampleRate': 48000, 'bufferFrames': 1024, 'monitoringEnabled': False}
+            'sampleRate': 48000, 'bufferFrames': 4096, 'monitoringEnabled': False}
         require(request('/v1/config/apply', 'POST', config)[0] == 200, 'engine config failed')
-        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300})
+        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300, 'patternIndex': 92})
         require(code == 200, rhythm)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'engine start failed')
         ready = until(phase_has_headroom)
@@ -82,12 +84,18 @@ def main():
         require(queued['nativeLoopFrameScheduling']['acceptedTrackId'] == 2 and revision > 0, queued)
         require(request('/v1/transport/rhythm-schedule', 'POST', first)[0] == 409,
             'second pending schedule for the same track was accepted')
-        cancelled = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
-        require(cancelled[0] == 200, cancelled)
-        cancelled_status = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['cancelledRevision'] == revision)
+        cancel_code, cancelled_status = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
+        require(cancel_code == 200 and cancelled_status['nativeLoopFrameScheduling']['requests'][1]['cancelledRevision'] == revision,
+            ('cancel callback ACK did not publish the exact revision', cancelled_status))
         require(cancelled_status['nativeTracks'][1]['state'] == 'Empty', cancelled_status)
 
-        current = until(phase_has_headroom)
+        # Reuse the same still-future boundary when cancellation returns before
+        # it. This exercises cancel/replace at one phase without waiting an
+        # extra simulated measure; if that boundary passed, reacquire headroom.
+        current = cancelled_status
+        if current['nativeRhythm']['phase']['nextMeasureFrame'] != first['absoluteFrame'] or \
+                current['nativeRhythm']['phase']['nextMeasureFrame'] <= current['nativeRhythm']['phase']['sampleFrame']:
+            current = until(phase_has_headroom)
         record_request = phase(current)
         code, accepted = request('/v1/transport/rhythm-schedule', 'POST', record_request)
         require(code == 200, accepted)
