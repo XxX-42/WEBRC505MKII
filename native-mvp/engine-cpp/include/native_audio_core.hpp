@@ -92,6 +92,20 @@ struct NativeTrackHistoryStatus {
     NativeHistoryFailure unavailableReason = NativeHistoryFailure::None;
 };
 
+struct NativeTrackPhaseProvenance {
+    bool verified = false;
+    std::uint64_t firstMeasureFrames = 0U;
+    std::uint64_t startFrame = 0U;
+    std::uint64_t stopFrame = 0U;
+    std::uint64_t rhythmEpoch = 0U;
+    std::uint64_t sampleRate = 0U;
+    std::uint64_t contentRevision = 0U;
+    std::uint64_t pcmFrames = 0U;
+    std::uint64_t startMeasureOrdinal = 0U;
+    std::uint64_t stopMeasureOrdinal = 0U;
+    std::uint64_t measureCount = 0U;
+};
+
 struct NativeTrackMarkStatus {
     bool exists = false;
     bool canSet = false;
@@ -332,6 +346,7 @@ struct EngineStatus {
     std::array<float, kNativeTrackCount> nativeTrackProgress{};
     std::array<std::uint64_t, kNativeTrackCount> nativeTrackContentRevision{};
     std::array<std::uint64_t, kNativeTrackCount> nativeTrackLoopLengthSamples{};
+    std::array<NativeTrackPhaseProvenance, kNativeTrackCount> nativeTrackPhaseProvenance{};
     /** Host epoch for loop PCM/history and import-overwritten track-state changes. */
     std::uint64_t projectContentRevision = 0U;
     /** True only when project-relevant status fields were sampled without an epoch change. */
@@ -804,6 +819,8 @@ private:
     bool historyPinSuppressesPlayback(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool applyProjectImportAtCallback() noexcept;
     void finalizeProjectImportLocked();
+    [[nodiscard]] NativeTrackPhaseProvenance readTrackPhaseProvenance(std::size_t trackIndex) const noexcept;
+    void writeTrackPhaseProvenance(std::size_t trackIndex, const NativeTrackPhaseProvenance& value) noexcept;
     bool configureNativeCatalogSlotLocked(
         NativeEffectSlot slot,
         const std::string& effectId,
@@ -985,12 +1002,30 @@ private:
         LoopMetadata after{};
         std::uint64_t beforeOriginalTempoBits = 0U;
         std::uint64_t afterOriginalTempoBits = 0U;
+        NativeTrackPhaseProvenance beforePhaseProvenance{};
+        NativeTrackPhaseProvenance afterPhaseProvenance{};
         HistoryKind kind = HistoryKind::None;
         bool valid = false;
         bool applied = false;
         std::size_t pcmFrames = 0U;
     };
     std::array<TrackHistoryRecord, kNativeTrackCount> historyRecords_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseProvenanceSequence_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> trackPhaseProvenanceVerified_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseFirstMeasureFrames_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseStartFrame_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseStopFrame_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseRhythmEpoch_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseSampleRate_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseContentRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhasePcmFrames_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseStartMeasureOrdinal_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseStopMeasureOrdinal_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackPhaseMeasureCount_{};
+    std::array<std::uint64_t, kNativeTrackCount> scheduledRecordStartMeasureOrdinal_{};
+    std::array<std::uint64_t, kNativeTrackCount> scheduledRecordStartFrame_{};
+    std::array<std::uint64_t, kNativeTrackCount> scheduledRecordFirstMeasureFrames_{};
+    std::array<std::uint64_t, kNativeTrackCount> scheduledRecordRhythmEpoch_{};
     std::array<std::vector<float>, kNativeTrackCount> historyPcm_{};
     std::array<bool, kNativeTrackCount> recordingHistoryPending_{};
     std::array<std::atomic<bool>, kNativeTrackCount> historyCanUndo_{};

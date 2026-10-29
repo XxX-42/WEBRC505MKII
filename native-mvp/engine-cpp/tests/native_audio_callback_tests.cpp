@@ -162,6 +162,13 @@ struct NativeAudioCoreTestAccess {
     static LoopMetadata trackMetadata(const NativeAudioCore& core, std::size_t trackIndex) {
         return core.looperForTrack(trackIndex).metadata();
     }
+    static NativeTrackPhaseProvenance readTrackPhaseProvenance(const NativeAudioCore& core, std::size_t trackIndex) {
+        return core.readTrackPhaseProvenance(trackIndex);
+    }
+    static void writeTrackPhaseProvenance(
+        NativeAudioCore& core, std::size_t trackIndex, const NativeTrackPhaseProvenance& value) {
+        core.writeTrackPhaseProvenance(trackIndex, value);
+    }
     static std::optional<double> originalTempo(const NativeAudioCore& core, std::size_t trackIndex) {
         assert(trackIndex < kNativeTrackCount);
         const auto bits = core.originalTempoBpmBits_[trackIndex].load(std::memory_order_acquire);
@@ -3868,6 +3875,52 @@ void testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions() {
     assert(observedTransitions == configTransitions + 1U);
 }
 
+void testNativeTrackPhaseProvenanceSnapshotUnderConcurrentPublication() {
+    NativeAudioCore core;
+    std::atomic<bool> writerDone{false};
+    std::atomic<bool> invariantFailed{false};
+    std::atomic<unsigned int> coherentReads{0U};
+    constexpr std::uint64_t iterations = 100000U;
+    std::thread writer([&] {
+        for (std::uint64_t generation = 1U; generation <= iterations; ++generation) {
+            NativeTrackPhaseProvenance value{};
+            value.verified = true;
+            value.contentRevision = generation;
+            value.pcmFrames = generation + 1U;
+            value.startFrame = generation + 2U;
+            value.stopFrame = generation + 3U;
+            value.firstMeasureFrames = generation + 4U;
+            value.rhythmEpoch = generation + 5U;
+            value.sampleRate = static_cast<unsigned int>(generation + 6U);
+            value.startMeasureOrdinal = generation + 7U;
+            value.stopMeasureOrdinal = generation + 8U;
+            value.measureCount = generation + 9U;
+            NativeAudioCoreTestAccess::writeTrackPhaseProvenance(core, 0U, value);
+        }
+        writerDone.store(true, std::memory_order_release);
+    });
+    std::thread reader([&] {
+        do {
+            const auto value = NativeAudioCoreTestAccess::readTrackPhaseProvenance(core, 0U);
+            if (!value.verified) continue; // bounded seqlock retry may safely fail closed
+            coherentReads.fetch_add(1U, std::memory_order_relaxed);
+            if (value.contentRevision == 0U || value.pcmFrames != value.contentRevision + 1U ||
+                value.startFrame != value.contentRevision + 2U || value.stopFrame != value.contentRevision + 3U ||
+                value.firstMeasureFrames != value.contentRevision + 4U || value.rhythmEpoch != value.contentRevision + 5U ||
+                value.sampleRate != value.contentRevision + 6U ||
+                value.startMeasureOrdinal != value.contentRevision + 7U ||
+                value.stopMeasureOrdinal != value.contentRevision + 8U ||
+                value.measureCount != value.contentRevision + 9U) {
+                invariantFailed.store(true, std::memory_order_release);
+            }
+        } while (!writerDone.load(std::memory_order_acquire));
+    });
+    writer.join();
+    reader.join();
+    assert(!invariantFailed.load(std::memory_order_acquire));
+    assert(coherentReads.load(std::memory_order_relaxed) > 0U);
+}
+
 int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testNativeOneShotOverdubAdmissionIsSideEffectFree();
@@ -3884,6 +3937,7 @@ int main() {
 #endif
     testNativeRhythmPhasePublicationUnderConcurrentStatusReads();
     testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions();
+    testNativeTrackPhaseProvenanceSnapshotUnderConcurrentPublication();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();

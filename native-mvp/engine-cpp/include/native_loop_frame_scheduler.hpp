@@ -35,6 +35,10 @@ struct NativeScheduledLoopRequest {
     NativeScheduledLoopAction action = NativeScheduledLoopAction::Record;
     std::uint64_t intentIdHigh = 0U;
     std::uint64_t intentIdLow = 0U;
+    // Optional Rhythm-grid receipt bound to this scheduled boundary. The core
+    // fills it before enqueue; the callback consumes it from the same SPSC item.
+    std::uint64_t measureOrdinal = 0U;
+    std::uint64_t firstMeasureFrames = 0U;
 };
 
 struct NativeScheduledLoopEvent {

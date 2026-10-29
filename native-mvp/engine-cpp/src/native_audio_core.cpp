@@ -119,6 +119,24 @@ bool parseDeviceId(const std::string& raw, unsigned int& outDeviceId) {
     }
 }
 
+bool nativeRhythmMeasureBoundaryFrame(
+    std::uint64_t originFrame, std::uint64_t measureOrdinal, unsigned int sampleRate, double bpm,
+    unsigned int meterNumerator, unsigned int meterDenominator, std::uint64_t& absoluteFrame) noexcept {
+    const auto stepsNumerator = static_cast<std::uint64_t>(meterNumerator) * 16U;
+    if (sampleRate == 0U || meterDenominator == 0U || stepsNumerator == 0U ||
+        stepsNumerator % meterDenominator != 0U || !std::isfinite(bpm) || bpm <= 0.0) return false;
+    const auto stepsPerMeasure = stepsNumerator / meterDenominator;
+    if (stepsPerMeasure == 0U || measureOrdinal > std::numeric_limits<std::uint64_t>::max() / stepsPerMeasure) return false;
+    const auto stepOrdinal = measureOrdinal * stepsPerMeasure;
+    const double stepOffset = static_cast<double>(stepOrdinal) * static_cast<double>(sampleRate) * 15.0 / bpm;
+    const auto remaining = std::numeric_limits<std::uint64_t>::max() - originFrame;
+    if (!std::isfinite(stepOffset) || stepOffset < 0.0 || stepOffset >= static_cast<double>(remaining)) return false;
+    const auto roundedOffset = static_cast<std::uint64_t>(std::floor(stepOffset + 0.5));
+    if (roundedOffset > remaining) return false;
+    absoluteFrame = originFrame + roundedOffset;
+    return true;
+}
+
 } // namespace
 
 std::string backendToString(Backend backend) {
@@ -241,6 +259,53 @@ bool NativeAudioCore::setMixerLevel(unsigned int channel, unsigned int percent, 
     mixerLevels_[channel].store(percent, std::memory_order_release);
     advanceProjectRevision(projectContentRevision_);
     return true;
+}
+
+NativeTrackPhaseProvenance NativeAudioCore::readTrackPhaseProvenance(std::size_t trackIndex) const noexcept {
+    NativeTrackPhaseProvenance value{};
+    if (trackIndex >= kNativeTrackCount) return value;
+    for (unsigned int attempt = 0U; attempt < 4U; ++attempt) {
+        const auto before = trackPhaseProvenanceSequence_[trackIndex].load(std::memory_order_acquire);
+        if ((before & 1U) != 0U) continue;
+        value.verified = trackPhaseProvenanceVerified_[trackIndex].load(std::memory_order_relaxed);
+        value.firstMeasureFrames = trackPhaseFirstMeasureFrames_[trackIndex].load(std::memory_order_relaxed);
+        value.startFrame = trackPhaseStartFrame_[trackIndex].load(std::memory_order_relaxed);
+        value.stopFrame = trackPhaseStopFrame_[trackIndex].load(std::memory_order_relaxed);
+        value.rhythmEpoch = trackPhaseRhythmEpoch_[trackIndex].load(std::memory_order_relaxed);
+        value.sampleRate = trackPhaseSampleRate_[trackIndex].load(std::memory_order_relaxed);
+        value.contentRevision = trackPhaseContentRevision_[trackIndex].load(std::memory_order_relaxed);
+        value.pcmFrames = trackPhasePcmFrames_[trackIndex].load(std::memory_order_relaxed);
+        value.startMeasureOrdinal = trackPhaseStartMeasureOrdinal_[trackIndex].load(std::memory_order_relaxed);
+        value.stopMeasureOrdinal = trackPhaseStopMeasureOrdinal_[trackIndex].load(std::memory_order_relaxed);
+        value.measureCount = trackPhaseMeasureCount_[trackIndex].load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        const auto after = trackPhaseProvenanceSequence_[trackIndex].load(std::memory_order_relaxed);
+        if (before == after && (after & 1U) == 0U) return value;
+    }
+    return {};
+}
+
+void NativeAudioCore::writeTrackPhaseProvenance(
+    std::size_t trackIndex, const NativeTrackPhaseProvenance& value) noexcept {
+    if (trackIndex >= kNativeTrackCount) return;
+    auto sequence = trackPhaseProvenanceSequence_[trackIndex].load(std::memory_order_relaxed);
+    if (sequence > std::numeric_limits<std::uint64_t>::max() - 2U) sequence = 0U;
+    trackPhaseProvenanceSequence_[trackIndex].store(sequence + 1U, std::memory_order_relaxed);
+    // Match the Rhythm phase seqlock: keep the odd marker ordered before the
+    // relaxed payload stores, then publish the even sequence with release.
+    std::atomic_thread_fence(std::memory_order_release);
+    trackPhaseProvenanceVerified_[trackIndex].store(value.verified, std::memory_order_relaxed);
+    trackPhaseFirstMeasureFrames_[trackIndex].store(value.firstMeasureFrames, std::memory_order_relaxed);
+    trackPhaseStartFrame_[trackIndex].store(value.startFrame, std::memory_order_relaxed);
+    trackPhaseStopFrame_[trackIndex].store(value.stopFrame, std::memory_order_relaxed);
+    trackPhaseRhythmEpoch_[trackIndex].store(value.rhythmEpoch, std::memory_order_relaxed);
+    trackPhaseSampleRate_[trackIndex].store(value.sampleRate, std::memory_order_relaxed);
+    trackPhaseContentRevision_[trackIndex].store(value.contentRevision, std::memory_order_relaxed);
+    trackPhasePcmFrames_[trackIndex].store(value.pcmFrames, std::memory_order_relaxed);
+    trackPhaseStartMeasureOrdinal_[trackIndex].store(value.startMeasureOrdinal, std::memory_order_relaxed);
+    trackPhaseStopMeasureOrdinal_[trackIndex].store(value.stopMeasureOrdinal, std::memory_order_relaxed);
+    trackPhaseMeasureCount_[trackIndex].store(value.measureCount, std::memory_order_relaxed);
+    trackPhaseProvenanceSequence_[trackIndex].store(sequence + 2U, std::memory_order_release);
 }
 
 EngineStatus NativeAudioCore::getStatus() const {
@@ -437,6 +502,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeTrackProgress[track] = trackProgress_[track].load(std::memory_order_acquire);
         status.nativeTrackContentRevision[track] = trackContentRevision_[track].load(std::memory_order_acquire);
         status.nativeTrackLoopLengthSamples[track] = nativeTrackLoopLengthSamples_[track].load(std::memory_order_acquire);
+        status.nativeTrackPhaseProvenance[track] = readTrackPhaseProvenance(track);
         status.nativeTrackLoopTransportStatus[track] = trackLoopTransportStatus_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportRequestedRevision[track] = nativeLoopTransportRequestedRevision_[track];
         status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
@@ -1169,6 +1235,7 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         error = "Native scheduled REC/STOP requires a stable track-command boundary.";
         return false;
     }
+    std::uint64_t recordedFirstMeasureFrames = 0U;
     bool phaseStable = false;
     std::uint64_t phaseSnapshotRevision = 0U;
     const auto phase = readNativeRhythmPhase(phaseStable, phaseSnapshotRevision);
@@ -1178,6 +1245,26 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         !nativeTempoAppliedValid_.load(std::memory_order_acquire) || phaseSnapshotRevision == 0U ||
         absoluteFrame != phase.nextMeasureFrame || absoluteFrame <= phase.sampleFrame) {
         error = "Native Rhythm phase changed or the requested frame is not its next measure boundary."; return false;
+    }
+    if (action == NativeScheduledLoopAction::Record) {
+        if (phase.measureOrdinal >= std::numeric_limits<std::uint64_t>::max() - 1U || !currentConfig_) {
+            error = "Native Rhythm measure ordinal is exhausted; synchronized recording was not submitted.";
+            return false;
+        }
+        const auto firstRecordedMeasureOrdinal = phase.measureOrdinal + 1U;
+        std::uint64_t firstRecordedMeasureStart = 0U;
+        std::uint64_t firstRecordedMeasureEnd = 0U;
+        if (!nativeRhythmMeasureBoundaryFrame(phase.originFrame, firstRecordedMeasureOrdinal,
+                currentConfig_->sampleRate, nativeRhythmConfig_.bpm, phase.meterNumerator,
+                phase.meterDenominator, firstRecordedMeasureStart) ||
+            !nativeRhythmMeasureBoundaryFrame(phase.originFrame, firstRecordedMeasureOrdinal + 1U,
+                currentConfig_->sampleRate, nativeRhythmConfig_.bpm, phase.meterNumerator,
+                phase.meterDenominator, firstRecordedMeasureEnd) ||
+            firstRecordedMeasureStart != absoluteFrame || firstRecordedMeasureEnd <= firstRecordedMeasureStart) {
+            error = "Native Rhythm could not prove the first captured measure's cumulative frame boundaries.";
+            return false;
+        }
+        recordedFirstMeasureFrames = firstRecordedMeasureEnd - firstRecordedMeasureStart;
     }
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
         commandQueue_.size() != 0U || pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U ||
@@ -1193,8 +1280,14 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         error = "Native LOOP SYNC scheduling is unavailable with 1SHOT or REVERSE."; return false;
     }
     if (action == NativeScheduledLoopAction::Play) {
-        error = "Synchronized PLAY is disabled until Native phase provenance is retained for the track PCM.";
-        return false;
+        const auto provenance = readTrackPhaseProvenance(trackIndex);
+        const auto contentRevision = trackContentRevision_[trackIndex].load(std::memory_order_acquire);
+        const auto loopFrames = nativeTrackLoopLengthSamples_[trackIndex].load(std::memory_order_acquire);
+        if (!currentConfig_ || !provenance.verified || provenance.contentRevision != contentRevision ||
+            provenance.pcmFrames != loopFrames || provenance.sampleRate != currentConfig_->sampleRate) {
+            error = "Synchronized PLAY requires verified Native Rhythm provenance for this exact PCM revision.";
+            return false;
+        }
     }
     if ((action == NativeScheduledLoopAction::Record && (state != LooperState::Empty || recordActionDubRequested_)) ||
         (action == NativeScheduledLoopAction::Stop && state != LooperState::Recording) ||
@@ -1210,17 +1303,29 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         if (!currentConfig_ || phase.meterNumerator == 0U || phase.meterDenominator == 0U || loopFrames == 0U) {
             error = "Synchronized PLAY requires a finalized loop and a valid Rhythm measure length."; return false;
         }
-        const double measureFrames = static_cast<double>(currentConfig_->sampleRate) * 60.0 /
-            nativeRhythmConfig_.bpm * static_cast<double>(phase.meterNumerator) * 4.0 /
-            static_cast<double>(phase.meterDenominator);
-        if (!std::isfinite(measureFrames) || measureFrames < 1.0) {
-            error = "Native Rhythm measure length is invalid for synchronized PLAY."; return false;
+        const auto provenance = readTrackPhaseProvenance(trackIndex);
+        const std::uint64_t stepCountNumerator = static_cast<std::uint64_t>(phase.meterNumerator) * 16U;
+        if (stepCountNumerator % phase.meterDenominator != 0U || !std::isfinite(nativeRhythmConfig_.bpm) ||
+            nativeRhythmConfig_.bpm <= 0.0 || provenance.measureCount == 0U ||
+            phase.measureOrdinal == std::numeric_limits<std::uint64_t>::max()) {
+            error = "Native LOOP SYNC PLAY requires verified measure-count provenance and a valid current Rhythm meter.";
+            return false;
         }
-        const auto measures = static_cast<std::uint64_t>(std::llround(static_cast<double>(loopFrames) / measureFrames));
-        const auto alignedFrames = static_cast<std::uint64_t>(std::llround(static_cast<double>(measures) * measureFrames));
-        const auto difference = loopFrames > alignedFrames ? loopFrames - alignedFrames : alignedFrames - loopFrames;
-        if (measures == 0U || difference > 2U) {
-            error = "Native LOOP SYNC PLAY requires PCM whose length is an integer number of current Rhythm measures."; return false;
+        const auto startMeasureOrdinal = phase.measureOrdinal + 1U;
+        if (provenance.measureCount > std::numeric_limits<std::uint64_t>::max() - startMeasureOrdinal) {
+            error = "Native LOOP SYNC measure-count provenance exceeds the current Rhythm timeline."; return false;
+        }
+        const auto endMeasureOrdinal = startMeasureOrdinal + provenance.measureCount;
+        std::uint64_t expectedStartFrame = 0U;
+        std::uint64_t expectedEndFrame = 0U;
+        if (!nativeRhythmMeasureBoundaryFrame(phase.originFrame, startMeasureOrdinal, currentConfig_->sampleRate,
+                nativeRhythmConfig_.bpm, phase.meterNumerator, phase.meterDenominator, expectedStartFrame) ||
+            !nativeRhythmMeasureBoundaryFrame(phase.originFrame, endMeasureOrdinal, currentConfig_->sampleRate,
+                nativeRhythmConfig_.bpm, phase.meterNumerator, phase.meterDenominator, expectedEndFrame) ||
+            expectedStartFrame != absoluteFrame ||
+            expectedEndFrame <= expectedStartFrame || expectedEndFrame - expectedStartFrame != loopFrames) {
+            error = "Native LOOP SYNC PLAY phase provenance does not span the current Rhythm measure boundaries.";
+            return false;
         }
     }
     if (action == NativeScheduledLoopAction::Record && !recordQuantizeMeasure_.load(std::memory_order_acquire)) {
@@ -1229,6 +1334,11 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     }
     if (action == NativeScheduledLoopAction::Stop && !recordQuantizeMeasure_.load(std::memory_order_acquire)) {
         error = "Native Rhythm LOOP SYNC stop requires REC QUANTIZE MEASURE; OFF is unsupported.";
+        return false;
+    }
+    if ((action == NativeScheduledLoopAction::Record || action == NativeScheduledLoopAction::Stop) &&
+        phase.measureOrdinal == std::numeric_limits<std::uint64_t>::max()) {
+        error = "Native Rhythm measure ordinal is exhausted; synchronized recording was not submitted.";
         return false;
     }
     if (action == NativeScheduledLoopAction::Record) {
@@ -1258,6 +1368,10 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     requestValue.action = action;
     requestValue.intentIdHigh = intentIdHigh;
     requestValue.intentIdLow = intentIdLow;
+    if (action == NativeScheduledLoopAction::Record || action == NativeScheduledLoopAction::Stop) {
+        requestValue.measureOrdinal = phase.measureOrdinal + 1U;
+        requestValue.firstMeasureFrames = recordedFirstMeasureFrames;
+    }
     // Reserve all track-side accounting before publishing to the SPSC queue:
     // the callback may consume the request immediately after the release store.
     nativeScheduledLoopRevision_[trackIndex].store(revision, std::memory_order_release);
@@ -1858,6 +1972,7 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     }
     auto& track = looperForTrack(index);
     const LoopMetadata before = track.metadata();
+    const auto phaseBeforeCommand = readTrackPhaseProvenance(index);
     const std::uint64_t originalTempoBefore = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     track.applyCommand(command);
     const LoopMetadata after = track.metadata();
@@ -1962,7 +2077,13 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Playing &&
          after.state != LooperState::Playing);
     if (changesContent) {
+        if (!tempoProvenanceConfirmed) writeTrackPhaseProvenance(index, {});
         advanceProjectRevision(trackContentRevision_[index]);
+        if (tempoProvenanceConfirmed && phaseBeforeCommand.verified) {
+            auto rebound = phaseBeforeCommand;
+            rebound.contentRevision = trackContentRevision_[index].load(std::memory_order_acquire);
+            writeTrackPhaseProvenance(index, rebound);
+        }
     }
     if (changesContent || changesImportableTrackState) {
         advanceProjectRevision(projectContentRevision_);
@@ -1972,13 +2093,15 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         if (history.applied) history.beforeOriginalTempoBits = recordingTempoCandidateBpmBits_[index];
         else history.afterOriginalTempoBits = recordingTempoCandidateBpmBits_[index];
     }
-    const auto publish = [this, index, &history](HistoryKind kind, const LoopMetadata& oldMeta,
+    const auto publish = [this, index, &history, &phaseBeforeCommand](HistoryKind kind, const LoopMetadata& oldMeta,
                                                   const LoopMetadata& newMeta, std::size_t frames,
                                                   std::uint64_t oldOriginalTempo, std::uint64_t newOriginalTempo) noexcept {
         history.before = oldMeta;
         history.after = newMeta;
         history.beforeOriginalTempoBits = oldOriginalTempo;
         history.afterOriginalTempoBits = newOriginalTempo;
+        history.beforePhaseProvenance = phaseBeforeCommand;
+        history.afterPhaseProvenance = readTrackPhaseProvenance(index);
         history.kind = kind;
         history.valid = true;
         history.applied = false;
@@ -2158,6 +2281,14 @@ bool NativeAudioCore::restoreTrackHistory(std::size_t trackIndex, bool redo, std
     historyFailure_[trackIndex].store(NativeHistoryFailure::None, std::memory_order_release);
     trackStates_[trackIndex].store(static_cast<int>(safeDestination.state), std::memory_order_release);
     advanceProjectRevision(trackContentRevision_[trackIndex]);
+    auto restoredPhase = redo ? history.afterPhaseProvenance : history.beforePhaseProvenance;
+    if (!restoredPhase.verified || destination.finalizedFrames == 0U ||
+        restoredPhase.pcmFrames != track.loopLengthSamples()) {
+        restoredPhase = {};
+    } else {
+        restoredPhase.contentRevision = trackContentRevision_[trackIndex].load(std::memory_order_acquire);
+    }
+    writeTrackPhaseProvenance(trackIndex, restoredPhase);
     advanceProjectRevision(projectContentRevision_);
     if (!unpin()) {
         historyFailure_[trackIndex].store(NativeHistoryFailure::SnapshotUnavailable, std::memory_order_release);
@@ -5221,6 +5352,56 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                     (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Empty));
             nativeScheduledLoopPending_[trackIndex].store(false, std::memory_order_release);
             pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
+            const auto appliedFrame = callbackFrameCursor_ + scheduledEvent->frameOffset;
+            if (scheduledEvent->request.action == NativeScheduledLoopAction::Record && trackStats.state == LooperState::Recording) {
+                scheduledRecordStartFrame_[trackIndex] = appliedFrame;
+                scheduledRecordFirstMeasureFrames_[trackIndex] = scheduledEvent->request.firstMeasureFrames;
+                scheduledRecordStartMeasureOrdinal_[trackIndex] = scheduledEvent->request.measureOrdinal;
+                scheduledRecordRhythmEpoch_[trackIndex] = scheduledEvent->request.phaseEpoch;
+                writeTrackPhaseProvenance(trackIndex, {});
+                historyRecords_[trackIndex].valid = false;
+                historyCanUndo_[trackIndex].store(false, std::memory_order_release);
+                historyCanRedo_[trackIndex].store(false, std::memory_order_release);
+            } else if (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Stopped) {
+                const auto frames = track.loopLengthSamples();
+                const auto start = scheduledRecordStartFrame_[trackIndex];
+                const auto firstMeasureFrames = scheduledRecordFirstMeasureFrames_[trackIndex];
+                const auto startOrdinal = scheduledRecordStartMeasureOrdinal_[trackIndex];
+                const auto stopOrdinal = scheduledEvent->request.measureOrdinal;
+                const auto measureCount = stopOrdinal > startOrdinal ? stopOrdinal - startOrdinal : 0U;
+                const bool proven = start != 0U && appliedFrame > start && appliedFrame - start == frames &&
+                    firstMeasureFrames != 0U && measureCount > 0U &&
+                    scheduledRecordRhythmEpoch_[trackIndex] == scheduledEvent->request.phaseEpoch;
+                advanceProjectRevision(trackContentRevision_[trackIndex]);
+                advanceProjectRevision(projectContentRevision_);
+                writeTrackPhaseProvenance(trackIndex, proven
+                    ? NativeTrackPhaseProvenance{true, firstMeasureFrames, start, appliedFrame,
+                        scheduledRecordRhythmEpoch_[trackIndex], currentConfig_->sampleRate,
+                        trackContentRevision_[trackIndex].load(std::memory_order_acquire), frames,
+                        startOrdinal, stopOrdinal, measureCount}
+                    : NativeTrackPhaseProvenance{});
+                auto& history = historyRecords_[trackIndex];
+                history.before = LoopMetadata{LooperState::Empty, 0U, 0U, 0U};
+                history.after = track.metadata();
+                history.beforeOriginalTempoBits = 0U;
+                history.afterOriginalTempoBits = originalTempoBpmBits_[trackIndex].load(std::memory_order_acquire);
+                history.beforePhaseProvenance = {};
+                history.afterPhaseProvenance = readTrackPhaseProvenance(trackIndex);
+                history.kind = HistoryKind::Metadata;
+                history.valid = true;
+                history.applied = false;
+                history.pcmFrames = 0U;
+                historyPcmActive_[trackIndex].store(false, std::memory_order_release);
+                historyCanUndo_[trackIndex].store(true, std::memory_order_release);
+                historyCanRedo_[trackIndex].store(false, std::memory_order_release);
+                historyFailure_[trackIndex].store(NativeHistoryFailure::None, std::memory_order_release);
+                scheduledRecordStartFrame_[trackIndex] = 0U;
+                scheduledRecordFirstMeasureFrames_[trackIndex] = 0U;
+                scheduledRecordRhythmEpoch_[trackIndex] = 0U;
+                scheduledRecordStartMeasureOrdinal_[trackIndex] = 0U;
+            } else if (scheduledEvent->request.action == NativeScheduledLoopAction::Play) {
+                advanceProjectRevision(projectContentRevision_);
+            }
         } else if (nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
             const auto revision = nativeScheduledLoopRevision_[trackIndex].load(std::memory_order_acquire);
             if (nativeLoopFrameScheduler_.hasCancelledOrFaulted(trackIndex, revision)) {
@@ -5492,6 +5673,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
 
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         nativeTrackLoopLengthSamples_[track].store(looperForTrack(track).loopLengthSamples(), std::memory_order_release);
+        writeTrackPhaseProvenance(track, {});
     }
 
     if (transaction->memory) {

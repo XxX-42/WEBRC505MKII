@@ -1,11 +1,12 @@
 """Rhythm-frame REC/STOP HTTP contract against the no-hardware host."""
 import os
 os.environ['WEBRC_NATIVE_BRIDGE_PORT'] = '17763'
+import math
 import subprocess
 import sys
 import time
 import uuid
-from native_bridge_http_simulation_test import request, require
+from native_bridge_http_simulation_test import (build_project_archive, request, request_project_archive, require)
 
 
 def until(predicate, timeout=8):
@@ -36,6 +37,12 @@ def phase_has_headroom(status):
     value = status['nativeRhythm']['phase']
     return value['available'] is True and value['snapshotStable'] is True and \
         value['nextMeasureFrame'] - value['sampleFrame'] > 24000
+
+
+def rhythm_measure_frame(origin_frame, ordinal, sample_rate=48000, bpm=99, meter_numerator=6, meter_denominator=8):
+    steps_per_measure = meter_numerator * 16 // meter_denominator
+    offset = ordinal * steps_per_measure * sample_rate * 15 / bpm
+    return origin_frame + math.floor(offset + 0.5)
 
 
 def set_callback_gate(paused):
@@ -85,7 +92,7 @@ def main():
         config = {'backend': 'WASAPI', 'inputDeviceId': 'WASAPI:1', 'outputDeviceId': 'WASAPI:1',
             'sampleRate': 48000, 'bufferFrames': 4096, 'monitoringEnabled': False}
         require(request('/v1/config/apply', 'POST', config)[0] == 200, 'engine config failed')
-        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300, 'patternIndex': 92})
+        code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 99, 'patternIndex': 92})
         require(code == 200, rhythm)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'engine start failed')
         running = until(phase_has_headroom)
@@ -141,7 +148,10 @@ def main():
         # future measure request. This makes cancellation and frame ACK ordering
         # deterministic without pretending the simulation cadence is hardware.
         set_callback_gate(True)
-        record_request = phase(request('/v1/status')[1])
+        record_request_status = request('/v1/status')[1]
+        record_request = phase(record_request_status)
+        record_start_measure_ordinal = record_request_status['nativeRhythm']['phase']['measureOrdinal'] + 1
+        record_phase_origin_frame = record_request_status['nativeRhythm']['phase']['originFrame']
         code, accepted = request('/v1/transport/rhythm-schedule', 'POST', record_request)
         require(code == 200, accepted)
         record_revision = accepted['nativeLoopFrameScheduling']['acceptedRevision']
@@ -154,7 +164,7 @@ def main():
             and value['nativeTracks'][1]['state'] == 'Recording')
         require(recorded['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
             record_request['absoluteFrame'], recorded)
-        for rhythm_change in [{'enabled': False}, {'bpm': 299}, {'patternIndex': 93}]:
+        for rhythm_change in [{'enabled': False}, {'bpm': 98}, {'patternIndex': 93}]:
             change_code, change_status = request('/v1/native-rhythm/config', 'POST', rhythm_change)
             require(change_code == 409 and 'phase cannot change' in change_status.get('error', '').lower(),
                 ('Native Rhythm phase changed during synchronized recording', rhythm_change, change_code, change_status))
@@ -177,6 +187,9 @@ def main():
             ('direct STOP bypassed Native LOOP SYNC scheduling', direct_stop_code, direct_stop))
         require(request('/v1/status')[1]['nativeTracks'][1]['state'] == 'Recording', 'direct STOP changed the recording state')
 
+        multi_measure_recording = until(lambda value:
+            value['nativeRhythm']['phase']['measureOrdinal'] >= record_start_measure_ordinal + 10)
+        require(multi_measure_recording['nativeTracks'][1]['state'] == 'Recording', multi_measure_recording)
         set_callback_gate(True)
         stop_request = phase(request('/v1/status')[1])
         stop_request['action'] = 'stop'
@@ -192,19 +205,80 @@ def main():
         metadata_code, metadata = request('/v1/export/track-metadata?trackId=2')
         require(metadata_code == 200 and metadata['frameCount'] ==
             stop_request['absoluteFrame'] - record_request['absoluteFrame'], metadata)
+        provenance = stopped['nativeTracks'][1]['phaseProvenance']
+        require(provenance['verified'] is True and
+            provenance['contentRevision'] == stopped['nativeTracks'][1]['contentRevision'] and
+            provenance['pcmFrames'] == metadata['frameCount'] and
+            provenance['stopFrame'] - provenance['startFrame'] == metadata['frameCount'] and
+            provenance['firstMeasureFrames'] > 0 and provenance['measureCount'] == 11 and
+            provenance['stopMeasureOrdinal'] - provenance['startMeasureOrdinal'] == provenance['measureCount'],
+            ('scheduled PCM lacks exact Rhythm-phase provenance', provenance, metadata, stopped['nativeTracks'][1]))
+        measure_intervals = [rhythm_measure_frame(record_phase_origin_frame, ordinal + 1) -
+            rhythm_measure_frame(record_phase_origin_frame, ordinal)
+            for ordinal in range(provenance['startMeasureOrdinal'], provenance['stopMeasureOrdinal'])]
+        require(provenance['firstMeasureFrames'] == measure_intervals[0] and
+            provenance['startFrame'] == rhythm_measure_frame(record_phase_origin_frame, provenance['startMeasureOrdinal']) and
+            provenance['stopFrame'] == rhythm_measure_frame(record_phase_origin_frame, provenance['stopMeasureOrdinal']) and
+            sum(measure_intervals) == metadata['frameCount'] and len(set(measure_intervals)) > 1,
+            ('fractional-BPM cumulative bar boundaries do not prove the recorded PCM',
+             provenance, measure_intervals, metadata))
+        undo_code, undone = request('/v1/transport/undo?trackId=2', 'POST', {})
+        require(undo_code == 200 and undone['nativeTracks'][1]['state'] == 'Empty' and
+            undone['nativeTracks'][1]['phaseProvenance']['verified'] is False,
+            ('undo did not clear the recording and its phase proof together', undo_code, undone))
+        redo_code, redone = request('/v1/transport/redo?trackId=2', 'POST', {})
+        redone_track = redone.get('nativeTracks', [{}, {}])[1]
+        redone_provenance = redone_track.get('phaseProvenance', {})
+        require(redo_code == 200 and redone_track.get('state') == 'Stopped' and
+            redone_track.get('loopLengthSamples') == metadata['frameCount'] and
+            redone_provenance.get('verified') is True and
+            redone_provenance.get('contentRevision') == redone_track.get('contentRevision') and
+            redone_provenance.get('pcmFrames') == metadata['frameCount'],
+            ('redo did not restore PCM with its rebound phase proof', redo_code, redone))
         direct_play_code, direct_play = request('/v1/transport/play?trackId=2', 'POST', {})
         require(direct_play_code == 409 and 'scheduler' in direct_play.get('error', '').lower(),
             ('direct PLAY bypassed Native LOOP SYNC scheduling', direct_play_code, direct_play))
         set_callback_gate(True)
         play_request = phase(request('/v1/status')[1])
         play_request['action'] = 'play'
-        code, rejected_play = request('/v1/transport/rhythm-schedule', 'POST', play_request)
-        require(code == 409 and 'provenance' in rejected_play.get('error', '').lower(),
-            ('synchronized PLAY accepted PCM with no retained phase provenance', code, rejected_play))
+        code, accepted_play = request('/v1/transport/rhythm-schedule', 'POST', play_request)
+        require(code == 200, ('verified synchronized PLAY was rejected', code, accepted_play))
+        play_revision = accepted_play['nativeLoopFrameScheduling']['acceptedRevision']
         set_callback_gate(False)
-        still_stopped = request('/v1/status')[1]
-        require(still_stopped['nativeTracks'][1]['state'] == 'Stopped' and
-            still_stopped['nativeTracks'][1]['loopLengthSamples'] == metadata['frameCount'], still_stopped)
+        playing = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == play_revision
+            and value['nativeTracks'][1]['state'] == 'Playing')
+        playing_provenance = playing['nativeTracks'][1]['phaseProvenance']
+        require(playing['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
+            play_request['absoluteFrame'] and playing_provenance['verified'] is True and
+            playing_provenance['contentRevision'] == playing['nativeTracks'][1]['contentRevision'] and
+            playing_provenance['pcmFrames'] == metadata['frameCount'], playing)
+        direct_play_stop_code, direct_play_stop = request('/v1/transport/stop?trackId=2', 'POST', {})
+        require(direct_play_stop_code == 200, ('stopping synchronized playback failed', direct_play_stop_code, direct_play_stop))
+        stopped_after_play = until(lambda value: value['nativeTracks'][1]['state'] == 'Stopped')
+        require(stopped_after_play['nativeTracks'][1]['loopLengthSamples'] == metadata['frameCount'] and
+            stopped_after_play['nativeTracks'][1]['phaseProvenance']['verified'] is True, stopped_after_play)
+        require(stopped_after_play['nativeTracks'][1]['history']['canUndo'] is True,
+            ('scheduled Native recording did not publish its history receipt', stopped_after_play['nativeTracks'][1]['history']))
+        clear_code, clear_accepted = request('/v1/transport/clear?trackId=2', 'POST', {})
+        require(clear_code == 200, ('clear request was rejected', clear_code, clear_accepted))
+        cleared = until(lambda value: value['nativeTracks'][1]['state'] == 'Empty' and
+            value['nativeTracks'][1]['phaseProvenance']['verified'] is False)
+        clear_undo_code, clear_undone = request('/v1/transport/undo?trackId=2', 'POST', {})
+        clear_undo_track = clear_undone.get('nativeTracks', [{}, {}])[1]
+        clear_undo_phase = clear_undo_track.get('phaseProvenance', {})
+        require(clear_undo_code == 200 and clear_undo_track.get('state') == 'Stopped' and
+            clear_undo_track.get('loopLengthSamples') == metadata['frameCount'] and
+            clear_undo_phase.get('verified') is True and
+            clear_undo_phase.get('contentRevision') == clear_undo_track.get('contentRevision'),
+            ('clear undo failed to restore the exact PCM phase proof', clear_undo_code, clear_undone))
+        clear_redo_code, clear_redone = request('/v1/transport/redo?trackId=2', 'POST', {})
+        require(clear_redo_code == 200 and clear_redone['nativeTracks'][1]['state'] == 'Empty' and
+            clear_redone['nativeTracks'][1]['phaseProvenance']['verified'] is False,
+            ('clear redo retained PCM phase provenance after deleting the phrase', clear_redo_code, clear_redone))
+        _, phrase_restored = request('/v1/transport/undo?trackId=2', 'POST', {})
+        require(phrase_restored['nativeTracks'][1]['state'] == 'Stopped' and
+            phrase_restored['nativeTracks'][1]['phaseProvenance']['verified'] is True,
+            ('undo after clear redo did not restore the phrase proof for subsequent guards', phrase_restored))
         # A quantized REC request never replaces incumbent PCM implicitly.
         set_callback_gate(True)
         occupied_track_request = phase(request('/v1/status')[1])
@@ -213,8 +287,9 @@ def main():
         require(rejected_rec_code in (400, 409) and 'empty track' in rejected_rec_status.get('error', '').lower(),
             ('scheduled REC did not reject a track that already owns committed PCM', rejected_rec_code, rejected_rec_status))
         metadata_after_rejected_rec = request('/v1/export/track-metadata?trackId=2')[1]
+        current_track_revision = request('/v1/status')[1]['nativeTracks'][1]['contentRevision']
         require(metadata_after_rejected_rec['frameCount'] == metadata['frameCount'] and
-            metadata_after_rejected_rec['contentRevision'] == metadata['contentRevision'], metadata_after_rejected_rec)
+            metadata_after_rejected_rec['contentRevision'] == current_track_revision, metadata_after_rejected_rec)
         require(stopped['nativeRecordPlay']['quantizeAvailable'] is True and
             stopped['nativeLoopFrameScheduling']['available'] is True and
             stopped['nativeRecordPlay']['quantize'] == 'MEASURE' and
@@ -285,7 +360,35 @@ def main():
         code, gate_status = request('/v1/test/simulation/callback-gate')
         require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
             ('simulation callback did not resume after restart', gate_status))
-        print('Native Rhythm LOOP SYNC HTTP: phase-change guards, emergency PCM-preserving STOP ACK, exact REC/STOP frames, REC->DUB and unproven PLAY rejection, incumbent PCM protection')
+
+        # Importing an ordinary project replaces a previously phase-proven take
+        # with unproven PCM. Imported PCM must never inherit the old proof.
+        before_import = request('/v1/status')[1]
+        import_archive = build_project_archive([None,
+            {'channels': 2, 'samples': [0.25, -0.25, 0.5, -0.5]}, None, None, None],
+            name='unproven import', bpm=99.0)
+        import_code, import_candidate = request_project_archive(
+            f"/v1/project/import?expectedContentRevision={before_import['projectContentRevision']}",
+            'POST', import_archive, 'application/octet-stream')
+        require(import_code == 202, ('ordinary project import was rejected', import_code, import_candidate))
+        import_generation = import_candidate['generation']
+        def import_is_committed(_):
+            state_code, state = request(f'/v1/project/import/status?generation={import_generation}')
+            require(state_code == 200, state)
+            return state['state'] == 'committed'
+        until(import_is_committed)
+        import_state_code, import_state = request(f'/v1/project/import/status?generation={import_generation}')
+        require(import_state_code == 200 and import_state['state'] == 'committed', import_state)
+        imported = until(lambda value: value['projectContentRevision'] > before_import['projectContentRevision'] and
+            value['nativeTracks'][1]['state'] == 'Stopped' and value['nativeTracks'][1]['loopLengthSamples'] == 2 and
+            value['nativeTracks'][1]['phaseProvenance']['verified'] is False)
+        require(imported['nativeMemory']['loopSync'][1] is True, imported['nativeMemory'])
+        play_after_import = phase(imported)
+        play_after_import['action'] = 'play'
+        import_play_code, import_play = request('/v1/transport/rhythm-schedule', 'POST', play_after_import)
+        require(import_play_code == 409 and 'provenance' in import_play.get('error', '').lower(),
+            ('imported PCM inherited a synchronized PLAY phase proof', import_play_code, import_play))
+        print('Native Rhythm LOOP SYNC HTTP: fractional-boundary provenance, synchronized PLAY, Clear/Undo/Redo, import invalidation, phase-change guards, emergency PCM-preserving STOP')
     finally:
         try:
             request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})

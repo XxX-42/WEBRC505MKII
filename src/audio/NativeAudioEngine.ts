@@ -1652,7 +1652,45 @@ export class NativeAudioEngine {
 
   public getRhythmSyncPlayAvailability(trackId: number): {available: boolean; reason: string} {
     if (!this.getTrackLoopSync(trackId)) return { available: true, reason: '' };
-    return { available: false, reason: 'Native LOOP SYNC playback is disabled until phase provenance is retained for each track PCM.' };
+    const status = this.latestStatus;
+    const track = status?.nativeTracks?.find(candidate => candidate.trackId === trackId);
+    const provenance = track?.phaseProvenance;
+    const phase = status?.nativeRhythm?.phase;
+    if (!status?.engineRunning || !status.nativeRhythm?.enabled || phase?.available !== true ||
+        phase.snapshotStable !== true || phase.frameSchedulingAvailable !== true) {
+      return { available: false, reason: 'Native LOOP SYNC playback requires an active Native Rhythm measure phase.' };
+    }
+    if (!track || track.state !== 'Stopped' || !Number.isSafeInteger(track.loopLengthSamples) || track.loopLengthSamples! <= 0 ||
+        !Number.isSafeInteger(track.contentRevision) || !provenance?.verified ||
+        provenance.contentRevision !== track.contentRevision || provenance.pcmFrames !== track.loopLengthSamples ||
+        provenance.sampleRate !== status.sampleRate || provenance.firstMeasureFrames <= 0 ||
+        provenance.stopFrame - provenance.startFrame !== provenance.pcmFrames ||
+        !Number.isSafeInteger(provenance.measureCount) || provenance.measureCount <= 0 ||
+        provenance.stopMeasureOrdinal - provenance.startMeasureOrdinal !== provenance.measureCount) {
+      return { available: false, reason: 'This track PCM has no current, verified Native Rhythm phase provenance.' };
+    }
+    const stepsNumerator = phase.meterNumerator * 16;
+    const bpm = status.nativeRhythm.bpm;
+    const startOrdinal = phase.measureOrdinal + 1;
+    const endOrdinal = startOrdinal + provenance.measureCount;
+    const boundary = (ordinal: number): number | null => {
+      const stepOrdinal = ordinal * stepsNumerator / phase.meterDenominator;
+      const offset = stepOrdinal * status.sampleRate * 15 / bpm;
+      const frame = phase.originFrame + Math.floor(offset + 0.5);
+      return Number.isSafeInteger(stepOrdinal) && Number.isSafeInteger(offset) && Number.isSafeInteger(frame) ? frame : null;
+    };
+    const startFrame = boundary(startOrdinal);
+    const endFrame = boundary(endOrdinal);
+    if (!Number.isSafeInteger(startOrdinal) || !Number.isSafeInteger(endOrdinal) ||
+        stepsNumerator % phase.meterDenominator !== 0 || !Number.isFinite(bpm) || bpm <= 0 ||
+        startFrame === null || endFrame === null || startFrame !== phase.nextMeasureFrame ||
+        endFrame - startFrame !== track.loopLengthSamples) {
+      return { available: false, reason: 'This PCM length does not match the current Native Rhythm measure boundaries.' };
+    }
+    if (track.loopTransportAppliedOneShot || track.loopTransportAppliedReverse) {
+      return { available: false, reason: 'Native LOOP SYNC playback is unavailable with 1SHOT or REVERSE.' };
+    }
+    return { available: true, reason: '' };
   }
 
   public async toggleOverdub(trackId = 1) {

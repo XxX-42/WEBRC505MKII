@@ -192,6 +192,8 @@ def main():
                 'Native Memory did not restore the requested 1SHOT mode to the callback-applied setting')
         require(after['nativeMemory']['dubModes'] == ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'], after['nativeMemory'])
         require([track['dubMode']['applied'] for track in after['nativeTracks']] == after['nativeMemory']['dubModes'], after['nativeTracks'])
+        require(all(track['phaseProvenance']['verified'] is False for track in after['nativeTracks']),
+            ('Native Memory import fabricated PCM phase provenance', after['nativeTracks']))
         require(all(track['dubMode']['requested'] == track['dubMode']['applied']
             and track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in after['nativeTracks']), after['nativeTracks'])
         require(after['nativeRecordPlay']['recAction'] == 'REC->DUB' and after['nativeRecordPlay']['requestedRevision'] == after['nativeRecordPlay']['appliedRevision'], after['nativeRecordPlay'])
@@ -223,6 +225,8 @@ def main():
                     and all(track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in restored['nativeTracks']):
                 break
             time.sleep(.005)
+        require(all(track['phaseProvenance']['verified'] is False for track in restored['nativeTracks']),
+            ('legacy Native Memory import fabricated PCM phase provenance', restored['nativeTracks']))
         require(restored['nativeMemory']['dubModes'] == ['OVERDUB'] * 5
             and all(track['dubMode']['applied'] == 'OVERDUB'
                 and track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in restored['nativeTracks']),

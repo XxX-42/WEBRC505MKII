@@ -2,6 +2,7 @@
 #include "looper_core.hpp"
 
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -203,9 +204,13 @@ void concurrentControlProducersAreSerializedAndPublishWholeRequestTuples() {
     auto first = request(1U, 1234U, 21U, 31U, 0U, NativeScheduledLoopAction::Record);
     first.intentIdHigh = 0x1122334455667788ULL;
     first.intentIdLow = 0x8877665544332211ULL;
-    auto second = request(1U, 5678U, 22U, 32U, 1U, NativeScheduledLoopAction::Stop);
+    first.measureOrdinal = 77U;
+    first.firstMeasureFrames = 49382U;
+    auto second = request(1U, 5678U, 21U, 31U, 1U, NativeScheduledLoopAction::Stop);
     second.intentIdHigh = 0xAABBCCDDEEFF0011ULL;
     second.intentIdLow = 0x1100FFEEDDCCBBAAULL;
+    second.measureOrdinal = 88U;
+    second.firstMeasureFrames = 27182U;
     bool firstAccepted = false;
     bool secondAccepted = false;
     std::thread firstProducer([&] { firstAccepted = scheduler.request(first); });
@@ -231,8 +236,50 @@ void concurrentControlProducersAreSerializedAndPublishWholeRequestTuples() {
     assert(secondStatus.intentIdHigh == second.intentIdHigh);
     assert(secondStatus.intentIdLow == second.intentIdLow);
     std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
-    assert(scheduler.collectDue(1000U, 5000U, first.phaseEpoch, first.settingsRevision, events) == 1U);
-    assert(events[0].request.trackIndex == 0U || events[0].request.trackIndex == 1U);
+    assert(scheduler.collectDue(1000U, 1000U, first.phaseEpoch, first.settingsRevision, events) == 1U);
+    assert(events[0].request.trackIndex == 0U);
+    assert(events[0].request.measureOrdinal == first.measureOrdinal);
+    assert(events[0].request.firstMeasureFrames == first.firstMeasureFrames);
+    assert(scheduler.collectDue(5000U, 1000U, second.phaseEpoch, second.settingsRevision, events) == 1U);
+    assert(events[0].request.trackIndex == 1U);
+    assert(events[0].request.measureOrdinal == second.measureOrdinal);
+    assert(events[0].request.firstMeasureFrames == second.firstMeasureFrames);
+}
+
+void callbackObservesMeasureReceiptOnlyWithItsPublishedRequest() {
+    NativeLoopFrameScheduler scheduler;
+    auto scheduled = request(1U, 1234U, 21U, 31U, 0U, NativeScheduledLoopAction::Record);
+    scheduled.measureOrdinal = 77U;
+    scheduled.firstMeasureFrames = 49382U;
+    std::atomic<bool> start{false};
+    std::atomic<bool> producerAccepted{false};
+    NativeScheduledLoopRequest callbackObserved{};
+
+    std::thread callback([&] {
+        while (!start.load(std::memory_order_acquire)) std::this_thread::yield();
+        std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+        for (unsigned int attempt = 0U; attempt < 100000U; ++attempt) {
+            if (scheduler.collectDue(1000U, 1000U, scheduled.phaseEpoch, scheduled.settingsRevision, events) != 0U) {
+                callbackObserved = events[0].request;
+                return;
+            }
+            std::this_thread::yield();
+        }
+    });
+    std::thread producer([&] {
+        start.store(true, std::memory_order_release);
+        producerAccepted.store(scheduler.request(scheduled), std::memory_order_release);
+    });
+    producer.join();
+    callback.join();
+
+    assert(producerAccepted.load(std::memory_order_acquire));
+    assert(callbackObserved.revision == scheduled.revision);
+    assert(callbackObserved.absoluteFrame == scheduled.absoluteFrame);
+    assert(callbackObserved.measureOrdinal == scheduled.measureOrdinal);
+    assert(callbackObserved.firstMeasureFrames == scheduled.firstMeasureFrames);
+    assert(callbackObserved.phaseEpoch == scheduled.phaseEpoch);
+    assert(callbackObserved.settingsRevision == scheduled.settingsRevision);
 }
 } // namespace
 
@@ -247,5 +294,6 @@ int main() {
     looperStartsAndStopsOnTheExactScheduledSample();
     appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition();
     concurrentControlProducersAreSerializedAndPublishWholeRequestTuples();
+    callbackObservesMeasureReceiptOnlyWithItsPublishedRequest();
     return 0;
 }

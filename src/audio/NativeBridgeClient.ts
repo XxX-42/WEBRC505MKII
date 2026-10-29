@@ -293,6 +293,9 @@ export interface NativeStatus {
     loopLengthSamples?: number;
     /** Monotonic loop-content revision; older hosts omit it. */
     contentRevision?: number;
+    phaseProvenance?: { verified: boolean; firstMeasureFrames: number; startFrame: number; stopFrame: number;
+      rhythmEpoch: number; sampleRate: number; contentRevision: number; pcmFrames: number;
+      startMeasureOrdinal: number; stopMeasureOrdinal: number; measureCount: number };
     loopTransportStatus?: NativeLoopTransportStatus;
     loopTransportRequestedRevision?: number;
     loopTransportAppliedRevision?: number;

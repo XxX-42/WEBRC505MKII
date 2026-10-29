@@ -737,12 +737,19 @@ json statusToJson(const EngineStatus& status) {
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         const auto& history = status.nativeTrackHistory[track];
         const auto& mark = status.nativeTrackMarks[track];
+        const auto& phaseProvenance = status.nativeTrackPhaseProvenance[track];
         nativeTracks.push_back({
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
             {"loopLengthSamples", status.nativeTrackLoopLengthSamples[track]},
             {"contentRevision", status.nativeTrackContentRevision[track]},
+            {"phaseProvenance", {{"verified", phaseProvenance.verified},
+                {"firstMeasureFrames", phaseProvenance.firstMeasureFrames}, {"startFrame", phaseProvenance.startFrame},
+                {"stopFrame", phaseProvenance.stopFrame}, {"rhythmEpoch", phaseProvenance.rhythmEpoch},
+                {"sampleRate", phaseProvenance.sampleRate}, {"contentRevision", phaseProvenance.contentRevision},
+                {"pcmFrames", phaseProvenance.pcmFrames}, {"startMeasureOrdinal", phaseProvenance.startMeasureOrdinal},
+                {"stopMeasureOrdinal", phaseProvenance.stopMeasureOrdinal}, {"measureCount", phaseProvenance.measureCount}}},
             {"loopTransportRequestedRevision", status.nativeLoopTransportRequestedRevision[track]},
             {"loopTransportAppliedRevision", status.nativeLoopTransportAppliedRevision[track]},
             {"loopTransportFaultRevision", status.nativeLoopTransportFaultRevision[track]},
