@@ -175,7 +175,8 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
         if (predicate()) return;
         await new Promise((resolve) => window.setTimeout(resolve, 10));
       }
-      throw new Error(`Timed out waiting for ${label}; context=${context.state}; rhythm=${browser.rhythmEngine?.isRunning}/${browser.rhythmEngine?.error || 'no-error'}/node=${!!browser.rhythmEngine?.workletNode}/time=${context.currentTime}; phase=${browser.rhythmEngine?.measurePhaseSnapshot?.epoch ?? 'none'}; atomic=${Atomics.load(browser.rhythmPhaseEpochView, 0)}; track=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
+      const phaseInvalidation = browser.getBrowserRhythmPhaseInvalidation?.();
+      throw new Error(`Timed out waiting for ${label}; context=${context.state}; rhythm=${browser.rhythmEngine?.isRunning}/${browser.rhythmEngine?.error || 'no-error'}/node=${!!browser.rhythmEngine?.workletNode}/time=${context.currentTime}; phase=${browser.rhythmEngine?.measurePhaseSnapshot?.epoch ?? 'none'}; atomic=${Atomics.load(browser.rhythmPhaseEpochView, 0)}; invalidation=${phaseInvalidation?.reasonCode ?? 'unknown'}@${phaseInvalidation?.frame ?? 'unknown'}; track=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
     };
     const nextBoundary = (phase: any, frame: number) => {
       const bar = phase.stepsPerBar * phase.sampleRate * 15 / phase.bpm;
@@ -208,6 +209,8 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
     await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'real Rhythm phase acknowledgement');
     const phase = browser.rhythmEngine.measurePhaseSnapshot;
     if (!phase || phase.sampleRate !== context.sampleRate || phase.bpm !== transport.bpm) throw new Error('Rhythm phase snapshot did not match the active audio clock and tempo');
+    const sharedEpochAtPhaseAck = Atomics.load(browser.rhythmPhaseEpochView, 0);
+    if (sharedEpochAtPhaseAck !== phase.epoch) throw new Error(`Rhythm phase ACK epoch ${phase.epoch} was not published to the shared audio-thread barrier (${sharedEpochAtPhaseAck})`);
     await browser.waitForInputCaptureReady();
     const requestFrame = browser.getInputCaptureRequestFrame();
     const expectedStartFrame = nextBoundary(phase, requestFrame);
@@ -230,6 +233,7 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
     await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'fresh Rhythm phase after reconfiguration');
     const offPhase = browser.rhythmEngine.measurePhaseSnapshot;
     if (!offPhase) throw new Error('Reconfigured Rhythm did not publish a phase snapshot');
+    if (Atomics.load(browser.rhythmPhaseEpochView, 0) !== offPhase.epoch) throw new Error('Reconfigured Rhythm phase was not published to the shared audio-thread barrier');
     await browser.waitForInputCaptureReady();
     track.triggerRecord();
     await waitFor(() => track.state === 'REC_STANDBY' && !!track.recordingCaptureSession, 'second reserved Rhythm start');

@@ -619,21 +619,21 @@
     phaseAcknowledged = false;
     phaseInvalidated = false;
     sharedPhaseEpoch;
-    constructor() {
+    constructor(options) {
       super();
       this.core = new RhythmWorkletCore(workletGlobals.sampleRate ?? 44100);
-      const phaseEpochBuffer = this.processorOptions?.phaseEpochBuffer;
+      const phaseEpochBuffer = options?.processorOptions?.phaseEpochBuffer;
       this.sharedPhaseEpoch = typeof SharedArrayBuffer !== "undefined" && phaseEpochBuffer instanceof SharedArrayBuffer ? new Int32Array(phaseEpochBuffer) : null;
       this.port.onmessage = (event) => {
         const message = event.data;
         if (message?.type === "start") {
-          this.setSharedPhaseEpoch(0);
+          this.setSharedPhaseEpoch(0, 5, workletGlobals.currentFrame ?? 0);
           this.core.configure(message.configuration, message.requestId);
           this.phaseRequestId = message.requestId;
           this.phaseAcknowledged = false;
           this.phaseInvalidated = false;
         } else if (message?.type === "stop") {
-          this.setSharedPhaseEpoch(0);
+          this.setSharedPhaseEpoch(0, 6, workletGlobals.currentFrame ?? 0);
           this.core.stop();
           this.phaseRequestId = message.requestId;
           this.phaseAcknowledged = true;
@@ -674,7 +674,7 @@
           };
           this.port.postMessage(message);
         }
-        this.invalidatePhase();
+        this.invalidatePhase(7, startFrame);
       } else if (this.staleEpisodeStartFrame !== null) {
         const message = {
           type: "timeline-recovered",
@@ -685,16 +685,16 @@
         this.port.postMessage(message);
         this.staleEpisodeStartFrame = null;
         this.staleEpisodeExpectedFrame = null;
-        this.invalidatePhase();
+        this.invalidatePhase(8, startFrame);
       }
       if (!this.phaseAcknowledged && this.phaseRequestId !== null && renderedOnTimeline) {
         const phase = this.core.getMeasurePhaseSnapshot(this.phaseRequestId);
         if (phase && startFrame <= phase.originFrame && phase.originFrame < blockEndFrame) {
-          this.setSharedPhaseEpoch(phase.epoch);
+          this.setSharedPhaseEpoch(phase.epoch, 0, startFrame);
           this.port.postMessage(phase);
           this.phaseAcknowledged = true;
         } else if (phase && startFrame > phase.originFrame) {
-          this.invalidatePhase();
+          this.invalidatePhase(9, startFrame);
         }
       }
       for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex += 1) {
@@ -706,8 +706,8 @@
       }
       return true;
     }
-    invalidatePhase() {
-      this.setSharedPhaseEpoch(0);
+    invalidatePhase(reasonCode, absoluteFrame) {
+      this.setSharedPhaseEpoch(0, reasonCode, absoluteFrame);
       if (this.phaseInvalidated || this.phaseRequestId === null) return;
       this.phaseInvalidated = true;
       this.phaseAcknowledged = true;
@@ -718,8 +718,14 @@
         epoch: this.core.currentPhaseEpoch
       });
     }
-    setSharedPhaseEpoch(epoch) {
-      if (this.sharedPhaseEpoch) Atomics.store(this.sharedPhaseEpoch, 0, epoch > 0 ? epoch : 0);
+    setSharedPhaseEpoch(epoch, reasonCode, absoluteFrame) {
+      if (!this.sharedPhaseEpoch) return;
+      const low = absoluteFrame >>> 0;
+      const high = Math.floor(absoluteFrame / 4294967296) >>> 0;
+      Atomics.store(this.sharedPhaseEpoch, 1, epoch > 0 ? 0 : reasonCode);
+      Atomics.store(this.sharedPhaseEpoch, 2, epoch > 0 ? 0 : low);
+      Atomics.store(this.sharedPhaseEpoch, 3, epoch > 0 ? 0 : high);
+      Atomics.store(this.sharedPhaseEpoch, 0, epoch > 0 && epoch <= 2147483647 ? epoch : 0);
     }
   };
   if (typeof workletGlobals.registerProcessor === "function") {

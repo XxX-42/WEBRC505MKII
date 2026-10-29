@@ -276,6 +276,8 @@ type RecordingWorkletMessage =
         inputGeneration: number;
         startRejected?: boolean;
         reason?: string;
+        rhythmPhaseInvalidationReasonCode?: number;
+        rhythmPhaseInvalidationFrame?: number;
         chunksSent?: number;
         requestedStartFrame?: number;
         stopFrame?: number;
@@ -3403,7 +3405,10 @@ export class TrackAudio {
                         + ` generation=${message.inputGeneration}/${message.currentInputGeneration ?? 'unknown'},`
                         + ` rate=${message.sampleRate ?? 'unknown'} Hz.`
                     : '';
-                this.recordingDiagnostic = `Shared input capture failed: ${message.reason || 'unknown error'}.${timing} The previous track audio was kept; recording can be retried.`;
+                const rhythmInvalidation = message.reason === 'rhythm-phase-epoch-mismatch'
+                    ? ` Rhythm invalidation code=${message.rhythmPhaseInvalidationReasonCode ?? 'unknown'} at frame=${message.rhythmPhaseInvalidationFrame ?? 'unknown'}.`
+                    : '';
+                this.recordingDiagnostic = `Shared input capture failed: ${message.reason || 'unknown error'}.${rhythmInvalidation}${timing} The previous track audio was kept; recording can be retried.`;
                 this.abortSharedRecording(captureSession, message.startRejected !== true);
                 if (retryBeforeStartAck && this.engine.waitForInputCaptureReady) {
                     const retryGeneration = this.recordingStartGeneration;

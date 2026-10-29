@@ -94,7 +94,7 @@ export class RhythmEngine {
 
   constructor(context: AudioContext, notifyStatus: () => void = () => undefined, phaseEpochBuffer?: SharedArrayBuffer) {
     this.context = context;
-    this.phaseEpochBuffer = phaseEpochBuffer ?? new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    this.phaseEpochBuffer = phaseEpochBuffer ?? new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);
     this.phaseEpochView = new Int32Array(this.phaseEpochBuffer);
     this.notifyStatus = notifyStatus;
     this.transport = Transport.getInstance();
@@ -285,7 +285,7 @@ export class RhythmEngine {
 
   stop(): void {
     this.isPlaying = false;
-    const requestId = this.invalidateMeasurePhase();
+    const requestId = this.invalidateMeasurePhase(2);
     this.workletNode?.port.postMessage({ type: 'stop', requestId });
     this.detachTransportListener();
   }
@@ -326,7 +326,7 @@ export class RhythmEngine {
         processorOptions: { phaseEpochBuffer: this.phaseEpochBuffer },
       });
       node.onprocessorerror = (): void => {
-        this.invalidateMeasurePhase();
+        this.invalidateMeasurePhase(4);
         this.lastError = 'The rhythm AudioWorklet processor stopped unexpectedly';
         this.notifyStatus();
       };
@@ -359,7 +359,7 @@ export class RhythmEngine {
     };
     const requestId = this.nextPhaseRequestId();
     this.measurePhase = null;
-    Atomics.store(this.phaseEpochView, 0, 0);
+    this.storePhaseEpoch(0, 1, Math.max(0, Math.ceil(this.context.currentTime * this.context.sampleRate)));
     this.notifyMeasurePhaseChange();
     node.port.postMessage({ type: 'start', requestId, configuration });
   }
@@ -440,11 +440,20 @@ export class RhythmEngine {
     return this.phaseRequestId;
   }
 
-  private invalidateMeasurePhase(): number {
+  private invalidateMeasurePhase(reasonCode = 3): number {
     this.measurePhase = null;
-    Atomics.store(this.phaseEpochView, 0, 0);
+    this.storePhaseEpoch(0, reasonCode, Math.max(0, Math.ceil(this.context.currentTime * this.context.sampleRate)));
     this.notifyMeasurePhaseChange();
     return this.nextPhaseRequestId();
+  }
+
+  private storePhaseEpoch(epoch: number, reasonCode: number, absoluteFrame: number): void {
+    const low = absoluteFrame >>> 0;
+    const high = Math.floor(absoluteFrame / 0x1_0000_0000) >>> 0;
+    Atomics.store(this.phaseEpochView, 1, epoch > 0 ? 0 : reasonCode);
+    Atomics.store(this.phaseEpochView, 2, epoch > 0 ? 0 : low);
+    Atomics.store(this.phaseEpochView, 3, epoch > 0 ? 0 : high);
+    Atomics.store(this.phaseEpochView, 0, epoch > 0 && epoch <= 0x7fff_ffff ? epoch : 0);
   }
 }
 

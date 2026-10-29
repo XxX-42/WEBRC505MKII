@@ -471,7 +471,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.activeChunkOffset = 0;
   }
 
-  postError(slot, sessionId, reason, requestedStartFrame = 0, stopFrame = 0, inputGeneration = slot.inputGeneration, startReceivedFrame = slot.startReceivedFrame, startRejected = false) {
+  postError(slot, sessionId, reason, requestedStartFrame = 0, stopFrame = 0, inputGeneration = slot.inputGeneration, startReceivedFrame = slot.startReceivedFrame, startRejected = false, rhythmPhaseInvalidation = null) {
     const message = slot.errorMessage;
     message.sessionId = sessionId;
     message.inputGeneration = Number.isSafeInteger(inputGeneration) ? inputGeneration : this.inputGeneration;
@@ -483,6 +483,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.latestAvailableFrame = this.preRollEndFrame;
     message.startReceivedFrame = Number.isSafeInteger(startReceivedFrame) ? startReceivedFrame : this.preRollEndFrame;
     message.requestAgeAtStartFrames = message.startReceivedFrame - message.requestedStartFrame;
+    if (rhythmPhaseInvalidation) {
+      message.rhythmPhaseInvalidationReasonCode = rhythmPhaseInvalidation.reasonCode;
+      message.rhythmPhaseInvalidationFrame = rhythmPhaseInvalidation.frame;
+    } else {
+      message.rhythmPhaseInvalidationReasonCode = 0;
+      message.rhythmPhaseInvalidationFrame = 0;
+    }
     message.preRollCapacityFrames = this.preRollFrames;
     message.preRollValidFrames = this.preRollValidFrames;
     message.callbackFrameStart = this.diagnosticFrameStart;
@@ -757,7 +764,14 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (slot.state === 'pending' && requestedFrames > 0) return;
     if (slot.rhythmPhaseEpoch > 0 && (!this.rhythmPhaseEpochView
       || Atomics.load(this.rhythmPhaseEpochView, 0) !== slot.rhythmPhaseEpoch)) {
-      this.postError(slot, slot.sessionId, 'rhythm-phase-epoch-mismatch', slot.requestedStartFrame, slot.stopFrame);
+      const view = this.rhythmPhaseEpochView;
+      const low = view ? Atomics.load(view, 2) >>> 0 : 0;
+      const high = view ? Atomics.load(view, 3) >>> 0 : 0;
+      this.postError(slot, slot.sessionId, 'rhythm-phase-epoch-mismatch', slot.requestedStartFrame, slot.stopFrame,
+        slot.inputGeneration, slot.startReceivedFrame, false, {
+          reasonCode: view ? Atomics.load(view, 1) : -1,
+          frame: high * 0x1_0000_0000 + low,
+        });
       this.abortCapture(slot, 'rhythm-phase-epoch-mismatch', false);
       return;
     }

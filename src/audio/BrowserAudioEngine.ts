@@ -120,6 +120,8 @@ export interface BrowserInputCaptureErrorDiagnostic {
         readonly inputReady: boolean | null;
         readonly currentInputGeneration: number | null;
         readonly captureReadyEpoch: number | null;
+        readonly rhythmPhaseInvalidationReasonCode: number | null;
+        readonly rhythmPhaseInvalidationFrame: number | null;
         readonly sampleRate: number | null;
     };
     readonly audioContext: {
@@ -311,6 +313,12 @@ export class BrowserAudioEngine implements IAudioEngine {
     public isBrowserRhythmPhaseEpochCurrent(epoch: number): boolean {
         return Number.isSafeInteger(epoch) && epoch > 0 && Atomics.load(this.rhythmPhaseEpochView, 0) === epoch;
     }
+    public getBrowserRhythmPhaseInvalidation(): { reasonCode: number; frame: number } {
+        const reasonCode = Atomics.load(this.rhythmPhaseEpochView, 1);
+        const low = Atomics.load(this.rhythmPhaseEpochView, 2) >>> 0;
+        const high = Atomics.load(this.rhythmPhaseEpochView, 3) >>> 0;
+        return { reasonCode, frame: high * 0x1_0000_0000 + low };
+    }
     public isBrowserTrackLoopSyncEnabled(trackId: number): boolean | null {
         const track = this.tracks.find((candidate) => candidate.track.id === trackId);
         return track ? track.track.loopSyncSw === 'ON' : null;
@@ -410,7 +418,11 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.sharedBuffer = new SharedArrayBuffer(1024);
         this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
         this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
-        this.rhythmPhaseEpochBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+        // [epoch, reason code, absolute frame low word, frame high word].
+        // Codes: 1 main configure, 2 main stop, 3 main invalidation, 4 processor error,
+        // 5 worklet configure, 6 worklet stop, 7 timeline rewind, 8 timeline recovery,
+        // 9 phase origin was missed.
+        this.rhythmPhaseEpochBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);
         this.rhythmPhaseEpochView = new Int32Array(this.rhythmPhaseEpochBuffer);
 
         // Create monitor gain node (for software monitoring)
@@ -4025,6 +4037,8 @@ export class BrowserAudioEngine implements IAudioEngine {
                 inputReady: typeof message.inputReady === 'boolean' ? message.inputReady : null,
                 currentInputGeneration: finiteInteger(message.currentInputGeneration),
                 captureReadyEpoch: finiteInteger(message.captureReadyEpoch),
+                rhythmPhaseInvalidationReasonCode: finiteInteger(message.rhythmPhaseInvalidationReasonCode),
+                rhythmPhaseInvalidationFrame: finiteInteger(message.rhythmPhaseInvalidationFrame),
                 sampleRate: finiteInteger(message.sampleRate),
             },
             audioContext: {

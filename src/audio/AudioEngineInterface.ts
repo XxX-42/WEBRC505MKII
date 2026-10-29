@@ -27,6 +27,7 @@ export interface IAudioEngine {
     getBrowserRhythmMeasurePhaseSnapshot?(): RhythmMeasurePhaseSnapshot | null;
     onBrowserRhythmPhaseChange?(listener: () => void): () => void;
     isBrowserRhythmPhaseEpochCurrent?(epoch: number): boolean;
+    getBrowserRhythmPhaseInvalidation?(): { reasonCode: number; frame: number };
     /** True only when the requested Browser track exists and LOOP SYNC SW is ON. */
     isBrowserTrackLoopSyncEnabled?(trackId: number): boolean | null;
     context: AudioContext;

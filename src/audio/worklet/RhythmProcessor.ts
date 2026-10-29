@@ -267,23 +267,23 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
   private phaseInvalidated = false;
   private readonly sharedPhaseEpoch: Int32Array | null;
 
-  constructor() {
+  constructor(options?: { processorOptions?: { phaseEpochBuffer?: unknown } }) {
     super();
     this.core = new RhythmWorkletCore(workletGlobals.sampleRate ?? 44_100);
-    const phaseEpochBuffer = (this as unknown as { processorOptions?: { phaseEpochBuffer?: unknown } }).processorOptions?.phaseEpochBuffer;
+    const phaseEpochBuffer = options?.processorOptions?.phaseEpochBuffer;
     this.sharedPhaseEpoch = typeof SharedArrayBuffer !== 'undefined' && phaseEpochBuffer instanceof SharedArrayBuffer
       ? new Int32Array(phaseEpochBuffer) : null;
     this.port.onmessage = (event: { data: unknown }): void => {
       const message = event.data as WorkletMessage | null;
       if (message?.type === "start") {
-        this.setSharedPhaseEpoch(0);
+        this.setSharedPhaseEpoch(0, 5, workletGlobals.currentFrame ?? 0);
         this.core.configure(message.configuration, message.requestId);
         this.phaseRequestId = message.requestId;
         this.phaseAcknowledged = false;
         this.phaseInvalidated = false;
       }
       else if (message?.type === "stop") {
-        this.setSharedPhaseEpoch(0);
+        this.setSharedPhaseEpoch(0, 6, workletGlobals.currentFrame ?? 0);
         this.core.stop();
         this.phaseRequestId = message.requestId;
         this.phaseAcknowledged = true;
@@ -325,7 +325,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
         };
         this.port.postMessage(message);
       }
-      this.invalidatePhase();
+      this.invalidatePhase(7, startFrame);
     } else if (this.staleEpisodeStartFrame !== null) {
       const message: RhythmTimelineMessage = {
         type: "timeline-recovered",
@@ -336,16 +336,16 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       this.port.postMessage(message);
       this.staleEpisodeStartFrame = null;
       this.staleEpisodeExpectedFrame = null;
-      this.invalidatePhase();
+      this.invalidatePhase(8, startFrame);
     }
     if (!this.phaseAcknowledged && this.phaseRequestId !== null && renderedOnTimeline) {
       const phase = this.core.getMeasurePhaseSnapshot(this.phaseRequestId);
       if (phase && startFrame <= phase.originFrame && phase.originFrame < blockEndFrame) {
-        this.setSharedPhaseEpoch(phase.epoch);
+        this.setSharedPhaseEpoch(phase.epoch, 0, startFrame);
         this.port.postMessage(phase satisfies RhythmPhaseMessage);
         this.phaseAcknowledged = true;
       } else if (phase && startFrame > phase.originFrame) {
-        this.invalidatePhase();
+        this.invalidatePhase(9, startFrame);
       }
     }
     for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex += 1) {
@@ -358,8 +358,8 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     return true;
   }
 
-  private invalidatePhase(): void {
-    this.setSharedPhaseEpoch(0);
+  private invalidatePhase(reasonCode: number, absoluteFrame: number): void {
+    this.setSharedPhaseEpoch(0, reasonCode, absoluteFrame);
     if (this.phaseInvalidated || this.phaseRequestId === null) return;
     this.phaseInvalidated = true;
     this.phaseAcknowledged = true;
@@ -371,8 +371,14 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     } satisfies RhythmPhaseMessage);
   }
 
-  private setSharedPhaseEpoch(epoch: number): void {
-    if (this.sharedPhaseEpoch) Atomics.store(this.sharedPhaseEpoch, 0, epoch > 0 ? epoch : 0);
+  private setSharedPhaseEpoch(epoch: number, reasonCode: number, absoluteFrame: number): void {
+    if (!this.sharedPhaseEpoch) return;
+    const low = absoluteFrame >>> 0;
+    const high = Math.floor(absoluteFrame / 0x1_0000_0000) >>> 0;
+    Atomics.store(this.sharedPhaseEpoch, 1, epoch > 0 ? 0 : reasonCode);
+    Atomics.store(this.sharedPhaseEpoch, 2, epoch > 0 ? 0 : low);
+    Atomics.store(this.sharedPhaseEpoch, 3, epoch > 0 ? 0 : high);
+    Atomics.store(this.sharedPhaseEpoch, 0, epoch > 0 && epoch <= 0x7fff_ffff ? epoch : 0);
   }
 }
 
