@@ -761,11 +761,26 @@ bool NativeAudioCore::hasNonEmptyTrackLocked() const noexcept {
     return false;
 }
 
+bool NativeAudioCore::hasActiveSynchronizedRecordingLocked() const noexcept {
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (!nativeLoopSync_[track].load(std::memory_order_acquire)) continue;
+        const auto state = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
+        if (state == LooperState::Recording || recordStartPending_[track].load(std::memory_order_acquire) ||
+            nativeScheduledLoopPending_[track].load(std::memory_order_acquire)) return true;
+    }
+    return false;
+}
+
 bool NativeAudioCore::applyConfig(const EngineConfig& config, std::string& error) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "A Native project import is pending; wait for its generation status before changing the audio configuration.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (hasActiveSynchronizedRecordingLocked()) {
+        error = "Audio reconfiguration is blocked during a Native LOOP SYNC recording; finish it with measure STOP or PCM-preserving emergency STOP first.";
         updateLastErrorLocked(error);
         return false;
     }
@@ -957,6 +972,10 @@ bool NativeAudioCore::stop(std::string& error) {
         error = "Wait for or cancel the pending Native project import before stopping the audio engine.";
         return false;
     }
+    if (hasActiveSynchronizedRecordingLocked()) {
+        error = "Stop the active Native LOOP SYNC recording first; use its measure STOP or the PCM-preserving emergency STOP before stopping the engine.";
+        return false;
+    }
     closeStreamLocked();
     return true;
 }
@@ -1106,6 +1125,14 @@ bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error, std:
                                 std::uint64_t provenanceRevision, std::uint64_t* requestedRevision) {
     return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error, provenanceBpm, provenanceRevision,
                              requestedRevision);
+}
+
+bool NativeAudioCore::emergencyStopTrack(std::size_t trackIndex, std::string& error,
+                                         std::optional<double> provenanceBpm,
+                                         std::uint64_t provenanceRevision,
+                                         std::uint64_t* requestedRevision) {
+    return queueTrackCommand(CommandType::StopRecordOrPlayback, trackIndex, error, provenanceBpm,
+                             provenanceRevision, requestedRevision, true);
 }
 
 bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
@@ -1628,7 +1655,7 @@ void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
 
 bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
                                         std::optional<double> provenanceBpm, std::uint64_t provenanceRevision,
-                                        std::uint64_t* requestedRevision) {
+                                        std::uint64_t* requestedRevision, bool emergencySynchronizedStop) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (requestedRevision != nullptr) *requestedRevision = 0U;
@@ -1646,6 +1673,13 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (emergencySynchronizedStop &&
+        (type != CommandType::StopRecordOrPlayback || !nativeLoopSync_[trackIndex].load(std::memory_order_acquire) ||
+         state != LooperState::Recording || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire) ||
+         pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U || commandQueue_.size() != 0U)) {
+        error = "PCM-preserving emergency STOP requires a stable Native LOOP SYNC recording with no pending schedule or track command.";
+        return false;
+    }
     if ((type == CommandType::Record || type == CommandType::Play) && nativeLoopSync_[trackIndex].load(std::memory_order_acquire)) {
         error = "Native LOOP SYNC REC/PLAY must use the Rhythm callback-frame scheduler; direct transport is disabled.";
         return false;
@@ -1654,7 +1688,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         error = "Wait for the scheduled Native REC/STOP callback acknowledgement before changing this track.";
         return false;
     }
-    if (type == CommandType::StopRecordOrPlayback && nativeLoopSync_[trackIndex].load(std::memory_order_acquire) &&
+    if (!emergencySynchronizedStop && type == CommandType::StopRecordOrPlayback && nativeLoopSync_[trackIndex].load(std::memory_order_acquire) &&
         (state == LooperState::Recording || recordStartPending_[trackIndex].load(std::memory_order_acquire) ||
          pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U)) {
         error = "Native LOOP SYNC recording must stop at a verified Rhythm measure; direct immediate STOP is disabled.";
@@ -3179,9 +3213,14 @@ bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool ena
 }
 
 bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+    if (hasActiveSynchronizedRecordingLocked()) {
+        error = "Native Rhythm phase cannot change during a Native LOOP SYNC recording; finish it with measure STOP or PCM-preserving emergency STOP first.";
+        return false;
     }
 
     if (!currentConfig_) {

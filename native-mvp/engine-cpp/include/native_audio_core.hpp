@@ -568,6 +568,8 @@ public:
     bool setTrackLoopSync(std::size_t trackIndex, bool enabled, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                    std::uint64_t provenanceRevision = 0U, std::uint64_t* requestedRevision = nullptr);
+    bool emergencyStopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
+                            std::uint64_t provenanceRevision = 0U, std::uint64_t* requestedRevision = nullptr);
     // Native callback-frame scheduler for supported Rhythm-only LOOP SYNC actions.
     bool scheduleNativeRhythmRecordOrStop(
         std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
@@ -762,6 +764,7 @@ private:
     // Caller holds commandProducerMutex_; reclamation is control-thread-only.
     void reclaimInactiveHistoryPcmLocked() noexcept;
     bool hasNonEmptyTrackLocked() const noexcept;
+    bool hasActiveSynchronizedRecordingLocked() const noexcept;
     bool openStreamLocked(std::string& error);
     void closeStreamLocked() noexcept;
     void resetRuntimeStateLocked() noexcept;
@@ -824,7 +827,8 @@ private:
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
                                          std::optional<double> provenanceBpm = std::nullopt,
                                          std::uint64_t provenanceRevision = 0U,
-                                         std::uint64_t* requestedRevision = nullptr);
+                                         std::uint64_t* requestedRevision = nullptr,
+                                         bool emergencySynchronizedStop = false);
     void applyTrackCommandAtCallback(const Command& command) noexcept;
     [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
     void invalidateTrackMarkLocked(std::size_t trackIndex) noexcept;

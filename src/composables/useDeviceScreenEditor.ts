@@ -832,7 +832,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
           : !nativeLoopSyncQuantizeReady
             ? 'Set REC QUANTIZE to MEASURE before enabling Native LOOP SYNC; OFF stop-length behavior is unavailable.'
             : nativeLoopSyncAvailable
-              ? 'Native Rhythm-only slice: MEASURE recording start, measure stop and synchronized Play for measure-aligned PCM. REC QUANTIZE OFF and manual LOOP LENGTH are unavailable with LOOP SYNC.'
+              ? 'Native Rhythm-only slice: MEASURE starts recording and measure STOP finalizes it. LOOP SYNC PLAY remains unavailable until each track retains phase provenance; REC QUANTIZE OFF and manual LOOP LENGTH are also unavailable.'
               : 'Native LOOP SYNC requires a running Native Rhythm measure source.'
         : '' }));
     const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');

@@ -1554,12 +1554,13 @@ export class NativeAudioEngine {
       stopStatus = await this.scheduleNativeRhythmAction(trackId, 'stop');
     } else {
       if (synchronizedStop) {
-        const message = 'Native LOOP SYNC recording remains active because no stable Native Rhythm measure is available; immediate STOP is disabled.';
-        this.lastError = message;
+        stopStatus = await this.dispatchStatusRequest(() => this.bridge.emergencyStopTrack(trackId, stopToken, callbackAckSupported));
+        const retainedFrames = stopStatus.nativeTracks?.find(track => track.trackId === trackId)?.loopLengthSamples;
+        this.lastError = `Native Rhythm phase was unavailable; emergency STOP retained the captured PCM${Number.isSafeInteger(retainedFrames) ? ` (${retainedFrames} frames)` : ''}. The phrase may not end on a measure boundary.`;
         this.emitAll();
-        throw new Error(message);
+      } else {
+        stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
       }
-      stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
     }
     if (!wasRecording || !stopToken || !callbackAckSupported || !Number.isSafeInteger(beforeContentRevision)) return;
     const stopAck = stopStatus.nativeStopTrackAcknowledgement;

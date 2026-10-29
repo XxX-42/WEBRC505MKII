@@ -1658,7 +1658,17 @@ export class NativeBridgeClient {
   }
 
   public async stopTrack(trackId: number, tempo?: NativeRecordTempoToken, callbackAckSupported = tempo !== undefined): Promise<NativeStatus> {
-    let status = await this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
+    const status = await this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
+    return this.waitForStopAcknowledgement(trackId, status, callbackAckSupported);
+  }
+
+  public async emergencyStopTrack(trackId: number, tempo?: NativeRecordTempoToken, callbackAckSupported = tempo !== undefined): Promise<NativeStatus> {
+    const status = await this.requestTrackTransport('/v1/transport/emergency-stop', trackId, tempo);
+    return this.waitForStopAcknowledgement(trackId, status, callbackAckSupported);
+  }
+
+  private async waitForStopAcknowledgement(trackId: number, initialStatus: NativeStatus, callbackAckSupported: boolean): Promise<NativeStatus> {
+    let status = initialStatus;
     if (!callbackAckSupported) return status;
     const revision = status.nativeRecordPlay?.acceptedStopRequestRevision;
     if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native STOP callback acknowledgement is unavailable.');

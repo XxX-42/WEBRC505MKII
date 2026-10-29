@@ -33,18 +33,23 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     expect(engine.emitAll).toHaveBeenCalledTimes(2);
   });
 
-  it('does not fall back to immediate STOP when a LOOP SYNC recording loses its measure phase', async () => {
+  it('uses the acknowledged PCM-preserving emergency STOP when LOOP SYNC loses its phase', async () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
     const stopTrack = vi.fn();
+    const emergencyStopTrack = vi.fn(async () => ({ nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 2,
+      loopLengthSamples: 4096 }] }));
     engine.latestStatus = { nativeMemory: { loopSync: [true, false, false, false, false] },
       nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
       nativeRhythm: { phase: { available: false, snapshotStable: false } } };
-    engine.bridge = { stopTrack };
+    engine.bridge = { stopTrack, emergencyStopTrack };
+    engine.dispatchStatusRequest = vi.fn((request: () => Promise<unknown>) => request());
     engine.emitAll = vi.fn();
     engine.lastError = '';
-    await expect(engine.stopTrack(1)).rejects.toThrow(/immediate STOP is disabled/);
+    await engine.stopTrack(1);
     expect(stopTrack).not.toHaveBeenCalled();
-    expect(engine.lastError).toMatch(/remains active/);
+    expect(emergencyStopTrack).toHaveBeenCalledOnce();
+    expect(engine.lastError).toMatch(/emergency STOP retained the captured PCM/);
+    expect(engine.lastError).toMatch(/4096 frames/);
   });
 
   it('keeps synchronized playback disabled until track PCM has retained phase provenance', () => {

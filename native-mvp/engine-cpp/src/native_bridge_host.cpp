@@ -2294,6 +2294,7 @@ int main() {
     server.Post("/v1/engine/stop", [&engine](const httplib::Request&, httplib::Response& response) {
         std::string error;
         if (!engine.stop(error)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }
@@ -2519,6 +2520,26 @@ int main() {
             response.status = 409;
             writeError(response, error);
             return;
+        }
+        auto status = statusToJson(engine.getStatus());
+        status["nativeRecordPlay"]["acceptedStopRequestRevision"] = requestedRevision;
+        writeJson(response, status);
+    });
+
+    server.Post("/v1/transport/emergency-stop", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        std::optional<double> tempoBpm;
+        std::uint64_t tempoRevision = 0U;
+        if (!readTrackIndex(request, trackIndex, error)) {
+            response.status = 400; writeError(response, error); return;
+        }
+        if (!readRecordTempoToken(request, tempoBpm, tempoRevision)) {
+            response.status = 400; writeError(response, "Emergency STOP tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
+        }
+        std::uint64_t requestedRevision = 0U;
+        if (!engine.emergencyStopTrack(trackIndex, error, tempoBpm, tempoRevision, &requestedRevision)) {
+            response.status = 409; writeError(response, error); return;
         }
         auto status = statusToJson(engine.getStatus());
         status["nativeRecordPlay"]["acceptedStopRequestRevision"] = requestedRevision;

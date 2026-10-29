@@ -2,8 +2,9 @@
 
 ## Supported slice
 
-Native supports Rhythm-phased recording and playback on tracks enabled for
-LOOP SYNC. A track must be empty when LOOP SYNC is enabled. REC ACTION must be
+Native supports Rhythm-phased recording and measure-boundary stop on tracks enabled for
+LOOP SYNC. Synchronized playback is unavailable because the host does not retain
+phase provenance for track PCM. A track must be empty when LOOP SYNC is enabled. REC ACTION must be
 REC->PLAY, REC QUANTIZE must be MEASURE, Native Rhythm must be running with a
 stable callback-published measure phase, and REVERSE, 1SHOT, Bounce, overdub,
 and MIDI Sync are unsupported. REC QUANTIZE OFF with any LOOP SYNC track is
@@ -19,11 +20,18 @@ Native publishes the finalized PCM frame count from the loop store. The
 hardware's REC QUANTIZE OFF immediate-start plus measure-length stop behavior
 is not implemented, so the Native UI and host reject OFF whenever any LOOP
 SYNC track is enabled.
-Playback of a stopped synchronized track starts at the next measure only after
-Native verifies that its PCM length is an integer number of current Rhythm
-measures (within two frames of sample-rate rounding). Lengths that fail this
-check remain stopped. A cancelled or stale scheduled start does not clear any
-incumbent loop; a scheduled REC is accepted only for an empty track.
+Native reports finalized PCM frame counts, but does not retain the per-track
+phase provenance needed to align a later playback start. All synchronized PLAY
+requests are therefore rejected. A cancelled or stale scheduled start does not
+clear any incumbent loop; a scheduled REC is accepted only for an empty track.
+
+While a synchronized take is recording or its scheduled start is pending, the
+host rejects Native Rhythm configuration changes, audio reconfiguration, and
+engine stop so the phase cannot be invalidated through these controls. If a
+stable phase becomes unavailable, STOP uses an explicit callback-acknowledged
+emergency path. It stops at the next processed callback and retains the PCM
+captured so far; that emergency take may not end on a measure boundary. The
+engine cannot be stopped until the synchronized recording is finalized.
 
 The Classic Memory editor exposes REC QUANTIZE only while the Native Rhythm
 phase is available. LOOP SYNC and REC QUANTIZE settings are included in Native
@@ -36,8 +44,8 @@ This slice captures the actual PCM frame count but does not assign the
 hardware's AUTO phrase measure count, manually selected LOOP LENGTH, phase
 recovery from an existing synchronized phrase, MIDI clock phase, STOP MODE,
 Auto Rec, or REC->DUB. Existing PCM is preserved. Imported or edited loops
-with unknown or non-measure-aligned lengths remain unavailable for synchronized
-playback.
+remain unavailable for synchronized playback until per-track phase provenance
+is retained.
 
 ## Roland behavior
 

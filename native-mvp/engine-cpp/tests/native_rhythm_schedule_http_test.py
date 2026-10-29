@@ -20,13 +20,13 @@ def until(predicate, timeout=8):
     raise AssertionError(('Native Rhythm schedule callback ACK timed out', latest))
 
 
-def phase(status):
+def phase(status, track_id=2):
     value = status['nativeRhythm']['phase']
     require(value['available'] is True and value['snapshotStable'] is True, value)
     require(value['frameSchedulingAvailable'] is True, value)
     require(value['nextMeasureFrame'] > value['sampleFrame'], value)
-    baseline = status['nativeLoopFrameScheduling']['requests'][1]['requestedRevision']
-    return {'trackId': 2, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
+    baseline = status['nativeLoopFrameScheduling']['requests'][track_id - 1]['requestedRevision']
+    return {'trackId': track_id, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
         'phaseEpoch': value['epoch'], 'settingsRevision': status['nativeRhythm']['tempoAppliedRevision'],
         'intentId': uuid.uuid4().hex, 'hostIncarnationId': status['hostIncarnationId'],
         'expectedRevision': baseline}
@@ -154,6 +154,18 @@ def main():
             and value['nativeTracks'][1]['state'] == 'Recording')
         require(recorded['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
             record_request['absoluteFrame'], recorded)
+        for rhythm_change in [{'enabled': False}, {'bpm': 299}, {'patternIndex': 93}]:
+            change_code, change_status = request('/v1/native-rhythm/config', 'POST', rhythm_change)
+            require(change_code == 409 and 'phase cannot change' in change_status.get('error', '').lower(),
+                ('Native Rhythm phase changed during synchronized recording', rhythm_change, change_code, change_status))
+        reconfigure_code, reconfigure_status = request('/v1/config/apply', 'POST', config)
+        require(reconfigure_code == 400 and 'loop sync recording' in reconfigure_status.get('error', '').lower(),
+            ('audio reconfiguration was accepted during synchronized recording', reconfigure_code, reconfigure_status))
+        engine_stop_code, engine_stop_status = request('/v1/engine/stop', 'POST', {})
+        require(engine_stop_code == 409 and 'emergency stop' in engine_stop_status.get('error', '').lower(),
+            ('engine stop was accepted during synchronized recording', engine_stop_code, engine_stop_status))
+        require(request('/v1/status')[1]['nativeTracks'][1]['state'] == 'Recording',
+            'phase/config guards altered the active recording')
         direct_finish_code, direct_finish = request('/v1/transport/finish-record', 'POST', {'trackId': 2})
         require(direct_finish_code == 409 and 'scheduler' in direct_finish.get('error', '').lower(),
             ('direct REC completion bypassed Native LOOP SYNC scheduling', direct_finish_code, direct_finish))
@@ -205,6 +217,29 @@ def main():
             stopped['nativeRecordPlay']['quantize'] == 'MEASURE' and
             stopped['nativeMemory']['loopSync'][1] is True, stopped)
 
+        # Exercise the explicit callback-acknowledged emergency endpoint. It
+        # retains every frame captured before the callback applies STOP.
+        code, track_three_sync = request('/v1/record/loop-sync', 'POST', {'trackId': 3, 'enabled': True})
+        require(code == 200 and track_three_sync['nativeMemory']['loopSync'][2] is True, track_three_sync)
+        set_callback_gate(True)
+        emergency_record = phase(request('/v1/status')[1], 3)
+        code, emergency_accepted = request('/v1/transport/rhythm-schedule', 'POST', emergency_record)
+        require(code == 200, emergency_accepted)
+        emergency_record_revision = emergency_accepted['nativeLoopFrameScheduling']['acceptedRevision']
+        set_callback_gate(False)
+        emergency_recording = until(lambda value:
+            value['nativeLoopFrameScheduling']['requests'][2]['appliedRevision'] == emergency_record_revision
+            and value['nativeTracks'][2]['state'] == 'Recording')
+        emergency_code, emergency_status = request('/v1/transport/emergency-stop?trackId=3', 'POST', {})
+        require(emergency_code == 200, emergency_status)
+        emergency_stop_revision = emergency_status['nativeRecordPlay']['acceptedStopRequestRevision']
+        emergency_stopped = until(lambda value:
+            value['nativeRecordPlay']['stopApplied'][2] == emergency_stop_revision
+            and value['nativeTracks'][2]['state'] == 'Stopped')
+        require(emergency_stopped['nativeTracks'][2]['loopLengthSamples'] > 0 and
+            emergency_stopped['nativeRecordPlay']['stopCommittedRevision'][2] == emergency_stop_revision,
+            emergency_stopped)
+
         # A stopped stream must clear the simulation-only gate so restarting
         # the same host/RtAudio instance does not inherit a parked callback.
         set_callback_gate(True)
@@ -220,7 +255,7 @@ def main():
         code, gate_status = request('/v1/test/simulation/callback-gate')
         require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
             ('simulation callback did not resume after restart', gate_status))
-        print('Native Rhythm LOOP SYNC HTTP: settings ACK, exact REC/STOP frame ACK, PCM frame length, REC->DUB and unproven PLAY rejection, incumbent PCM protection')
+        print('Native Rhythm LOOP SYNC HTTP: phase-change guards, emergency PCM-preserving STOP ACK, exact REC/STOP frames, REC->DUB and unproven PLAY rejection, incumbent PCM protection')
     finally:
         try:
             request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})
