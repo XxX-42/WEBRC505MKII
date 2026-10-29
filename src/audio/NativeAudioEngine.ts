@@ -1973,7 +1973,18 @@ export class NativeAudioEngine {
       await this.bridge.health();
       this.bridgeAvailable = true;
       await this.refreshCatalog();
-      const status = await this.bridge.getStatus();
+      let status = await this.bridge.getStatus();
+      const pendingRhythmSchedules = (status.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
+        item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
+        item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
+      if (pendingRhythmSchedules.length > 0) {
+        // The in-memory receipt may have been lost to a page reload. Rebuild
+        // it from the host's exact status and cancel only that revision if its
+        // callback has not already applied it. An ambiguous/multiple pending
+        // state blocks initialization instead of hiding a future REC.
+        if (pendingRhythmSchedules.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
+        status = await this.bridge.reconcilePendingRhythmSchedule();
+      }
       this.applyStatus(status);
       this.hydrateNativeCatalogFromStatus(status);
       if (status.engineRunning) {

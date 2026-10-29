@@ -2285,17 +2285,22 @@ int main() {
     server.Post("/v1/transport/rhythm-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
-            std::uint64_t trackId = 0U, absoluteFrame = 0U, phaseEpoch = 0U, settingsRevision = 0U;
+            std::uint64_t trackId = 0U, absoluteFrame = 0U, phaseEpoch = 0U, settingsRevision = 0U, expectedRequestRevision = 0U;
             std::uint64_t intentIdHigh = 0U, intentIdLow = 0U;
-            if (!body.is_object() || body.size() != 6U ||
+            if (!body.is_object() || body.size() != 8U ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !body.contains("action") || !body.at("action").is_string() ||
                 !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeTempoRevision, absoluteFrame) ||
                 !readUnsignedJsonInteger(body.value("phaseEpoch", json()), kMaximumSafeTempoRevision, phaseEpoch) ||
                 !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeTempoRevision, settingsRevision) ||
+                !readUnsignedJsonInteger(body.value("expectedRevision", json()), kMaximumSafeTempoRevision, expectedRequestRevision) ||
+                !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
                 !body.contains("intentId") || !body.at("intentId").is_string() ||
                 !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentIdHigh, intentIdLow)) {
-                response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires trackId, action, absoluteFrame, phaseEpoch, settingsRevision, and a 128-bit intentId."); return;
+                response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires a valid host incarnation, request revision baseline, phase token, and 128-bit intentId."); return;
+            }
+            if (body.at("hostIncarnationId").get<std::string>() != hostIncarnationId()) {
+                response.status = 409; writeError(response, "Native host incarnation changed since the scheduling baseline; request was not submitted."); return;
             }
             const auto actionText = body.at("action").get<std::string>();
             if (actionText != "record" && actionText != "stop") {
@@ -2305,7 +2310,7 @@ int main() {
             std::uint64_t acceptedRevision = 0U;
             const auto action = actionText == "record" ? NativeScheduledLoopAction::Record : NativeScheduledLoopAction::Stop;
             if (!engine.scheduleNativeRhythmRecordOrStop(trackId - 1U, action, absoluteFrame, phaseEpoch,
-                    settingsRevision, &acceptedRevision, error, intentIdHigh, intentIdLow)) {
+                    settingsRevision, &acceptedRevision, error, intentIdHigh, intentIdLow, expectedRequestRevision)) {
                 response.status = 409; writeError(response, error); return;
             }
             auto status = statusToJson(engine.getStatus());

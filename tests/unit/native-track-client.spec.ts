@@ -57,8 +57,28 @@ describe('Native multi-track bridge client', () => {
     expect(status.nativeLoopFrameScheduling?.requests?.[1]).toMatchObject({ appliedRevision: 7, appliedAbsoluteFrame: 19_200 });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule', expect.objectContaining({
       method: 'POST', body: JSON.stringify({ trackId: 2, action: 'record', absoluteFrame: 19_200, phaseEpoch: 4,
-        settingsRevision: 9, intentId: submittedIntentId }), signal: expect.any(AbortSignal),
+        settingsRevision: 9, intentId: submittedIntentId, hostIncarnationId, expectedRevision: 6 }), signal: expect.any(AbortSignal),
     }));
+  });
+
+  it('rebuilds a lost in-memory receipt from the host status after reconnect', async () => {
+    const hostIncarnationId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const pending = { trackIndex: 0, requestedRevision: 12, requestedAbsoluteFrame: 48_000, requestedIntentId: 'c'.repeat(32),
+      requestedPhaseEpoch: 3, requestedSettingsRevision: 8, requestedAction: 'stop', appliedRevision: 0,
+      appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    const applied = { ...pending, appliedRevision: 12, appliedAbsoluteFrame: 48_000 };
+    let reads = 0;
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true, hostIncarnationId,
+      nativeLoopFrameScheduling: { available: false, requests: [{}, reads++ === 0 ? pending : applied] } }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    const status = await client.reconcilePendingRhythmSchedule();
+
+    expect(status.nativeLoopFrameScheduling?.requests?.[1]).toMatchObject({
+      requestedRevision: 12, requestedIntentId: 'c'.repeat(32), appliedRevision: 12, appliedAbsoluteFrame: 48_000,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('rejects an unacknowledged or out-of-range Rhythm schedule request', async () => {

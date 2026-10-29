@@ -1045,7 +1045,7 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
     std::uint64_t expectedPhaseEpoch, std::uint64_t expectedSettingsRevision,
     std::uint64_t* requestedRevision, std::string& error,
-    std::uint64_t intentIdHigh, std::uint64_t intentIdLow) {
+    std::uint64_t intentIdHigh, std::uint64_t intentIdLow, std::uint64_t expectedRequestRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (requestedRevision != nullptr) *requestedRevision = 0U;
@@ -1108,6 +1108,11 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         }
     }
     const auto current = nativeLoopFrameScheduler_.status(trackIndex);
+    if (expectedRequestRevision != std::numeric_limits<std::uint64_t>::max() &&
+        current.requestedRevision != expectedRequestRevision) {
+        error = "Native Rhythm schedule revision changed since the status baseline; refresh status before retrying.";
+        return false;
+    }
     if (current.requestedRevision >= kMaximumSafeProjectContentRevision) {
         error = "Native scheduled REC/STOP revision exhausted."; return false;
     }

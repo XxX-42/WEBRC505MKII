@@ -565,7 +565,8 @@ public:
         std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
         std::uint64_t expectedPhaseEpoch, std::uint64_t expectedSettingsRevision,
         std::uint64_t* requestedRevision, std::string& error,
-        std::uint64_t intentIdHigh = 0U, std::uint64_t intentIdLow = 0U);
+        std::uint64_t intentIdHigh = 0U, std::uint64_t intentIdLow = 0U,
+        std::uint64_t expectedRequestRevision = std::numeric_limits<std::uint64_t>::max());
     bool cancelNativeScheduledLoop(std::size_t trackIndex, std::uint64_t revision, std::string& error);
     bool confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                      double bpm, std::uint64_t tempoRevision, std::string& error,

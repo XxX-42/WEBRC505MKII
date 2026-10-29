@@ -25,9 +25,11 @@ def phase(status):
     require(value['available'] is True and value['snapshotStable'] is True, value)
     require(value['frameSchedulingAvailable'] is False, value)
     require(value['nextMeasureFrame'] > value['sampleFrame'], value)
+    baseline = status['nativeLoopFrameScheduling']['requests'][1]['requestedRevision']
     return {'trackId': 2, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
         'phaseEpoch': value['epoch'], 'settingsRevision': status['nativeRhythm']['tempoAppliedRevision'],
-        'intentId': uuid.uuid4().hex}
+        'intentId': uuid.uuid4().hex, 'hostIncarnationId': status['hostIncarnationId'],
+        'expectedRevision': baseline}
 
 
 def phase_has_headroom(status):
@@ -90,6 +92,12 @@ def main():
         set_callback_gate(True)
         first_status = request('/v1/status')[1]
         first = phase(first_status)
+        stale_host = dict(first, hostIncarnationId='0' * 32)
+        require(request('/v1/transport/rhythm-schedule', 'POST', stale_host)[0] == 409,
+            'schedule POST crossed the host incarnation fence')
+        stale_revision = dict(first, expectedRevision=first['expectedRevision'] + 1)
+        require(request('/v1/transport/rhythm-schedule', 'POST', stale_revision)[0] == 409,
+            'schedule POST crossed the request revision baseline')
         code, queued = request('/v1/transport/rhythm-schedule', 'POST', first)
         require(code == 200, queued)
         revision = queued['nativeLoopFrameScheduling']['acceptedRevision']

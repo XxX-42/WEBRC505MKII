@@ -1278,7 +1278,7 @@ export class NativeBridgeClient {
   }
 
   public async scheduleRhythmRecordOrStop(trackId: number, action: 'record' | 'stop', phase: {
-      absoluteFrame: number; epoch: number; settingsRevision: number }): Promise<NativeStatus> {
+      absoluteFrame: number; epoch: number; settingsRevision: number }, expectedHostIncarnationId?: string): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !['record', 'stop'].includes(action)
       || !Number.isSafeInteger(phase.absoluteFrame) || phase.absoluteFrame < 0
       || !Number.isSafeInteger(phase.epoch) || phase.epoch < 0
@@ -1290,7 +1290,8 @@ export class NativeBridgeClient {
     const intentId = createNativeRhythmIntentId();
     const before = await this.getStatus();
     const beforeItem = before.nativeLoopFrameScheduling?.requests?.[trackId - 1];
-    if (!isNativeHostIncarnationId(before.hostIncarnationId) || !beforeItem ||
+    if (!isNativeHostIncarnationId(before.hostIncarnationId) ||
+        (expectedHostIncarnationId !== undefined && before.hostIncarnationId !== expectedHostIncarnationId) || !beforeItem ||
         !Number.isSafeInteger(beforeItem.requestedRevision) || beforeItem.requestedRevision < 0) {
       throw new Error('Native status lacks the host incarnation or Rhythm schedule revision baseline; request was not submitted.');
     }
@@ -1304,7 +1305,8 @@ export class NativeBridgeClient {
     try {
       status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule', { method: 'POST',
         body: JSON.stringify({ trackId, action, absoluteFrame: phase.absoluteFrame, phaseEpoch: phase.epoch,
-          settingsRevision: phase.settingsRevision, intentId }) });
+          settingsRevision: phase.settingsRevision, intentId, hostIncarnationId: baselineHostIncarnationId,
+          expectedRevision: baselineRevision }) });
     } catch (error) {
       if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) throw error;
       const reconciled = error instanceof NativeBridgeRequestTimeoutError ? error.reconciledStatus : null;
@@ -1327,7 +1329,7 @@ export class NativeBridgeClient {
     }
     const revision = status.nativeLoopFrameScheduling?.acceptedRevision;
     const acceptedItem = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
-    if (status.nativeLoopFrameScheduling?.acceptedTrackId !== trackId || !Number.isSafeInteger(revision) || revision! <= 0 ||
+    if (status.hostIncarnationId !== baselineHostIncarnationId || status.nativeLoopFrameScheduling?.acceptedTrackId !== trackId || !Number.isSafeInteger(revision) || revision! <= 0 ||
         acceptedItem?.requestedRevision !== revision || !this.rhythmScheduleMatchesIntent(acceptedItem, intent(revision!))) {
       const unresolved = intent(null, status.hostIncarnationId ?? before.hostIncarnationId);
       this.pendingRhythmSchedule = unresolved;
@@ -1344,8 +1346,35 @@ export class NativeBridgeClient {
   }
 
   public async reconcilePendingRhythmSchedule(): Promise<NativeStatus> {
-    const receipt = this.pendingRhythmSchedule;
-    if (!receipt) throw new Error('There is no unresolved Native Rhythm schedule receipt.');
+    let receipt = this.pendingRhythmSchedule;
+    if (!receipt) {
+      // A page reload can discard the in-memory receipt while the Native host
+      // still owns the accepted callback request. Rebuild only from a complete
+      // status record tied to the currently reported host incarnation.
+      const status = await this.getStatus();
+      const scheduling = status.nativeLoopFrameScheduling;
+      const hostIncarnationId = status.hostIncarnationId;
+      if (!isNativeHostIncarnationId(hostIncarnationId) || !Array.isArray(scheduling?.requests)) {
+        throw new Error('Native status cannot identify a pending Rhythm schedule receipt; no transport action was retried.');
+      }
+      const pending = scheduling.requests.flatMap((item, index) => item && item.requestedRevision > 0 &&
+        item.appliedRevision !== item.requestedRevision && item.cancelledRevision !== item.requestedRevision &&
+        item.faultRevision !== item.requestedRevision ? [{ item, trackId: index + 1 }] : []);
+      if (pending.length !== 1) {
+        throw new Error('Native status contains no uniquely pending Rhythm schedule; no transport action was retried.');
+      }
+      const { item, trackId } = pending[0]!;
+      if (!['record', 'stop'].includes(item.requestedAction) ||
+          !Number.isSafeInteger(item.requestedAbsoluteFrame) || !Number.isSafeInteger(item.requestedPhaseEpoch) ||
+          !Number.isSafeInteger(item.requestedSettingsRevision) || typeof item.requestedIntentId !== 'string') {
+        throw new Error('Native status has an incomplete pending Rhythm schedule receipt; no transport action was retried.');
+      }
+      const revision = item.requestedRevision;
+      receipt = { trackId, action: item.requestedAction, revision, baselineRevision: revision - 1,
+        absoluteFrame: item.requestedAbsoluteFrame, phaseEpoch: item.requestedPhaseEpoch,
+        settingsRevision: item.requestedSettingsRevision, hostIncarnationId, intentId: item.requestedIntentId };
+      this.pendingRhythmSchedule = receipt;
+    }
     return this.reconcileRhythmScheduledLoop(receipt, new Error('Reconciled after reconnect.'));
   }
 
