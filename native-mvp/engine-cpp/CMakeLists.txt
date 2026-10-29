@@ -934,6 +934,10 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_record_action_http_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)
   set_tests_properties(native_record_action_http PROPERTIES RUN_SERIAL TRUE TIMEOUT 30)
+  add_test(NAME native_rhythm_schedule_http
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_rhythm_schedule_http_test.py
+      $<TARGET_FILE:native_bridge_host_simulation>)
+  set_tests_properties(native_rhythm_schedule_http PROPERTIES RUN_SERIAL TRUE TIMEOUT 30)
   add_test(NAME native_callback_telemetry_http
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_callback_telemetry_http_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)
