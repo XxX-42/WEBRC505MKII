@@ -1974,17 +1974,7 @@ export class NativeAudioEngine {
       this.bridgeAvailable = true;
       await this.refreshCatalog();
       let status = await this.bridge.getStatus();
-      const pendingRhythmSchedules = (status.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
-        item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
-        item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
-      if (pendingRhythmSchedules.length > 0) {
-        // The in-memory receipt may have been lost to a page reload. Rebuild
-        // it from the host's exact status and cancel only that revision if its
-        // callback has not already applied it. An ambiguous/multiple pending
-        // state blocks initialization instead of hiding a future REC.
-        if (pendingRhythmSchedules.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
-        status = await this.bridge.reconcilePendingRhythmSchedule();
-      }
+      status = await this.reconcileRhythmScheduleForInit(status);
       this.applyStatus(status);
       this.hydrateNativeCatalogFromStatus(status);
       if (status.engineRunning) {
@@ -2002,6 +1992,33 @@ export class NativeAudioEngine {
       this.handleBridgeFailure(error, !this.bridgeAvailable);
       throw error;
     }
+  }
+
+  private async reconcileRhythmScheduleForInit(initialStatus: NativeStatus): Promise<NativeStatus> {
+    const ownerReceipt = this.bridge.getPendingRhythmSchedule();
+    const pending = (initialStatus.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
+      item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
+      item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
+    if (ownerReceipt) {
+      // Resolve this tab's own receipt even if the host has already reached a
+      // terminal ACK; otherwise the client would reject every later schedule.
+      const reconciled = await this.bridge.reconcilePendingRhythmSchedule();
+      const stillPending = (reconciled.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
+        item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
+        item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
+      if (stillPending.length > 0) {
+        if (stillPending.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
+        // The owner receipt was cleared, so this is now an orphaned request.
+        // The client will only observe it and block; it will not cancel it.
+        return this.bridge.reconcilePendingRhythmSchedule();
+      }
+      return reconciled;
+    }
+    if (pending.length === 0) return initialStatus;
+    if (pending.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
+    // With no owner receipt, the client reports and blocks on an orphan. It
+    // must never cancel an action based solely on another tab's status.
+    return this.bridge.reconcilePendingRhythmSchedule();
   }
 
   private async refreshCatalog() {
