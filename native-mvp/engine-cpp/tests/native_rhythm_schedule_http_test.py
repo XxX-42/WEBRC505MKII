@@ -84,9 +84,10 @@ def main():
         require(queued['nativeLoopFrameScheduling']['acceptedTrackId'] == 2 and revision > 0, queued)
         require(request('/v1/transport/rhythm-schedule', 'POST', first)[0] == 409,
             'second pending schedule for the same track was accepted')
-        cancel_code, cancelled_status = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
-        require(cancel_code == 200 and cancelled_status['nativeLoopFrameScheduling']['requests'][1]['cancelledRevision'] == revision,
-            ('cancel callback ACK did not publish the exact revision', cancelled_status))
+        cancel_code, cancel_accepted = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
+        require(cancel_code == 200, ('cancel request was not accepted', cancel_accepted))
+        cancelled_status = until(lambda value:
+            value['nativeLoopFrameScheduling']['requests'][1]['cancelledRevision'] == revision)
         require(cancelled_status['nativeTracks'][1]['state'] == 'Empty', cancelled_status)
 
         # Reuse the same still-future boundary when cancellation returns before
