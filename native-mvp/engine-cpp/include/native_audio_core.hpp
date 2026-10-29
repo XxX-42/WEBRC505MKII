@@ -7,6 +7,7 @@
 #include "native_pitch_processor.hpp"
 #include "native_poly_pitch_processor.hpp"
 #include "native_rhythm_engine.hpp"
+#include "native_loop_frame_scheduler.hpp"
 #include "project_archive_codec.hpp"
 
 #include <array>
@@ -164,6 +165,7 @@ struct EngineStatus {
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmRequested{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmApplied{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmAccepted{};
+    std::array<NativeScheduledLoopStatus, kNativeTrackCount> nativeScheduledLoop{};
     std::array<unsigned int, 7> mixerLevels{100U, 100U, 100U, 100U, 100U, 100U, 100U};
     bool bridgeHealthy = true;
     bool engineRunning = false;
@@ -557,6 +559,13 @@ public:
     bool setRecordAction(bool overdub, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                    std::uint64_t provenanceRevision = 0U, std::uint64_t* requestedRevision = nullptr);
+    // Internal Native callback path; the host keeps LOOP SYNC controls disabled
+    // until its broader phase-source and product acceptance gates pass.
+    bool scheduleNativeRhythmRecordOrStop(
+        std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
+        std::uint64_t expectedPhaseEpoch, std::uint64_t expectedSettingsRevision,
+        std::uint64_t* requestedRevision, std::string& error);
+    bool cancelNativeScheduledLoop(std::size_t trackIndex, std::uint64_t revision, std::string& error);
     bool confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                      double bpm, std::uint64_t tempoRevision, std::string& error,
                                      std::uint64_t* requestedRevision = nullptr,
@@ -699,6 +708,18 @@ public:
 private:
     friend struct NativeAudioCoreTestAccess;
 
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+    using CallbackCommandTestHook = void (*)(void*, std::size_t) noexcept;
+    static std::atomic<CallbackCommandTestHook> callbackCommandTestHook_;
+    static std::atomic<void*> callbackCommandTestContext_;
+    using CallbackEntryTestHook = void (*)(void*) noexcept;
+    static std::atomic<CallbackEntryTestHook> callbackEntryTestHook_;
+    static std::atomic<void*> callbackEntryTestContext_;
+    using CallbackBeforeEnterTestHook = void (*)(void*) noexcept;
+    static std::atomic<CallbackBeforeEnterTestHook> callbackBeforeEnterTestHook_;
+    static std::atomic<void*> callbackBeforeEnterTestContext_;
+#endif
+
     static constexpr unsigned int kMaxCallbackFrames = 4096;
 
     struct AudioBlock {
@@ -783,6 +804,11 @@ private:
     void publishNativeRhythmPhase(std::uint64_t sampleFrame, bool allowAvailable = true) noexcept;
     [[nodiscard]] NativeRhythmPhaseSnapshot readNativeRhythmPhase(bool& stable,
         std::uint64_t& snapshotRevision) const noexcept;
+    struct ScheduledTrackCommandContext {
+        NativeAudioCore* core = nullptr;
+        Command command{};
+    };
+    static void applyScheduledTrackCommand(void* context) noexcept;
     [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
     [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error,
@@ -842,6 +868,14 @@ private:
         unsigned int nBufferFrames,
         RtAudioStreamStatus status
     );
+    [[nodiscard]] bool enterCallback() noexcept;
+    void leaveCallback() noexcept;
+    struct CallbackExecutionGuard {
+        NativeAudioCore& core;
+        bool entered;
+        explicit CallbackExecutionGuard(NativeAudioCore& owner) noexcept;
+        ~CallbackExecutionGuard() noexcept;
+    };
 
     struct CallbackTelemetryScope {
         std::chrono::steady_clock::time_point started;
@@ -863,6 +897,9 @@ private:
     mutable std::string lastError_;
     std::unique_ptr<RtAudio> audio_;
     std::unique_ptr<RtAudio> captureAudio_;
+    static constexpr unsigned int kCallbackGateClosed = 1U << 31U;
+    static constexpr unsigned int kCallbackGateCountMask = kCallbackGateClosed - 1U;
+    std::atomic<unsigned int> callbackExecutionState_{0U};
     std::optional<EngineConfig> currentConfig_;
     DeviceCatalog deviceCatalog_;
     LooperCore looper_;
@@ -900,6 +937,9 @@ private:
     unsigned int outputChannels_ = 2;
 
     SpscRingQueue<Command, 64> commandQueue_;
+    NativeLoopFrameScheduler nativeLoopFrameScheduler_;
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeScheduledLoopPending_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeScheduledLoopRevision_{};
     bool recordActionDubRequested_ = false;
     std::uint64_t recordActionRequestedRevision_ = 0U;
     std::atomic<bool> recordActionDubApplied_{false};

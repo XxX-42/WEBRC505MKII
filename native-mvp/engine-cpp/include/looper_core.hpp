@@ -105,6 +105,7 @@ struct LoopMetadata {
 
 class LooperCore {
 public:
+    using FrameBoundaryCommandCallback = void (*)(void* context) noexcept;
     static constexpr unsigned int kMaximumSampleRate = 192000U;
     static constexpr std::size_t kMaximumLoopSeconds = 300U;
     // The five stereo loop stores share a user-selectable bounded budget. The
@@ -160,7 +161,12 @@ public:
         // Optional monitoring tap. When present, raw/processed recording input
         // can be selected independently without changing live monitoring.
         const float* monitorInputInterleaved = nullptr,
-        unsigned int monitorInputChannels = 0U
+        unsigned int monitorInputChannels = 0U,
+        // Optional allocation-free command applied immediately before this
+        // absolute sample offset is processed.
+        FrameBoundaryCommandCallback frameCommand = nullptr,
+        void* frameCommandContext = nullptr,
+        unsigned int frameCommandOffset = 0U
     );
 
     // Caller must own audio/transport state; this is not a concurrent snapshot API.

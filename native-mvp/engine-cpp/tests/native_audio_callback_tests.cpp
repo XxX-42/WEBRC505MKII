@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <condition_variable>
+#include <mutex>
 #include <new>
 #include <string>
 #include <thread>
@@ -18,6 +20,27 @@ namespace {
 bool trackAllocations = false;
 std::size_t trackedAllocations = 0;
 std::size_t trackedDeallocations = 0;
+
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+struct CommandCallbackGate {
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool entered = false;
+    bool release = false;
+};
+
+void holdCallbackAfterCommand(void* context, std::size_t) noexcept {
+    auto& gate = *static_cast<CommandCallbackGate*>(context);
+    std::unique_lock<std::mutex> lock(gate.mutex);
+    gate.entered = true;
+    gate.condition.notify_all();
+    gate.condition.wait(lock, [&gate] { return gate.release; });
+}
+
+void holdCallbackEntry(void* context) noexcept {
+    holdCallbackAfterCommand(context, 0U);
+}
+#endif
 }
 
 void* operator new(std::size_t size) {
@@ -222,6 +245,47 @@ struct NativeAudioCoreTestAccess {
 
     static void setRunningForQueueTest(NativeAudioCore& core, bool running) {
         core.engineRunning_.store(running, std::memory_order_release);
+    }
+    static void closeForQueueTest(NativeAudioCore& core) {
+        core.closeStreamLocked();
+    }
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+    static RtAudio& installGatedStopTestStream(NativeAudioCore& core, unsigned int frames) {
+        core.audio_ = std::make_unique<RtAudio>(RtAudio::WINDOWS_WASAPI);
+        core.audio_->configureGatedTestCallback(&NativeAudioCore::audioCallback, &core, frames);
+        core.audio_->launchGatedTestCallback();
+        return *core.audio_;
+    }
+    static bool testStreamRunning(const NativeAudioCore& core) {
+        return core.audio_ != nullptr && core.audio_->isStreamRunning();
+    }
+    static void setCommandCallbackTestHook(
+        NativeAudioCore::CallbackCommandTestHook hook, void* context) {
+        NativeAudioCore::callbackCommandTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::callbackCommandTestHook_.store(hook, std::memory_order_release);
+    }
+    static void setCallbackEntryTestHook(
+        NativeAudioCore::CallbackEntryTestHook hook, void* context) {
+        NativeAudioCore::callbackEntryTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::callbackEntryTestHook_.store(hook, std::memory_order_release);
+    }
+    static void setCallbackBeforeEnterTestHook(
+        NativeAudioCore::CallbackBeforeEnterTestHook hook, void* context) {
+        NativeAudioCore::callbackBeforeEnterTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::callbackBeforeEnterTestHook_.store(hook, std::memory_order_release);
+    }
+    static std::size_t queuedCommands(const NativeAudioCore& core) {
+        return core.commandQueue_.size();
+    }
+#endif
+    static unsigned int pendingTrackCommands(const NativeAudioCore& core, std::size_t track) {
+        return core.pendingTrackStateCommands_[track].load(std::memory_order_acquire);
+    }
+    static bool scheduledTrackPending(const NativeAudioCore& core, std::size_t track) {
+        return core.nativeScheduledLoopPending_[track].load(std::memory_order_acquire);
+    }
+    static bool recordStartPending(const NativeAudioCore& core, std::size_t track) {
+        return core.recordStartPending_[track].load(std::memory_order_acquire);
     }
     static void resetRhythmRuntimeForTest(NativeAudioCore& core) {
         assert(core.currentConfig_.has_value());
@@ -482,7 +546,7 @@ void testNativePitchTargetsOnlySelectedTrackAndFallsBackOnItsLoopLength() {
 
 void testNativePitchChangesOnlyLoopPlaybackAndIsRealtimeSafe() {
     constexpr unsigned int sampleRate = 48000U;
-    constexpr unsigned int frames = 64U;
+    constexpr unsigned int frames = 128U;
     constexpr unsigned int loopFrames = 12288U; // Whole 64-frame callbacks, including the final block
     constexpr double pi = 3.14159265358979323846;
     const auto makeTone = [=](float frequency, std::size_t count, float amplitude) {
@@ -3033,7 +3097,7 @@ void testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable() {
 
     NativeRhythmConfig rhythm;
     rhythm.enabled = true;
-    rhythm.bpm = 127.3;
+    rhythm.bpm = 300.0;
     rhythm.patternIndex = 229U; // 5/8, ten sixteenth-grid steps per measure.
     std::string error;
     assert(core.setNativeRhythmConfig(rhythm, error));
@@ -3064,6 +3128,96 @@ void testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable() {
         repeated.nativeRhythmPhase.sampleFrame == phase.sampleFrame &&
         repeated.nativeRhythmPhase.nextMeasureFrame == phase.nextMeasureFrame);
     assert(!repeated.nativeRhythmFrameSchedulingAvailable);
+
+    std::uint64_t scheduledRevision = 0U;
+    constexpr unsigned int irregularFrames = 61U;
+    std::array<float, irregularFrames> rampInput{};
+    std::array<float, irregularFrames * 2U> irregularOutput{};
+    const auto recordFrame = repeated.nativeRhythmPhase.nextMeasureFrame;
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        recordFrame, phase.epoch, repeated.nativeTempoAppliedRevision, &scheduledRevision, error));
+    assert(scheduledRevision == 1U);
+    while (core.getStatus().nativeSampleFrame < recordFrame + irregularFrames) {
+        const auto startFrame = core.getStatus().nativeSampleFrame;
+        for (unsigned int frame = 0U; frame < irregularFrames; ++frame) {
+            rampInput[frame] = static_cast<float>(startFrame + frame + 1U) * 0.00001f;
+        }
+        const auto before = trackedAllocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, rampInput.data(), irregularOutput.data(), irregularFrames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == before);
+    }
+    auto scheduledStatus = core.getStatus();
+    assert(scheduledStatus.nativeScheduledLoop[0].requestedRevision == 1U);
+    assert(scheduledStatus.nativeScheduledLoop[0].appliedRevision == 1U);
+    assert(scheduledStatus.nativeScheduledLoop[0].faultRevision == 0U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Recording);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).recordedFrames ==
+        scheduledStatus.nativeSampleFrame - recordFrame);
+    const auto stopFrame = scheduledStatus.nativeRhythmPhase.nextMeasureFrame;
+    assert(stopFrame > recordFrame);
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Stop,
+        stopFrame, scheduledStatus.nativeRhythmPhase.epoch, scheduledStatus.nativeTempoAppliedRevision,
+        &scheduledRevision, error));
+    assert(scheduledRevision == 2U);
+    while (core.getStatus().nativeSampleFrame < stopFrame + irregularFrames) {
+        const auto startFrame = core.getStatus().nativeSampleFrame;
+        for (unsigned int frame = 0U; frame < irregularFrames; ++frame) {
+            rampInput[frame] = static_cast<float>(startFrame + frame + 1U) * 0.00001f;
+        }
+        const auto before = trackedAllocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, rampInput.data(), irregularOutput.data(), irregularFrames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == before);
+    }
+    scheduledStatus = core.getStatus();
+    assert(scheduledStatus.nativeScheduledLoop[0].appliedRevision == 2U);
+    assert(scheduledStatus.nativeScheduledLoop[0].faultRevision == 0U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Stopped);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).finalizedFrames == stopFrame - recordFrame);
+    std::vector<float> recordedPrefix(static_cast<std::size_t>(stopFrame - recordFrame) * 2U);
+    std::size_t copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, recordedPrefix.data(),
+        static_cast<std::size_t>(stopFrame - recordFrame), copiedFrames));
+    assert(copiedFrames == stopFrame - recordFrame);
+    assert(recordedPrefix[0U] == static_cast<float>(recordFrame + 1U) * 0.00001f);
+
+    auto cancellationBase = core.getStatus();
+    assert(core.scheduleNativeRhythmRecordOrStop(1U, NativeScheduledLoopAction::Record,
+        cancellationBase.nativeRhythmPhase.nextMeasureFrame, cancellationBase.nativeRhythmPhase.epoch,
+        cancellationBase.nativeTempoAppliedRevision, &scheduledRevision, error));
+    assert(core.cancelNativeScheduledLoop(1U, scheduledRevision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, rampInput.data(), irregularOutput.data(), irregularFrames) == 0);
+    scheduledStatus = core.getStatus();
+    assert(scheduledStatus.nativeScheduledLoop[1].cancelledRevision == scheduledRevision);
+    assert(scheduledStatus.nativeScheduledLoop[1].appliedRevision == 0U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 1U).state == LooperState::Empty);
+    std::vector<float> incumbentAfterCancel(recordedPrefix.size());
+    copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, incumbentAfterCancel.data(),
+        static_cast<std::size_t>(stopFrame - recordFrame), copiedFrames));
+    assert(incumbentAfterCancel == recordedPrefix);
+
+    const auto staleBase = core.getStatus();
+    assert(core.scheduleNativeRhythmRecordOrStop(1U, NativeScheduledLoopAction::Record,
+        staleBase.nativeRhythmPhase.nextMeasureFrame, staleBase.nativeRhythmPhase.epoch,
+        staleBase.nativeTempoAppliedRevision, &scheduledRevision, error));
+    rhythm.bpm = 299.0;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    assert(NativeAudioCoreTestAccess::callback(core, rampInput.data(), irregularOutput.data(), irregularFrames) == 0);
+    scheduledStatus = core.getStatus();
+    assert(scheduledStatus.nativeScheduledLoop[1].faultRevision == scheduledRevision);
+    assert(scheduledStatus.nativeScheduledLoop[1].fault == NativeScheduledLoopFault::StalePhaseEpoch);
+    assert(scheduledStatus.nativeScheduledLoop[1].appliedRevision == 0U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 1U).state == LooperState::Empty);
+    std::vector<float> incumbentAfterStale(recordedPrefix.size());
+    copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, incumbentAfterStale.data(),
+        static_cast<std::size_t>(stopFrame - recordFrame), copiedFrames));
+    assert(incumbentAfterStale == recordedPrefix);
+
     const auto phaseWriteSequence = NativeAudioCoreTestAccess::beginRhythmPhaseWriteForTest(core);
     const auto unstable = core.getStatus();
     assert(!unstable.nativeRhythmPhaseSnapshotStable && !unstable.nativeRhythmPhase.available);
@@ -3087,6 +3241,263 @@ void testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable() {
     assert(!restarted.nativeRhythmFrameSchedulingAvailable);
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
+
+void testNativeScheduledRequestIsSettledAfterStreamStop() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 300.0;
+    rhythm.patternIndex = 229U;
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    auto status = core.getStatus();
+    std::uint64_t revision = 0U;
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+    assert(revision == 1U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 1U);
+    assert(NativeAudioCoreTestAccess::scheduledTrackPending(core, 0U));
+
+    // The stopped stream can no longer dispatch this future request.
+    NativeAudioCoreTestAccess::closeForQueueTest(core);
+    status = core.getStatus();
+    assert(!status.engineRunning);
+    assert(status.nativeScheduledLoop[0].requestedRevision == 1U);
+    assert(status.nativeScheduledLoop[0].cancelledRevision == 1U);
+    assert(status.nativeScheduledLoop[0].appliedRevision == 0U);
+    assert(status.nativeScheduledLoop[0].faultRevision == 0U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 0U);
+    assert(!NativeAudioCoreTestAccess::scheduledTrackPending(core, 0U));
+    assert(!NativeAudioCoreTestAccess::recordStartPending(core, 0U));
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Empty);
+}
+
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+void testNativeScheduledDispatchAcknowledgesBeforeStopSettlement() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 300.0;
+    rhythm.patternIndex = 229U;
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+
+    constexpr unsigned int frames = 128U;
+    std::array<float, frames * 2U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    auto status = core.getStatus();
+    for (unsigned int guard = 0U; guard < 10000U; ++guard) {
+        status = core.getStatus();
+        assert(status.nativeRhythmPhase.available);
+        if (status.nativeRhythmPhase.nextMeasureFrame - status.nativeRhythmPhase.sampleFrame < frames) break;
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    }
+    status = core.getStatus();
+    assert(status.nativeRhythmPhase.available);
+    assert(status.nativeRhythmPhase.nextMeasureFrame > status.nativeRhythmPhase.sampleFrame);
+    assert(status.nativeRhythmPhase.nextMeasureFrame - status.nativeRhythmPhase.sampleFrame < frames);
+    std::uint64_t revision = 0U;
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+    assert(revision == 1U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 1U);
+
+    CommandCallbackGate callbackGate;
+    NativeAudioCoreTestAccess::setCallbackEntryTestHook(&holdCallbackEntry, &callbackGate);
+    RtAudio& stream = NativeAudioCoreTestAccess::installGatedStopTestStream(core, frames);
+    {
+        std::unique_lock<std::mutex> lock(callbackGate.mutex);
+        callbackGate.condition.wait(lock, [&callbackGate] { return callbackGate.entered; });
+    }
+    std::atomic<bool> closeReturned{false};
+    std::thread closer([&] {
+        NativeAudioCoreTestAccess::closeForQueueTest(core);
+        closeReturned.store(true, std::memory_order_release);
+    });
+    while (NativeAudioCoreTestAccess::testStreamRunning(core)) std::this_thread::yield();
+    // stopStream has begun and must wait for this callback before settlement.
+    assert(!closeReturned.load(std::memory_order_acquire));
+    assert(!stream.gatedTestCallbackDone());
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 1U);
+    {
+        std::lock_guard<std::mutex> lock(callbackGate.mutex);
+        callbackGate.release = true;
+    }
+    callbackGate.condition.notify_all();
+    closer.join();
+    NativeAudioCoreTestAccess::setCallbackEntryTestHook(nullptr, nullptr);
+
+    assert(stream.gatedTestCallbackDone());
+    assert(stream.gatedTestCallbackResult() == 0);
+    status = core.getStatus();
+    assert(!status.engineRunning);
+    assert(status.nativeScheduledLoop[0].requestedRevision == revision);
+    assert(status.nativeScheduledLoop[0].appliedRevision == revision);
+    assert(status.nativeScheduledLoop[0].faultRevision == 0U);
+    assert(status.nativeScheduledLoop[0].cancelledRevision == 0U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 0U);
+    assert(!NativeAudioCoreTestAccess::scheduledTrackPending(core, 0U));
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Recording);
+}
+
+void testCallbackGateClosesForcedPreEntryRace() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 300.0;
+    rhythm.patternIndex = 229U;
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr unsigned int frames = 128U;
+    std::array<float, frames * 2U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    auto status = core.getStatus();
+    for (unsigned int guard = 0U; guard < 10000U; ++guard) {
+        status = core.getStatus();
+        if (status.nativeRhythmPhase.nextMeasureFrame - status.nativeRhythmPhase.sampleFrame < frames) break;
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    }
+    status = core.getStatus();
+    std::uint64_t revision = 0U;
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+
+    CommandCallbackGate gate;
+    NativeAudioCoreTestAccess::setCallbackBeforeEnterTestHook(&holdCallbackEntry, &gate);
+    RtAudio& stream = NativeAudioCoreTestAccess::installGatedStopTestStream(core, frames);
+    {
+        std::unique_lock<std::mutex> lock(gate.mutex);
+        gate.condition.wait(lock, [&gate] { return gate.entered; });
+    }
+    std::atomic<bool> closeReturned{false};
+    std::thread closer([&] {
+        NativeAudioCoreTestAccess::closeForQueueTest(core);
+        closeReturned.store(true, std::memory_order_release);
+    });
+    while (NativeAudioCoreTestAccess::testStreamRunning(core)) std::this_thread::yield();
+    assert(!closeReturned.load(std::memory_order_acquire));
+    assert(!stream.gatedTestCallbackDone());
+    {
+        std::lock_guard<std::mutex> lock(gate.mutex);
+        gate.release = true;
+    }
+    gate.condition.notify_all();
+    closer.join();
+    NativeAudioCoreTestAccess::setCallbackBeforeEnterTestHook(nullptr, nullptr);
+    assert(stream.gatedTestCallbackDone());
+    assert(stream.gatedTestCallbackResult() == 0);
+    status = core.getStatus();
+    assert(status.nativeScheduledLoop[0].cancelledRevision == revision);
+    assert(status.nativeScheduledLoop[0].appliedRevision == 0U);
+    assert(status.nativeScheduledLoop[0].faultRevision == 0U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 0U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Empty);
+}
+
+void testNativeScheduledRecordRejectsBounceConfiguration() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeBounceSettings bounce;
+    bounce.bounceSw = true;
+    bounce.bounceIn[0U] = true;
+    std::string error;
+    assert(core.setNativeBounceSettings(bounce, error));
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 300.0;
+    rhythm.patternIndex = 229U;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    const auto status = core.getStatus();
+    std::uint64_t revision = 0U;
+    assert(!core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+    assert(error.find("Bounce") != std::string::npos);
+    assert(revision == 0U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 0U);
+    assert(!NativeAudioCoreTestAccess::scheduledTrackPending(core, 0U));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testTrackCommandRemainsPendingUntilCallbackPublishesState() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeRhythmConfig rhythm;
+    rhythm.enabled = true;
+    rhythm.bpm = 300.0;
+    rhythm.patternIndex = 229U;
+    std::string error;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    auto status = core.getStatus();
+    assert(status.nativeRhythmPhase.available);
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::queuedCommands(core) == 1U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 1U);
+
+    CommandCallbackGate gate;
+    NativeAudioCoreTestAccess::setCommandCallbackTestHook(&holdCallbackAfterCommand, &gate);
+    std::atomic<int> callbackResult{-1};
+    std::thread callbackThread([&] {
+        callbackResult.store(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames),
+            std::memory_order_release);
+    });
+    {
+        std::unique_lock<std::mutex> lock(gate.mutex);
+        gate.condition.wait(lock, [&gate] { return gate.entered; });
+    }
+    assert(NativeAudioCoreTestAccess::queuedCommands(core) == 0U);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 1U);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).state == LooperState::Empty);
+    std::uint64_t revision = 0U;
+    assert(!core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+    assert(error.find("idle track") != std::string::npos);
+    assert(revision == 0U);
+
+    {
+        std::lock_guard<std::mutex> lock(gate.mutex);
+        gate.release = true;
+    }
+    gate.condition.notify_all();
+    callbackThread.join();
+    NativeAudioCoreTestAccess::setCommandCallbackTestHook(nullptr, nullptr);
+    assert(callbackResult.load(std::memory_order_acquire) == 0);
+    assert(NativeAudioCoreTestAccess::pendingTrackCommands(core, 0U) == 0U);
+    status = core.getStatus();
+    assert(status.nativeRhythmPhase.sampleFrame == 2U * frames);
+    assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
+        status.nativeRhythmPhase.nextMeasureFrame, status.nativeRhythmPhase.epoch,
+        status.nativeTempoAppliedRevision, &revision, error));
+    assert(core.cancelNativeScheduledLoop(0U, revision, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+#endif
 
 void testNativeRhythmPhasePublicationUnderConcurrentStatusReads() {
     using namespace webrc::native;
@@ -3299,6 +3710,13 @@ int main() {
     testNativeOneShotOverdubAdmissionIsSideEffectFree();
     testMixerIndependentPcmGains();
     testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable();
+    testNativeScheduledRequestIsSettledAfterStreamStop();
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+    testNativeScheduledDispatchAcknowledgesBeforeStopSettlement();
+    testCallbackGateClosesForcedPreEntryRace();
+    testNativeScheduledRecordRejectsBounceConfiguration();
+    testTrackCommandRemainsPendingUntilCallbackPublishesState();
+#endif
     testNativeRhythmPhasePublicationUnderConcurrentStatusReads();
     testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)

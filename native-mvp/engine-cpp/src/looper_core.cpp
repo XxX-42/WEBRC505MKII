@@ -393,7 +393,10 @@ ProcessStats LooperCore::process(
     float* playbackOnlyInterleaved,
     bool measureOutputPeak,
     const float* monitorInputInterleaved,
-    unsigned int monitorInputChannels
+    unsigned int monitorInputChannels,
+    FrameBoundaryCommandCallback frameCommand,
+    void* frameCommandContext,
+    unsigned int frameCommandOffset
 ) {
     ProcessStats stats;
     stats.state = state_;
@@ -402,6 +405,9 @@ ProcessStats LooperCore::process(
 
     auto cursor = playbackCursor();
     for (unsigned int frame = 0; frame < frames; ++frame) {
+        if (frameCommand != nullptr && frame == frameCommandOffset) {
+            frameCommand(frameCommandContext);
+        }
         const std::size_t inputOffset = static_cast<std::size_t>(frame) * inputChannels;
         const float inputLeft = inputInterleaved != nullptr && inputChannels > 0U
             ? inputInterleaved[inputOffset]

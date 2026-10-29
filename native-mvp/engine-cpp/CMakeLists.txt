@@ -459,7 +459,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     target_compile_options(native_slow_gear_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
-  add_library(native_audio_core_test_support STATIC src/native_audio_core.cpp)
+  add_library(native_audio_core_test_support STATIC src/native_audio_core.cpp src/native_loop_frame_scheduler.cpp)
   target_include_directories(native_audio_core_test_support BEFORE PUBLIC tests/support include)
   target_link_libraries(native_audio_core_test_support PUBLIC native_dsp_portable)
   enable_strict_warnings(native_audio_core_test_support)
@@ -695,6 +695,14 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_rhythm_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_rhythm_tests)
 
+  add_executable(native_loop_frame_scheduler_tests
+    tests/native_loop_frame_scheduler_tests.cpp
+    src/native_loop_frame_scheduler.cpp
+  )
+  target_include_directories(native_loop_frame_scheduler_tests PRIVATE include)
+  target_link_libraries(native_loop_frame_scheduler_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_loop_frame_scheduler_tests)
+
   add_executable(native_rhythm_event_dump EXCLUDE_FROM_ALL tests/native_rhythm_event_dump.cpp)
   target_link_libraries(native_rhythm_event_dump PRIVATE native_dsp_portable)
   enable_strict_warnings(native_rhythm_event_dump)
@@ -771,6 +779,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   add_test(NAME native_sustainer_processor_tests COMMAND native_sustainer_processor_tests)
   add_test(NAME native_vibrato_processor_tests COMMAND native_vibrato_processor_tests)
   add_test(NAME native_rhythm_tests COMMAND native_rhythm_tests)
+  add_test(NAME native_loop_frame_scheduler_tests COMMAND native_loop_frame_scheduler_tests)
   add_signalsmith_notice_test(native_third_party_notices "${SIGNALSMITH_THIRD_PARTY_BUILD}")
   if(NATIVE_ENABLE_RUBBERBAND_HQ)
     add_test(NAME native_rubberband_renderer_tests COMMAND native_rubberband_renderer_tests)
@@ -858,6 +867,7 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     src/native_osc_bot_core.cpp
     src/native_osc_bot_processor.cpp
     src/native_audio_core.cpp
+    src/native_loop_frame_scheduler.cpp
   )
   target_include_directories(native_audio_core_simulation BEFORE PUBLIC tests/simulation_support include)
   target_include_directories(native_audio_core_simulation SYSTEM PUBLIC third_party/signalsmith/include)
@@ -1014,6 +1024,7 @@ add_library(native_audio_core STATIC
   src/native_osc_bot_core.cpp
   src/native_osc_bot_processor.cpp
   src/native_audio_core.cpp
+  src/native_loop_frame_scheduler.cpp
 )
 target_include_directories(native_audio_core PUBLIC include)
 target_include_directories(native_audio_core SYSTEM PUBLIC third_party/signalsmith/include)
@@ -1117,6 +1128,14 @@ enable_native_preamp_experimental_adaa(native_audio_pipeline_tests)
 
 add_executable(native_rhythm_tests tests/native_rhythm_tests.cpp src/native_rhythm_engine.cpp)
 target_include_directories(native_rhythm_tests PRIVATE include)
+
+add_executable(native_loop_frame_scheduler_tests
+  tests/native_loop_frame_scheduler_tests.cpp
+  src/native_loop_frame_scheduler.cpp
+)
+target_include_directories(native_loop_frame_scheduler_tests PRIVATE include)
+target_link_libraries(native_loop_frame_scheduler_tests PRIVATE native_audio_core)
+enable_strict_warnings(native_loop_frame_scheduler_tests)
 
 add_executable(native_rhythm_event_dump EXCLUDE_FROM_ALL tests/native_rhythm_event_dump.cpp src/native_rhythm_engine.cpp)
 target_include_directories(native_rhythm_event_dump PRIVATE include)
@@ -1398,6 +1417,7 @@ else()
 endif()
 add_test(NAME native_slow_gear_processor_tests COMMAND native_slow_gear_processor_tests)
 add_test(NAME native_rhythm_tests COMMAND native_rhythm_tests)
+add_test(NAME native_loop_frame_scheduler_tests COMMAND native_loop_frame_scheduler_tests)
 add_test(NAME native_pitch_processor_tests COMMAND native_pitch_processor_tests)
 add_test(NAME native_poly_pitch_processor_tests COMMAND native_poly_pitch_processor_tests)
 add_test(NAME native_vocoder_core_tests COMMAND native_vocoder_core_tests)

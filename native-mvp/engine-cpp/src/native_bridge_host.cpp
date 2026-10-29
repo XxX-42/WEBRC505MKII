@@ -890,6 +890,15 @@ json statusToJson(const EngineStatus& status) {
             {"rms", apply.rms},
         });
     }
+    json scheduledLoop = json::array();
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto& item = status.nativeScheduledLoop[track];
+        scheduledLoop.push_back({
+            {"trackIndex", track}, {"requestedRevision", item.requestedRevision},
+            {"appliedRevision", item.appliedRevision}, {"cancelledRevision", item.cancelledRevision},
+            {"faultRevision", item.faultRevision}, {"fault", static_cast<unsigned int>(item.fault)},
+        });
+    }
     return json{
         {"ok", true},
         {"mixerLevels", status.mixerLevels},
@@ -903,6 +912,8 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
+        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", false},
+            {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
         {"backend", backendToString(status.backend)},
@@ -1056,7 +1067,7 @@ json statusToJson(const EngineStatus& status) {
                 {"meterNumerator", status.nativeRhythmPhase.meterNumerator},
                 {"meterDenominator", status.nativeRhythmPhase.meterDenominator},
                 {"frameSchedulingAvailable", status.nativeRhythmFrameSchedulingAvailable},
-                {"frameSchedulingReason", "Native REC/STOP commands are not scheduled to an absolute future audio frame."},
+                {"frameSchedulingReason", "The callback scheduler prototype is internal; LOOP SYNC REC/STOP remains unavailable pending full Native integration and acceptance."},
             }},
             {"kitIndex", status.nativeRhythmKitIndex},
             {"variation", nativeRhythmVariationToString(status.nativeRhythmVariation)},

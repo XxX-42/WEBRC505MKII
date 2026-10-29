@@ -14,12 +14,25 @@ sample frame, phase epoch, origin, measure ordinal and boundaries, and meter.
 The snapshot comes from the callback-owned Rhythm timeline; a bounded lock-free
 atomic publication lets status readers reject an unstable snapshot without
 making the callback wait. Rhythm reconfiguration and runtime reset advance the
-phase epoch. Track status still does not provide a recording-origin frame plus
-a persisted measure length from which another track's phrase phase can be
-recovered. The current record/stop control path acknowledges callback-applied
-commands, but does not schedule them at a requested future measure frame. The
-bridge explicitly reports absolute-frame REC/STOP scheduling as unavailable.
-BPM or a callback frame counter alone is not evidence of a measure boundary.
+phase epoch. An internal callback scheduler now accepts REC/STOP against the
+published next Rhythm measure boundary, then applies the Looper transition
+before the exact sample in a callback block. Each request is tied to both the
+Rhythm epoch and applied tempo revision. Cancellation and dispatch race through
+one atomic state transition; an epoch/settings change, missed frame, cancellation,
+or rejected Looper transition receives a distinct status. Track commands,
+history pins, and project imports are held out while a scheduled transition is
+pending. The callback path uses fixed storage and does not allocate or lock.
+
+This is software infrastructure only. The bridge reports
+`nativeRhythmFrameScheduling.available: false`; no Native LOOP SYNC or REC
+QUANTIZE control calls the internal scheduler. The engine currently accepts only
+an empty-track REC with REC ACTION set to REC->PLAY and a STOP on a recording
+track. It intentionally rejects 1SHOT and REVERSE. Track status still does not
+provide a recording-origin frame plus persisted measure metadata from which a
+second track's phrase phase can be recovered, and MIDI Sync is not a verified
+phase source. BPM or a callback frame counter alone is not evidence of a measure
+boundary. Scheduled REC also rejects enabled or unapplied Bounce settings so a
+take cannot start before its Bounce input is prepared.
 
 ## Roland behavior that informs a future implementation
 
@@ -54,6 +67,9 @@ is active.
   requested, applied, cancelled, and faulted acknowledgements tied to the same
   phase/settings revision. A main-thread timer or a command acknowledged only
   at an arbitrary callback boundary is not quantized recording.
+- Keep the bridge capability disabled until the above internal Rhythm scheduler
+  is integrated with the user command path and all supported REC ACTION,
+  history, import, and multi-track cases have explicit evidence.
 - Preserve incumbent PCM if a scheduled start/stop becomes stale, is cancelled,
   or loses its phase source. Do not silently fall back to immediate recording
   while reporting quantization as enabled.

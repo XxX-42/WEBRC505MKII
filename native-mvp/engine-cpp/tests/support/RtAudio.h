@@ -5,6 +5,10 @@
 // this shim does not open a device or pretend to emulate the audio backend.
 
 #include <string>
+#include <atomic>
+#include <cstddef>
+#include <array>
+#include <thread>
 #include <vector>
 
 using RtAudioStreamStatus = unsigned int;
@@ -66,12 +70,49 @@ public:
     ) noexcept { return RTAUDIO_NO_ERROR; }
     [[nodiscard]] std::string getErrorText() const { return {}; }
     [[nodiscard]] int startStream() noexcept { return RTAUDIO_NO_ERROR; }
-    int stopStream() noexcept { return RTAUDIO_NO_ERROR; }
-    void closeStream() noexcept {}
-    [[nodiscard]] bool isStreamOpen() const noexcept { return false; }
-    [[nodiscard]] bool isStreamRunning() const noexcept { return false; }
+    int stopStream() noexcept {
+        streamRunning_.store(false, std::memory_order_release);
+        if (callbackThread_.joinable()) callbackThread_.join();
+        return RTAUDIO_NO_ERROR;
+    }
+    void closeStream() noexcept { (void)stopStream(); streamOpen_.store(false, std::memory_order_release); }
+    [[nodiscard]] bool isStreamOpen() const noexcept { return streamOpen_.load(std::memory_order_acquire); }
+    [[nodiscard]] bool isStreamRunning() const noexcept { return streamRunning_.load(std::memory_order_acquire); }
     [[nodiscard]] double getStreamTime() const noexcept { return 0.0; }
+
+    // Deterministic lifecycle seam for NativeAudioCore stop/join race tests.
+    void configureGatedTestCallback(Callback callback, void* userData, unsigned int frames) {
+        callback_ = callback;
+        userData_ = userData;
+        frames_ = frames;
+        output_.assign(static_cast<std::size_t>(frames) * 2U, 0.0f);
+        streamOpen_.store(true, std::memory_order_release);
+        streamRunning_.store(true, std::memory_order_release);
+    }
+    void launchGatedTestCallback() {
+        callbackThread_ = std::thread([this] {
+            callbackResult_.store(callback_ != nullptr
+                ? callback_(output_.data(), nullptr, frames_, 0.0, 0U, userData_) : -1,
+                std::memory_order_release);
+            callbackDone_.store(true, std::memory_order_release);
+        });
+    }
+    [[nodiscard]] bool gatedTestCallbackDone() const noexcept {
+        return callbackDone_.load(std::memory_order_acquire);
+    }
+    [[nodiscard]] int gatedTestCallbackResult() const noexcept {
+        return callbackResult_.load(std::memory_order_acquire);
+    }
 
 private:
     Api api_;
+    std::atomic<bool> streamOpen_{false};
+    std::atomic<bool> streamRunning_{false};
+    Callback callback_ = nullptr;
+    void* userData_ = nullptr;
+    unsigned int frames_ = 0U;
+    std::vector<float> output_;
+    std::thread callbackThread_;
+    std::atomic<bool> callbackDone_{false};
+    std::atomic<int> callbackResult_{-1};
 };
