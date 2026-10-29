@@ -159,7 +159,7 @@ test('real Chromium quantized capture follows master frames exactly and cancella
   expect(result.incumbentPreserved).toBe(true);
 });
 
-test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and keeps PCM on cancellation', async ({ page }) => {
+test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture; internal Memory API preserves PCM on rejection', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
 
@@ -187,6 +187,16 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
         measures -= 1; target = phase.originFrame + Math.round(measures * bar);
       }
       return target;
+    };
+    const hashBuffer = async (buffer: AudioBuffer | null) => {
+      if (!buffer) return null;
+      const channelHashes: string[] = [];
+      for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+        const samples = buffer.getChannelData(channel);
+        const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength));
+        channelHashes.push(Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
+      }
+      return { channels: buffer.numberOfChannels, frames: buffer.length, sampleRate: buffer.sampleRate, channelHashes };
     };
 
     if (context.state !== 'running' || !browser.inputCaptureNode || !browser.inputCaptureReady) {
@@ -289,22 +299,46 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
     await memory.save(96);
     const memoryPcm = track.audioBuffer as AudioBuffer | null;
     if (!memoryPcm) throw new Error('Memory setup has no committed loop PCM.');
-    const savedSample = memoryPcm.getChannelData(0)[0];
-    const priorUndo = track.canUndo;
+    const pcmBefore = await hashBuffer(memoryPcm);
+    if (pcmBefore?.channels !== 2) throw new Error(`Expected a stereo captured loop; Memory input has ${pcmBefore?.channels ?? 'no'} channels.`);
+    const priorHistory = track.getRecoverySnapshot().history;
+    if (!priorHistory.buffer || priorHistory.retainedBytes <= 0 || !track.canUndo || track.canRedo) {
+      throw new Error('Expected this real second capture to retain the previous loop as a one-step undo snapshot.');
+    }
+    if (priorHistory.buffer.numberOfChannels !== 2) throw new Error('Expected the retained undo snapshot to contain both PCM channels.');
+    const historyBefore = {
+      canUndo: track.canUndo,
+      canRedo: track.canRedo,
+      direction: priorHistory.direction,
+      retainedBytes: priorHistory.retainedBytes,
+      totalRetainedBytes: track.historyTotalRetainedBytes,
+      pcm: await hashBuffer(priorHistory.buffer),
+    };
     track.track.loopSyncSw = 'OFF'; track.updateSettings();
     browser.rhythmEngine.start();
     await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'Rhythm restart before denied Memory switch');
-    let memorySwitchBlocked = false;
-    try { await memory.load(96); } catch { memorySwitchBlocked = true; }
+    let memoryBlockReason = '';
+    // This calls the composable Memory API directly; it does not exercise the Memory UI controls.
+    try { await memory.load(96); } catch (error) { memoryBlockReason = error instanceof Error ? error.message : String(error); }
+    const historyAfterDeniedSwitch = track.getRecoverySnapshot().history;
     const deniedSwitchPreserved = track.audioBuffer === memoryPcm
-      && (track.audioBuffer as AudioBuffer | null)?.getChannelData(0)[0] === savedSample
-      && track.canUndo === priorUndo && track.track.loopSyncSw === 'OFF';
+      && JSON.stringify(await hashBuffer(track.audioBuffer)) === JSON.stringify(pcmBefore)
+      && track.canUndo === historyBefore.canUndo && track.canRedo === historyBefore.canRedo
+      && historyAfterDeniedSwitch.direction === historyBefore.direction
+      && historyAfterDeniedSwitch.retainedBytes === historyBefore.retainedBytes
+      && track.historyTotalRetainedBytes === historyBefore.totalRetainedBytes
+      && JSON.stringify(await hashBuffer(historyAfterDeniedSwitch.buffer)) === JSON.stringify(historyBefore.pcm)
+      && track.track.loopSyncSw === 'OFF';
     browser.rhythmEngine.stop();
     await waitFor(() => !browser.rhythmEngine.isRunning, 'Rhythm stop before Memory recall');
     await memory.load(96);
+    const pcmAfterRecall = await hashBuffer(track.audioBuffer);
+    const historyAfterRecall = track.getRecoverySnapshot().history;
     const memoryRecallRestoredSync = track.track.loopSyncSw === 'ON'
-      && track.audioBuffer !== null
-      && (track.audioBuffer as AudioBuffer).getChannelData(0)[0] === savedSample;
+      && JSON.stringify(pcmAfterRecall) === JSON.stringify(pcmBefore)
+      && !track.canUndo && !track.canRedo
+      && historyAfterRecall.buffer === null && historyAfterRecall.retainedBytes === 0
+      && track.historyRetainedBytes === 0;
     capturePort.postMessage = originalCapturePostMessage;
     signal.stop();
     browser.rhythmEngine.stop();
@@ -319,7 +353,7 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
       cancelledSessionId: pending?.sessionId ?? null,
       incumbentPreserved: cancellationPreservedPcm,
       previousBufferWasPresent: incumbent !== null,
-      memorySwitchBlocked,
+      memoryBlockReason,
       deniedSwitchPreserved,
       memoryRecallRestoredSync,
       immediateStartFrame,
@@ -335,7 +369,7 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
   expect(result.workletAckStartFrame).toBe(result.startFrame);
   expect(result.cancelledSessionId).not.toBeNull();
   expect(result.incumbentPreserved).toBe(true);
-  expect(result.memorySwitchBlocked).toBe(true);
+  expect(result.memoryBlockReason).toBe('Stop all five tracks and Rhythm, and finish PCM/FX/gate operations before switching Memory.');
   expect(result.deniedSwitchPreserved).toBe(true);
   expect(result.memoryRecallRestoredSync).toBe(true);
   expect(result.offStopFrame - result.immediateStartFrame).toBe(result.offCapturedFrames);
