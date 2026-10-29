@@ -912,7 +912,7 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
-        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", false},
+        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", true},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
@@ -1067,7 +1067,7 @@ json statusToJson(const EngineStatus& status) {
                 {"meterNumerator", status.nativeRhythmPhase.meterNumerator},
                 {"meterDenominator", status.nativeRhythmPhase.meterDenominator},
                 {"frameSchedulingAvailable", status.nativeRhythmFrameSchedulingAvailable},
-                {"frameSchedulingReason", "The callback scheduler prototype is internal; LOOP SYNC REC/STOP remains unavailable pending full Native integration and acceptance."},
+                {"frameSchedulingReason", "The callback scheduler bridge accepts only empty-track REC->PLAY and recording STOP at the next Rhythm measure; LOOP SYNC controls remain unavailable until OFF/MEASURE, LOOP LENGTH, and PCM-preserving cancellation semantics are complete."},
             }},
             {"kitIndex", status.nativeRhythmKitIndex},
             {"variation", nativeRhythmVariationToString(status.nativeRhythmVariation)},
@@ -2219,6 +2219,57 @@ int main() {
             return;
         }
         writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    // Rhythm-measure REC/STOP is deliberately a separate command path. The
+    // caller supplies the phase token it observed; NativeAudioCore rechecks
+    // the current callback-published phase and settings revision atomically
+    // before enqueueing the future callback-frame transition.
+    server.Post("/v1/transport/rhythm-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t trackId = 0U, absoluteFrame = 0U, phaseEpoch = 0U, settingsRevision = 0U;
+            if (!body.is_object() || body.size() != 5U ||
+                !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
+                !body.contains("action") || !body.at("action").is_string() ||
+                !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeProjectContentRevision, absoluteFrame) ||
+                !readUnsignedJsonInteger(body.value("phaseEpoch", json()), kMaximumSafeProjectContentRevision, phaseEpoch) ||
+                !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeProjectContentRevision, settingsRevision)) {
+                response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires trackId, action, absoluteFrame, phaseEpoch, and settingsRevision."); return;
+            }
+            const auto actionText = body.at("action").get<std::string>();
+            if (actionText != "record" && actionText != "stop") {
+                response.status = 400; writeError(response, "Rhythm-scheduled action must be record or stop."); return;
+            }
+            std::string error;
+            std::uint64_t acceptedRevision = 0U;
+            const auto action = actionText == "record" ? NativeScheduledLoopAction::Record : NativeScheduledLoopAction::Stop;
+            if (!engine.scheduleNativeRhythmRecordOrStop(trackId - 1U, action, absoluteFrame, phaseEpoch,
+                    settingsRevision, &acceptedRevision, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeLoopFrameScheduling"]["acceptedTrackId"] = trackId;
+            status["nativeLoopFrameScheduling"]["acceptedRevision"] = acceptedRevision;
+            writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    server.Post("/v1/transport/rhythm-schedule/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t trackId = 0U, revision = 0U;
+            if (!body.is_object() || body.size() != 2U ||
+                !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
+                !readUnsignedJsonInteger(body.value("revision", json()), kMaximumSafeProjectContentRevision, revision) || revision == 0U) {
+                response.status = 400; writeError(response, "Cancelling Rhythm-scheduled REC/STOP requires trackId and revision."); return;
+            }
+            std::string error;
+            if (!engine.cancelNativeScheduledLoop(trackId - 1U, revision, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
 
     server.Post("/v1/record/settings", [&engine](const httplib::Request& request, httplib::Response& response) {

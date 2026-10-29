@@ -522,7 +522,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRhythmPhaseSnapshotRevision);
     status.nativeRhythmPhase.available = status.nativeRhythmPhase.available &&
         status.nativeRhythmPhaseSnapshotStable && status.engineRunning;
-    status.nativeRhythmFrameSchedulingAvailable = false;
+    status.nativeRhythmFrameSchedulingAvailable = true;
     const auto collectOscVocSlots = [](const NativeEffectBank& bank,
                                        auto& destination) {
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {

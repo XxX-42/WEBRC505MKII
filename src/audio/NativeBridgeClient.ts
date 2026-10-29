@@ -237,6 +237,9 @@ export interface NativeStatus {
     finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[];
     stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[];
     acceptedStopRequestRevision?: number };
+  nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
+    acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
+      appliedRevision: number; cancelledRevision: number; faultRevision: number; fault: number }> };
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -324,7 +327,7 @@ export interface NativeStatus {
       nextMeasureFrame: number;
       meterNumerator: number;
       meterDenominator: number;
-      frameSchedulingAvailable: false;
+      frameSchedulingAvailable: boolean;
       frameSchedulingReason: string;
     };
     patternSource: 'metadata-only-240-pattern-catalog';
@@ -1222,6 +1225,51 @@ export class NativeBridgeClient {
 
   public async recordTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
     return this.requestTrackTransport('/v1/transport/record', trackId, tempo);
+  }
+
+  public async scheduleRhythmRecordOrStop(trackId: number, action: 'record' | 'stop', phase: {
+      absoluteFrame: number; epoch: number; settingsRevision: number }): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !['record', 'stop'].includes(action)
+      || !Number.isSafeInteger(phase.absoluteFrame) || phase.absoluteFrame < 0
+      || !Number.isSafeInteger(phase.epoch) || phase.epoch < 0
+      || !Number.isSafeInteger(phase.settingsRevision) || phase.settingsRevision < 0) {
+      throw new RangeError('Invalid Rhythm-scheduled Native REC/STOP request.');
+    }
+    let status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule', { method: 'POST',
+      body: JSON.stringify({ trackId, action, absoluteFrame: phase.absoluteFrame, phaseEpoch: phase.epoch,
+        settingsRevision: phase.settingsRevision }) });
+    const revision = status.nativeLoopFrameScheduling?.acceptedRevision;
+    if (status.nativeLoopFrameScheduling?.acceptedTrackId !== trackId || !Number.isSafeInteger(revision) || revision! <= 0) {
+      throw new Error('Native Rhythm-scheduled REC/STOP request acknowledgement is unavailable.');
+    }
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      const item = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+      if (!item || item.requestedRevision !== revision) throw new Error('Native Rhythm-scheduled REC/STOP request was superseded.');
+      if (item.appliedRevision === revision) return status;
+      if (item.cancelledRevision === revision) throw new Error('Native Rhythm-scheduled REC/STOP request was cancelled.');
+      if (item.faultRevision === revision) throw new Error(`Native Rhythm-scheduled REC/STOP failed (fault ${item.fault}).`);
+      if (Date.now() >= deadline) throw new Error('Native Rhythm-scheduled REC/STOP callback acknowledgement timed out; check track state before retrying.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
+  }
+
+  public async cancelRhythmScheduledLoop(trackId: number, revision: number): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !Number.isSafeInteger(revision) || revision <= 0) {
+      throw new RangeError('Invalid Native Rhythm-scheduled cancellation token.');
+    }
+    let status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule/cancel', { method: 'POST',
+      body: JSON.stringify({ trackId, revision }) });
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      const item = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+      if (item?.cancelledRevision === revision) return status;
+      if (item?.appliedRevision === revision || item?.faultRevision === revision) {
+        throw new Error('Native Rhythm-scheduled request dispatched before cancellation was acknowledged.');
+      }
+      if (Date.now() >= deadline) throw new Error('Native Rhythm-scheduled cancellation acknowledgement timed out.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
   }
 
   public async stopTransport(): Promise<NativeStatus> {

@@ -817,7 +817,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       audioTrack.track.loopSyncSw = enabled ? 'ON' : 'OFF';
       audioTrack.updateSettings();
     }, { disabled: engine.getMode() !== 'browser' || !audioTrack || loopSyncBusy,
-      reason: engine.getMode() !== 'browser' ? 'Native loop sync has no provider.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
+      reason: engine.getMode() !== 'browser' ? 'Native Rhythm scheduling currently covers only empty-track REC->PLAY and recording STOP at the next measure; LOOP SYNC stays unavailable until OFF/MEASURE and LOOP LENGTH behavior are complete.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
     const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');
     const nativeOneShot = engine.getMode() === 'native' ? engine.getNativeOneShot?.(bounceTarget) ?? null : null;
     const nativeTrackState = engine.getMode() === 'native' ? engine.getNativeTrackState?.(bounceTarget) ?? null : null;

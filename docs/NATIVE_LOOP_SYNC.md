@@ -2,12 +2,11 @@
 
 ## Current Native capability
 
-Native LOOP SYNC and REC QUANTIZE are unavailable. The Classic editor disables
-the LOOP SYNC switch outside Browser mode. The Native bridge advertises
-`nativeRecordPlay.quantizeAvailable: false`, and the Native adapter rejects a
-quantize write. Native now exposes its Rhythm phase read-only, but it does not
-yet cover every supported grid source or schedule recording transitions at a
-future callback frame. The quantize and LOOP SYNC controls remain disabled.
+Native LOOP SYNC and REC QUANTIZE controls remain unavailable. The Native bridge
+now exposes a narrow Rhythm-measure scheduling command, but the Classic editor
+keeps both controls disabled and `nativeRecordPlay.quantizeAvailable` remains
+false. No write can silently fall back to immediate recording while claiming
+quantization.
 
 Native publishes a read-only Rhythm phase snapshot containing the callback
 sample frame, phase epoch, origin, measure ordinal and boundaries, and meter.
@@ -23,11 +22,11 @@ or rejected Looper transition receives a distinct status. Track commands,
 history pins, and project imports are held out while a scheduled transition is
 pending. The callback path uses fixed storage and does not allocate or lock.
 
-This is software infrastructure only. The bridge reports
-`nativeRhythmFrameScheduling.available: false`; no Native LOOP SYNC or REC
-QUANTIZE control calls the internal scheduler. The engine currently accepts only
-an empty-track REC with REC ACTION set to REC->PLAY and a STOP on a recording
-track. It intentionally rejects 1SHOT and REVERSE. Track status still does not
+This is a limited software command path, not a complete Native feature. The
+bridge reports `nativeRhythmFrameScheduling.available: true` for the explicitly
+bounded next-measure command only. It accepts an empty-track REC with REC ACTION
+set to REC->PLAY and a STOP on a recording track. It intentionally rejects
+1SHOT and REVERSE. The UI does not call this path yet. Track status still does not
 provide a recording-origin frame plus persisted measure metadata from which a
 second track's phrase phase can be recovered, and MIDI Sync is not a verified
 phase source. BPM or a callback frame counter alone is not evidence of a measure

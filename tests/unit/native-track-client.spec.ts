@@ -26,6 +26,55 @@ describe('Native multi-track bridge client', () => {
     ]);
   });
 
+  it('requires callback ACK for Rhythm-scheduled REC and sends the phase token unchanged', async () => {
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
+      nativeLoopFrameScheduling: { version: 1, available: true, acceptedTrackId: 2, acceptedRevision: 7,
+        requests: [{}, { trackIndex: 1, requestedRevision: 7, appliedRevision: 7, cancelledRevision: 0, faultRevision: 0, fault: 0 }] },
+    }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    const status = await client.scheduleRhythmRecordOrStop(2, 'record', {
+      absoluteFrame: 19_200, epoch: 4, settingsRevision: 9,
+    });
+
+    expect(status.nativeLoopFrameScheduling?.requests?.[1]?.appliedRevision).toBe(7);
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule', {
+      headers: { 'Content-Type': 'application/json' }, method: 'POST',
+      body: JSON.stringify({ trackId: 2, action: 'record', absoluteFrame: 19_200, phaseEpoch: 4, settingsRevision: 9 }),
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('rejects an unacknowledged or out-of-range Rhythm schedule request', async () => {
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.scheduleRhythmRecordOrStop(1, 'record', { absoluteFrame: 0, epoch: 1, settingsRevision: 1 }))
+      .rejects.toThrow(/acknowledgement is unavailable/);
+    await expect(client.scheduleRhythmRecordOrStop(6, 'record', { absoluteFrame: 0, epoch: 1, settingsRevision: 1 }))
+      .rejects.toThrow(/Invalid Rhythm-scheduled/);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('accepts cancellation only after the Native bridge publishes the cancelled revision', async () => {
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
+      nativeLoopFrameScheduling: { requests: [{ trackIndex: 0, requestedRevision: 3,
+        appliedRevision: 0, cancelledRevision: 3, faultRevision: 0, fault: 0 }] },
+    }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    const status = await client.cancelRhythmScheduledLoop(1, 3);
+
+    expect(status.nativeLoopFrameScheduling?.requests?.[0]?.cancelledRevision).toBe(3);
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule/cancel', {
+      headers: { 'Content-Type': 'application/json' }, method: 'POST', body: JSON.stringify({ trackId: 1, revision: 3 }),
+      signal: expect.any(AbortSignal),
+    });
+  });
+
   it('parses interleaved stereo snapshots for the selected Native track', async () => {
     const samples = new Float32Array([0.25, -0.25, 0.5, -0.5]);
     const bytes = samples.buffer.slice(0);
