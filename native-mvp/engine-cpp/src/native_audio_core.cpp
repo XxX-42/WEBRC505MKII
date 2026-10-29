@@ -5363,13 +5363,13 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 historyCanUndo_[trackIndex].store(false, std::memory_order_release);
                 historyCanRedo_[trackIndex].store(false, std::memory_order_release);
             } else if (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Stopped) {
-                const auto frames = track.loopLengthSamples();
+                const auto recordedFrames = track.loopLengthSamples();
                 const auto start = scheduledRecordStartFrame_[trackIndex];
                 const auto firstMeasureFrames = scheduledRecordFirstMeasureFrames_[trackIndex];
                 const auto startOrdinal = scheduledRecordStartMeasureOrdinal_[trackIndex];
                 const auto stopOrdinal = scheduledEvent->request.measureOrdinal;
                 const auto measureCount = stopOrdinal > startOrdinal ? stopOrdinal - startOrdinal : 0U;
-                const bool proven = start != 0U && appliedFrame > start && appliedFrame - start == frames &&
+                const bool proven = start != 0U && appliedFrame > start && appliedFrame - start == recordedFrames &&
                     firstMeasureFrames != 0U && measureCount > 0U &&
                     scheduledRecordRhythmEpoch_[trackIndex] == scheduledEvent->request.phaseEpoch;
                 advanceProjectRevision(trackContentRevision_[trackIndex]);
@@ -5377,7 +5377,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 writeTrackPhaseProvenance(trackIndex, proven
                     ? NativeTrackPhaseProvenance{true, firstMeasureFrames, start, appliedFrame,
                         scheduledRecordRhythmEpoch_[trackIndex], currentConfig_->sampleRate,
-                        trackContentRevision_[trackIndex].load(std::memory_order_acquire), frames,
+                        trackContentRevision_[trackIndex].load(std::memory_order_acquire), recordedFrames,
                         startOrdinal, stopOrdinal, measureCount}
                     : NativeTrackPhaseProvenance{});
                 auto& history = historyRecords_[trackIndex];
