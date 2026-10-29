@@ -808,16 +808,28 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       reason: !bounce ? 'Bounce is unavailable in this audio mode.' : bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : engine.getMode() === 'native' ? 'Native Bounce reads the pre-insert track playback tap; hardware FX placement is unverified.' : 'Browser source audio is taken before Track FX.' }));
     const loopSyncBusy = !!(audioTrack as { historyBusy?: boolean } | undefined)?.historyBusy
       || audioTrack?.state === 'RECORDING' || audioTrack?.state === 'OVERDUBBING';
-    fields.push(makeBooleanField('track-loop-sync', 'LOOP SYNC SW', audioTrack?.track.loopSyncSw === 'ON', (enabled) => {
+    const nativeLoopSyncAvailable = engine.getMode() === 'native' && engine.getRecordPlaySettings?.().quantizeAvailable === true;
+    const loopSyncValue = engine.getMode() === 'native' ? engine.getTrackLoopSync?.(bounceTarget) === true : audioTrack?.track.loopSyncSw === 'ON';
+    const nativeLoopSyncHasIncumbent = engine.getMode() === 'native' && !loopSyncValue && audioTrack?.state !== 'EMPTY';
+    fields.push(makeBooleanField('track-loop-sync', 'LOOP SYNC SW', loopSyncValue, (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the track again.');
-      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('Loop sync is unavailable in this audio mode.');
+      if (engine.getMode() === 'native') {
+        if (!audioTrack || !nativeLoopSyncAvailable) throw new Error('Native LOOP SYNC requires the Native Rhythm measure source.');
+        return engine.setTrackLoopSync(bounceTarget, enabled);
+      }
+      if (!audioTrack) throw new Error('Loop sync is unavailable in this audio mode.');
       if ((audioTrack as { historyBusy?: boolean }).historyBusy || audioTrack.state === 'RECORDING' || audioTrack.state === 'OVERDUBBING') {
         throw new Error('Finish recording or overdubbing before changing loop sync.');
       }
       audioTrack.track.loopSyncSw = enabled ? 'ON' : 'OFF';
       audioTrack.updateSettings();
-    }, { disabled: engine.getMode() !== 'browser' || !audioTrack || loopSyncBusy,
-      reason: engine.getMode() !== 'browser' ? 'Native Rhythm scheduling currently covers only empty-track REC->PLAY and recording STOP at the next measure; LOOP SYNC stays unavailable until OFF/MEASURE and LOOP LENGTH behavior are complete.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
+    }, { disabled: !audioTrack || loopSyncBusy || (engine.getMode() === 'native' && (!nativeLoopSyncAvailable || nativeLoopSyncHasIncumbent)),
+      reason: loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : engine.getMode() === 'native' && nativeLoopSyncHasIncumbent
+        ? 'This Native Rhythm slice can enable LOOP SYNC only on an empty track to preserve the existing phrase.' : engine.getMode() === 'native'
+        ? nativeLoopSyncAvailable
+          ? 'Native Rhythm-only slice: OFF/MEASURE recording start, measure stop and synchronized Play for measure-aligned PCM. Manual LOOP LENGTH values are unavailable.'
+          : 'Native LOOP SYNC requires a running Native Rhythm measure source.'
+        : '' }));
     const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');
     const nativeOneShot = engine.getMode() === 'native' ? engine.getNativeOneShot?.(bounceTarget) ?? null : null;
     const nativeTrackState = engine.getMode() === 'native' ? engine.getNativeTrackState?.(bounceTarget) ?? null : null;

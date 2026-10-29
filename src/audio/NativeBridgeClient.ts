@@ -235,12 +235,12 @@ export interface NativeStatus {
   nativeStopTrackAcknowledgement?: { trackId: number; requestedRevision: number; appliedRevision: number; committedRevision: number };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
-  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[];
+  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
     bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
   nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
-  nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
+  nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: boolean; quantize?: 'OFF' | 'MEASURE';
     recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
     finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[];
     stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[];
@@ -248,7 +248,7 @@ export interface NativeStatus {
   nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
     acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
       requestedAbsoluteFrame: number; requestedPhaseEpoch: number; requestedSettingsRevision: number;
-      requestedAction: 'record' | 'stop'; requestedIntentId: string; appliedRevision: number; appliedAbsoluteFrame: number;
+      requestedAction: 'record' | 'stop' | 'play'; requestedIntentId: string; appliedRevision: number; appliedAbsoluteFrame: number;
       cancelledRevision: number; faultRevision: number; fault: number }> };
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
@@ -290,6 +290,7 @@ export interface NativeStatus {
     trackId: number;
     state: NativeLooperState;
     loopProgress: number;
+    loopLengthSamples?: number;
     /** Monotonic loop-content revision; older hosts omit it. */
     contentRevision?: number;
     loopTransportStatus?: NativeLoopTransportStatus;
@@ -720,7 +721,7 @@ export class NativeTrackFxApplyAcknowledgementError extends Error {
 
 export interface NativeRhythmScheduleReceipt {
   readonly trackId: number;
-  readonly action: 'record' | 'stop';
+  readonly action: 'record' | 'stop' | 'play';
   readonly revision: number | null;
   readonly baselineRevision: number;
   readonly absoluteFrame: number;
@@ -1248,6 +1249,17 @@ export class NativeBridgeClient {
     }
   }
 
+  public async setRecordSettings(settings: Partial<{recAction: 'REC->PLAY' | 'REC->DUB'; quantize: 'OFF' | 'MEASURE'}>): Promise<NativeStatus> {
+    if (Object.keys(settings).length !== 1 || Object.keys(settings).some((key) => key !== 'recAction' && key !== 'quantize'))
+      throw new RangeError('Invalid Native record settings.');
+    return this.request<NativeStatus>('/v1/record/settings', { method: 'POST', body: JSON.stringify(settings) });
+  }
+
+  public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || typeof enabled !== 'boolean') throw new RangeError('Invalid Native LOOP SYNC setting.');
+    return this.request<NativeStatus>('/v1/record/loop-sync', { method: 'POST', body: JSON.stringify({ trackId, enabled }) });
+  }
+
   public async finishRecordingTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC completion track');
     const body = { trackId, ...(tempo ? { tempoBpm: tempo.bpm, tempoRevision: tempo.revision } : {}) };
@@ -1303,9 +1315,9 @@ export class NativeBridgeClient {
     return this.requestTrackTransport('/v1/transport/record', trackId, tempo);
   }
 
-  public async scheduleRhythmRecordOrStop(trackId: number, action: 'record' | 'stop', phase: {
+  public async scheduleRhythmRecordOrStop(trackId: number, action: 'record' | 'stop' | 'play', phase: {
       absoluteFrame: number; epoch: number; settingsRevision: number }, expectedHostIncarnationId?: string): Promise<NativeStatus> {
-    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !['record', 'stop'].includes(action)
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !['record', 'stop', 'play'].includes(action)
       || !Number.isSafeInteger(phase.absoluteFrame) || phase.absoluteFrame < 0
       || !Number.isSafeInteger(phase.epoch) || phase.epoch < 0
       || !Number.isSafeInteger(phase.settingsRevision) || phase.settingsRevision < 0) {

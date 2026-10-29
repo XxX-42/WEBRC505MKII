@@ -9,7 +9,8 @@ bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& request
     if (requestValue.trackIndex >= kNativeScheduledLoopTrackCount || requestValue.revision == 0U ||
         requestValue.absoluteFrame == std::numeric_limits<std::uint64_t>::max() ||
         (requestValue.action != NativeScheduledLoopAction::Record &&
-         requestValue.action != NativeScheduledLoopAction::Stop)) return false;
+         requestValue.action != NativeScheduledLoopAction::Stop &&
+         requestValue.action != NativeScheduledLoopAction::Play)) return false;
 
     // The ring is SPSC, but public command paths can have multiple control
     // producers. Serialize them here; the audio callback never takes this lock.

@@ -12,6 +12,7 @@ constexpr std::size_t kNativeScheduledLoopTrackCount = 5U;
 enum class NativeScheduledLoopAction : std::uint8_t {
     Record = 0U,
     Stop,
+    Play,
 };
 
 enum class NativeScheduledLoopFault : std::uint8_t {

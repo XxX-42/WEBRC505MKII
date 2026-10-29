@@ -1,93 +1,56 @@
-# Native LOOP SYNC and recording quantization
+# Native Rhythm recording quantization
 
-## Current Native capability
+## Supported slice
 
-Native LOOP SYNC and REC QUANTIZE controls remain unavailable. The Native bridge
-now exposes a narrow Rhythm-measure scheduling command, but the Classic editor
-keeps both controls disabled and `nativeRecordPlay.quantizeAvailable` remains
-false. No write can silently fall back to immediate recording while claiming
-quantization.
+Native supports Rhythm-phased recording and playback on tracks enabled for
+LOOP SYNC. A track must be empty when LOOP SYNC is enabled. REC ACTION must be
+REC->PLAY, Native Rhythm must be running with a stable callback-published
+measure phase, and REVERSE, 1SHOT, Bounce, overdub, and MIDI Sync are
+unsupported. The RC-505 guide lists Rhythm, an existing synchronized track,
+and MIDI Sync as alternative phase sources; this implementation uses Native
+Rhythm only and does not estimate phase from BPM or the UI clock.
 
-Native publishes a read-only Rhythm phase snapshot containing the callback
-sample frame, phase epoch, origin, measure ordinal and boundaries, and meter.
-The snapshot comes from the callback-owned Rhythm timeline; a bounded lock-free
-atomic publication lets status readers reject an unstable snapshot without
-making the callback wait. Rhythm reconfiguration and runtime reset advance the
-phase epoch. An internal callback scheduler now accepts REC/STOP against the
-published next Rhythm measure boundary, then applies the Looper transition
-before the exact sample in a callback block. Each request is tied to both the
-Rhythm epoch and applied tempo revision. Cancellation and dispatch race through
-one atomic state transition; an epoch/settings change, missed frame, cancellation,
-or rejected Looper transition receives a distinct status. Track commands,
-history pins, and project imports are held out while a scheduled transition is
-pending. The callback path uses fixed storage and does not allocate or lock.
+With LOOP SYNC on, REC QUANTIZE OFF starts immediately. MEASURE schedules the
+record start at the next Native Rhythm measure. Stopping a recording schedules
+the stop at the next Native Rhythm measure. Scheduled transitions return the
+callback-applied frame, and Native publishes the finalized PCM frame count from
+the loop store. Since an OFF start can occur between measures, Native does not
+assume that its resulting PCM length is an integer number of measures.
+Playback of a stopped synchronized track starts at the next measure only after
+Native verifies that its PCM length is an integer number of current Rhythm
+measures (within two frames of sample-rate rounding). Lengths that fail this
+check remain stopped. A cancelled or stale scheduled start does not clear any
+incumbent loop; a scheduled REC is accepted only for an empty track.
 
-This is a limited software command path, not a complete Native feature. The
-bridge reports `nativeRhythmFrameScheduling.available: false` because the
-explicitly bounded next-measure route is not the complete feature. The internal
-route accepts an empty-track REC with REC ACTION
-set to REC->PLAY and a STOP on a recording track. It intentionally rejects
-1SHOT and REVERSE. The UI does not call this path yet. Track status still does not
-provide a recording-origin frame plus persisted measure metadata from which a
-second track's phrase phase can be recovered, and MIDI Sync is not a verified
-phase source. BPM or a callback frame counter alone is not evidence of a measure
-boundary. Scheduled REC also rejects enabled or unapplied Bounce settings so a
-take cannot start before its Bounce input is prepared.
+The Classic Memory editor exposes REC QUANTIZE only while the Native Rhythm
+phase is available. LOOP SYNC and REC QUANTIZE settings are included in Native
+Memory capture and restored with the archive. Setting changes are read back
+before the UI accepts them. Rhythm scheduling requests retain their revision,
+phase epoch, host incarnation and intent ID so a lost response can be
+reconciled or cancelled without replaying the operation.
 
-## Roland behavior that informs a future implementation
+This slice captures the actual PCM frame count but does not assign the
+hardware's AUTO phrase measure count, manually selected LOOP LENGTH, phase
+recovery from an existing synchronized phrase, MIDI clock phase, STOP MODE,
+Auto Rec, or REC->DUB. Existing PCM is preserved. Imported or edited loops
+with unknown or non-measure-aligned lengths remain unavailable for synchronized
+playback.
+
+## Roland behavior
 
 The [RC-505mkII Parameter Guide v1.3+](https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf)
-describes LOOP SYNC as using memory tempo or a synchronized track for recording
-and playback. Its MEASURE mode starts at a measure and adjusts recorded track
-length in measure units; LOOP LENGTH mode uses the configured loop length. The
-guide describes TEMPO SYNC separately as changing playback speed, with PITCH or
-XFADE behavior.
+says REC QUANTIZE applies only to LOOP SYNC tracks. It documents three
+conditions that enable loop quantization: Rhythm is on, an already-recorded
+LOOP SYNC track exists, or MIDI Sync is on. These are alternate sources, not
+an exclusive source selection. OFF starts recording immediately and aligns
+the take length to the measure; MEASURE aligns the recording start. The guide
+also documents LOOP LENGTH separately: AUTO derives the phrase length from the
+first recorded phrase, while manual values specify a measure count.
 
-REC QUANTIZE applies only to recording and only on LOOP SYNC tracks. MEASURE
-aligns the recording start to a measure. OFF starts immediately, while stop
-still aligns the take to the measure length of an existing LOOP SYNC track or
-Rhythm. The documented grid sources are running Rhythm, an already-recorded
-LOOP SYNC track, or MIDI Sync.
+## Evidence boundary
 
-The guide describes REVERSE and 1SHOT separately, but does not specify their
-interaction with LOOP SYNC recording quantization. Native must not infer that
-those combinations are supported from the availability of reverse or one-shot
-playback controls. Until their interaction is documented and an implementation
-has evidence for it, synchronized recording must fail closed when either mode
-is active.
-
-## Requirements before enabling Native controls
-
-- Publish one authoritative phase source and its revision. For Rhythm, expose
-  the callback-owned measure origin and meter; for an existing synchronized
-  track, retain its recording-origin frame and measure-count/length metadata;
-  for MIDI Sync, consume and validate a clock phase rather than only BPM or
-  observed pulse count.
-- Schedule REC start and stop against that phase in the audio callback, with
-  requested, applied, cancelled, and faulted acknowledgements tied to the same
-  phase/settings revision. A main-thread timer or a command acknowledged only
-  at an arbitrary callback boundary is not quantized recording.
-- Keep the bridge capability disabled until the above internal Rhythm scheduler
-  is integrated with the user command path and all supported REC ACTION,
-  history, import, and multi-track cases have explicit evidence.
-- Preserve incumbent PCM if a scheduled start/stop becomes stale, is cancelled,
-  or loses its phase source. Do not silently fall back to immediate recording
-  while reporting quantization as enabled.
-- Establish supported and unsupported combinations for reverse and 1SHOT from
-  documented behavior or explicit software/hardware evidence before enabling
-  those modes with LOOP SYNC.
-- Validate software callback scheduling separately from device timing,
-  physical RC-505 behavior, acoustic latency, and long-run drift. Do not call a
-  callback-frame schedule hardware sample-accurate without matching evidence.
-
-The Browser implementation and its narrower phase constraints are documented
-in [BROWSER_LOOP_SYNC.md](BROWSER_LOOP_SYNC.md). Its software-path tests do not
-validate the Native callback or physical hardware.
-
-## Exact frame receipt and reconnected cancellation
-
-The callback scheduler now includes `requestedAbsoluteFrame` and a cryptographically generated 128-bit `intentId` in its status, and publishes `appliedAbsoluteFrame` before the matching applied revision. The TypeScript bridge waits for both the revision and exact frame, checks the host incarnation on each status read, and retains a pending receipt when an accepted command loses its response. A schedule POST also records the prior per-track revision and its frame/epoch/settings/action intent. If the POST response is lost, reconnect reconciliation binds only to the request carrying the exact `intentId` and matching parameters; otherwise it keeps the outcome unknown and does not cancel or resubmit.
-
-Cancellation includes the captured host incarnation and `intentId`. The Native HTTP route rejects a cancellation token from another host process or a different request before forwarding it to the scheduler, closing the status-read/cancel restart race. Every cancellation status poll and reconnect readback checks both tokens. If a stop has already applied, reconciliation returns the applied status for track inspection instead of claiming cancellation.
-
-Portable C++ and the no-audio HTTP simulation verify that the acknowledged start/stop frame difference equals committed PCM frame count, committed PCM survives a rejected second REC, and stale-host cancellation is rejected. Unit tests cover accepted-then-disconnected status polling, a POST network error followed by exact intent-to-revision binding, and restart rejection. All of these are software-path checks; the Native feature remains disabled and no device or hardware timing claim is made.
+Callback-frame scheduling, exact software PCM length, setting readback,
+cancellation, and Memory round-trips are software-path evidence. They do not
+establish device timing, physical RC-505 behavior, acoustic latency, or
+long-run drift. Existing LOOP SYNC/MIDI phase sources and playback behavior
+remain unavailable in Native.

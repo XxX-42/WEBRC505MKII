@@ -1456,14 +1456,33 @@ export class NativeAudioEngine {
     const settings = this.latestStatus?.nativeRecordPlay;
     const available = settings?.version === 1 && settings.recActionAvailable === true &&
       settings.requestedRevision === settings.appliedRevision && ['REC->PLAY', 'REC->DUB'].includes(settings.recAction);
-    return Object.freeze({ available, recActionAvailable: available, quantizeAvailable: false,
-      reason: available ? 'Native recording quantization is unavailable.' : 'Native REC ACTION readback is unavailable or pending.',
-      recAction: available ? settings!.recAction : null, quantize: null, autoRecAvailable: false, bounceAvailable: false });
+    const quantizeAvailable = available && settings?.quantizeAvailable === true && ['OFF', 'MEASURE'].includes(settings.quantize ?? '');
+    return Object.freeze({ available, recActionAvailable: available, quantizeAvailable,
+      reason: !available ? 'Native REC ACTION readback is unavailable or pending.' : quantizeAvailable ? '' : 'Native REC QUANTIZE requires the Native Rhythm measure source.',
+      recAction: available ? settings!.recAction : null, quantize: quantizeAvailable ? settings!.quantize! : null, autoRecAvailable: false, bounceAvailable: false });
   }
   public async setRecordPlaySettings(patch: RecordPlaySettingsPatch): Promise<void> {
-    if (patch.quantize !== undefined || Object.keys(patch).some(key => key !== 'recAction')) throw new Error('Native recording quantization is unavailable.');
+    if (Object.keys(patch).some(key => key !== 'recAction' && key !== 'quantize')) throw new Error('Unsupported Native record setting.');
     if (!this.getRecordPlaySettings().recActionAvailable) throw new Error(this.getRecordPlaySettings().reason);
-    if (patch.recAction !== undefined) await this.dispatchStatusRequest(() => this.bridge.setRecordAction(patch.recAction!));
+    if (patch.quantize !== undefined && !this.getRecordPlaySettings().quantizeAvailable) throw new Error(this.getRecordPlaySettings().reason);
+    if (patch.recAction !== undefined || patch.quantize !== undefined) {
+      const applied = await this.dispatchStatusRequest(() => this.bridge.setRecordSettings({
+        ...(patch.recAction ? { recAction: patch.recAction } : {}),
+        ...(patch.quantize ? { quantize: patch.quantize } : {}),
+      }));
+      if ((patch.recAction !== undefined && applied.nativeRecordPlay?.recAction !== patch.recAction) ||
+          (patch.quantize !== undefined && applied.nativeRecordPlay?.quantize !== patch.quantize)) {
+        throw new Error('Native record setting was not acknowledged by status readback.');
+      }
+    }
+  }
+
+  public getTrackLoopSync(trackId: number): boolean { return this.latestStatus?.nativeMemory?.loopSync?.[trackId - 1] === true; }
+  public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<void> {
+    const status = await this.dispatchStatusRequest(() => this.bridge.setTrackLoopSync(trackId, enabled));
+    if (status.nativeMemory?.loopSync?.[trackId - 1] !== enabled) throw new Error('Native LOOP SYNC setting was not acknowledged.');
+    const track = this.tracks.find((candidate) => candidate.trackId === trackId);
+    if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
     const finishToken = this.nativeRecordTempoToken();
@@ -1501,6 +1520,10 @@ export class NativeAudioEngine {
   }
 
   public async recordTrack(trackId = 1) {
+    if (this.getTrackLoopSync(trackId) && this.getRecordPlaySettings().quantize === 'MEASURE') {
+      await this.scheduleNativeRhythmAction(trackId, 'record');
+      return;
+    }
     await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId, this.nativeRecordTempoToken()));
   }
 
@@ -1510,7 +1533,19 @@ export class NativeAudioEngine {
     const beforeContentRevision = beforeTrack?.contentRevision;
     const stopToken = wasRecording ? this.nativeRecordTempoToken() : undefined;
     const callbackAckSupported = this.latestStatus?.nativeTempoRecordProvenanceVersion === 1;
-    const stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
+    let stopStatus: NativeStatus;
+    const synchronizedStop = wasRecording && this.getTrackLoopSync(trackId);
+    const phaseAvailable = this.latestStatus?.nativeRhythm?.phase?.available === true &&
+      this.latestStatus?.nativeRhythm?.phase?.snapshotStable === true;
+    if (synchronizedStop && phaseAvailable) {
+      stopStatus = await this.scheduleNativeRhythmAction(trackId, 'stop');
+    } else {
+      stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
+      if (synchronizedStop) {
+        this.lastError = 'Native Rhythm phase was unavailable; recording stopped at the current callback boundary without quantization.';
+        this.emitAll();
+      }
+    }
     if (!wasRecording || !stopToken || !callbackAckSupported || !Number.isSafeInteger(beforeContentRevision)) return;
     const stopAck = stopStatus.nativeStopTrackAcknowledgement;
     if (!stopAck || stopAck.trackId !== trackId || !Number.isSafeInteger(stopAck.requestedRevision) ||
@@ -1523,13 +1558,69 @@ export class NativeAudioEngine {
     await this.confirmCommittedTakeTempo(trackId, stopToken, stoppedContentRevision!, stopAck.requestedRevision);
   }
 
+  private async scheduleNativeRhythmAction(trackId: number, action: 'record' | 'stop' | 'play'): Promise<NativeStatus> {
+    const status = this.latestStatus;
+    const phase = status?.nativeRhythm?.phase;
+    const rhythm = status?.nativeRhythm;
+    if (!status || !rhythm?.enabled || !phase?.available || phase.snapshotStable !== true ||
+        phase.frameSchedulingAvailable !== true || !Number.isSafeInteger(phase.nextMeasureFrame) ||
+        !Number.isSafeInteger(phase.epoch) || !Number.isSafeInteger(rhythm.tempoAppliedRevision)) {
+      throw new Error('Native Rhythm measure phase is unavailable; synchronized REC/STOP was not submitted.');
+    }
+    return this.dispatchStatusRequest(() => this.bridge.scheduleRhythmRecordOrStop(trackId, action, {
+      absoluteFrame: phase.nextMeasureFrame, epoch: phase.epoch,
+      settingsRevision: rhythm.tempoAppliedRevision!,
+    }, status.hostIncarnationId));
+  }
+
   private nativeRecordTempoToken(): NativeRecordTempoToken | undefined {
     const transport = Transport.getInstance();
     return nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
   }
 
   public async playTrack(trackId = 1) {
+    if (this.getTrackLoopSync(trackId)) {
+      const availability = this.getRhythmSyncPlayAvailability(trackId);
+      if (!availability.available) throw new Error(availability.reason);
+      await this.scheduleNativeRhythmAction(trackId, 'play');
+      return;
+    }
     await this.dispatchStatusRequest(() => this.bridge.playTrack(trackId));
+  }
+
+  public getRhythmSyncPhaseAvailability(trackId: number): {available: boolean; reason: string} {
+    if (!this.getTrackLoopSync(trackId)) return { available: true, reason: '' };
+    const phase = this.latestStatus?.nativeRhythm?.phase;
+    if (!this.latestStatus?.nativeRhythm?.enabled || !phase?.available || phase.snapshotStable !== true ||
+        phase.frameSchedulingAvailable !== true || !Number.isSafeInteger(phase.nextMeasureFrame) ||
+        !Number.isSafeInteger(phase.epoch)) {
+      return { available: false, reason: 'Native LOOP SYNC transport requires active Native Rhythm with a stable measure phase.' };
+    }
+    return { available: true, reason: '' };
+  }
+
+  public getRhythmSyncPlayAvailability(trackId: number): {available: boolean; reason: string} {
+    const status = this.latestStatus;
+    const track = status?.nativeTracks?.find((item) => item.trackId === trackId);
+    const phase = status?.nativeRhythm?.phase;
+    if (!this.getTrackLoopSync(trackId)) return { available: true, reason: '' };
+    if (!track || track.state !== 'Stopped' || !Number.isSafeInteger(track.loopLengthSamples) || track.loopLengthSamples! <= 0) {
+      return { available: false, reason: 'Native LOOP SYNC playback requires a stopped track with known PCM length.' };
+    }
+    const phaseAvailability = this.getRhythmSyncPhaseAvailability(trackId);
+    if (!phaseAvailability.available) return phaseAvailability;
+    if (!status || !phase?.available || phase.snapshotStable !== true || phase.frameSchedulingAvailable !== true ||
+        !Number.isSafeInteger(phase.nextMeasureFrame) || !Number.isSafeInteger(phase.measureStartFrame) ||
+        !Number.isFinite(status.sampleRate) || !Number.isFinite(status.nativeRhythm?.bpm) ||
+        !Number.isSafeInteger(phase.meterNumerator) || !Number.isSafeInteger(phase.meterDenominator)) {
+      return { available: false, reason: 'Native LOOP SYNC playback requires a stable Native Rhythm phase.' };
+    }
+    const measureFrames = status.sampleRate! * 60 / status.nativeRhythm!.bpm * phase.meterNumerator * 4 / phase.meterDenominator;
+    const measures = Math.round(track.loopLengthSamples! / measureFrames);
+    if (measureFrames <= 0 || measures < 1 || Math.abs(track.loopLengthSamples! - Math.round(measures * measureFrames)) > 2) {
+      return { available: false, reason: 'Native LOOP SYNC playback requires PCM whose length is an integer number of current Rhythm measures.' };
+    }
+    return { available: true, reason: '' };
   }
 
   public async toggleOverdub(trackId = 1) {

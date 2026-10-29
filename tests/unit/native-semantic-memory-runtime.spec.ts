@@ -161,6 +161,22 @@ describe('Native semantic Memory runtime', () => {
     h.hostStatus().nativeRecordPlay!.appliedRevision = 2;
     await expect(h.runtime.capture()).rejects.toThrow(/REC ACTION/);
   });
+  it('captures and validates Native Rhythm REC QUANTIZE and per-track LOOP SYNC in Memory', async () => {
+    const h = fixture();
+    h.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: true,
+      recAction: 'REC->PLAY', quantize: 'MEASURE', requestedRevision: 1, appliedRevision: 1,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    h.hostStatus().nativeMemory!.recQuantize = 'MEASURE';
+    h.hostStatus().nativeMemory!.loopSync = [false, true, false, false, false];
+    const document = await h.runtime.capture();
+    expect((document.extensions.WEBRC.nativeMemory as any)).toMatchObject({ recQuantize: 'MEASURE',
+      loopSync: [false, true, false, false, false] });
+    expect(document.semantics.fields['record.quantize']).toEqual({ availability: 'supported', value: 'MEASURE' });
+    expect(document.semantics.fields['track.2.loopSync']).toEqual({ availability: 'supported', value: 'ON' });
+    document.semantics.fields['track.2.loopSync']!.value = 'OFF';
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/inconsistent/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
   it('captures real banks/gates/output state and marks TrackProxy placeholders unavailable', async () => {
     const { runtime } = fixture();
     const document = await runtime.capture();

@@ -278,6 +278,20 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             if (action != "REC->PLAY" && action != "REC->DUB") throw std::runtime_error("Invalid Memory REC ACTION.");
             candidate->recordActionIncluded = true; candidate->recordActionDub = action == "REC->DUB";
         }
+        if (settings.contains("recQuantize")) {
+            const auto quantize = settings.at("recQuantize").get<std::string>();
+            if (quantize != "OFF" && quantize != "MEASURE") throw std::runtime_error("Invalid Memory REC QUANTIZE.");
+            candidate->recordQuantizeIncluded = true; candidate->recordQuantizeMeasure = quantize == "MEASURE";
+        }
+        if (settings.contains("loopSync")) {
+            const auto& switches = settings.at("loopSync");
+            if (!switches.is_array() || switches.size() != kNativeTrackCount) throw std::runtime_error("Native Memory requires five LOOP SYNC switches.");
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (!switches[track].is_boolean()) throw std::runtime_error("Native Memory LOOP SYNC values must be booleans.");
+                candidate->loopSync[track] = switches[track].get<bool>();
+            }
+            candidate->loopSyncIncluded = true;
+        }
         const auto& banks = settings.at("banks");
         if (!banks.is_array() || banks.size() != 7U) throw std::runtime_error("Memory requires seven FX banks.");
         for (std::size_t bank = 0U; bank < 7U; ++bank) {
@@ -429,6 +443,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             {"mixer.mainLevel", levels[0U]}, {"mixer.masterLevel", levels[1U]}};
         expectedFields["record.bounceSw"] = candidate->bounce.bounceSw;
         if (candidate->recordActionIncluded) expectedFields["record.recAction"] = settings.at("recAction");
+        if (candidate->recordQuantizeIncluded) expectedFields["record.quantize"] = settings.at("recQuantize");
         json trackBanks = json::array();
         for (std::size_t bank = 1U; bank < 7U; ++bank) trackBanks.push_back(banks[bank]);
         expectedFields["trackFx.banks"] = std::move(trackBanks);
@@ -439,6 +454,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             expectedFields[root + ".bounceIn"] = candidate->bounce.bounceIn[track];
             expectedFields[root + ".bounceTrack"] = candidate->bounce.bounceTrack[track];
             if (candidate->dubModesIncluded) expectedFields[root + ".dubMode"] = settings.at("dubModes")[track];
+            if (candidate->loopSyncIncluded) expectedFields[root + ".loopSync"] = candidate->loopSync[track] ? "ON" : "OFF";
         }
         for (auto field = metadata.at("semantics").at("fields").begin(); field != metadata.at("semantics").at("fields").end(); ++field) {
             if (field.value().at("availability") == "supported" &&
@@ -662,6 +678,7 @@ json callbackTelemetryToJson(const NativeCallbackTelemetryStatus& value) {
 json statusToJson(const EngineStatus& status) {
     json memoryTransports = json::array();
     json memoryDubModes = json::array();
+    json loopSync = json::array();
     for (std::size_t track = 0U; track < status.nativeMemoryLoopTransports.size(); ++track) {
         const auto& config = status.nativeMemoryLoopTransports[track];
         memoryTransports.push_back({{"mode", static_cast<unsigned int>(config.mode)},
@@ -672,6 +689,7 @@ json statusToJson(const EngineStatus& status) {
             {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
     }
     for (const auto mode : status.nativeMemoryDubModes) memoryDubModes.push_back(nativeDubModeToString(mode));
+    for (const bool enabled : status.nativeLoopSync) loopSync.push_back(enabled);
     json bounceIn = json::array();
     json bounceTrack = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -686,6 +704,7 @@ json statusToJson(const EngineStatus& status) {
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
+            {"loopLengthSamples", status.nativeTrackLoopLengthSamples[track]},
             {"contentRevision", status.nativeTrackContentRevision[track]},
             {"loopTransportRequestedRevision", status.nativeLoopTransportRequestedRevision[track]},
             {"loopTransportAppliedRevision", status.nativeLoopTransportAppliedRevision[track]},
@@ -915,7 +934,8 @@ json statusToJson(const EngineStatus& status) {
             {"requestedAbsoluteFrame", item.requestedAbsoluteFrame},
             {"requestedPhaseEpoch", item.requestedPhaseEpoch},
             {"requestedSettingsRevision", item.requestedSettingsRevision},
-            {"requestedAction", item.requestedAction == NativeScheduledLoopAction::Record ? "record" : "stop"},
+            {"requestedAction", item.requestedAction == NativeScheduledLoopAction::Record ? "record" :
+                item.requestedAction == NativeScheduledLoopAction::Stop ? "stop" : "play"},
             {"requestedIntentId", formatRhythmIntentId(item.intentIdHigh, item.intentIdLow)},
             {"appliedRevision", item.appliedRevision}, {"appliedAbsoluteFrame", item.appliedAbsoluteFrame},
             {"cancelledRevision", item.cancelledRevision},
@@ -925,8 +945,9 @@ json statusToJson(const EngineStatus& status) {
     return json{
         {"ok", true},
         {"mixerLevels", status.mixerLevels},
-        {"nativeRecordPlay", {{"version", 1}, {"recActionAvailable", true}, {"quantizeAvailable", false},
+        {"nativeRecordPlay", {{"version", 1}, {"recActionAvailable", true}, {"quantizeAvailable", status.nativeRhythmFrameSchedulingAvailable},
             {"recAction", status.nativeRecordActionDub ? "REC->DUB" : "REC->PLAY"},
+            {"quantize", status.nativeRecordQuantizeMeasure ? "MEASURE" : "OFF"},
             {"requestedRevision", status.nativeRecordActionRequestedRevision}, {"appliedRevision", status.nativeRecordActionAppliedRevision},
             {"finishRequested", status.nativeRecordFinishRequested}, {"finishApplied", status.nativeRecordFinishApplied}, {"finishCancelled", status.nativeRecordFinishCancelled},
             {"stopRequested", status.nativeRecordStopRequested}, {"stopApplied", status.nativeRecordStopApplied},
@@ -935,7 +956,7 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
-        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", false},
+        {"nativeLoopFrameScheduling", {{"version", 1}, {"available", status.nativeRhythmFrameSchedulingAvailable},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
@@ -1090,7 +1111,7 @@ json statusToJson(const EngineStatus& status) {
                 {"meterNumerator", status.nativeRhythmPhase.meterNumerator},
                 {"meterDenominator", status.nativeRhythmPhase.meterDenominator},
                 {"frameSchedulingAvailable", status.nativeRhythmFrameSchedulingAvailable},
-                {"frameSchedulingReason", "The callback scheduler bridge accepts only empty-track REC->PLAY and recording STOP at the next Rhythm measure; LOOP SYNC controls remain unavailable until OFF/MEASURE, LOOP LENGTH, and PCM-preserving cancellation semantics are complete."},
+                {"frameSchedulingReason", status.nativeRhythmFrameSchedulingAvailable ? "Callback-frame REC/STOP/PLAY is available for Native Rhythm LOOP SYNC tracks only; MIDI Sync and other track phase sources are unsupported." : "Enable Native Rhythm and LOOP SYNC, then wait for a stable measure phase before synchronized REC/STOP/PLAY."},
             }},
             {"kitIndex", status.nativeRhythmKitIndex},
             {"variation", nativeRhythmVariationToString(status.nativeRhythmVariation)},
@@ -1139,7 +1160,8 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
-        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes},
+        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes}, {"loopSync", loopSync},
+            {"recQuantize", status.nativeRecordQuantizeMeasure ? "MEASURE" : "OFF"},
             {"bounce", {{"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack}}}}},
         {"nativeBounce", {{"version", 1U}, {"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack},
             {"requestedRevision", status.nativeBounceRequestedRevision}, {"appliedRevision", status.nativeBounceAppliedRevision},
@@ -2303,12 +2325,13 @@ int main() {
                 response.status = 409; writeError(response, "Native host incarnation changed since the scheduling baseline; request was not submitted."); return;
             }
             const auto actionText = body.at("action").get<std::string>();
-            if (actionText != "record" && actionText != "stop") {
-                response.status = 400; writeError(response, "Rhythm-scheduled action must be record or stop."); return;
+            if (actionText != "record" && actionText != "stop" && actionText != "play") {
+                response.status = 400; writeError(response, "Rhythm-scheduled action must be record, stop, or play."); return;
             }
             std::string error;
             std::uint64_t acceptedRevision = 0U;
-            const auto action = actionText == "record" ? NativeScheduledLoopAction::Record : NativeScheduledLoopAction::Stop;
+            const auto action = actionText == "record" ? NativeScheduledLoopAction::Record :
+                actionText == "stop" ? NativeScheduledLoopAction::Stop : NativeScheduledLoopAction::Play;
             if (!engine.scheduleNativeRhythmRecordOrStop(trackId - 1U, action, absoluteFrame, phaseEpoch,
                     settingsRevision, &acceptedRevision, error, intentIdHigh, intentIdLow, expectedRequestRevision)) {
                 response.status = 409; writeError(response, error); return;
@@ -2352,13 +2375,39 @@ int main() {
     server.Post("/v1/record/settings", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
-            if (!body.is_object() || body.size() != 1U || !body.contains("recAction") || !body.at("recAction").is_string()) {
-                response.status = 400; writeError(response, "REC settings require only recAction."); return;
+            if (!body.is_object() || body.size() != 1U ||
+                (body.contains("recAction") && !body.at("recAction").is_string()) ||
+                (body.contains("quantize") && !body.at("quantize").is_string()) ||
+                (!body.contains("recAction") && !body.contains("quantize"))) {
+                response.status = 400; writeError(response, "Set exactly one REC ACTION or REC QUANTIZE setting per request."); return;
             }
-            const auto action = body.at("recAction").get<std::string>();
-            if (action != "REC->PLAY" && action != "REC->DUB") { response.status = 400; writeError(response, "Invalid REC ACTION."); return; }
             std::string error;
-            if (!engine.setRecordAction(action == "REC->DUB", error)) { response.status = 409; writeError(response, error); return; }
+            if (body.contains("recAction")) {
+                const auto action = body.at("recAction").get<std::string>();
+                if (action != "REC->PLAY" && action != "REC->DUB") { response.status = 400; writeError(response, "Invalid REC ACTION."); return; }
+                if (!engine.setRecordAction(action == "REC->DUB", error)) { response.status = 409; writeError(response, error); return; }
+            }
+            if (body.contains("quantize")) {
+                const auto quantize = body.at("quantize").get<std::string>();
+                if (quantize != "OFF" && quantize != "MEASURE") { response.status = 400; writeError(response, "Invalid REC QUANTIZE."); return; }
+                if (!engine.setRecordQuantizeMeasure(quantize == "MEASURE", error)) { response.status = 409; writeError(response, error); return; }
+            }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/record/loop-sync", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t trackId = 0U;
+            if (!body.is_object() || body.size() != 2U ||
+                !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
+                !body.contains("enabled") || !body.at("enabled").is_boolean()) {
+                response.status = 400; writeError(response, "LOOP SYNC requires trackId 1..5 and an enabled boolean."); return;
+            }
+            std::string error;
+            if (!engine.setTrackLoopSync(trackId - 1U, body.at("enabled").get<bool>(), error)) {
+                response.status = 409; writeError(response, error); return;
+            }
             writeJson(response, statusToJson(engine.getStatus()));
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });

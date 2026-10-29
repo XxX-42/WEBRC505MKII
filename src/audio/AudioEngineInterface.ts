@@ -21,6 +21,8 @@ export interface BrowserBounceSourceMix {
 
 export interface IAudioEngine {
     getRecordPlaySettings?(): RecordPlaySettings;
+    getTrackLoopSync?(trackId: number): boolean;
+    setTrackLoopSync?(trackId: number, enabled: boolean): void | Promise<void>;
     /** True only when the Browser's internal rhythm source is currently running. */
     isBrowserRhythmRunning?(): boolean;
     /** Last acknowledged sample-frame phase from the real Browser Rhythm AudioWorklet. */

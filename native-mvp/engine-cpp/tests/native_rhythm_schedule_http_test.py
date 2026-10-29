@@ -23,7 +23,7 @@ def until(predicate, timeout=8):
 def phase(status):
     value = status['nativeRhythm']['phase']
     require(value['available'] is True and value['snapshotStable'] is True, value)
-    require(value['frameSchedulingAvailable'] is False, value)
+    require(value['frameSchedulingAvailable'] is True, value)
     require(value['nextMeasureFrame'] > value['sampleFrame'], value)
     baseline = status['nativeLoopFrameScheduling']['requests'][1]['requestedRevision']
     return {'trackId': 2, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
@@ -60,8 +60,8 @@ def main():
 
         code, initial = request('/v1/status')
         require(code == 200, initial)
-        # A frame scheduler endpoint is not equivalent to the complete user
-        # feature. REC QUANTIZE stays unavailable until all mode semantics land.
+        # The user feature is available only for the running Native Rhythm
+        # phase source and becomes false again when that source stops.
         require(initial['nativeRecordPlay']['quantizeAvailable'] is False, initial)
         require(initial['nativeLoopFrameScheduling']['available'] is False, initial)
 
@@ -88,7 +88,13 @@ def main():
         code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300, 'patternIndex': 92})
         require(code == 200, rhythm)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'engine start failed')
-        until(phase_has_headroom)
+        running = until(phase_has_headroom)
+        require(running['nativeRecordPlay']['quantizeAvailable'] is True and
+            running['nativeLoopFrameScheduling']['available'] is True, running)
+        code, quantize_status = request('/v1/record/settings', 'POST', {'quantize': 'MEASURE'})
+        require(code == 200 and quantize_status['nativeRecordPlay']['quantize'] == 'MEASURE', quantize_status)
+        code, sync_status = request('/v1/record/loop-sync', 'POST', {'trackId': 2, 'enabled': True})
+        require(code == 200 and sync_status['nativeMemory']['loopSync'][1] is True, sync_status)
         set_callback_gate(True)
         first_status = request('/v1/status')[1]
         first = phase(first_status)
@@ -152,6 +158,18 @@ def main():
         metadata_code, metadata = request('/v1/export/track-metadata?trackId=2')
         require(metadata_code == 200 and metadata['frameCount'] ==
             stop_request['absoluteFrame'] - record_request['absoluteFrame'], metadata)
+        set_callback_gate(True)
+        play_request = phase(request('/v1/status')[1])
+        play_request['action'] = 'play'
+        code, accepted_play = request('/v1/transport/rhythm-schedule', 'POST', play_request)
+        require(code == 200, accepted_play)
+        play_revision = accepted_play['nativeLoopFrameScheduling']['acceptedRevision']
+        set_callback_gate(False)
+        playing = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == play_revision
+            and value['nativeTracks'][1]['state'] == 'Playing')
+        require(playing['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
+            play_request['absoluteFrame'], playing)
+        require(playing['nativeTracks'][1]['loopLengthSamples'] == metadata['frameCount'], playing)
         # A quantized REC request never replaces incumbent PCM implicitly.
         set_callback_gate(True)
         occupied_track_request = phase(request('/v1/status')[1])
@@ -162,9 +180,10 @@ def main():
         metadata_after_rejected_rec = request('/v1/export/track-metadata?trackId=2')[1]
         require(metadata_after_rejected_rec['frameCount'] == metadata['frameCount'] and
             metadata_after_rejected_rec['contentRevision'] == metadata['contentRevision'], metadata_after_rejected_rec)
-        require(stopped['nativeRecordPlay']['quantizeAvailable'] is False and
-            stopped['nativeLoopFrameScheduling']['available'] is False and
-            stopped['nativeRhythm']['phase']['frameSchedulingAvailable'] is False, stopped)
+        require(stopped['nativeRecordPlay']['quantizeAvailable'] is True and
+            stopped['nativeLoopFrameScheduling']['available'] is True and
+            stopped['nativeRecordPlay']['quantize'] == 'MEASURE' and
+            stopped['nativeMemory']['loopSync'][1] is True, stopped)
 
         # A stopped stream must clear the simulation-only gate so restarting
         # the same host/RtAudio instance does not inherit a parked callback.
@@ -181,7 +200,7 @@ def main():
         code, gate_status = request('/v1/test/simulation/callback-gate')
         require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
             ('simulation callback did not resume after restart', gate_status))
-        print('Native Rhythm schedule HTTP: exact callback frame ACK, PCM frame length, incumbent PCM protection; full quantize capability remains false')
+        print('Native Rhythm LOOP SYNC HTTP: settings ACK, exact callback frame ACK, PCM frame length, incumbent PCM protection')
     finally:
         try:
             request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})

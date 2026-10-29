@@ -919,6 +919,20 @@ export class AudioEngine {
   public setRecordPlaySettings(settings: RecordPlaySettingsPatch): Promise<void> {
     return Promise.resolve(this.activeEngine.setRecordPlaySettings(settings));
   }
+  public getTrackLoopSync(trackId: number): boolean { return this.currentMode === 'native'
+    ? this.nativeEngine.getTrackLoopSync(trackId) : this.browser.isBrowserTrackLoopSyncEnabled(trackId) === true; }
+  public setTrackLoopSync(trackId: number, enabled: boolean): Promise<void> {
+    if (this.currentMode !== 'native') throw new Error('Use Browser track settings for Browser LOOP SYNC.');
+    return this.nativeEngine.setTrackLoopSync(trackId, enabled);
+  }
+  public getRhythmSyncPlayAvailability(trackId: number): {available: boolean; reason: string} {
+    return this.currentMode === 'native' ? this.nativeEngine.getRhythmSyncPlayAvailability(trackId)
+      : { available: true, reason: '' };
+  }
+  public getRhythmSyncPhaseAvailability(trackId: number): {available: boolean; reason: string} {
+    return this.currentMode === 'native' ? this.nativeEngine.getRhythmSyncPhaseAvailability(trackId)
+      : { available: true, reason: '' };
+  }
   public getMidiClockSyncMode(): BrowserMidiSyncMode { return this.currentMode === 'browser' ? this.browser.getMidiClockSyncMode() : 'off'; }
   public setMidiClockSyncMode(mode: BrowserMidiSyncMode): void {
     if (this.currentMode === 'browser') this.browser.setMidiClockSyncMode(mode);

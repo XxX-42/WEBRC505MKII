@@ -17,6 +17,19 @@ function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcil
 }
 
 describe('Native Rhythm schedule initialization reconciliation', () => {
+  it('keeps synchronized playback disabled unless Rhythm phase and PCM measure length are verified', () => {
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.latestStatus = { sampleRate: 48_000, nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Stopped', loopLengthSamples: 38_400 }],
+      nativeRhythm: { enabled: true, bpm: 300, phase: { available: true, snapshotStable: true, frameSchedulingAvailable: true,
+        epoch: 1, nextMeasureFrame: 48_000, measureStartFrame: 9_600, meterNumerator: 4, meterDenominator: 4 } } };
+    expect(engine.getRhythmSyncPlayAvailability(1)).toEqual({ available: true, reason: '' });
+    engine.latestStatus.nativeTracks[0].loopLengthSamples = 38_000;
+    expect(engine.getRhythmSyncPlayAvailability(1).available).toBe(false);
+    engine.latestStatus.nativeRhythm.phase.snapshotStable = false;
+    expect(engine.getRhythmSyncPlayAvailability(1).reason).toMatch(/stable measure phase/);
+  });
+
   it.each([
     ['cancelled', { appliedRevision: 0, cancelledRevision: 9, faultRevision: 0 }],
     ['fault', { appliedRevision: 0, cancelledRevision: 0, faultRevision: 9, fault: 2 }],

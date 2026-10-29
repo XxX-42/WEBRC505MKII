@@ -121,6 +121,8 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   }
   return {
     ...(record?.recActionAvailable ? { recAction: record.recAction } : {}),
+    ...(native.recQuantize === 'OFF' || native.recQuantize === 'MEASURE' ? { recQuantize: native.recQuantize } : {}),
+    ...(native.loopSync?.length === 5 ? { loopSync: [...native.loopSync] } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
     banks, loopTransports: copyJson(native.loopTransports), ...(dubModes ? { dubModes } : {}),
     bounce: native.bounce ? copyJson(native.bounce) : { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] },
@@ -184,7 +186,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const fields: Record<string, Rc505MemoryField> = structuredClone(preservedFields);
       // NativeTrackProxy defaults are display placeholders, never device evidence.
       for (let track = 1; track <= 5; track += 1) {
-        for (const key of ['level', 'pan', 'reverse', 'oneShot', 'tempoSync', 'loopSync', 'measure', 'startMode', 'stopMode']) {
+        for (const key of ['level', 'pan', 'reverse', 'oneShot', 'tempoSync', 'measure', 'startMode', 'stopMode']) {
           fields[`track.${track}.${key}`] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
         }
         fields[`track.${track}.dubMode`] = settings.dubModes
@@ -201,12 +203,17 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       fields['mixer.mainLevel'] = { value: (settings.mixerLevels as Rc505Json[])[0]!, availability: 'supported' };
       fields['mixer.masterLevel'] = { value: (settings.mixerLevels as Rc505Json[])[1]!, availability: 'supported' };
       if (settings.recAction !== undefined) fields['record.recAction'] = { value: settings.recAction, availability: 'supported' };
+      fields['record.quantize'] = settings.recQuantize !== undefined
+        ? { value: settings.recQuantize, availability: 'supported' }
+        : { value: null, availability: 'unsupported', reason: 'Native host does not implement REC QUANTIZE Memory.' };
       fields['rhythm.settings'] = { value: settings.rhythm!, availability: 'supported' };
       fields['inputFx.bank'] = { value: (settings.banks as Rc505Json[])[0]!, availability: 'supported' };
       fields['trackFx.banks'] = { value: (settings.banks as Rc505Json[]).slice(1), availability: 'supported' };
       const bounceSettings = settings.bounce as { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] };
       fields['record.bounceSw'] = { value: bounceSettings.bounceSw, availability: 'supported' };
       for (let track = 1; track <= 5; track += 1) {
+        if (settings.loopSync) fields[`track.${track}.loopSync`] = { value: (settings.loopSync as Rc505Json[])[track - 1] ? 'ON' : 'OFF', availability: 'supported' };
+        else fields[`track.${track}.loopSync`] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement LOOP SYNC Memory.' };
         fields[`track.${track}.bounceIn`] = { value: bounceSettings.bounceIn[track - 1]!, availability: 'supported' };
         fields[`track.${track}.bounceTrack`] = { value: bounceSettings.bounceTrack[track - 1]!, availability: 'supported' };
       }
@@ -246,9 +253,13 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         'mixer.mainLevel': (settings.mixerLevels as Rc505Json[])[0]!, 'mixer.masterLevel': (settings.mixerLevels as Rc505Json[])[1]!,
       };
       if (settings.recAction !== undefined) expectedFields['record.recAction'] = settings.recAction;
+      if (settings.recQuantize !== undefined) expectedFields['record.quantize'] = settings.recQuantize;
       const bounceSettings = settings.bounce as { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] };
       expectedFields['record.bounceSw'] = bounceSettings.bounceSw;
       for (let track = 1; track <= 5; track += 1) {
+        if (Array.isArray(settings.loopSync) && settings.loopSync.length === 5) {
+          expectedFields[`track.${track}.loopSync`] = settings.loopSync[track - 1] ? 'ON' : 'OFF';
+        }
         expectedFields[`track.${track}.fxApply`] = (settings.trackFxApply as Rc505Json[])[track - 1]!;
         expectedFields[`track.${track}.level`] = (settings.mixerLevels as Rc505Json[])[track + 1]!;
         expectedFields[`track.${track}.bounceIn`] = bounceSettings.bounceIn[track - 1]!;

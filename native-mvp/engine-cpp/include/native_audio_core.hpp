@@ -177,6 +177,8 @@ struct EngineStatus {
     unsigned int sampleRate = 0;
     unsigned int bufferFrames = 0;
     bool monitoringEnabled = false;
+    bool nativeRecordQuantizeMeasure = false;
+    std::array<bool, kNativeTrackCount> nativeLoopSync{};
     bool nativeOutputLowPassAvailable = true;
     bool nativeOutputLowPassEnabled = false;
     bool nativeOutputHighPassAvailable = true;
@@ -328,6 +330,7 @@ struct EngineStatus {
     std::array<NativeVocoderCarrierStatus, kNativeTrackCount> nativeVocoderCarrierStatuses{};
     std::array<float, kNativeTrackCount> nativeTrackProgress{};
     std::array<std::uint64_t, kNativeTrackCount> nativeTrackContentRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeTrackLoopLengthSamples{};
     /** Host epoch for loop PCM/history and import-overwritten track-state changes. */
     std::uint64_t projectContentRevision = 0U;
     /** True only when project-relevant status fields were sampled without an epoch change. */
@@ -438,6 +441,10 @@ struct NativePitchConfig {
 struct NativeMemorySettings {
     bool recordActionDub = false;
     bool recordActionIncluded = false;
+    bool recordQuantizeMeasure = false;
+    bool recordQuantizeIncluded = false;
+    std::array<bool, kNativeTrackCount> loopSync{};
+    bool loopSyncIncluded = false;
     std::array<std::array<NativeMemoryFxSlot, 4U>, 7U> banks{};
     NativeRhythmConfig rhythm{};
     NativeReverbConfig reverb{};
@@ -557,10 +564,11 @@ public:
     bool finishRecordingTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                               std::uint64_t provenanceRevision = 0U);
     bool setRecordAction(bool overdub, std::string& error);
+    bool setRecordQuantizeMeasure(bool enabled, std::string& error);
+    bool setTrackLoopSync(std::size_t trackIndex, bool enabled, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                    std::uint64_t provenanceRevision = 0U, std::uint64_t* requestedRevision = nullptr);
-    // Internal Native callback path; the host keeps LOOP SYNC controls disabled
-    // until its broader phase-source and product acceptance gates pass.
+    // Native callback-frame scheduler for supported Rhythm-only LOOP SYNC actions.
     bool scheduleNativeRhythmRecordOrStop(
         std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
         std::uint64_t expectedPhaseEpoch, std::uint64_t expectedSettingsRevision,
@@ -946,6 +954,8 @@ private:
     std::uint64_t recordActionRequestedRevision_ = 0U;
     std::atomic<bool> recordActionDubApplied_{false};
     std::atomic<std::uint64_t> recordActionAppliedRevision_{0U};
+    std::atomic<bool> recordQuantizeMeasure_{false};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeLoopSync_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishRequested_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordFinishApplied_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishRuntimeGeneration_{};
@@ -1140,6 +1150,7 @@ private:
         static_cast<int>(LooperState::Empty), static_cast<int>(LooperState::Empty),
         static_cast<int>(LooperState::Empty)
     }};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeTrackLoopLengthSamples_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackContentRevision_{};
     // Zero means unknown; supported BPM values have nonzero IEEE-754 bits.
     // Fixed atomic storage keeps callback and control readers race-free.

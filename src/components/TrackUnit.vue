@@ -159,9 +159,20 @@ const reverseControlEnabled = computed(() => trackTransportEnabled.value && trac
   (getEngineUiStatus()?.mode !== 'native' || trackState.value === TrackState.EMPTY || trackState.value === TrackState.STOPPED));
 const captureWarmupBlocksAction = computed(() => getEngineUiStatus()?.mode === 'browser' && inputCaptureWarming.value
   && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING));
-const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value && !recordActionPending.value);
+const rhythmSyncPlayAvailability = computed(() => getEngineUiStatus()?.mode === 'native'
+  && engine.getTrackLoopSync(props.trackId) && trackState.value === TrackState.STOPPED
+  ? engine.getRhythmSyncPlayAvailability(props.trackId) : { available: true, reason: '' });
+const rhythmSyncPhaseAvailability = computed(() => getEngineUiStatus()?.mode === 'native'
+  && engine.getTrackLoopSync(props.trackId) && trackState.value !== TrackState.PLAYING
+  ? engine.getRhythmSyncPhaseAvailability(props.trackId) : { available: true, reason: '' });
+const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value
+  && !recordActionPending.value && rhythmSyncPlayAvailability.value.available && rhythmSyncPhaseAvailability.value.available);
 const recordActionDisabledReason = computed(() => recordActionPending.value
   ? 'Waiting for the Native REC acknowledgement.'
+  : !rhythmSyncPlayAvailability.value.available
+    ? rhythmSyncPlayAvailability.value.reason
+    : !rhythmSyncPhaseAvailability.value.available
+      ? rhythmSyncPhaseAvailability.value.reason
   : captureWarmupBlocksAction.value
     ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
     : disabledReason.value);

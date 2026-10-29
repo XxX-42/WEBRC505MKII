@@ -269,9 +269,11 @@ EngineStatus NativeAudioCore::getStatus() const {
     const auto projectRevisionAtSnapshotStart = projectContentRevision_.load(std::memory_order_acquire);
     EngineStatus status;
     status.nativeRecordActionDub = recordActionDubRequested_;
+    status.nativeRecordQuantizeMeasure = recordQuantizeMeasure_.load(std::memory_order_acquire);
     status.nativeRecordActionRequestedRevision = recordActionRequestedRevision_;
     status.nativeRecordActionAppliedRevision = recordActionAppliedRevision_.load(std::memory_order_acquire);
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+        status.nativeLoopSync[i] = nativeLoopSync_[i].load(std::memory_order_acquire);
         status.nativeRecordFinishRequested[i] = recordFinishRequested_[i];
         status.nativeRecordFinishApplied[i] = recordFinishApplied_[i].load(std::memory_order_acquire);
         status.nativeRecordFinishCancelled[i] = recordFinishCancelled_[i];
@@ -433,6 +435,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeTrackStates[track] = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
         status.nativeTrackProgress[track] = trackProgress_[track].load(std::memory_order_acquire);
         status.nativeTrackContentRevision[track] = trackContentRevision_[track].load(std::memory_order_acquire);
+        status.nativeTrackLoopLengthSamples[track] = nativeTrackLoopLengthSamples_[track].load(std::memory_order_acquire);
         status.nativeTrackLoopTransportStatus[track] = trackLoopTransportStatus_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportRequestedRevision[track] = nativeLoopTransportRequestedRevision_[track];
         status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
@@ -522,9 +525,8 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRhythmPhaseSnapshotRevision);
     status.nativeRhythmPhase.available = status.nativeRhythmPhase.available &&
         status.nativeRhythmPhaseSnapshotStable && status.engineRunning;
-    // The internal scheduler route is only a prototype subset, not a full
-    // user-facing REC QUANTIZE capability.
-    status.nativeRhythmFrameSchedulingAvailable = false;
+    // Native Rhythm is the only phase source exposed by this bounded slice.
+    status.nativeRhythmFrameSchedulingAvailable = status.nativeRhythmPhase.available;
     const auto collectOscVocSlots = [](const NativeEffectBank& bank,
                                        auto& destination) {
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
@@ -995,6 +997,46 @@ bool NativeAudioCore::setRecordAction(bool overdub, std::string& error) {
     advanceProjectRevision(projectContentRevision_); error.clear(); return true;
 }
 
+bool NativeAudioCore::setRecordQuantizeMeasure(bool enabled, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
+        error = "Wait for pending Memory/track commands before changing REC QUANTIZE."; return false;
+    }
+    for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+        const auto state = static_cast<LooperState>(trackStates_[i].load(std::memory_order_acquire));
+        if (state == LooperState::Recording || state == LooperState::Overdubbing || nativeScheduledLoopPending_[i].load(std::memory_order_acquire)) {
+            error = "Finish recording/overdubbing before changing REC QUANTIZE."; return false;
+        }
+    }
+    if (recordQuantizeMeasure_.load(std::memory_order_acquire) != enabled) {
+        recordQuantizeMeasure_.store(enabled, std::memory_order_release);
+        advanceProjectRevision(projectContentRevision_);
+    }
+    error.clear(); return true;
+}
+
+bool NativeAudioCore::setTrackLoopSync(std::size_t trackIndex, bool enabled, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (trackIndex >= kNativeTrackCount) { error = "Invalid Native track for LOOP SYNC."; return false; }
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
+        error = "Wait for pending Memory/track commands before changing LOOP SYNC."; return false;
+    }
+    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (state == LooperState::Recording || state == LooperState::Overdubbing || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Finish recording/overdubbing before changing LOOP SYNC."; return false;
+    }
+    if (enabled && state != LooperState::Empty) {
+        error = "This Rhythm-only slice supports LOOP SYNC only before the first take; existing phrase lengths are not represented."; return false;
+    }
+    if (nativeLoopSync_[trackIndex].load(std::memory_order_acquire) != enabled) {
+        nativeLoopSync_[trackIndex].store(enabled, std::memory_order_release);
+        advanceProjectRevision(projectContentRevision_);
+    }
+    error.clear(); return true;
+}
+
 bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& error,
                                            std::optional<double> provenanceBpm, std::uint64_t provenanceRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
@@ -1050,8 +1092,13 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (requestedRevision != nullptr) *requestedRevision = 0U;
     if (trackIndex >= kNativeTrackCount ||
-        (action != NativeScheduledLoopAction::Record && action != NativeScheduledLoopAction::Stop)) {
-        error = "Native scheduled REC/STOP request is invalid."; return false;
+        (action != NativeScheduledLoopAction::Record && action != NativeScheduledLoopAction::Stop &&
+         action != NativeScheduledLoopAction::Play)) {
+        error = "Native scheduled REC/STOP/PLAY request is invalid."; return false;
+    }
+    if (!nativeLoopSync_[trackIndex].load(std::memory_order_acquire) ||
+        !nativeRhythmConfig_.enabled || !nativeRhythmPhaseAvailable_.load(std::memory_order_acquire)) {
+        error = "Native Rhythm scheduling requires LOOP SYNC ON and an active Native Rhythm phase."; return false;
     }
     if (nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
         error = "Wait for the scheduled Native REC/STOP callback acknowledgement before changing this track.";
@@ -1093,11 +1140,31 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
         error = "Native LOOP SYNC scheduling is unavailable with 1SHOT or REVERSE."; return false;
     }
     if ((action == NativeScheduledLoopAction::Record && (state != LooperState::Empty || recordActionDubRequested_)) ||
-        (action == NativeScheduledLoopAction::Stop && state != LooperState::Recording)) {
+        (action == NativeScheduledLoopAction::Stop && state != LooperState::Recording) ||
+        (action == NativeScheduledLoopAction::Play && state != LooperState::Stopped)) {
         error = action == NativeScheduledLoopAction::Record
             ? "Scheduled REC requires an empty track and REC ACTION set to REC->PLAY."
-            : "Scheduled STOP requires an actively recording track.";
+            : action == NativeScheduledLoopAction::Stop ? "Scheduled STOP requires an actively recording track."
+            : "Scheduled PLAY requires a stopped Native Rhythm LOOP SYNC track.";
         return false;
+    }
+    if (action == NativeScheduledLoopAction::Play) {
+        const auto loopFrames = nativeTrackLoopLengthSamples_[trackIndex].load(std::memory_order_acquire);
+        if (!currentConfig_ || phase.meterNumerator == 0U || phase.meterDenominator == 0U || loopFrames == 0U) {
+            error = "Synchronized PLAY requires a finalized loop and a valid Rhythm measure length."; return false;
+        }
+        const double measureFrames = static_cast<double>(currentConfig_->sampleRate) * 60.0 /
+            nativeRhythmConfig_.bpm * static_cast<double>(phase.meterNumerator) * 4.0 /
+            static_cast<double>(phase.meterDenominator);
+        if (!std::isfinite(measureFrames) || measureFrames < 1.0) {
+            error = "Native Rhythm measure length is invalid for synchronized PLAY."; return false;
+        }
+        const auto measures = static_cast<std::uint64_t>(std::llround(static_cast<double>(loopFrames) / measureFrames));
+        const auto alignedFrames = static_cast<std::uint64_t>(std::llround(static_cast<double>(measures) * measureFrames));
+        const auto difference = loopFrames > alignedFrames ? loopFrames - alignedFrames : alignedFrames - loopFrames;
+        if (measures == 0U || difference > 2U) {
+            error = "Native LOOP SYNC PLAY requires PCM whose length is an integer number of current Rhythm measures."; return false;
+        }
     }
     if (action == NativeScheduledLoopAction::Record) {
         const auto requestedBounce = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
@@ -3857,6 +3924,12 @@ void NativeAudioCore::finalizeProjectImportLocked() {
                 recordActionDubRequested_ = memory.recordActionDub;
                 recordActionRequestedRevision_ = recordActionAppliedRevision_.load(std::memory_order_acquire);
             }
+            if (memory.recordQuantizeIncluded) recordQuantizeMeasure_.store(memory.recordQuantizeMeasure, std::memory_order_release);
+            if (memory.loopSyncIncluded) {
+                for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                    nativeLoopSync_[track].store(memory.loopSync[track], std::memory_order_release);
+                }
+            }
             if (memory.rhythm.bpm != nativeRhythmConfig_.bpm &&
                 nativeTempoRequestedRevision_ < kMaximumSafeProjectContentRevision) ++nativeTempoRequestedRevision_;
             nativeRhythmConfig_ = memory.rhythm;
@@ -4957,8 +5030,8 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         if (scheduledEvent != nullptr) {
             scheduledContext.core = this;
             scheduledContext.command = {
-                scheduledEvent->request.action == NativeScheduledLoopAction::Record
-                    ? CommandType::Record : CommandType::StopRecordOrPlayback,
+                scheduledEvent->request.action == NativeScheduledLoopAction::Record ? CommandType::Record :
+                    scheduledEvent->request.action == NativeScheduledLoopAction::Stop ? CommandType::StopRecordOrPlayback : CommandType::Play,
                 false,
                 static_cast<std::uint8_t>(trackIndex),
             };
@@ -4977,10 +5050,11 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             scheduledEvent != nullptr ? &scheduledContext : nullptr,
             scheduledEvent != nullptr ? scheduledEvent->frameOffset : 0U
         );
+        nativeTrackLoopLengthSamples_[trackIndex].store(track.loopLengthSamples(), std::memory_order_release);
         trackStates_[trackIndex].store(static_cast<int>(trackStats.state), std::memory_order_release);
         if (scheduledEvent != nullptr) {
-            const auto expectedState = scheduledEvent->request.action == NativeScheduledLoopAction::Record
-                ? LooperState::Recording : LooperState::Stopped;
+            const auto expectedState = scheduledEvent->request.action == NativeScheduledLoopAction::Record ? LooperState::Recording :
+                scheduledEvent->request.action == NativeScheduledLoopAction::Stop ? LooperState::Stopped : LooperState::Playing;
             nativeLoopFrameScheduler_.acknowledgeApplied(trackIndex, scheduledEvent->request.revision,
                 callbackFrameCursor_ + scheduledEvent->frameOffset,
                 trackStats.state == expectedState ||
@@ -5250,6 +5324,10 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         projectImportCancelledByCallback_.store(true, std::memory_order_release);
         projectImportState_.store(NativeProjectImportState::Cancelled, std::memory_order_release);
         return true;
+    }
+
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        nativeTrackLoopLengthSamples_[track].store(looperForTrack(track).loopLengthSamples(), std::memory_order_release);
     }
 
     if (transaction->memory) {
