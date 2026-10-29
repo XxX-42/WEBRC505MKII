@@ -63,11 +63,11 @@ def main():
             require(request('/v1/transport/undo', 'POST', {'trackId': 1})[0] == 200, 'history unavailable after REC completion')
             require(request('/v1/transport/clear', 'POST', {'trackId': 1})[0] == 200, 'clear failed')
             until(lambda status: status['nativeTracks'][0]['state'] == 'Empty')
-        for body in [{'recAction': 'INVALID'}, {'quantize': 'OFF'}, {'recAction': 'REC->PLAY', 'quantize': 'MEASURE'}]:
+        for body in [{'recAction': 'INVALID'}, {'quantize': 'INVALID'}, {'recAction': 'REC->PLAY', 'quantize': 'MEASURE'}]:
             require(request('/v1/record/settings', 'POST', body)[0] == 400, ('invalid settings accepted', body))
         for body in [{'trackId': 0, 'mode': 'OVERDUB'}, {'trackId': 1, 'mode': 'INVALID'}]:
             require(request('/v1/native-dub-mode/config', 'POST', body)[0] == 400, ('invalid DUB MODE request accepted', body))
-        print('Native REC ACTION: atomic REC->PLAY/REC->DUB, callback generations, shared-budget shadow and retained undo; quantize explicitly unavailable')
+        print('Native REC ACTION: atomic REC->PLAY/REC->DUB, callback generations, shared-budget shadow and retained undo; measure quantize requires Native Rhythm')
     finally:
         process.terminate()
         process.wait(timeout=5)

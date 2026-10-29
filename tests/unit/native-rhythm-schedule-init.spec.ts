@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
-import { NativeRhythmScheduleOutcomeUnknownError, NativeRhythmScheduleTerminalError, type NativeBridgeClient,
+import { NativeBridgeHttpError, NativeRhythmScheduleOutcomeUnknownError, NativeRhythmScheduleTerminalError, type NativeBridgeClient,
   type NativeRhythmScheduleReceipt, type NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcile: () => Promise<NativeStatus>) {
@@ -37,12 +37,13 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
     const stopTrack = vi.fn();
     const emergencyStopTrack = vi.fn(async () => ({ nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 2,
-      loopLengthSamples: 4096 }] }));
+      loopLengthSamples: 4096 }], nativeStopTrackAcknowledgement: { trackId: 1, requestedRevision: 1,
+        appliedRevision: 1, committedRevision: 1 } }));
     engine.latestStatus = { nativeMemory: { loopSync: [true, false, false, false, false] },
       nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
-      nativeRhythm: { phase: { available: false, snapshotStable: false } } };
+      nativeRhythm: { phase: { available: false, snapshotStable: true } } };
     engine.bridge = { stopTrack, emergencyStopTrack };
-    engine.dispatchStatusRequest = vi.fn((request: () => Promise<unknown>) => request());
+    engine.applyStatus = vi.fn((status: unknown) => { engine.latestStatus = status; });
     engine.emitAll = vi.fn();
     engine.lastError = '';
     await engine.stopTrack(1);
@@ -50,6 +51,55 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     expect(emergencyStopTrack).toHaveBeenCalledOnce();
     expect(engine.lastError).toMatch(/emergency STOP retained the captured PCM/);
     expect(engine.lastError).toMatch(/4096 frames/);
+  });
+
+  it('preserves the last Recording status when the emergency endpoint rejects a recovered phase', async () => {
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    const before = { nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
+      nativeRhythm: { phase: { available: false, snapshotStable: true } } };
+    engine.latestStatus = before;
+    engine.bridge = { emergencyStopTrack: vi.fn(async () => { throw new NativeBridgeHttpError('measure phase is available', 409); }) };
+    engine.applyStatus = vi.fn();
+    engine.emitAll = vi.fn();
+    engine.lastError = '';
+    await expect(engine.stopTrack(1)).rejects.toThrow(/measure phase is available/);
+    expect(engine.latestStatus).toBe(before);
+    expect(engine.applyStatus).not.toHaveBeenCalled();
+    expect(engine.lastError).toMatch(/last Native track state is retained/);
+  });
+
+  it('preserves the confirmed Recording state when a scheduled measure STOP gets a host 409', async () => {
+    const before = { nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1, loopLengthSamples: 2048 }],
+      nativeRhythm: { enabled: true, tempoAppliedRevision: 7, phase: { available: true, snapshotStable: true,
+        frameSchedulingAvailable: true, nextMeasureFrame: 8192, epoch: 3 } },
+      hostIncarnationId: '1'.repeat(32) } as unknown as NativeStatus;
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.latestStatus = before;
+    engine.bridge = { scheduleRhythmRecordOrStop: vi.fn(async () => {
+      throw new NativeBridgeHttpError('measure phase changed before STOP was accepted', 409);
+    }) };
+    engine.applyStatus = vi.fn();
+    engine.emitAll = vi.fn();
+    engine.lastError = '';
+    await expect(engine.stopTrack(1)).rejects.toThrow(/measure phase changed/);
+    expect(engine.latestStatus).toBe(before);
+    expect(engine.applyStatus).not.toHaveBeenCalled();
+    expect(engine.lastError).toMatch(/measure phase changed/);
+  });
+
+  it('routes the REC/PLAY finish action for synchronized recording through measure STOP', async () => {
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.latestStatus = { nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }] };
+    engine.stopTrack = vi.fn(async () => undefined);
+    const finishRecordingTrack = vi.fn();
+    engine.bridge = { finishRecordingTrack };
+    await engine.finishRecordingTrack(1);
+    expect(engine.stopTrack).toHaveBeenCalledOnce();
+    expect(engine.stopTrack).toHaveBeenCalledWith(1);
+    expect(finishRecordingTrack).not.toHaveBeenCalled();
   });
 
   it('keeps synchronized playback disabled until track PCM has retained phase provenance', () => {

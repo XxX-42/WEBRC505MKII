@@ -164,8 +164,11 @@ def main():
         engine_stop_code, engine_stop_status = request('/v1/engine/stop', 'POST', {})
         require(engine_stop_code == 409 and 'emergency stop' in engine_stop_status.get('error', '').lower(),
             ('engine stop was accepted during synchronized recording', engine_stop_code, engine_stop_status))
+        stable_emergency_code, stable_emergency = request('/v1/transport/emergency-stop?trackId=2', 'POST', {})
+        require(stable_emergency_code == 409 and 'measure stop' in stable_emergency.get('error', '').lower(),
+            ('emergency STOP bypassed a stable measure phase', stable_emergency_code, stable_emergency))
         require(request('/v1/status')[1]['nativeTracks'][1]['state'] == 'Recording',
-            'phase/config guards altered the active recording')
+            'phase/config guards or rejected emergency STOP altered the active recording')
         direct_finish_code, direct_finish = request('/v1/transport/finish-record', 'POST', {'trackId': 2})
         require(direct_finish_code == 409 and 'scheduler' in direct_finish.get('error', '').lower(),
             ('direct REC completion bypassed Native LOOP SYNC scheduling', direct_finish_code, direct_finish))
@@ -230,9 +233,36 @@ def main():
         emergency_recording = until(lambda value:
             value['nativeLoopFrameScheduling']['requests'][2]['appliedRevision'] == emergency_record_revision
             and value['nativeTracks'][2]['state'] == 'Recording')
+        set_callback_gate(True)
+        phase_loss_code, phase_loss = request('/v1/test/simulation/rhythm-phase-unavailable', 'POST', {})
+        require(phase_loss_code == 200 and phase_loss.get('phaseAvailable') is False,
+            ('simulation did not inject explicit phase loss before emergency STOP', phase_loss_code, phase_loss))
+        phase_lost_status = request('/v1/status')[1]
+        require(phase_lost_status['nativeRhythm']['phase']['snapshotStable'] is True and
+            phase_lost_status['nativeRhythm']['phase']['available'] is False,
+            ('emergency STOP was not tested against a stable unavailable phase', phase_lost_status))
         emergency_code, emergency_status = request('/v1/transport/emergency-stop?trackId=3', 'POST', {})
         require(emergency_code == 200, emergency_status)
         emergency_stop_revision = emergency_status['nativeRecordPlay']['acceptedStopRequestRevision']
+        recovered_code, recovered = request('/v1/test/simulation/rhythm-phase-available', 'POST', {})
+        require(recovered_code == 200 and recovered.get('phaseAvailable') is True,
+            ('simulation did not recover phase before emergency STOP callback application', recovered_code, recovered))
+        set_callback_gate(False)
+        phase_recovered_stop = until(lambda value:
+            value['nativeRecordPlay']['stopApplied'][2] == emergency_stop_revision)
+        require(phase_recovered_stop['nativeRecordPlay']['stopCancelled'][2] == emergency_stop_revision and
+            phase_recovered_stop['nativeRecordPlay']['stopCommittedRevision'][2] != emergency_stop_revision and
+            phase_recovered_stop['nativeTracks'][2]['state'] == 'Recording',
+            ('emergency STOP ignored the recovered phase token or changed track PCM/state', phase_recovered_stop))
+
+        set_callback_gate(True)
+        phase_loss_code, phase_loss = request('/v1/test/simulation/rhythm-phase-unavailable', 'POST', {})
+        require(phase_loss_code == 200 and phase_loss.get('phaseAvailable') is False,
+            ('simulation did not re-inject phase loss for successful emergency STOP', phase_loss_code, phase_loss))
+        emergency_code, emergency_status = request('/v1/transport/emergency-stop?trackId=3', 'POST', {})
+        require(emergency_code == 200, emergency_status)
+        emergency_stop_revision = emergency_status['nativeRecordPlay']['acceptedStopRequestRevision']
+        set_callback_gate(False)
         emergency_stopped = until(lambda value:
             value['nativeRecordPlay']['stopApplied'][2] == emergency_stop_revision
             and value['nativeTracks'][2]['state'] == 'Stopped')

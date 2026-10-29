@@ -280,6 +280,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRecordStopRequested[i] = recordStopRequested_[i];
         status.nativeRecordStopApplied[i] = recordStopApplied_[i].load(std::memory_order_acquire);
         status.nativeRecordStopCommittedRevision[i] = recordStopCommittedRevision_[i].load(std::memory_order_acquire);
+        status.nativeRecordStopCancelled[i] = recordStopCancelledRevision_[i].load(std::memory_order_acquire);
         status.nativeScheduledLoop[i] = nativeLoopFrameScheduler_.status(i);
     }
     for (std::size_t i = 0U; i < mixerLevels_.size(); ++i) status.mixerLevels[i] = mixerLevels_[i].load(std::memory_order_acquire);
@@ -1673,12 +1674,21 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    std::uint64_t emergencyPhaseSnapshotRevision = 0U;
     if (emergencySynchronizedStop &&
         (type != CommandType::StopRecordOrPlayback || !nativeLoopSync_[trackIndex].load(std::memory_order_acquire) ||
          state != LooperState::Recording || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire) ||
          pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U || commandQueue_.size() != 0U)) {
         error = "PCM-preserving emergency STOP requires a stable Native LOOP SYNC recording with no pending schedule or track command.";
         return false;
+    }
+    if (emergencySynchronizedStop) {
+        bool phaseStable = false;
+        const auto phase = readNativeRhythmPhase(phaseStable, emergencyPhaseSnapshotRevision);
+        if (!phaseStable || phase.available || emergencyPhaseSnapshotRevision == 0U) {
+            error = "PCM-preserving emergency STOP requires a stable unavailable Native Rhythm phase; use the scheduled measure STOP while phase is available.";
+            return false;
+        }
     }
     if ((type == CommandType::Record || type == CommandType::Play) && nativeLoopSync_[trackIndex].load(std::memory_order_acquire)) {
         error = "Native LOOP SYNC REC/PLAY must use the Rhythm callback-frame scheduler; direct transport is disabled.";
@@ -1697,6 +1707,10 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     if (type != CommandType::StopRecordOrPlayback && type != CommandType::Clear &&
         nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
         error = "Wait for Native loop transport callback acknowledgement before changing track state.";
+        return false;
+    }
+    if (type == CommandType::Clear && emergencyStopPending_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Clear is blocked until the PCM-preserving emergency STOP callback ACK is terminal.";
         return false;
     }
     const bool starting = type == CommandType::Record && state == LooperState::Empty;
@@ -1726,13 +1740,23 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     }
     if (starting) recordStartPending_[trackIndex].store(true, std::memory_order_release);
     pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
+    if (emergencySynchronizedStop) {
+        emergencyStopPending_[trackIndex].store(true, std::memory_order_release);
+        emergencyStopRevision_[trackIndex].store(stopRevision, std::memory_order_release);
+        recordStopCancelledRevision_[trackIndex].store(0U, std::memory_order_release);
+    }
+    if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision;
     const bool provenanceValid = provenanceBpm.has_value() && std::isfinite(*provenanceBpm) &&
         *provenanceBpm >= 40.0 && *provenanceBpm <= 300.0 &&
         provenanceRevision <= kMaximumSafeProjectContentRevision;
-    if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex), stopRevision,
-                             provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid})) {
+    Command command{type, false, static_cast<std::uint8_t>(trackIndex), stopRevision,
+                    provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid};
+    command.emergencyPhaseSnapshotRevision = emergencyPhaseSnapshotRevision;
+    if (!commandQueue_.push(command)) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
+        if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision - 1U;
         if (starting) recordStartPending_[trackIndex].store(false, std::memory_order_release);
+        if (emergencySynchronizedStop) emergencyStopPending_[trackIndex].store(false, std::memory_order_release);
         telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         if (reserved) {
             recordingMirrorReserved_[trackIndex].store(false, std::memory_order_release);
@@ -1741,7 +1765,6 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         error = "Command queue is full.";
         return false;
     }
-    if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision;
     if (type == CommandType::StopRecordOrPlayback && requestedRevision != nullptr) *requestedRevision = stopRevision;
     if (type == CommandType::Clear || (type == CommandType::Record && state == LooperState::Empty)) {
         invalidateTrackMarkLocked(trackIndex);
@@ -1809,6 +1832,17 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     }
     if (command.trackIndex >= kNativeTrackCount) return;
     const std::size_t index = command.trackIndex;
+    if (command.emergencyPhaseSnapshotRevision != 0U) {
+        bool phaseStable = false;
+        std::uint64_t phaseRevision = 0U;
+        const auto phase = readNativeRhythmPhase(phaseStable, phaseRevision);
+        if (!phaseStable || phase.available || phaseRevision != command.emergencyPhaseSnapshotRevision) {
+            recordStopRuntimeGeneration_[index] = command.revision;
+            recordStopCommittedRuntimeRevision_[index] = 0U;
+            recordStopCancelledRevision_[index].store(command.revision, std::memory_order_release);
+            return;
+        }
+    }
     auto& track = looperForTrack(index);
     const LoopMetadata before = track.metadata();
     const std::uint64_t originalTempoBefore = originalTempoBpmBits_[index].load(std::memory_order_acquire);
@@ -5272,6 +5306,10 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             recordFinishApplied_[track].store(recordFinishRuntimeGeneration_[track], std::memory_order_release);
             recordStopApplied_[track].store(recordStopRuntimeGeneration_[track], std::memory_order_release);
             recordStopCommittedRevision_[track].store(recordStopCommittedRuntimeRevision_[track], std::memory_order_release);
+            if (emergencyStopPending_[track].load(std::memory_order_acquire) &&
+                emergencyStopRevision_[track].load(std::memory_order_acquire) == recordStopRuntimeGeneration_[track]) {
+                emergencyStopPending_[track].store(false, std::memory_order_release);
+            }
             nativeTrackFxApplyApplied_[track].store(nativeTrackFxApplyRuntime_[track], std::memory_order_release);
             nativeTrackFxApplyAppliedRevision_[track].store(nativeTrackFxApplyRuntimeRevision_[track], std::memory_order_release);
         }

@@ -243,7 +243,7 @@ export interface NativeStatus {
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: boolean; quantize?: 'OFF' | 'MEASURE';
     recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
     finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[];
-    stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[];
+    stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[]; stopCancelled?: number[];
     acceptedStopRequestRevision?: number };
   nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
     acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
@@ -1662,12 +1662,13 @@ export class NativeBridgeClient {
     return this.waitForStopAcknowledgement(trackId, status, callbackAckSupported);
   }
 
-  public async emergencyStopTrack(trackId: number, tempo?: NativeRecordTempoToken, callbackAckSupported = tempo !== undefined): Promise<NativeStatus> {
+  public async emergencyStopTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
     const status = await this.requestTrackTransport('/v1/transport/emergency-stop', trackId, tempo);
-    return this.waitForStopAcknowledgement(trackId, status, callbackAckSupported);
+    return this.waitForStopAcknowledgement(trackId, status, true, true);
   }
 
-  private async waitForStopAcknowledgement(trackId: number, initialStatus: NativeStatus, callbackAckSupported: boolean): Promise<NativeStatus> {
+  private async waitForStopAcknowledgement(trackId: number, initialStatus: NativeStatus, callbackAckSupported: boolean,
+    emergencySynchronizedStop = false): Promise<NativeStatus> {
     let status = initialStatus;
     if (!callbackAckSupported) return status;
     const revision = status.nativeRecordPlay?.acceptedStopRequestRevision;
@@ -1675,13 +1676,20 @@ export class NativeBridgeClient {
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
       if (status.nativeRecordPlay?.stopRequested?.[trackId - 1] !== revision) throw new Error('Native STOP request was superseded before callback acknowledgement.');
+      if (emergencySynchronizedStop && status.nativeRecordPlay?.stopCancelled?.[trackId - 1] === revision) {
+        throw new NativeBridgeHttpError('Native Rhythm phase changed before emergency STOP applied; the recording is retained. Retry measure STOP when phase is stable.', 409);
+      }
       const appliedRevision = status.nativeRecordPlay?.stopApplied?.[trackId - 1];
       if (appliedRevision === revision) {
         const committedRevision = status.nativeRecordPlay?.stopCommittedRevision?.[trackId - 1];
-        if (!Number.isSafeInteger(committedRevision)) throw new Error('Native STOP commit acknowledgement is unavailable.');
-        return { ...status, nativeStopTrackAcknowledgement: {
-          trackId, requestedRevision: revision!, appliedRevision: appliedRevision!, committedRevision: committedRevision!,
-        } };
+        const stoppedTrack = status.nativeTracks?.find(track => track.trackId === trackId);
+        if (committedRevision === revision && stoppedTrack?.state === 'Stopped' &&
+            Number.isSafeInteger(stoppedTrack.contentRevision) &&
+            Number.isSafeInteger(stoppedTrack.loopLengthSamples) && stoppedTrack.loopLengthSamples! >= 0) {
+          return { ...status, nativeStopTrackAcknowledgement: {
+            trackId, requestedRevision: revision!, appliedRevision: appliedRevision!, committedRevision: committedRevision!,
+          } };
+        }
       }
       if (Number.isSafeInteger(appliedRevision) && appliedRevision! > revision!) {
         throw new Error('Native STOP callback acknowledgement for this request was superseded.');

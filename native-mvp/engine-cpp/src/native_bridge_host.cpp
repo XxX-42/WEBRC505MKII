@@ -37,6 +37,21 @@
 using json = nlohmann::json;
 using namespace webrc::native;
 
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+namespace webrc::native {
+struct NativeAudioCoreTestAccess {
+    static bool setRhythmPhaseAvailable(NativeAudioCore& core, bool available) {
+        const auto sequence = core.nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_acquire);
+        if ((sequence & 1U) != 0U) return false;
+        core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 1U, std::memory_order_seq_cst);
+        core.nativeRhythmPhaseAvailable_.store(available, std::memory_order_relaxed);
+        core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 2U, std::memory_order_release);
+        return true;
+    }
+};
+}
+#endif
+
 namespace {
 
 constexpr std::uint64_t kMaximumSafeTempoRevision = 9007199254740991ULL;
@@ -971,7 +986,8 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordActionRequestedRevision}, {"appliedRevision", status.nativeRecordActionAppliedRevision},
             {"finishRequested", status.nativeRecordFinishRequested}, {"finishApplied", status.nativeRecordFinishApplied}, {"finishCancelled", status.nativeRecordFinishCancelled},
             {"stopRequested", status.nativeRecordStopRequested}, {"stopApplied", status.nativeRecordStopApplied},
-            {"stopCommittedRevision", status.nativeRecordStopCommittedRevision}}},
+            {"stopCommittedRevision", status.nativeRecordStopCommittedRevision},
+            {"stopCancelled", status.nativeRecordStopCancelled}}},
         {"nativeRecordTempoProvenance", {{"version", 1},
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
@@ -1626,6 +1642,44 @@ int main() {
             writeJson(response, json{{"ok", true}, {"paused", paused},
                 {"callbackParked", webrc::native::test_support::isSimulationCallbackGateParked()}});
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    // Test-only fault injection for the emergency STOP path. Production Native
+    // builds do not compile this route.
+    server.Post("/v1/test/simulation/rhythm-phase-unavailable", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!request.body.empty() && request.body != "{}") {
+            response.status = 400; writeError(response, "Rhythm phase fault injection accepts only an empty object."); return;
+        }
+        if (!webrc::native::test_support::isSimulationCallbackGateParked()) {
+            response.status = 409; writeError(response, "Park the simulation callback before injecting phase loss."); return;
+        }
+        const auto status = engine.getStatus();
+        bool synchronizedRecording = false;
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            if (status.nativeLoopSync[track] && status.nativeTrackStates[track] == LooperState::Recording) {
+                synchronizedRecording = true;
+                break;
+            }
+        }
+        if (!synchronizedRecording) {
+            response.status = 409; writeError(response, "Phase loss can be injected only during synchronized recording."); return;
+        }
+        if (!NativeAudioCoreTestAccess::setRhythmPhaseAvailable(engine, false)) {
+            response.status = 409; writeError(response, "Rhythm phase snapshot is already being written."); return;
+        }
+        writeJson(response, json{{"ok", true}, {"phaseAvailable", false}});
+    });
+    server.Post("/v1/test/simulation/rhythm-phase-available", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!request.body.empty() && request.body != "{}") {
+            response.status = 400; writeError(response, "Rhythm phase recovery injection accepts only an empty object."); return;
+        }
+        if (!webrc::native::test_support::isSimulationCallbackGateParked()) {
+            response.status = 409; writeError(response, "Park the simulation callback before injecting phase recovery."); return;
+        }
+        if (!NativeAudioCoreTestAccess::setRhythmPhaseAvailable(engine, true)) {
+            response.status = 409; writeError(response, "Rhythm phase snapshot is already being written."); return;
+        }
+        writeJson(response, json{{"ok", true}, {"phaseAvailable", true}});
     });
 #endif
 

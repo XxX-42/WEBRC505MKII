@@ -18,7 +18,7 @@ describe('Native REC ACTION provider and atomic completion', () => {
     Object.assign(engine, { latestStatus: status('REC->DUB') });
     expect(engine.getRecordPlaySettings()).toMatchObject({ available: true, recActionAvailable: true,
       quantizeAvailable: false, recAction: 'REC->DUB', quantize: null });
-    await expect(engine.setRecordPlaySettings({ quantize: 'OFF' })).rejects.toThrow(/quantization/);
+    await expect(engine.setRecordPlaySettings({ quantize: 'OFF' })).rejects.toThrow(/REC QUANTIZE requires the Native Rhythm measure source/);
     Object.assign(engine, { latestStatus: { ok: true } });
     expect(engine.getRecordPlaySettings()).toMatchObject({ available: false, recAction: null, quantize: null });
     await expect(engine.setRecordPlaySettings({ recAction: 'REC->PLAY' })).rejects.toThrow(/unavailable/);
@@ -54,6 +54,47 @@ describe('Native REC ACTION provider and atomic completion', () => {
     const rejection = expect(new NativeBridgeClient().finishRecordingTrack(1)).rejects.toThrow(/acknowledgement timed out/);
     await vi.advanceTimersByTimeAsync(NATIVE_BRIDGE_REQUEST_TIMEOUT_MS + 20); await rejection;
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+  });
+  it('forces emergency STOP ACK polling without a tempo token and requires committed PCM readback', async () => {
+    vi.useFakeTimers();
+    const accepted: NativeStatus = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 4,
+      stopRequested: [0, 4, 0, 0, 0], stopApplied: [0, 0, 0, 0, 0], stopCommittedRevision: [0, 0, 0, 0, 0] },
+      nativeTracks: [{ trackId: 2, state: 'Recording', contentRevision: 8, loopLengthSamples: 1024 }] } as unknown as NativeStatus;
+    const committed: NativeStatus = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 4,
+      stopRequested: [0, 4, 0, 0, 0], stopApplied: [0, 4, 0, 0, 0], stopCommittedRevision: [0, 4, 0, 0, 0] },
+      nativeTracks: [{ trackId: 2, state: 'Stopped', contentRevision: 9, loopLengthSamples: 1088 }] } as unknown as NativeStatus;
+    const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(response(accepted)).mockResolvedValueOnce(response(committed));
+    vi.stubGlobal('fetch', fetchMock);
+    const pending = new NativeBridgeClient().emergencyStopTrack(2);
+    const resolved = expect(pending).resolves.toMatchObject({
+      nativeTracks: [{ trackId: 2, state: 'Stopped', contentRevision: 9, loopLengthSamples: 1088 }],
+      nativeStopTrackAcknowledgement: { trackId: 2, requestedRevision: 4, appliedRevision: 4, committedRevision: 4 },
+    });
+    await vi.advanceTimersByTimeAsync(20);
+    await resolved;
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/v1/transport/emergency-stop?trackId=2');
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/v1/status'))).toBe(true);
+  });
+  it('surfaces a phase-token cancellation while retaining the Recording state', async () => {
+    vi.useFakeTimers();
+    const accepted: NativeStatus = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 5,
+      stopRequested: [0, 5, 0, 0, 0], stopApplied: [0, 0, 0, 0, 0], stopCommittedRevision: [0, 0, 0, 0, 0],
+      stopCancelled: [0, 0, 0, 0, 0] },
+      nativeTracks: [{ trackId: 2, state: 'Recording', contentRevision: 8, loopLengthSamples: 1024 }] } as unknown as NativeStatus;
+    const cancelled: NativeStatus = { ok: true, nativeRecordPlay: { acceptedStopRequestRevision: 5,
+      stopRequested: [0, 5, 0, 0, 0], stopApplied: [0, 5, 0, 0, 0], stopCommittedRevision: [0, 0, 0, 0, 0],
+      stopCancelled: [0, 5, 0, 0, 0] },
+      nativeTracks: [{ trackId: 2, state: 'Recording', contentRevision: 8, loopLengthSamples: 1024 }] } as unknown as NativeStatus;
+    const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(response(accepted)).mockResolvedValueOnce(response(cancelled));
+    vi.stubGlobal('fetch', fetchMock);
+    const pending = expect(new NativeBridgeClient().emergencyStopTrack(2)).rejects.toThrow(/recording is retained/);
+    await vi.advanceTimersByTimeAsync(20);
+    await pending;
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/v1/status'))).toBe(true);
   });
   it('reports cancellation during runtime reset without resending a completed command', async () => {
     const cancelled = status('REC->PLAY', 0, 'Recording');

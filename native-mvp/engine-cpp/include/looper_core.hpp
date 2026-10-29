@@ -86,6 +86,7 @@ struct Command {
     bool provenanceValid = false;
     std::uint64_t expectedContentRevision = 0U;
     std::uint64_t expectedStopRevision = 0U;
+    std::uint64_t emergencyPhaseSnapshotRevision = 0U;
 };
 
 struct ProcessStats {

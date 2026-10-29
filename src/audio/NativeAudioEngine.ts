@@ -7,7 +7,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeHttpError, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -1497,7 +1497,10 @@ export class NativeAudioEngine {
     if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
-    if (this.getTrackLoopSync(trackId)) throw new Error('Native LOOP SYNC recording completion must use the Rhythm callback-frame scheduler.');
+    if (this.getTrackLoopSync(trackId)) {
+      await this.stopTrack(trackId);
+      return;
+    }
     const finishToken = this.nativeRecordTempoToken();
     await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, finishToken));
     if (!finishToken) return;
@@ -1547,21 +1550,53 @@ export class NativeAudioEngine {
     const stopToken = wasRecording ? this.nativeRecordTempoToken() : undefined;
     const callbackAckSupported = this.latestStatus?.nativeTempoRecordProvenanceVersion === 1;
     let stopStatus: NativeStatus;
+    let emergencyStop = false;
     const synchronizedStop = wasRecording && this.getTrackLoopSync(trackId);
-    const phaseAvailable = this.latestStatus?.nativeRhythm?.phase?.available === true &&
-      this.latestStatus?.nativeRhythm?.phase?.snapshotStable === true;
-    if (synchronizedStop && phaseAvailable) {
+    const phaseSnapshot = this.latestStatus?.nativeRhythm?.phase;
+    if (synchronizedStop && phaseSnapshot?.snapshotStable === true && phaseSnapshot.available === true) {
       stopStatus = await this.scheduleNativeRhythmAction(trackId, 'stop');
     } else {
       if (synchronizedStop) {
-        stopStatus = await this.dispatchStatusRequest(() => this.bridge.emergencyStopTrack(trackId, stopToken, callbackAckSupported));
-        const retainedFrames = stopStatus.nativeTracks?.find(track => track.trackId === trackId)?.loopLengthSamples;
-        this.lastError = `Native Rhythm phase was unavailable; emergency STOP retained the captured PCM${Number.isSafeInteger(retainedFrames) ? ` (${retainedFrames} frames)` : ''}. The phrase may not end on a measure boundary.`;
+        if (phaseSnapshot?.snapshotStable !== true) {
+          const message = 'Native Rhythm phase snapshot is unstable; STOP was not submitted. Refresh Native status and retry.';
+          this.lastError = message;
+          this.emitAll();
+          throw new Error(message);
+        }
+        emergencyStop = true;
+        try {
+          // Emergency STOP may be rejected if the phase recovered between our
+          // last status and the host's atomic check. Such a 409 is a command
+          // rejection, not evidence that the Native bridge disappeared.
+          stopStatus = await this.bridge.emergencyStopTrack(trackId, stopToken);
+          this.applyStatus(stopStatus);
+        } catch (error) {
+          this.lastError = `Native LOOP SYNC emergency STOP was not acknowledged; the last Native track state is retained: ${error instanceof Error ? error.message : String(error)}`;
+          this.emitAll();
+          throw error;
+        }
+        const stopAck = stopStatus.nativeStopTrackAcknowledgement;
+        const stoppedTrack = stopStatus.nativeTracks?.find(track => track.trackId === trackId);
+        const retainedFrames = stoppedTrack?.loopLengthSamples;
+        if (!stopAck || stopAck.trackId !== trackId || !Number.isSafeInteger(stopAck.requestedRevision) ||
+            stopAck.requestedRevision <= 0 || stopAck.appliedRevision !== stopAck.requestedRevision ||
+            stopAck.committedRevision !== stopAck.requestedRevision || !stoppedTrack ||
+            stoppedTrack.state !== 'Stopped' || !Number.isSafeInteger(stoppedTrack.contentRevision) ||
+            !Number.isSafeInteger(retainedFrames) || retainedFrames! < 0 ||
+            (Number.isSafeInteger(beforeContentRevision) && stoppedTrack.contentRevision! <= beforeContentRevision!)) {
+          const message = 'Native LOOP SYNC emergency STOP did not confirm a stopped track, committed STOP revision, and finalized PCM frame count.';
+          this.lastError = message;
+          this.emitAll();
+          throw new Error(message);
+        }
+        const retainedSummary = retainedFrames! > 0 ? `(${retainedFrames} frames)` : '(0 frames recorded)';
+        this.lastError = `Native Rhythm phase was unavailable; emergency STOP retained the captured PCM ${retainedSummary}. The phrase may not end on a measure boundary.`;
         this.emitAll();
       } else {
         stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
       }
     }
+    if (emergencyStop) return;
     if (!wasRecording || !stopToken || !callbackAckSupported || !Number.isSafeInteger(beforeContentRevision)) return;
     const stopAck = stopStatus.nativeStopTrackAcknowledgement;
     if (!stopAck || stopAck.trackId !== trackId || !Number.isSafeInteger(stopAck.requestedRevision) ||
@@ -2338,6 +2373,13 @@ export class NativeAudioEngine {
       this.applyStatus(status);
       return status;
     } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+        // A host-side command rejection (for example a stale measure phase)
+        // does not invalidate the last acknowledged track state.
+        this.lastError = error.message;
+        this.emitAll();
+        throw error;
+      }
       this.handleBridgeFailure(error, false);
       throw error;
     }
