@@ -1149,7 +1149,7 @@ json statusToJson(const EngineStatus& status) {
                 {"meterNumerator", status.nativeRhythmPhase.meterNumerator},
                 {"meterDenominator", status.nativeRhythmPhase.meterDenominator},
                 {"frameSchedulingAvailable", status.nativeRhythmFrameSchedulingAvailable},
-                {"frameSchedulingReason", status.nativeRhythmFrameSchedulingAvailable ? "Callback-frame REC/STOP/PLAY is available for Native Rhythm LOOP SYNC tracks only; MIDI Sync and other track phase sources are unsupported." : "Enable Native Rhythm and LOOP SYNC, then wait for a stable measure phase before synchronized REC/STOP/PLAY."},
+                {"frameSchedulingReason", status.nativeRhythmFrameSchedulingAvailable ? "Callback-frame REC/STOP is available for eligible Native Rhythm LOOP SYNC tracks; synchronized PLAY, MIDI Sync and other track phase sources are unsupported." : "Enable Native Rhythm and LOOP SYNC, then wait for a stable measure phase before synchronized REC/STOP; synchronized PLAY is unsupported."},
             }},
             {"kitIndex", status.nativeRhythmKitIndex},
             {"variation", nativeRhythmVariationToString(status.nativeRhythmVariation)},
