@@ -4,6 +4,7 @@ os.environ['WEBRC_NATIVE_BRIDGE_PORT'] = '17763'
 import subprocess
 import sys
 import time
+import uuid
 from native_bridge_http_simulation_test import request, require
 
 
@@ -25,7 +26,8 @@ def phase(status):
     require(value['frameSchedulingAvailable'] is False, value)
     require(value['nextMeasureFrame'] > value['sampleFrame'], value)
     return {'trackId': 2, 'action': 'record', 'absoluteFrame': value['nextMeasureFrame'],
-        'phaseEpoch': value['epoch'], 'settingsRevision': status['nativeRhythm']['tempoAppliedRevision']}
+        'phaseEpoch': value['epoch'], 'settingsRevision': status['nativeRhythm']['tempoAppliedRevision'],
+        'intentId': uuid.uuid4().hex}
 
 
 def phase_has_headroom(status):
@@ -72,8 +74,9 @@ def main():
         for body in malformed:
             require(request('/v1/transport/rhythm-schedule', 'POST', body)[0] == 400,
                 ('invalid schedule request accepted', body))
-        for body in [{}, {'trackId': 0, 'revision': 1}, {'trackId': 1, 'revision': 0},
-                     {'trackId': 1, 'revision': 1, 'extra': True}]:
+        for body in [{}, {'trackId': 0, 'revision': 1, 'hostIncarnationId': '0' * 32},
+                     {'trackId': 1, 'revision': 0, 'hostIncarnationId': '0' * 32},
+                     {'trackId': 1, 'revision': 1, 'hostIncarnationId': '0' * 32, 'intentId': '1' * 32, 'extra': True}]:
             require(request('/v1/transport/rhythm-schedule/cancel', 'POST', body)[0] == 400,
                 ('invalid cancel request accepted', body))
 
@@ -91,9 +94,20 @@ def main():
         require(code == 200, queued)
         revision = queued['nativeLoopFrameScheduling']['acceptedRevision']
         require(queued['nativeLoopFrameScheduling']['acceptedTrackId'] == 2 and revision > 0, queued)
+        require(queued['nativeLoopFrameScheduling']['requests'][1]['requestedIntentId'] == first['intentId'], queued)
         require(request('/v1/transport/rhythm-schedule', 'POST', first)[0] == 409,
             'second pending schedule for the same track was accepted')
-        cancel_code, cancel_accepted = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
+        stale_host_cancel = request('/v1/transport/rhythm-schedule/cancel', 'POST', {
+            'trackId': 2, 'revision': revision, 'hostIncarnationId': '0' * 32,
+            'intentId': first['intentId']})
+        require(stale_host_cancel[0] == 409, ('cancel crossed host restart fence', stale_host_cancel))
+        stale_intent_cancel = request('/v1/transport/rhythm-schedule/cancel', 'POST', {
+            'trackId': 2, 'revision': revision, 'hostIncarnationId': first_status['hostIncarnationId'],
+            'intentId': 'f' * 32})
+        require(stale_intent_cancel[0] == 409, ('cancel accepted a different intent ID', stale_intent_cancel))
+        cancel_code, cancel_accepted = request('/v1/transport/rhythm-schedule/cancel', 'POST', {
+            'trackId': 2, 'revision': revision, 'hostIncarnationId': first_status['hostIncarnationId'],
+            'intentId': first['intentId']})
         require(cancel_code == 200, ('cancel request was not accepted', cancel_accepted))
         set_callback_gate(False)
         cancelled_status = until(lambda value:
@@ -108,9 +122,12 @@ def main():
         code, accepted = request('/v1/transport/rhythm-schedule', 'POST', record_request)
         require(code == 200, accepted)
         record_revision = accepted['nativeLoopFrameScheduling']['acceptedRevision']
+        require(accepted['nativeLoopFrameScheduling']['requests'][1]['requestedIntentId'] == record_request['intentId'], accepted)
         set_callback_gate(False)
         recorded = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == record_revision
             and value['nativeTracks'][1]['state'] == 'Recording')
+        require(recorded['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
+            record_request['absoluteFrame'], recorded)
 
         set_callback_gate(True)
         stop_request = phase(request('/v1/status')[1])
@@ -118,9 +135,25 @@ def main():
         code, accepted_stop = request('/v1/transport/rhythm-schedule', 'POST', stop_request)
         require(code == 200, accepted_stop)
         stop_revision = accepted_stop['nativeLoopFrameScheduling']['acceptedRevision']
+        require(accepted_stop['nativeLoopFrameScheduling']['requests'][1]['requestedIntentId'] == stop_request['intentId'], accepted_stop)
         set_callback_gate(False)
         stopped = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == stop_revision
             and value['nativeTracks'][1]['state'] == 'Stopped')
+        require(stopped['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
+            stop_request['absoluteFrame'], stopped)
+        metadata_code, metadata = request('/v1/export/track-metadata?trackId=2')
+        require(metadata_code == 200 and metadata['frameCount'] ==
+            stop_request['absoluteFrame'] - record_request['absoluteFrame'], metadata)
+        # A quantized REC request never replaces incumbent PCM implicitly.
+        set_callback_gate(True)
+        occupied_track_request = phase(request('/v1/status')[1])
+        rejected_rec_code, rejected_rec_status = request('/v1/transport/rhythm-schedule', 'POST', occupied_track_request)
+        set_callback_gate(False)
+        require(rejected_rec_code in (400, 409) and 'empty track' in rejected_rec_status.get('error', '').lower(),
+            ('scheduled REC did not reject a track that already owns committed PCM', rejected_rec_code, rejected_rec_status))
+        metadata_after_rejected_rec = request('/v1/export/track-metadata?trackId=2')[1]
+        require(metadata_after_rejected_rec['frameCount'] == metadata['frameCount'] and
+            metadata_after_rejected_rec['contentRevision'] == metadata['contentRevision'], metadata_after_rejected_rec)
         require(stopped['nativeRecordPlay']['quantizeAvailable'] is False and
             stopped['nativeLoopFrameScheduling']['available'] is False and
             stopped['nativeRhythm']['phase']['frameSchedulingAvailable'] is False, stopped)
@@ -140,7 +173,7 @@ def main():
         code, gate_status = request('/v1/test/simulation/callback-gate')
         require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
             ('simulation callback did not resume after restart', gate_status))
-        print('Native Rhythm schedule HTTP: field validation, cancel/status ACK, callback REC/STOP ACK; full quantize capability remains false')
+        print('Native Rhythm schedule HTTP: exact callback frame ACK, PCM frame length, incumbent PCM protection; full quantize capability remains false')
     finally:
         try:
             request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})

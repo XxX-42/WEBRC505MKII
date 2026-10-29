@@ -11,6 +11,18 @@ bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& request
         (requestValue.action != NativeScheduledLoopAction::Record &&
          requestValue.action != NativeScheduledLoopAction::Stop)) return false;
 
+    // The ring is SPSC, but public command paths can have multiple control
+    // producers. Serialize them here; the audio callback never takes this lock.
+    bool unlocked = false;
+    while (!requestWriterLocked_.compare_exchange_weak(unlocked, true,
+            std::memory_order_acquire, std::memory_order_relaxed)) {
+        unlocked = false;
+    }
+    struct WriterUnlock final {
+        std::atomic<bool>& lock;
+        ~WriterUnlock() { lock.store(false, std::memory_order_release); }
+    } writerUnlock{requestWriterLocked_};
+
     const auto track = static_cast<std::size_t>(requestValue.trackIndex);
     auto previous = requested_[track].load(std::memory_order_acquire);
     const auto terminal = std::max({
@@ -18,11 +30,19 @@ bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& request
         cancelled_[track].load(std::memory_order_acquire),
         faulted_[track].load(std::memory_order_acquire),
     });
-    if (previous != terminal || requestValue.revision <= previous ||
-        !requested_[track].compare_exchange_strong(previous, requestValue.revision,
-            std::memory_order_acq_rel, std::memory_order_acquire)) return false;
+    if (previous != terminal || requestValue.revision <= previous) return false;
+    requestSnapshotSequence_[track].fetch_add(1U, std::memory_order_seq_cst); // odd: writer active
+    requestedAbsoluteFrame_[track].store(requestValue.absoluteFrame, std::memory_order_seq_cst);
+    requestedPhaseEpoch_[track].store(requestValue.phaseEpoch, std::memory_order_seq_cst);
+    requestedSettingsRevision_[track].store(requestValue.settingsRevision, std::memory_order_seq_cst);
+    requestedAction_[track].store(requestValue.action, std::memory_order_seq_cst);
+    requestedIntentIdHigh_[track].store(requestValue.intentIdHigh, std::memory_order_seq_cst);
+    requestedIntentIdLow_[track].store(requestValue.intentIdLow, std::memory_order_seq_cst);
     lifecycle_[track].store(encodeLifecycle(requestValue.revision, RequestLifecycle::Pending),
-        std::memory_order_release);
+        std::memory_order_seq_cst);
+    // Publish revision last so callback/status consumers identify the tuple.
+    requested_[track].store(requestValue.revision, std::memory_order_seq_cst);
+    requestSnapshotSequence_[track].fetch_add(1U, std::memory_order_seq_cst); // even: stable snapshot
 
     const auto write = writeIndex_.load(std::memory_order_relaxed);
     const auto nextWrite = next(write);
@@ -146,12 +166,15 @@ std::size_t NativeLoopFrameScheduler::collectDue(
 }
 
 void NativeLoopFrameScheduler::acknowledgeApplied(
-    std::size_t trackIndex, std::uint64_t revision, bool didApply
+    std::size_t trackIndex, std::uint64_t revision, std::uint64_t appliedAbsoluteFrame, bool didApply
 ) noexcept {
     if (trackIndex >= kNativeScheduledLoopTrackCount || revision == 0U ||
         requested_[trackIndex].load(std::memory_order_acquire) != revision) return;
-    if (didApply) {
-        applied_[trackIndex].store(revision, std::memory_order_release);
+    if (didApply && appliedAbsoluteFrame == requestedAbsoluteFrame_[trackIndex].load(std::memory_order_acquire)) {
+        appliedSnapshotSequence_[trackIndex].fetch_add(1U, std::memory_order_seq_cst); // odd: ACK writer active
+        appliedAbsoluteFrame_[trackIndex].store(appliedAbsoluteFrame, std::memory_order_seq_cst);
+        applied_[trackIndex].store(revision, std::memory_order_seq_cst);
+        appliedSnapshotSequence_[trackIndex].fetch_add(1U, std::memory_order_seq_cst); // even: stable ACK
         fault_[trackIndex].store(NativeScheduledLoopFault::None, std::memory_order_release);
     } else {
         publishFault(trackIndex, revision, NativeScheduledLoopFault::ApplyRejected);
@@ -163,12 +186,35 @@ void NativeLoopFrameScheduler::acknowledgeApplied(
 NativeScheduledLoopStatus NativeLoopFrameScheduler::status(std::size_t trackIndex) const noexcept {
     if (trackIndex >= kNativeScheduledLoopTrackCount) return {};
     NativeScheduledLoopStatus result{};
-    result.requestedRevision = requested_[trackIndex].load(std::memory_order_acquire);
-    result.appliedRevision = applied_[trackIndex].load(std::memory_order_acquire);
+    for (;;) {
+        const auto sequenceBefore = requestSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst);
+        if ((sequenceBefore & 1U) != 0U) continue;
+        result.requestedAbsoluteFrame = requestedAbsoluteFrame_[trackIndex].load(std::memory_order_seq_cst);
+        result.requestedPhaseEpoch = requestedPhaseEpoch_[trackIndex].load(std::memory_order_seq_cst);
+        result.requestedSettingsRevision = requestedSettingsRevision_[trackIndex].load(std::memory_order_seq_cst);
+        result.requestedAction = requestedAction_[trackIndex].load(std::memory_order_seq_cst);
+        result.intentIdHigh = requestedIntentIdHigh_[trackIndex].load(std::memory_order_seq_cst);
+        result.intentIdLow = requestedIntentIdLow_[trackIndex].load(std::memory_order_seq_cst);
+        result.requestedRevision = requested_[trackIndex].load(std::memory_order_seq_cst);
+        if (sequenceBefore == requestSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst)) break;
+    }
+    for (;;) {
+        const auto sequenceBefore = appliedSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst);
+        if ((sequenceBefore & 1U) != 0U) continue;
+        result.appliedAbsoluteFrame = appliedAbsoluteFrame_[trackIndex].load(std::memory_order_seq_cst);
+        result.appliedRevision = applied_[trackIndex].load(std::memory_order_seq_cst);
+        if (sequenceBefore == appliedSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst)) break;
+    }
     result.cancelledRevision = cancelled_[trackIndex].load(std::memory_order_acquire);
     result.faultRevision = faulted_[trackIndex].load(std::memory_order_acquire);
     result.fault = fault_[trackIndex].load(std::memory_order_acquire);
     return result;
+}
+
+bool NativeLoopFrameScheduler::hasCancelledOrFaulted(std::size_t trackIndex, std::uint64_t revision) const noexcept {
+    if (trackIndex >= kNativeScheduledLoopTrackCount || revision == 0U) return false;
+    return cancelled_[trackIndex].load(std::memory_order_acquire) == revision ||
+        faulted_[trackIndex].load(std::memory_order_acquire) == revision;
 }
 
 void NativeLoopFrameScheduler::cancelAllStopped() noexcept {

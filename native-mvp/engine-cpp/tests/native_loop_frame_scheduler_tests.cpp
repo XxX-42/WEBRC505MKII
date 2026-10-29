@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <thread>
 
 using namespace webrc::native;
 
@@ -41,14 +42,16 @@ void dueEventsUseExactCallbackOffsetsAndRequireApplyAck() {
     assert(events[0].frameOffset == 5U);
     assert(!scheduler.cancel(0U, 1U)); // Dispatch wins; cancellation cannot falsely succeed.
     assert(scheduler.status(0U).appliedRevision == 0U);
-    scheduler.acknowledgeApplied(0U, 1U, true);
+    scheduler.acknowledgeApplied(0U, 1U, 105U, true);
     assert(scheduler.status(0U).appliedRevision == 1U);
+    assert(scheduler.status(0U).appliedAbsoluteFrame == 105U);
 
     // The block-end frame belongs to the next callback, not this one.
     assert(scheduler.collectDue(110U, 4U, 7U, 11U, events) == 1U);
     assert(events[0].request.trackIndex == 1U);
     assert(events[0].frameOffset == 0U);
-    scheduler.acknowledgeApplied(1U, 1U, true);
+    scheduler.acknowledgeApplied(1U, 1U, 110U, true);
+    assert(scheduler.status(1U).appliedAbsoluteFrame == 110U);
 }
 
 void phaseAndSettingsEpochChangesFailClosed() {
@@ -76,15 +79,18 @@ void cancellationAndRejectedApplyHaveDistinctAcks() {
     auto state = scheduler.status(0U);
     assert(state.cancelledRevision == 1U);
     assert(state.appliedRevision == 0U);
+    assert(scheduler.hasCancelledOrFaulted(0U, 1U));
+    assert(!scheduler.hasCancelledOrFaulted(0U, 2U));
     assert(!scheduler.cancel(0U, 1U));
 
     assert(scheduler.request(request(2U, 105U)));
     assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 1U);
-    scheduler.acknowledgeApplied(0U, 2U, false);
+    scheduler.acknowledgeApplied(0U, 2U, 105U, false);
     state = scheduler.status(0U);
     assert(state.appliedRevision == 0U);
     assert(state.faultRevision == 2U);
     assert(state.fault == NativeScheduledLoopFault::ApplyRejected);
+    assert(scheduler.hasCancelledOrFaulted(0U, 2U));
 }
 
 void blockedTrackDoesNotLoseItsEventOrLeaveItUnacknowledged() {
@@ -157,8 +163,9 @@ void looperStartsAndStopsOnTheExactScheduledSample() {
         nullptr, false, nullptr, 0U, applyLooperCommand, &context, events[0].frameOffset);
     assert(recordStats.state == LooperState::Recording);
     assert(looper.metadata().recordedFrames == 12U);
-    scheduler.acknowledgeApplied(0U, 1U, recordStats.state == LooperState::Recording);
+    scheduler.acknowledgeApplied(0U, 1U, 104U, recordStats.state == LooperState::Recording);
     assert(scheduler.status(0U).appliedRevision == 1U);
+    assert(scheduler.status(0U).appliedAbsoluteFrame == 104U);
 
     assert(scheduler.request(request(2U, 126U, 7U, 11U, 0U, NativeScheduledLoopAction::Stop)));
     assert(scheduler.collectDue(116U, 16U, 7U, 11U, events) == 1U);
@@ -172,8 +179,60 @@ void looperStartsAndStopsOnTheExactScheduledSample() {
     assert(looper.copyFinalizedStereoLoopSnapshot(pcm.data(), 22U, copied));
     assert(copied == 22U);
     assert(pcm[0U] == 5.0f && pcm[1U] == -5.0f);
-    scheduler.acknowledgeApplied(0U, 2U, stopStats.state == LooperState::Stopped);
+    scheduler.acknowledgeApplied(0U, 2U, 126U, stopStats.state == LooperState::Stopped);
     assert(scheduler.status(0U).appliedRevision == 2U);
+    assert(scheduler.status(0U).appliedAbsoluteFrame == 126U);
+    assert(looper.loopLengthSamples() == scheduler.status(0U).appliedAbsoluteFrame - 104U);
+}
+
+void appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.request(request(1U, 105U)));
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 1U);
+    scheduler.acknowledgeApplied(0U, 1U, 106U, true);
+    const auto state = scheduler.status(0U);
+    assert(state.appliedRevision == 0U);
+    assert(state.appliedAbsoluteFrame == 0U);
+    assert(state.faultRevision == 1U);
+    assert(state.fault == NativeScheduledLoopFault::ApplyRejected);
+}
+
+void concurrentControlProducersAreSerializedAndPublishWholeRequestTuples() {
+    NativeLoopFrameScheduler scheduler;
+    auto first = request(1U, 1234U, 21U, 31U, 0U, NativeScheduledLoopAction::Record);
+    first.intentIdHigh = 0x1122334455667788ULL;
+    first.intentIdLow = 0x8877665544332211ULL;
+    auto second = request(1U, 5678U, 22U, 32U, 1U, NativeScheduledLoopAction::Stop);
+    second.intentIdHigh = 0xAABBCCDDEEFF0011ULL;
+    second.intentIdLow = 0x1100FFEEDDCCBBAAULL;
+    bool firstAccepted = false;
+    bool secondAccepted = false;
+    std::thread firstProducer([&] { firstAccepted = scheduler.request(first); });
+    std::thread secondProducer([&] { secondAccepted = scheduler.request(second); });
+    firstProducer.join();
+    secondProducer.join();
+    assert(firstAccepted && secondAccepted);
+
+    const auto firstStatus = scheduler.status(0U);
+    assert(firstStatus.requestedRevision == first.revision);
+    assert(firstStatus.requestedAbsoluteFrame == first.absoluteFrame);
+    assert(firstStatus.requestedPhaseEpoch == first.phaseEpoch);
+    assert(firstStatus.requestedSettingsRevision == first.settingsRevision);
+    assert(firstStatus.requestedAction == first.action);
+    assert(firstStatus.intentIdHigh == first.intentIdHigh);
+    assert(firstStatus.intentIdLow == first.intentIdLow);
+    const auto secondStatus = scheduler.status(1U);
+    assert(secondStatus.requestedRevision == second.revision);
+    assert(secondStatus.requestedAbsoluteFrame == second.absoluteFrame);
+    assert(secondStatus.requestedPhaseEpoch == second.phaseEpoch);
+    assert(secondStatus.requestedSettingsRevision == second.settingsRevision);
+    assert(secondStatus.requestedAction == second.action);
+    assert(secondStatus.intentIdHigh == second.intentIdHigh);
+    assert(secondStatus.intentIdLow == second.intentIdLow);
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(1000U, 5000U, first.phaseEpoch, first.settingsRevision, events) == 1U);
+    assert(events[0].request.trackIndex == 0U || events[0].request.trackIndex == 1U);
 }
 } // namespace
 
@@ -186,5 +245,7 @@ int main() {
     stoppingAfterDispatchIsFaultedInsteadOfReportedAsCancelled();
     lateFramesAndInvalidRequestsDoNotRun();
     looperStartsAndStopsOnTheExactScheduledSample();
+    appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition();
+    concurrentControlProducersAreSerializedAndPublishWholeRequestTuples();
     return 0;
 }

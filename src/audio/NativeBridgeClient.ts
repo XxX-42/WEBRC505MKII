@@ -86,6 +86,14 @@ export function isNativeHostIncarnationId(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{32}$/i.test(value);
 }
 
+function createNativeRhythmIntentId(): string {
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Cryptographic randomness is unavailable; Native scheduled REC/STOP was not submitted.');
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export async function nativeProjectArchiveSha256(value: ArrayBuffer | Uint8Array): Promise<string> {
   if (typeof crypto === 'undefined' || !crypto.subtle) throw new Error('Secure archive fingerprinting is unavailable; Native import was not submitted.');
   const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
@@ -239,7 +247,9 @@ export interface NativeStatus {
     acceptedStopRequestRevision?: number };
   nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
     acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
-      appliedRevision: number; cancelledRevision: number; faultRevision: number; fault: number }> };
+      requestedAbsoluteFrame: number; requestedPhaseEpoch: number; requestedSettingsRevision: number;
+      requestedAction: 'record' | 'stop'; requestedIntentId: string; appliedRevision: number; appliedAbsoluteFrame: number;
+      cancelledRevision: number; faultRevision: number; fault: number }> };
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -688,6 +698,16 @@ export class NativeBridgeRequestTimeoutError extends Error {
   }
 }
 
+export class NativeBridgeHttpError extends Error {
+  public readonly status: number;
+
+  public constructor(message: string, status: number) {
+    super(message);
+    this.name = 'NativeBridgeHttpError';
+    this.status = status;
+  }
+}
+
 export class NativeTrackFxApplyAcknowledgementError extends Error {
   public readonly reconciledStatus: NativeStatus | null;
 
@@ -698,9 +718,35 @@ export class NativeTrackFxApplyAcknowledgementError extends Error {
   }
 }
 
+export interface NativeRhythmScheduleReceipt {
+  readonly trackId: number;
+  readonly action: 'record' | 'stop';
+  readonly revision: number | null;
+  readonly baselineRevision: number;
+  readonly absoluteFrame: number;
+  readonly phaseEpoch: number;
+  readonly settingsRevision: number;
+  readonly hostIncarnationId: string;
+  readonly intentId: string;
+}
+
+export class NativeRhythmScheduleOutcomeUnknownError extends Error {
+  public readonly receipt: NativeRhythmScheduleReceipt;
+  public readonly lastStatus: NativeStatus | null;
+
+  public constructor(receipt: NativeRhythmScheduleReceipt, lastStatus: NativeStatus | null, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Native scheduled ${receipt.action.toUpperCase()} ${receipt.revision === null ? 'intent' : `revision ${receipt.revision}`} on Track ${receipt.trackId} has an unknown outcome. Reconcile or cancel this exact request after reconnecting; do not submit another transport command. ${detail}`);
+    this.name = 'NativeRhythmScheduleOutcomeUnknownError';
+    this.receipt = receipt;
+    this.lastStatus = lastStatus;
+  }
+}
+
 export class NativeBridgeClient {
   private readonly baseUrl: string;
   private latestStatus: NativeStatus | null = null;
+  private pendingRhythmSchedule: NativeRhythmScheduleReceipt | null = null;
 
   constructor(baseUrl = nativeBridgeEndpoint()) {
     this.baseUrl = baseUrl;
@@ -718,6 +764,10 @@ export class NativeBridgeClient {
     const status = await this.request<NativeStatus>('/v1/status');
     this.latestStatus = status;
     return status;
+  }
+
+  public getPendingRhythmSchedule(): NativeRhythmScheduleReceipt | null {
+    return this.pendingRhythmSchedule ? { ...this.pendingRhythmSchedule } : null;
   }
 
   public getOneShot(trackId: number): boolean | null {
@@ -1235,41 +1285,272 @@ export class NativeBridgeClient {
       || !Number.isSafeInteger(phase.settingsRevision) || phase.settingsRevision < 0) {
       throw new RangeError('Invalid Rhythm-scheduled Native REC/STOP request.');
     }
-    let status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule', { method: 'POST',
-      body: JSON.stringify({ trackId, action, absoluteFrame: phase.absoluteFrame, phaseEpoch: phase.epoch,
-        settingsRevision: phase.settingsRevision }) });
+    if (this.pendingRhythmSchedule) throw new NativeRhythmScheduleOutcomeUnknownError(this.pendingRhythmSchedule, null,
+      new Error('An earlier scheduled request is unresolved; reconcile it before submitting another transport command.'));
+    const intentId = createNativeRhythmIntentId();
+    const before = await this.getStatus();
+    const beforeItem = before.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+    if (!isNativeHostIncarnationId(before.hostIncarnationId) || !beforeItem ||
+        !Number.isSafeInteger(beforeItem.requestedRevision) || beforeItem.requestedRevision < 0) {
+      throw new Error('Native status lacks the host incarnation or Rhythm schedule revision baseline; request was not submitted.');
+    }
+    const baselineRevision = beforeItem.requestedRevision;
+    const baselineHostIncarnationId = before.hostIncarnationId!;
+    const intent = (revision: number | null, hostIncarnationId = baselineHostIncarnationId): NativeRhythmScheduleReceipt => ({
+      trackId, action, revision, baselineRevision, absoluteFrame: phase.absoluteFrame,
+      phaseEpoch: phase.epoch, settingsRevision: phase.settingsRevision, hostIncarnationId, intentId,
+    });
+    let status: NativeStatus;
+    try {
+      status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule', { method: 'POST',
+        body: JSON.stringify({ trackId, action, absoluteFrame: phase.absoluteFrame, phaseEpoch: phase.epoch,
+          settingsRevision: phase.settingsRevision, intentId }) });
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) throw error;
+      const reconciled = error instanceof NativeBridgeRequestTimeoutError ? error.reconciledStatus : null;
+      const acceptedTrackId = reconciled?.nativeLoopFrameScheduling?.acceptedTrackId;
+      const acceptedRevision = reconciled?.nativeLoopFrameScheduling?.acceptedRevision;
+      const acceptedItem = reconciled?.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+      if (acceptedTrackId === trackId && Number.isSafeInteger(acceptedRevision) && acceptedRevision! > 0 &&
+          acceptedItem?.requestedRevision === acceptedRevision && this.rhythmScheduleMatchesIntent(acceptedItem, intent(acceptedRevision!))) {
+        const receipt = intent(acceptedRevision!, reconciled?.hostIncarnationId ?? '');
+        this.pendingRhythmSchedule = receipt;
+        if (!isNativeHostIncarnationId(receipt.hostIncarnationId)) {
+          throw new NativeRhythmScheduleOutcomeUnknownError(receipt, reconciled,
+            new Error('The host omitted its incarnation ID; the accepted revision cannot be safely cancelled or correlated.'));
+        }
+        return this.reconcileRhythmScheduledLoop(receipt, error);
+      }
+      const unresolved = intent(null);
+      this.pendingRhythmSchedule = unresolved;
+      throw new NativeRhythmScheduleOutcomeUnknownError(unresolved, reconciled, error);
+    }
     const revision = status.nativeLoopFrameScheduling?.acceptedRevision;
-    if (status.nativeLoopFrameScheduling?.acceptedTrackId !== trackId || !Number.isSafeInteger(revision) || revision! <= 0) {
-      throw new Error('Native Rhythm-scheduled REC/STOP request acknowledgement is unavailable.');
+    const acceptedItem = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+    if (status.nativeLoopFrameScheduling?.acceptedTrackId !== trackId || !Number.isSafeInteger(revision) || revision! <= 0 ||
+        acceptedItem?.requestedRevision !== revision || !this.rhythmScheduleMatchesIntent(acceptedItem, intent(revision!))) {
+      const unresolved = intent(null, status.hostIncarnationId ?? before.hostIncarnationId);
+      this.pendingRhythmSchedule = unresolved;
+      throw new NativeRhythmScheduleOutcomeUnknownError(unresolved, status,
+        new Error('Native did not return a status receipt matching the submitted schedule intent.'));
+    }
+    const receipt = intent(revision!, status.hostIncarnationId ?? '');
+    this.pendingRhythmSchedule = receipt;
+    if (!isNativeHostIncarnationId(receipt.hostIncarnationId)) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+        new Error('The host omitted its incarnation ID; this accepted revision cannot be safely correlated.'));
+    }
+    return this.waitForRhythmSchedule({ ...receipt, revision: revision! });
+  }
+
+  public async reconcilePendingRhythmSchedule(): Promise<NativeStatus> {
+    const receipt = this.pendingRhythmSchedule;
+    if (!receipt) throw new Error('There is no unresolved Native Rhythm schedule receipt.');
+    return this.reconcileRhythmScheduledLoop(receipt, new Error('Reconciled after reconnect.'));
+  }
+
+  public async cancelRhythmScheduledLoop(receipt: NativeRhythmScheduleReceipt & { revision: number }): Promise<NativeStatus> {
+    const { trackId, revision } = receipt;
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || revision === null || !Number.isSafeInteger(revision) || revision <= 0 ||
+        !isNativeHostIncarnationId(receipt.hostIncarnationId)) {
+      throw new RangeError('Invalid Native Rhythm-scheduled cancellation token.');
+    }
+    const existing = await this.getStatus();
+    if (existing.hostIncarnationId !== receipt.hostIncarnationId) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, existing,
+        new Error('Native host incarnation changed; this revision cannot be cancelled against the restarted host.'));
+    }
+    const itemBeforeCancel = existing.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+    if (itemBeforeCancel?.requestedRevision !== revision || itemBeforeCancel.requestedIntentId !== receipt.intentId) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, existing,
+        new Error('Native status does not identify this exact schedule intent; refusing cancellation.'));
+    }
+    if (itemBeforeCancel?.appliedRevision === revision) {
+      if (this.pendingRhythmSchedule?.revision === revision) this.pendingRhythmSchedule = null;
+      return existing;
+    }
+    if (itemBeforeCancel?.cancelledRevision === revision) {
+      if (this.pendingRhythmSchedule?.revision === revision) this.pendingRhythmSchedule = null;
+      return existing;
+    }
+    if (itemBeforeCancel?.faultRevision === revision) {
+      if (this.pendingRhythmSchedule?.revision === revision) this.pendingRhythmSchedule = null;
+      throw new Error(`Native Rhythm-scheduled request failed before cancellation (fault ${itemBeforeCancel.fault}).`);
+    }
+    if (itemBeforeCancel?.requestedRevision !== revision) {
+      throw new Error('Native Rhythm-scheduled revision is absent or superseded; inspect track state before any retry.');
+    }
+    if (itemBeforeCancel.requestedIntentId !== receipt.intentId) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, existing,
+        new Error('Native status intent ID does not match this receipt; refusing to cancel another request.'));
+    }
+    let status: NativeStatus;
+    try {
+      status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule/cancel', { method: 'POST',
+        body: JSON.stringify({ trackId, revision, hostIncarnationId: receipt.hostIncarnationId, intentId: receipt.intentId }) });
+    } catch (error) {
+      let reconciled = error instanceof NativeBridgeRequestTimeoutError ? error.reconciledStatus : null;
+      if (!reconciled) {
+        try { reconciled = await this.getStatus(); } catch { /* Preserve the host-bound receipt for recovery after reconnect. */ }
+      }
+      if (reconciled) return this.finishRhythmCancellationReconcile(trackId, revision, receipt, reconciled, error, false);
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, null, error);
     }
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
+      if (status.hostIncarnationId !== receipt.hostIncarnationId) {
+        throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+          new Error('Native host restarted during cancellation acknowledgement polling.'));
+      }
       const item = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
-      if (!item || item.requestedRevision !== revision) throw new Error('Native Rhythm-scheduled REC/STOP request was superseded.');
-      if (item.appliedRevision === revision) return status;
-      if (item.cancelledRevision === revision) throw new Error('Native Rhythm-scheduled REC/STOP request was cancelled.');
-      if (item.faultRevision === revision) throw new Error(`Native Rhythm-scheduled REC/STOP failed (fault ${item.fault}).`);
-      if (Date.now() >= deadline) throw new Error('Native Rhythm-scheduled REC/STOP callback acknowledgement timed out; check track state before retrying.');
-      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+      if (item?.requestedRevision !== revision || item.requestedIntentId !== receipt.intentId) {
+        throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+          new Error('Native status revision or intent changed during cancellation acknowledgement polling.'));
+      }
+      if (item?.cancelledRevision === revision) {
+        if (this.pendingRhythmSchedule?.revision === revision) this.pendingRhythmSchedule = null;
+        return status;
+      }
+      if (item?.appliedRevision === revision || item?.faultRevision === revision) {
+        if (this.pendingRhythmSchedule?.revision === revision) this.pendingRhythmSchedule = null;
+        return status;
+      }
+      if (Date.now() >= deadline) throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+        new Error('Native Rhythm-scheduled cancellation acknowledgement timed out.'));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      try { status = await this.getStatus(); }
+      catch (error) {
+        let latest: NativeStatus | null = null;
+        try { latest = await this.getStatus(); } catch { /* Preserve the last receipt when the host remains unreachable. */ }
+        const latestItem = latest?.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+        if (latest && (latest.hostIncarnationId !== receipt.hostIncarnationId ||
+            latestItem?.requestedRevision !== revision || latestItem.requestedIntentId !== receipt.intentId)) {
+          throw new NativeRhythmScheduleOutcomeUnknownError(receipt, latest,
+            new Error('Native host or intent changed while reconciling a lost cancellation response.'));
+        }
+        throw new NativeRhythmScheduleOutcomeUnknownError(receipt, latest ?? status, error);
+      }
     }
   }
 
-  public async cancelRhythmScheduledLoop(trackId: number, revision: number): Promise<NativeStatus> {
-    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !Number.isSafeInteger(revision) || revision <= 0) {
-      throw new RangeError('Invalid Native Rhythm-scheduled cancellation token.');
-    }
-    let status = await this.request<NativeStatus>('/v1/transport/rhythm-schedule/cancel', { method: 'POST',
-      body: JSON.stringify({ trackId, revision }) });
+  private async waitForRhythmSchedule(receipt: NativeRhythmScheduleReceipt & { revision: number }): Promise<NativeStatus> {
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
-    for (;;) {
-      const item = status.nativeLoopFrameScheduling?.requests?.[trackId - 1];
-      if (item?.cancelledRevision === revision) return status;
-      if (item?.appliedRevision === revision || item?.faultRevision === revision) {
-        throw new Error('Native Rhythm-scheduled request dispatched before cancellation was acknowledged.');
+    let status: NativeStatus | null = null;
+    try {
+      for (;;) {
+        status = await this.getStatus();
+        if (status.hostIncarnationId !== receipt.hostIncarnationId) throw new Error('Native host restarted while this scheduled request was pending.');
+        const item = status.nativeLoopFrameScheduling?.requests?.[receipt.trackId - 1];
+        if (!item || item.requestedRevision !== receipt.revision) throw new Error('Native Rhythm-scheduled request was superseded; inspect track state.');
+        if (item.requestedIntentId !== receipt.intentId) throw new Error('Native Rhythm schedule intent ID does not match the accepted request.');
+        if (item.appliedRevision === receipt.revision) {
+          if (item.appliedAbsoluteFrame !== receipt.absoluteFrame) throw new Error('Native callback ACK frame differs from the scheduled transition frame.');
+          this.pendingRhythmSchedule = null;
+          return status;
+        }
+        if (item.cancelledRevision === receipt.revision) {
+          this.pendingRhythmSchedule = null;
+          throw new Error('Native Rhythm-scheduled request was cancelled before dispatch.');
+        }
+        if (item.faultRevision === receipt.revision) {
+          this.pendingRhythmSchedule = null;
+          throw new Error(`Native Rhythm-scheduled REC/STOP failed (fault ${item.fault}).`);
+        }
+        if (Date.now() >= deadline) throw new Error('Native callback ACK wait timed out.');
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
-      if (Date.now() >= deadline) throw new Error('Native Rhythm-scheduled cancellation acknowledgement timed out.');
-      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    } catch (error) {
+      try {
+        const reconciled = status ?? await this.getStatus();
+        return await this.finishRhythmCancellationReconcile(receipt.trackId, receipt.revision, receipt, reconciled, error);
+      } catch (reconcileError) {
+        if (reconcileError instanceof NativeRhythmScheduleOutcomeUnknownError) throw reconcileError;
+        throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status, reconcileError);
+      }
     }
+  }
+
+  private async reconcileRhythmScheduledLoop(receipt: NativeRhythmScheduleReceipt, cause: unknown): Promise<NativeStatus> {
+    try {
+      const status = await this.getStatus();
+      if (status.hostIncarnationId !== receipt.hostIncarnationId) {
+        throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+          new Error('Native host incarnation changed; this pending intent belongs to another process.'));
+      }
+      let resolved = receipt;
+      if (resolved.revision === null) {
+        const item = status.nativeLoopFrameScheduling?.requests?.[resolved.trackId - 1];
+        if (!item || item.requestedRevision <= resolved.baselineRevision || !this.rhythmScheduleMatchesIntent(item, resolved)) {
+          throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
+            new Error('No unique host revision matches this unresolved request intent; no cancellation was sent.'));
+        }
+        resolved = { ...resolved, revision: item.requestedRevision };
+        this.pendingRhythmSchedule = resolved;
+      }
+      if (resolved.revision === null) throw new Error('Could not bind the pending request to a host revision.');
+      const exact = { ...resolved, revision: resolved.revision };
+      return await this.finishRhythmCancellationReconcile(resolved.trackId, exact.revision, exact, status, cause);
+    } catch (error) {
+      if (error instanceof NativeRhythmScheduleOutcomeUnknownError) throw error;
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, null, error);
+    }
+  }
+
+  private async finishRhythmCancellationReconcile(trackId: number, revision: number,
+      receipt: NativeRhythmScheduleReceipt & { revision: number }, initialStatus: NativeStatus, cause: unknown,
+      allowCancel = true): Promise<NativeStatus> {
+    if (initialStatus.hostIncarnationId !== receipt.hostIncarnationId) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus,
+        new Error('Native host incarnation changed; the pending request belongs to another process.'));
+    }
+    const item = initialStatus.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+    if (!item || item.requestedRevision !== revision || item.requestedIntentId !== receipt.intentId) {
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus,
+        new Error('Native status does not identify this exact request; no cancellation was sent.'));
+    }
+    if (item?.appliedRevision === revision) {
+      if (receipt.absoluteFrame > 0 && item.appliedAbsoluteFrame !== receipt.absoluteFrame) {
+        this.pendingRhythmSchedule = null;
+        throw new Error(`Native callback applied revision ${revision} at frame ${item.appliedAbsoluteFrame}, expected ${receipt.absoluteFrame}; inspect track PCM before retrying.`);
+      }
+      this.pendingRhythmSchedule = null;
+      return initialStatus;
+    }
+    if (item?.cancelledRevision === revision) {
+      this.pendingRhythmSchedule = null;
+      throw new Error(`Native Rhythm-scheduled ${receipt.action.toUpperCase()} revision ${revision} was cancelled before dispatch.`);
+    }
+    if (item?.faultRevision === revision) {
+      this.pendingRhythmSchedule = null;
+      throw new Error(`Native Rhythm-scheduled request failed (fault ${item.fault}); inspect track status.`);
+    }
+    if (item?.requestedRevision !== revision) throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus, cause);
+    if (!allowCancel) throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus,
+      new Error('Cancellation write timed out while this revision remains pending; reconcile status before further action.'));
+    try {
+      return await this.cancelRhythmScheduledLoop(receipt);
+    } catch (cancelError) {
+      if (cancelError instanceof NativeRhythmScheduleOutcomeUnknownError) throw cancelError;
+      let latest: NativeStatus | null = null;
+      try { latest = await this.getStatus(); } catch { /* The saved receipt remains available for recovery after reconnect. */ }
+      const latestItem = latest?.nativeLoopFrameScheduling?.requests?.[trackId - 1];
+      if (latestItem?.appliedRevision === revision) {
+        this.pendingRhythmSchedule = null;
+        return latest!;
+      }
+      if (latestItem?.cancelledRevision === revision) {
+        this.pendingRhythmSchedule = null;
+        throw new Error(`Native Rhythm-scheduled ${receipt.action.toUpperCase()} revision ${revision} was cancelled before dispatch.`);
+      }
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, latest ?? initialStatus, cancelError);
+    }
+  }
+
+  private rhythmScheduleMatchesIntent(item: NonNullable<NonNullable<NativeStatus['nativeLoopFrameScheduling']>['requests']>[number] | undefined,
+      receipt: NativeRhythmScheduleReceipt): boolean {
+    return item !== undefined && item.requestedAbsoluteFrame === receipt.absoluteFrame &&
+      item.requestedPhaseEpoch === receipt.phaseEpoch && item.requestedSettingsRevision === receipt.settingsRevision &&
+      item.requestedAction === receipt.action && item.requestedIntentId === receipt.intentId;
   }
 
   public async stopTransport(): Promise<NativeStatus> {
@@ -1711,7 +1992,8 @@ export class NativeBridgeClient {
 
       const payload = (await response.json()) as T;
       if (response.ok === false || !payload.ok) {
-        throw new Error(payload.error || `Native bridge request failed${response.status ? ` with HTTP ${response.status}` : ''}.`);
+        throw new NativeBridgeHttpError(payload.error || `Native bridge request failed${response.status ? ` with HTTP ${response.status}` : ''}.`,
+          response.status || 0);
       }
       return payload;
     })();

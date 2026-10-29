@@ -76,6 +76,23 @@ bool isOperationId(const std::string& value) {
     });
 }
 
+bool parseRhythmIntentId(const std::string& value, std::uint64_t& high, std::uint64_t& low) {
+    if (!isOperationId(value)) return false;
+    const auto parseHalf = [](const char* first, const char* last, std::uint64_t& out) {
+        const auto result = std::from_chars(first, last, out, 16);
+        return result.ec == std::errc{} && result.ptr == last;
+    };
+    if (!parseHalf(value.data(), value.data() + 16, high) ||
+        !parseHalf(value.data() + 16, value.data() + 32, low)) return false;
+    return high != 0U || low != 0U;
+}
+
+std::string formatRhythmIntentId(std::uint64_t high, std::uint64_t low) {
+    std::ostringstream result;
+    result << std::hex << std::setfill('0') << std::setw(16) << high << std::setw(16) << low;
+    return result.str();
+}
+
 struct NativeImportOperationRecord {
     std::string archiveSha256;
     std::uint64_t expectedProjectContentRevision = 0U;
@@ -895,7 +912,13 @@ json statusToJson(const EngineStatus& status) {
         const auto& item = status.nativeScheduledLoop[track];
         scheduledLoop.push_back({
             {"trackIndex", track}, {"requestedRevision", item.requestedRevision},
-            {"appliedRevision", item.appliedRevision}, {"cancelledRevision", item.cancelledRevision},
+            {"requestedAbsoluteFrame", item.requestedAbsoluteFrame},
+            {"requestedPhaseEpoch", item.requestedPhaseEpoch},
+            {"requestedSettingsRevision", item.requestedSettingsRevision},
+            {"requestedAction", item.requestedAction == NativeScheduledLoopAction::Record ? "record" : "stop"},
+            {"requestedIntentId", formatRhythmIntentId(item.intentIdHigh, item.intentIdLow)},
+            {"appliedRevision", item.appliedRevision}, {"appliedAbsoluteFrame", item.appliedAbsoluteFrame},
+            {"cancelledRevision", item.cancelledRevision},
             {"faultRevision", item.faultRevision}, {"fault", static_cast<unsigned int>(item.fault)},
         });
     }
@@ -2263,13 +2286,16 @@ int main() {
         try {
             const auto body = json::parse(request.body);
             std::uint64_t trackId = 0U, absoluteFrame = 0U, phaseEpoch = 0U, settingsRevision = 0U;
-            if (!body.is_object() || body.size() != 5U ||
+            std::uint64_t intentIdHigh = 0U, intentIdLow = 0U;
+            if (!body.is_object() || body.size() != 6U ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !body.contains("action") || !body.at("action").is_string() ||
                 !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeTempoRevision, absoluteFrame) ||
                 !readUnsignedJsonInteger(body.value("phaseEpoch", json()), kMaximumSafeTempoRevision, phaseEpoch) ||
-                !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeTempoRevision, settingsRevision)) {
-                response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires trackId, action, absoluteFrame, phaseEpoch, and settingsRevision."); return;
+                !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeTempoRevision, settingsRevision) ||
+                !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentIdHigh, intentIdLow)) {
+                response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires trackId, action, absoluteFrame, phaseEpoch, settingsRevision, and a 128-bit intentId."); return;
             }
             const auto actionText = body.at("action").get<std::string>();
             if (actionText != "record" && actionText != "stop") {
@@ -2279,7 +2305,7 @@ int main() {
             std::uint64_t acceptedRevision = 0U;
             const auto action = actionText == "record" ? NativeScheduledLoopAction::Record : NativeScheduledLoopAction::Stop;
             if (!engine.scheduleNativeRhythmRecordOrStop(trackId - 1U, action, absoluteFrame, phaseEpoch,
-                    settingsRevision, &acceptedRevision, error)) {
+                    settingsRevision, &acceptedRevision, error, intentIdHigh, intentIdLow)) {
                 response.status = 409; writeError(response, error); return;
             }
             auto status = statusToJson(engine.getStatus());
@@ -2293,10 +2319,22 @@ int main() {
         try {
             const auto body = json::parse(request.body);
             std::uint64_t trackId = 0U, revision = 0U;
-            if (!body.is_object() || body.size() != 2U ||
+            std::uint64_t intentIdHigh = 0U, intentIdLow = 0U;
+            if (!body.is_object() || body.size() != 4U ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
-                !readUnsignedJsonInteger(body.value("revision", json()), kMaximumSafeTempoRevision, revision) || revision == 0U) {
-                response.status = 400; writeError(response, "Cancelling Rhythm-scheduled REC/STOP requires trackId and revision."); return;
+                !readUnsignedJsonInteger(body.value("revision", json()), kMaximumSafeTempoRevision, revision) || revision == 0U ||
+                !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentIdHigh, intentIdLow)) {
+                response.status = 400; writeError(response, "Cancelling Rhythm-scheduled REC/STOP requires trackId, revision, hostIncarnationId, and intentId."); return;
+            }
+            if (body.at("hostIncarnationId").get<std::string>() != hostIncarnationId()) {
+                response.status = 409; writeError(response, "Native host incarnation changed; rejecting cancellation for a prior process revision."); return;
+            }
+            const auto scheduled = engine.getStatus().nativeScheduledLoop[trackId - 1U];
+            if (scheduled.requestedRevision != revision || scheduled.intentIdHigh != intentIdHigh ||
+                scheduled.intentIdLow != intentIdLow) {
+                response.status = 409; writeError(response, "Native Rhythm schedule intent does not match this revision; refusing cancellation."); return;
             }
             std::string error;
             if (!engine.cancelNativeScheduledLoop(trackId - 1U, revision, error)) {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { NativeBridgeClient, type NativeLoopTransportConfig } from '../../src/audio/NativeBridgeClient';
+import { NativeBridgeClient, NativeRhythmScheduleOutcomeUnknownError, type NativeLoopTransportConfig } from '../../src/audio/NativeBridgeClient';
 
 describe('Native multi-track bridge client', () => {
   it('keeps Track 1 routes compatible and targets selected higher tracks for transport', async () => {
@@ -27,10 +27,26 @@ describe('Native multi-track bridge client', () => {
   });
 
   it('requires callback ACK for Rhythm-scheduled REC and sends the phase token unchanged', async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
-      nativeLoopFrameScheduling: { version: 1, available: true, acceptedTrackId: 2, acceptedRevision: 7,
-        requests: [{}, { trackIndex: 1, requestedRevision: 7, appliedRevision: 7, cancelledRevision: 0, faultRevision: 0, fault: 0 }] },
-    }) }) as Response);
+    const hostIncarnationId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const baseline = { trackIndex: 1, requestedRevision: 6, requestedAbsoluteFrame: 0, requestedIntentId: '0'.repeat(32),
+      requestedPhaseEpoch: 0, requestedSettingsRevision: 0, requestedAction: 'record', appliedRevision: 0,
+      appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    let submittedIntentId = '';
+    const accepted = () => ({ ...baseline, requestedRevision: 7, requestedAbsoluteFrame: 19_200,
+      requestedIntentId: submittedIntentId,
+      requestedPhaseEpoch: 4, requestedSettingsRevision: 9, requestedAction: 'record', appliedRevision: 7,
+      appliedAbsoluteFrame: 19_200 });
+    let statusReads = 0;
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith('/v1/transport/rhythm-schedule')) {
+        submittedIntentId = (JSON.parse(String(init?.body)) as { intentId: string }).intentId;
+      }
+      const response = String(url).endsWith('/v1/status') && ++statusReads === 1
+        ? { ok: true, hostIncarnationId, nativeLoopFrameScheduling: { requests: [{}, baseline] } }
+        : { ok: true, hostIncarnationId, nativeLoopFrameScheduling: { version: 1, available: true,
+          acceptedTrackId: 2, acceptedRevision: 7, requests: [{}, accepted()] } };
+      return { json: async () => response } as Response;
+    });
     vi.stubGlobal('fetch', fetchMock);
     const client = new NativeBridgeClient();
 
@@ -38,41 +54,166 @@ describe('Native multi-track bridge client', () => {
       absoluteFrame: 19_200, epoch: 4, settingsRevision: 9,
     });
 
-    expect(status.nativeLoopFrameScheduling?.requests?.[1]?.appliedRevision).toBe(7);
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule', {
-      headers: { 'Content-Type': 'application/json' }, method: 'POST',
-      body: JSON.stringify({ trackId: 2, action: 'record', absoluteFrame: 19_200, phaseEpoch: 4, settingsRevision: 9 }),
-      signal: expect.any(AbortSignal),
-    });
+    expect(status.nativeLoopFrameScheduling?.requests?.[1]).toMatchObject({ appliedRevision: 7, appliedAbsoluteFrame: 19_200 });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ trackId: 2, action: 'record', absoluteFrame: 19_200, phaseEpoch: 4,
+        settingsRevision: 9, intentId: submittedIntentId }), signal: expect.any(AbortSignal),
+    }));
   });
 
   it('rejects an unacknowledged or out-of-range Rhythm schedule request', async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true }) }) as Response);
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true, hostIncarnationId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      nativeLoopFrameScheduling: { requests: [{ trackIndex: 0, requestedRevision: 0, requestedAbsoluteFrame: 0,
+        requestedPhaseEpoch: 0, requestedSettingsRevision: 0, requestedAction: 'record', appliedRevision: 0,
+        requestedIntentId: '0'.repeat(32), appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 }] } }) }) as Response);
     vi.stubGlobal('fetch', fetchMock);
     const client = new NativeBridgeClient();
 
     await expect(client.scheduleRhythmRecordOrStop(1, 'record', { absoluteFrame: 0, epoch: 1, settingsRevision: 1 }))
-      .rejects.toThrow(/acknowledgement is unavailable/);
+      .rejects.toThrow(/status receipt matching/);
     await expect(client.scheduleRhythmRecordOrStop(6, 'record', { absoluteFrame: 0, epoch: 1, settingsRevision: 1 }))
       .rejects.toThrow(/Invalid Rhythm-scheduled/);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('accepts cancellation only after the Native bridge publishes the cancelled revision', async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
-      nativeLoopFrameScheduling: { requests: [{ trackIndex: 0, requestedRevision: 3,
-        appliedRevision: 0, cancelledRevision: 3, faultRevision: 0, fault: 0 }] },
-    }) }) as Response);
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+      const item = String(url).endsWith('/cancel')
+        ? { trackIndex: 0, requestedRevision: 3, requestedAbsoluteFrame: 10, requestedIntentId: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', appliedRevision: 0, appliedAbsoluteFrame: 0, cancelledRevision: 3, faultRevision: 0, fault: 0 }
+        : { trackIndex: 0, requestedRevision: 3, requestedAbsoluteFrame: 10, requestedIntentId: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', appliedRevision: 0, appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+      return { json: async () => ({ ok: true, hostIncarnationId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        nativeLoopFrameScheduling: { requests: [item] } }) } as Response;
+    });
     vi.stubGlobal('fetch', fetchMock);
     const client = new NativeBridgeClient();
 
-    const status = await client.cancelRhythmScheduledLoop(1, 3);
+    const status = await client.cancelRhythmScheduledLoop({ trackId: 1, action: 'record', revision: 3,
+      baselineRevision: 2, absoluteFrame: 10, phaseEpoch: 1, settingsRevision: 1,
+      hostIncarnationId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', intentId: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' });
 
     expect(status.nativeLoopFrameScheduling?.requests?.[0]?.cancelledRevision).toBe(3);
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:17755/v1/transport/rhythm-schedule/cancel', {
-      headers: { 'Content-Type': 'application/json' }, method: 'POST', body: JSON.stringify({ trackId: 1, revision: 3 }),
+      headers: { 'Content-Type': 'application/json' }, method: 'POST', body: JSON.stringify({ trackId: 1, revision: 3,
+        hostIncarnationId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', intentId: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' }),
       signal: expect.any(AbortSignal),
     });
+  });
+
+  it('retains the accepted schedule revision across a disconnect and cancels only that revision after reconnect', async () => {
+    let statusReads = 0;
+    let scheduleAccepted = false;
+    const hostIncarnationId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const baseline = { trackIndex: 0, requestedRevision: 0, requestedAbsoluteFrame: 0, requestedPhaseEpoch: 0,
+      requestedSettingsRevision: 0, requestedAction: 'record', requestedIntentId: '0'.repeat(32), appliedRevision: 0, appliedAbsoluteFrame: 0,
+      cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    const pending = { trackIndex: 0, requestedRevision: 9, requestedAbsoluteFrame: 19_200,
+      requestedPhaseEpoch: 2, requestedSettingsRevision: 3, requestedAction: 'record', requestedIntentId: '',
+      appliedRevision: 0, appliedAbsoluteFrame: 0,
+      cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    let acceptedIntentId = '';
+    const cancelled = () => ({ ...pending, requestedIntentId: acceptedIntentId, cancelledRevision: 9 });
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith('/v1/transport/rhythm-schedule')) {
+        scheduleAccepted = true;
+        acceptedIntentId = (JSON.parse(String(init?.body)) as { intentId: string }).intentId;
+        return { json: async () => ({ ok: true, nativeLoopFrameScheduling: {
+          version: 1, available: false, acceptedTrackId: 1, acceptedRevision: 9,
+          requests: [{ ...pending, requestedIntentId: acceptedIntentId }],
+        }, hostIncarnationId }) } as Response;
+      }
+      if (String(url).endsWith('/v1/status')) {
+        if (!scheduleAccepted) return { json: async () => ({ ok: true, hostIncarnationId,
+          nativeLoopFrameScheduling: { requests: [baseline] } }) } as Response;
+        statusReads += 1;
+        if (statusReads <= 2) throw new Error('disconnected');
+        const item = init?.method === 'POST' ? cancelled() : { ...pending, requestedIntentId: acceptedIntentId };
+        return { json: async () => ({ ok: true, hostIncarnationId, nativeLoopFrameScheduling: { requests: [item] } }) } as Response;
+      }
+      if (String(url).endsWith('/v1/transport/rhythm-schedule/cancel')) {
+        return { json: async () => ({ ok: true, hostIncarnationId, nativeLoopFrameScheduling: { requests: [cancelled()] } }) } as Response;
+      }
+      throw new Error(`Unexpected request ${String(url)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.scheduleRhythmRecordOrStop(1, 'record', {
+      absoluteFrame: 19_200, epoch: 2, settingsRevision: 3,
+    })).rejects.toBeInstanceOf(NativeRhythmScheduleOutcomeUnknownError);
+    expect(client.getPendingRhythmSchedule()).toEqual({
+      trackId: 1, action: 'record', revision: 9, baselineRevision: 0, absoluteFrame: 19_200,
+      phaseEpoch: 2, settingsRevision: 3, hostIncarnationId, intentId: expect.any(String),
+    });
+    const status = await client.reconcilePendingRhythmSchedule();
+    expect(status.nativeLoopFrameScheduling?.requests?.[0]?.cancelledRevision).toBe(9);
+    expect(client.getPendingRhythmSchedule()).toBeNull();
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      'http://127.0.0.1:17755/v1/status',
+      'http://127.0.0.1:17755/v1/transport/rhythm-schedule',
+      'http://127.0.0.1:17755/v1/status',
+      'http://127.0.0.1:17755/v1/status',
+      'http://127.0.0.1:17755/v1/status',
+      'http://127.0.0.1:17755/v1/status',
+      'http://127.0.0.1:17755/v1/transport/rhythm-schedule/cancel',
+    ]);
+  });
+
+  it('keeps an unresolved intent after a POST network error and binds it only to a matching new revision', async () => {
+    const hostIncarnationId = 'cccccccccccccccccccccccccccccccc';
+    const baseline = { trackIndex: 0, requestedRevision: 4, requestedAbsoluteFrame: 10,
+      requestedPhaseEpoch: 1, requestedSettingsRevision: 2, requestedAction: 'record', requestedIntentId: '0'.repeat(32), appliedRevision: 0,
+      appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    let submittedIntentId = '';
+    const acceptedPending = () => ({ ...baseline, requestedRevision: 5, requestedAbsoluteFrame: 20,
+      requestedPhaseEpoch: 7, requestedSettingsRevision: 8, requestedAction: 'record', requestedIntentId: submittedIntentId });
+    const cancelled = () => ({ ...acceptedPending(), cancelledRevision: 5 });
+    let schedulePosts = 0;
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const value = String(url);
+      if (value.endsWith('/v1/status')) return { json: async () => ({ ok: true, hostIncarnationId,
+        nativeLoopFrameScheduling: { requests: [schedulePosts === 0 ? baseline : acceptedPending()] } }) } as Response;
+      if (value.endsWith('/v1/transport/rhythm-schedule')) {
+        schedulePosts += 1;
+        submittedIntentId = (JSON.parse(String(init?.body)) as { intentId: string }).intentId;
+        throw new Error('connection reset after submit');
+      }
+      if (value.endsWith('/v1/transport/rhythm-schedule/cancel')) {
+        return { json: async () => ({ ok: true, hostIncarnationId,
+          nativeLoopFrameScheduling: { requests: [cancelled()] } }) } as Response;
+      }
+      throw new Error(`Unexpected request ${value}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.scheduleRhythmRecordOrStop(1, 'record', {
+      absoluteFrame: 20, epoch: 7, settingsRevision: 8,
+    })).rejects.toBeInstanceOf(NativeRhythmScheduleOutcomeUnknownError);
+    expect(client.getPendingRhythmSchedule()).toMatchObject({ revision: null, baselineRevision: 4,
+      absoluteFrame: 20, phaseEpoch: 7, settingsRevision: 8, hostIncarnationId, intentId: expect.any(String) });
+    const reconciled = await client.reconcilePendingRhythmSchedule();
+    expect(reconciled.nativeLoopFrameScheduling?.requests?.[0]?.cancelledRevision).toBe(5);
+    expect(schedulePosts).toBe(1);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/cancel'))).toHaveLength(1);
+  });
+
+  it('never sends a cancellation against a restarted Native host', async () => {
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
+      hostIncarnationId: 'dddddddddddddddddddddddddddddddd',
+      nativeLoopFrameScheduling: { requests: [{ trackIndex: 0, requestedRevision: 5, requestedAbsoluteFrame: 20,
+        requestedPhaseEpoch: 7, requestedSettingsRevision: 8, requestedAction: 'record',
+        requestedIntentId: 'ffffffffffffffffffffffffffffffff', appliedRevision: 0,
+        appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 }] },
+    }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+    const oldReceipt = { trackId: 1, action: 'record' as const, revision: 5, baselineRevision: 4,
+      absoluteFrame: 20, phaseEpoch: 7, settingsRevision: 8, hostIncarnationId: 'cccccccccccccccccccccccccccccccc',
+      intentId: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' };
+
+    await expect(client.cancelRhythmScheduledLoop(oldReceipt)).rejects.toBeInstanceOf(NativeRhythmScheduleOutcomeUnknownError);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/v1/status');
   });
 
   it('parses interleaved stereo snapshots for the selected Native track', async () => {

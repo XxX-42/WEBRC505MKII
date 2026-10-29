@@ -1044,7 +1044,8 @@ bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error, std:
 bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     std::size_t trackIndex, NativeScheduledLoopAction action, std::uint64_t absoluteFrame,
     std::uint64_t expectedPhaseEpoch, std::uint64_t expectedSettingsRevision,
-    std::uint64_t* requestedRevision, std::string& error) {
+    std::uint64_t* requestedRevision, std::string& error,
+    std::uint64_t intentIdHigh, std::uint64_t intentIdLow) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (requestedRevision != nullptr) *requestedRevision = 0U;
@@ -1118,6 +1119,8 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
     requestValue.settingsRevision = expectedSettingsRevision;
     requestValue.trackIndex = static_cast<std::uint8_t>(trackIndex);
     requestValue.action = action;
+    requestValue.intentIdHigh = intentIdHigh;
+    requestValue.intentIdLow = intentIdLow;
     // Reserve all track-side accounting before publishing to the SPSC queue:
     // the callback may consume the request immediately after the release store.
     nativeScheduledLoopRevision_[trackIndex].store(revision, std::memory_order_release);
@@ -4974,14 +4977,14 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             const auto expectedState = scheduledEvent->request.action == NativeScheduledLoopAction::Record
                 ? LooperState::Recording : LooperState::Stopped;
             nativeLoopFrameScheduler_.acknowledgeApplied(trackIndex, scheduledEvent->request.revision,
+                callbackFrameCursor_ + scheduledEvent->frameOffset,
                 trackStats.state == expectedState ||
                     (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Empty));
             nativeScheduledLoopPending_[trackIndex].store(false, std::memory_order_release);
             pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         } else if (nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
             const auto revision = nativeScheduledLoopRevision_[trackIndex].load(std::memory_order_acquire);
-            const auto scheduledStatus = nativeLoopFrameScheduler_.status(trackIndex);
-            if (scheduledStatus.cancelledRevision == revision || scheduledStatus.faultRevision == revision) {
+            if (nativeLoopFrameScheduler_.hasCancelledOrFaulted(trackIndex, revision)) {
                 recordStartPending_[trackIndex].store(false, std::memory_order_release);
                 nativeScheduledLoopPending_[trackIndex].store(false, std::memory_order_release);
                 pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);

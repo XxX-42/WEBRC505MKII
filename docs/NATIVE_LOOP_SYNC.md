@@ -83,3 +83,11 @@ is active.
 The Browser implementation and its narrower phase constraints are documented
 in [BROWSER_LOOP_SYNC.md](BROWSER_LOOP_SYNC.md). Its software-path tests do not
 validate the Native callback or physical hardware.
+
+## Exact frame receipt and reconnected cancellation
+
+The callback scheduler now includes `requestedAbsoluteFrame` and a cryptographically generated 128-bit `intentId` in its status, and publishes `appliedAbsoluteFrame` before the matching applied revision. The TypeScript bridge waits for both the revision and exact frame, checks the host incarnation on each status read, and retains a pending receipt when an accepted command loses its response. A schedule POST also records the prior per-track revision and its frame/epoch/settings/action intent. If the POST response is lost, reconnect reconciliation binds only to the request carrying the exact `intentId` and matching parameters; otherwise it keeps the outcome unknown and does not cancel or resubmit.
+
+Cancellation includes the captured host incarnation and `intentId`. The Native HTTP route rejects a cancellation token from another host process or a different request before forwarding it to the scheduler, closing the status-read/cancel restart race. Every cancellation status poll and reconnect readback checks both tokens. If a stop has already applied, reconciliation returns the applied status for track inspection instead of claiming cancellation.
+
+Portable C++ and the no-audio HTTP simulation verify that the acknowledged start/stop frame difference equals committed PCM frame count, committed PCM survives a rejected second REC, and stale-host cancellation is rejected. Unit tests cover accepted-then-disconnected status polling, a POST network error followed by exact intent-to-revision binding, and restart rejection. All of these are software-path checks; the Native feature remains disabled and no device or hardware timing claim is made.
