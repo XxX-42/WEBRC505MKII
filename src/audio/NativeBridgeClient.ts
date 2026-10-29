@@ -743,6 +743,32 @@ export class NativeRhythmScheduleOutcomeUnknownError extends Error {
   }
 }
 
+export class NativeRhythmScheduleTerminalError extends Error {
+  public readonly receipt: NativeRhythmScheduleReceipt;
+  public readonly lastStatus: NativeStatus;
+  public readonly outcome: 'cancelled' | 'fault' | 'appliedFrameMismatch';
+
+  public constructor(receipt: NativeRhythmScheduleReceipt, lastStatus: NativeStatus,
+      outcome: NativeRhythmScheduleTerminalError['outcome'], cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Native scheduled ${receipt.action.toUpperCase()} revision ${receipt.revision} on Track ${receipt.trackId} is terminal (${outcome}); its host status is known. ${detail}`);
+    this.name = 'NativeRhythmScheduleTerminalError';
+    this.receipt = receipt;
+    this.lastStatus = lastStatus;
+    this.outcome = outcome;
+  }
+}
+
+export class NativeRhythmScheduleRecoveryBlockedError extends Error {
+  public readonly lastStatus: NativeStatus;
+
+  public constructor(lastStatus: NativeStatus, message: string) {
+    super(message);
+    this.name = 'NativeRhythmScheduleRecoveryBlockedError';
+    this.lastStatus = lastStatus;
+  }
+}
+
 export class NativeBridgeClient {
   private readonly baseUrl: string;
   private latestStatus: NativeStatus | null = null;
@@ -1355,20 +1381,23 @@ export class NativeBridgeClient {
       const scheduling = status.nativeLoopFrameScheduling;
       const hostIncarnationId = status.hostIncarnationId;
       if (!isNativeHostIncarnationId(hostIncarnationId) || !Array.isArray(scheduling?.requests)) {
-        throw new Error('Native status cannot identify a pending Rhythm schedule receipt; no transport action was retried.');
+        throw new NativeRhythmScheduleRecoveryBlockedError(status,
+          'Native status cannot identify a pending Rhythm schedule receipt; no transport action was retried.');
       }
       const pending = scheduling.requests.flatMap((item, index) => item && item.requestedRevision > 0 &&
         item.appliedRevision !== item.requestedRevision && item.cancelledRevision !== item.requestedRevision &&
         item.faultRevision !== item.requestedRevision ? [{ item, trackId: index + 1 }] : []);
       if (pending.length === 0 && scheduling.requests.some((item) => item?.requestedRevision > 0)) return status;
       if (pending.length !== 1) {
-        throw new Error('Native status contains no uniquely pending Rhythm schedule; no transport action was retried.');
+        throw new NativeRhythmScheduleRecoveryBlockedError(status,
+          'Native status contains no uniquely pending Rhythm schedule; no transport action was retried.');
       }
       const { item, trackId } = pending[0]!;
       if (!['record', 'stop'].includes(item.requestedAction) ||
           !Number.isSafeInteger(item.requestedAbsoluteFrame) || !Number.isSafeInteger(item.requestedPhaseEpoch) ||
           !Number.isSafeInteger(item.requestedSettingsRevision) || typeof item.requestedIntentId !== 'string') {
-        throw new Error('Native status has an incomplete pending Rhythm schedule receipt; no transport action was retried.');
+        throw new NativeRhythmScheduleRecoveryBlockedError(status,
+          'Native status has an incomplete pending Rhythm schedule receipt; no transport action was retried.');
       }
       const revision = item.requestedRevision;
       const orphanReceipt: NativeRhythmScheduleReceipt = { trackId, action: item.requestedAction, revision, baselineRevision: revision - 1,
@@ -1499,14 +1528,17 @@ export class NativeBridgeClient {
         return await this.finishRhythmCancellationReconcile(receipt.trackId, receipt.revision, receipt, reconciled, error);
       } catch (reconcileError) {
         if (reconcileError instanceof NativeRhythmScheduleOutcomeUnknownError) throw reconcileError;
+        if (reconcileError instanceof NativeRhythmScheduleTerminalError) throw reconcileError;
         throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status, reconcileError);
       }
     }
   }
 
   private async reconcileRhythmScheduledLoop(receipt: NativeRhythmScheduleReceipt, cause: unknown): Promise<NativeStatus> {
+    let lastStatus: NativeStatus | null = null;
     try {
       const status = await this.getStatus();
+      lastStatus = status;
       if (status.hostIncarnationId !== receipt.hostIncarnationId) {
         throw new NativeRhythmScheduleOutcomeUnknownError(receipt, status,
           new Error('Native host incarnation changed; this pending intent belongs to another process.'));
@@ -1526,7 +1558,8 @@ export class NativeBridgeClient {
       return await this.finishRhythmCancellationReconcile(resolved.trackId, exact.revision, exact, status, cause);
     } catch (error) {
       if (error instanceof NativeRhythmScheduleOutcomeUnknownError) throw error;
-      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, null, error);
+      if (error instanceof NativeRhythmScheduleTerminalError) throw error;
+      throw new NativeRhythmScheduleOutcomeUnknownError(receipt, lastStatus, error);
     }
   }
 
@@ -1545,18 +1578,21 @@ export class NativeBridgeClient {
     if (item?.appliedRevision === revision) {
       if (receipt.absoluteFrame > 0 && item.appliedAbsoluteFrame !== receipt.absoluteFrame) {
         this.pendingRhythmSchedule = null;
-        throw new Error(`Native callback applied revision ${revision} at frame ${item.appliedAbsoluteFrame}, expected ${receipt.absoluteFrame}; inspect track PCM before retrying.`);
+        throw new NativeRhythmScheduleTerminalError(receipt, initialStatus, 'appliedFrameMismatch',
+          new Error(`Callback applied at frame ${item.appliedAbsoluteFrame}, expected ${receipt.absoluteFrame}; inspect track PCM before retrying.`));
       }
       this.pendingRhythmSchedule = null;
       return initialStatus;
     }
     if (item?.cancelledRevision === revision) {
       this.pendingRhythmSchedule = null;
-      throw new Error(`Native Rhythm-scheduled ${receipt.action.toUpperCase()} revision ${revision} was cancelled before dispatch.`);
+      throw new NativeRhythmScheduleTerminalError(receipt, initialStatus, 'cancelled',
+        new Error('The host confirms it was cancelled before dispatch.'));
     }
     if (item?.faultRevision === revision) {
       this.pendingRhythmSchedule = null;
-      throw new Error(`Native Rhythm-scheduled request failed (fault ${item.fault}); inspect track status.`);
+      throw new NativeRhythmScheduleTerminalError(receipt, initialStatus, 'fault',
+        new Error(`The host reports callback fault ${item.fault}; inspect track status.`));
     }
     if (item?.requestedRevision !== revision) throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus, cause);
     if (!allowCancel) throw new NativeRhythmScheduleOutcomeUnknownError(receipt, initialStatus,
@@ -1574,7 +1610,8 @@ export class NativeBridgeClient {
       }
       if (latestItem?.cancelledRevision === revision) {
         this.pendingRhythmSchedule = null;
-        throw new Error(`Native Rhythm-scheduled ${receipt.action.toUpperCase()} revision ${revision} was cancelled before dispatch.`);
+        throw new NativeRhythmScheduleTerminalError(receipt, latest!, 'cancelled',
+          new Error('The host confirms it was cancelled before dispatch.'));
       }
       throw new NativeRhythmScheduleOutcomeUnknownError(receipt, latest ?? initialStatus, cancelError);
     }

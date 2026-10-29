@@ -92,9 +92,35 @@ describe('Native multi-track bridge client', () => {
     await expect(client.reconcilePendingRhythmSchedule()).rejects.toMatchObject({
       name: 'NativeRhythmScheduleOutcomeUnknownError',
       receipt: { trackId: 3, action: 'record', revision: 21, hostIncarnationId, intentId: 'e'.repeat(32) },
+      lastStatus: { hostIncarnationId, nativeLoopFrameScheduling: { requests: [{}, {}, pending] } },
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://127.0.0.1:17755/v1/status');
+  });
+
+  it.each([
+    ['cancelled', { appliedRevision: 0, cancelledRevision: 7, faultRevision: 0 }],
+    ['fault', { appliedRevision: 0, cancelledRevision: 0, faultRevision: 7, fault: 3 }],
+  ] as const)('retains a known owner %s terminal status without relabeling it unknown', async (outcome, terminal) => {
+    const hostIncarnationId = 'abababababababababababababababab';
+    const receipt = { trackId: 1, action: 'record' as const, revision: 7, baselineRevision: 6,
+      absoluteFrame: 24_000, phaseEpoch: 2, settingsRevision: 3, hostIncarnationId, intentId: 'a'.repeat(32) };
+    const item = { trackIndex: 0, requestedRevision: 7, requestedAbsoluteFrame: 24_000,
+      requestedIntentId: receipt.intentId, requestedPhaseEpoch: 2, requestedSettingsRevision: 3,
+      requestedAction: 'record', appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0,
+      ...terminal };
+    const status = { ok: true, hostIncarnationId, nativeLoopFrameScheduling: { requests: [item] } };
+    const fetchMock = vi.fn(async () => ({ json: async () => status }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+    (client as any).pendingRhythmSchedule = receipt;
+
+    await expect(client.reconcilePendingRhythmSchedule()).rejects.toMatchObject({
+      name: 'NativeRhythmScheduleTerminalError', outcome, receipt, lastStatus: status,
+    });
+    expect(client.getPendingRhythmSchedule()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://127.0.0.1:17755/v1/status');
   });
 
   it('rejects an unacknowledged or out-of-range Rhythm schedule request', async () => {

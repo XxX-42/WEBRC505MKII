@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
-import type { NativeBridgeClient, NativeRhythmScheduleReceipt, NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { NativeRhythmScheduleOutcomeUnknownError, NativeRhythmScheduleTerminalError, type NativeBridgeClient,
+  type NativeRhythmScheduleReceipt, type NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcile: () => Promise<NativeStatus>) {
   const engine = Object.create(NativeAudioEngine.prototype) as NativeAudioEngine & {
     bridge: NativeBridgeClient;
-    reconcileRhythmScheduleForInit(status: NativeStatus): Promise<NativeStatus>;
+    reconcileRhythmScheduleForInit(status: NativeStatus): Promise<{ status: NativeStatus; terminalNotice?: string }>;
   };
   const reconcilePendingRhythmSchedule = vi.fn(reconcile);
   engine.bridge = {
@@ -16,25 +17,63 @@ function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcil
 }
 
 describe('Native Rhythm schedule initialization reconciliation', () => {
-  it('reconciles a local owner receipt even when the host already reports a terminal ACK', async () => {
+  it.each([
+    ['cancelled', { appliedRevision: 0, cancelledRevision: 9, faultRevision: 0 }],
+    ['fault', { appliedRevision: 0, cancelledRevision: 0, faultRevision: 9, fault: 2 }],
+  ] as const)('preserves known owner %s outcome and reports it as terminal, not unknown', async (outcome, terminalFields) => {
     const ownerReceipt: NativeRhythmScheduleReceipt = { trackId: 1, action: 'record', revision: 9,
       baselineRevision: 8, absoluteFrame: 48_000, phaseEpoch: 3, settingsRevision: 4,
       hostIncarnationId: 'a'.repeat(32), intentId: 'b'.repeat(32) };
-    const status = { nativeLoopFrameScheduling: { requests: [{ requestedRevision: 9, appliedRevision: 9,
-      cancelledRevision: 0, faultRevision: 0 }] } } as NativeStatus;
-    const { engine, reconcilePendingRhythmSchedule } = createEngine(ownerReceipt, async () => status);
+    const status = { nativeLoopFrameScheduling: { requests: [{ requestedRevision: 9, ...terminalFields }] } } as NativeStatus;
+    const terminal = new NativeRhythmScheduleTerminalError(ownerReceipt, status, outcome, new Error(`known ${outcome}`));
+    const { engine, reconcilePendingRhythmSchedule } = createEngine(ownerReceipt, async () => { throw terminal; });
 
-    await expect((engine as any).reconcileRhythmScheduleForInit(status)).resolves.toBe(status);
+    await expect((engine as any).reconcileRhythmScheduleForInit(status)).resolves.toEqual({ status, terminalNotice: terminal.message });
     expect(reconcilePendingRhythmSchedule).toHaveBeenCalledOnce();
   });
 
   it('delegates an orphan pending status to the read-only client recovery path', async () => {
     const status = { nativeLoopFrameScheduling: { requests: [{ requestedRevision: 5, appliedRevision: 0,
       cancelledRevision: 0, faultRevision: 0 }] } } as NativeStatus;
-    const unknown = new Error('pending receipt has no local owner');
+    const receipt: NativeRhythmScheduleReceipt = { trackId: 1, action: 'stop', revision: 5,
+      baselineRevision: 4, absoluteFrame: 24_000, phaseEpoch: 2, settingsRevision: 3,
+      hostIncarnationId: 'c'.repeat(32), intentId: 'd'.repeat(32) };
+    const unknown = new NativeRhythmScheduleOutcomeUnknownError(receipt, status, new Error('pending receipt has no local owner'));
     const { engine, reconcilePendingRhythmSchedule } = createEngine(null, async () => { throw unknown; });
 
     await expect((engine as any).reconcileRhythmScheduleForInit(status)).rejects.toBe(unknown);
     expect(reconcilePendingRhythmSchedule).toHaveBeenCalledOnce();
+  });
+
+  it('keeps orphan status visible and Native transport blocked during initialization', async () => {
+    const hostIncarnationId = 'e'.repeat(32);
+    const receipt: NativeRhythmScheduleReceipt = { trackId: 2, action: 'record', revision: 6,
+      baselineRevision: 5, absoluteFrame: 24_000, phaseEpoch: 2, settingsRevision: 3,
+      hostIncarnationId, intentId: 'f'.repeat(32) };
+    const status = { hostIncarnationId, engineRunning: true, bridgeHealthy: true,
+      nativeLoopFrameScheduling: { requests: [{}, { requestedRevision: 6, appliedRevision: 0,
+        cancelledRevision: 0, faultRevision: 0 }] } } as NativeStatus;
+    const unknown = new NativeRhythmScheduleOutcomeUnknownError(receipt, status, new Error('orphan pending'));
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridgeAvailable = false;
+    engine.bridge = {
+      health: vi.fn(async () => ({})), getStatus: vi.fn(async () => status),
+      getDevices: vi.fn(async () => ({})), getPendingRhythmSchedule: vi.fn(() => null),
+      reconcilePendingRhythmSchedule: vi.fn(async () => { throw unknown; }),
+    };
+    engine.refreshCatalog = vi.fn(async () => {});
+    let published: NativeStatus | null = null;
+    engine.applyStatus = vi.fn((value: NativeStatus) => {
+      published = value; engine.latestStatus = value; engine.engineRunning = value.engineRunning;
+    });
+    engine.emitAll = vi.fn();
+
+    await expect(engine.initializeNative()).rejects.toBe(unknown);
+
+    expect(published).toBe(status);
+    expect(engine.latestStatus).toBe(status);
+    expect(engine.nativeRhythmScheduleRecoveryBlocked).toBe(true);
+    expect(engine.getUiStatus()).toMatchObject({ ready: false, message: 'NATIVE RHYTHM SCHEDULE NEEDS REVIEW' });
+    expect(engine.isNativeReady()).toBe(false);
   });
 });

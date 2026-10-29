@@ -18,6 +18,7 @@ import { encodeWav } from './export/wavEncoder';
 import { NativeTrackProxy } from './NativeTrackProxy';
 import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
+import { NativeRhythmScheduleOutcomeUnknownError, NativeRhythmScheduleRecoveryBlockedError, NativeRhythmScheduleTerminalError } from './NativeBridgeClient';
 import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
 import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectImportCommitReceipt, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
@@ -201,6 +202,7 @@ export class NativeAudioEngine {
   private nativeOscVocFrameObservedAtMs = 0;
   private bridgeAvailable = false;
   private engineRunning = false;
+  private nativeRhythmScheduleRecoveryBlocked = false;
   private initInFlight: Promise<void> | null = null;
   private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
@@ -649,6 +651,16 @@ export class NativeAudioEngine {
       };
     }
 
+    if (this.nativeRhythmScheduleRecoveryBlocked) {
+      return {
+        bridgeAvailable: true,
+        engineRunning: this.engineRunning,
+        ready: false,
+        message: 'NATIVE RHYTHM SCHEDULE NEEDS REVIEW',
+        lastError: this.lastError || 'A scheduled Native REC/STOP has no local owner receipt; inspect the host status before continuing.',
+      };
+    }
+
     if (!this.engineRunning) {
       return {
         bridgeAvailable: true,
@@ -669,7 +681,7 @@ export class NativeAudioEngine {
   }
 
   public isNativeReady() {
-    return this.bridgeAvailable && this.engineRunning;
+    return this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked;
   }
 
   public isBridgeAvailable() {
@@ -1974,8 +1986,11 @@ export class NativeAudioEngine {
       this.bridgeAvailable = true;
       await this.refreshCatalog();
       let status = await this.bridge.getStatus();
-      status = await this.reconcileRhythmScheduleForInit(status);
+      const scheduleRecovery = await this.reconcileRhythmScheduleForInit(status);
+      status = scheduleRecovery.status;
       this.applyStatus(status);
+      this.nativeRhythmScheduleRecoveryBlocked = false;
+      if (scheduleRecovery.terminalNotice) this.lastError = scheduleRecovery.terminalNotice;
       this.hydrateNativeCatalogFromStatus(status);
       if (status.engineRunning) {
         // Connecting to an already-running host is observational: applying a
@@ -1989,12 +2004,26 @@ export class NativeAudioEngine {
       this.startPolling();
       this.emitAll();
     } catch (error) {
-      this.handleBridgeFailure(error, !this.bridgeAvailable);
+      const lastStatus = error instanceof NativeRhythmScheduleOutcomeUnknownError ||
+        error instanceof NativeRhythmScheduleRecoveryBlockedError ? error.lastStatus : null;
+      if (lastStatus) {
+        // Keep the host's explicit unresolved request visible and keep Native
+        // controls disabled; this is a known orphan status, not a lost bridge.
+        this.applyStatus(lastStatus, false);
+        this.nativeRhythmScheduleRecoveryBlocked = true;
+        this.lastError = error instanceof Error ? error.message : String(error);
+        this.emitAll();
+      } else {
+        this.handleBridgeFailure(error, !this.bridgeAvailable);
+      }
       throw error;
     }
   }
 
-  private async reconcileRhythmScheduleForInit(initialStatus: NativeStatus): Promise<NativeStatus> {
+  private async reconcileRhythmScheduleForInit(initialStatus: NativeStatus): Promise<{
+    status: NativeStatus;
+    terminalNotice?: string;
+  }> {
     const ownerReceipt = this.bridge.getPendingRhythmSchedule();
     const pending = (initialStatus.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
       item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
@@ -2002,23 +2031,42 @@ export class NativeAudioEngine {
     if (ownerReceipt) {
       // Resolve this tab's own receipt even if the host has already reached a
       // terminal ACK; otherwise the client would reject every later schedule.
-      const reconciled = await this.bridge.reconcilePendingRhythmSchedule();
+      let reconciled: NativeStatus;
+      let terminalNotice: string | undefined;
+      try {
+        reconciled = await this.bridge.reconcilePendingRhythmSchedule();
+      } catch (error) {
+        if (!(error instanceof NativeRhythmScheduleTerminalError)) throw error;
+        reconciled = error.lastStatus;
+        terminalNotice = error.message;
+      }
+      if (!terminalNotice) {
+        const ownerItem = reconciled.nativeLoopFrameScheduling?.requests?.[ownerReceipt.trackId - 1];
+        if (ownerItem?.requestedIntentId === ownerReceipt.intentId && ownerItem.cancelledRevision === ownerItem.requestedRevision) {
+          terminalNotice = `Native scheduled ${ownerReceipt.action.toUpperCase()} on Track ${ownerReceipt.trackId} was cancelled; the host confirmed the terminal status.`;
+        } else if (ownerItem?.requestedIntentId === ownerReceipt.intentId && ownerItem.faultRevision === ownerItem.requestedRevision) {
+          terminalNotice = `Native scheduled ${ownerReceipt.action.toUpperCase()} on Track ${ownerReceipt.trackId} faulted (${ownerItem.fault}); the host confirmed the terminal status.`;
+        }
+      }
       const stillPending = (reconciled.nativeLoopFrameScheduling?.requests ?? []).filter((item) =>
         item && item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
         item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
       if (stillPending.length > 0) {
-        if (stillPending.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
+        if (stillPending.length !== 1) throw new NativeRhythmScheduleRecoveryBlockedError(reconciled,
+          'Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
         // The owner receipt was cleared, so this is now an orphaned request.
         // The client will only observe it and block; it will not cancel it.
-        return this.bridge.reconcilePendingRhythmSchedule();
+        const status = await this.bridge.reconcilePendingRhythmSchedule();
+        return terminalNotice ? { status, terminalNotice } : { status };
       }
-      return reconciled;
+      return terminalNotice ? { status: reconciled, terminalNotice } : { status: reconciled };
     }
-    if (pending.length === 0) return initialStatus;
-    if (pending.length !== 1) throw new Error('Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
+    if (pending.length === 0) return { status: initialStatus };
+    if (pending.length !== 1) throw new NativeRhythmScheduleRecoveryBlockedError(initialStatus,
+      'Native host reports multiple unresolved Rhythm schedules; inspect host track state before transport is enabled.');
     // With no owner receipt, the client reports and blocks on an orphan. It
     // must never cancel an action based solely on another tab's status.
-    return this.bridge.reconcilePendingRhythmSchedule();
+    return { status: await this.bridge.reconcilePendingRhythmSchedule() };
   }
 
   private async refreshCatalog() {
