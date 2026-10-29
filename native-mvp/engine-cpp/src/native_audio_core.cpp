@@ -1692,7 +1692,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         emergencySettingsRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
         emergencyPhaseEpoch = phase.epoch;
         if (!phaseStable || phase.available || emergencyPhaseEpoch == 0U ||
-            emergencyPhaseAvailabilityGeneration == 0U || emergencySettingsRevision == 0U) {
+            emergencyPhaseAvailabilityGeneration == 0U || !nativeTempoAppliedValid_.load(std::memory_order_acquire)) {
             error = "PCM-preserving emergency STOP requires a stable unavailable Native Rhythm phase; use the scheduled measure STOP while phase is available.";
             return false;
         }
@@ -1848,6 +1848,7 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         if (!phaseStable || phase.available || phase.epoch != command.emergencyPhaseEpoch ||
             nativeRhythmPhaseAvailabilityGeneration_.load(std::memory_order_acquire) !=
                 command.emergencyPhaseAvailabilityGeneration ||
+            !nativeTempoAppliedValid_.load(std::memory_order_acquire) ||
             nativeTempoAppliedRevision_.load(std::memory_order_acquire) != command.emergencySettingsRevision) {
             recordStopRuntimeGeneration_[index] = command.revision;
             recordStopCommittedRuntimeRevision_[index] = 0U;

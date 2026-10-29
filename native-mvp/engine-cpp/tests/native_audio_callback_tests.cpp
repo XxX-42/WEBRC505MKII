@@ -121,6 +121,15 @@ struct NativeAudioCoreTestAccess {
         core.nativeTempoAppliedRevision_.store(core.nativeTempoRequestedRevision_, std::memory_order_release);
         core.nativeTempoAppliedValid_.store(true, std::memory_order_release);
     }
+    static void setRhythmConfigAtTempoRevisionZeroForTest(NativeAudioCore& core, const NativeRhythmConfig& config) {
+        core.nativeRhythmConfig_ = config;
+        assert(core.nativeRhythmEngine_.setConfig(config, 0U));
+        std::uint64_t tempoBits = 0U;
+        std::memcpy(&tempoBits, &config.bpm, sizeof(tempoBits));
+        core.nativeTempoAppliedBpmBits_.store(tempoBits, std::memory_order_release);
+        core.nativeTempoAppliedRevision_.store(0U, std::memory_order_release);
+        core.nativeTempoAppliedValid_.store(true, std::memory_order_release);
+    }
 
     static void installConfigTestDevices(NativeAudioCore& core) {
         DeviceDescriptor input;
@@ -3303,9 +3312,9 @@ void testNativeRhythmPhaseIsProtectedAndEmergencyStopRetainsPcm() {
     NativeAudioCoreTestAccess::setInputChannels(core, 2U);
     NativeRhythmConfig rhythm;
     rhythm.enabled = true;
-    rhythm.bpm = 300.0;
+    rhythm.bpm = 120.0;
     rhythm.patternIndex = 92U;
-    assert(core.setNativeRhythmConfig(rhythm, error));
+    NativeAudioCoreTestAccess::setRhythmConfigAtTempoRevisionZeroForTest(core, rhythm);
     assert(core.setRecordQuantizeMeasure(true, error));
     assert(core.setTrackLoopSync(0U, true, error));
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
@@ -3316,6 +3325,7 @@ void testNativeRhythmPhaseIsProtectedAndEmergencyStopRetainsPcm() {
     assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), frames) == 0);
     const auto phaseStatus = core.getStatus();
     assert(phaseStatus.nativeRhythmPhase.available);
+    assert(phaseStatus.nativeTempoAppliedValid && phaseStatus.nativeTempoAppliedRevision == 0U);
     std::uint64_t recordRevision = 0U;
     const auto recordFrame = phaseStatus.nativeRhythmPhase.nextMeasureFrame;
     assert(core.scheduleNativeRhythmRecordOrStop(0U, NativeScheduledLoopAction::Record,
