@@ -478,8 +478,6 @@ describe('rhythm AudioWorklet integration', () => {
         configuration: RhythmWorkletConfiguration;
       };
       expect(restarted.requestId).toBeGreaterThan(stop.requestId);
-      node.emitMessage({ type: 'measure-phase', available: false, requestId: stop.requestId, epoch: 3 });
-      expect(engine.measurePhaseSnapshot).toBeNull();
       node.emitMessage({
         type: 'measure-phase',
         available: true,
@@ -493,6 +491,9 @@ describe('rhythm AudioWorklet integration', () => {
         stepsPerBar: restarted.configuration.stepsPerBar,
       });
       expect(engine.measurePhaseSnapshot).toMatchObject({ epoch: 4, requestId: restarted.requestId });
+      const restartedSnapshot = engine.measurePhaseSnapshot;
+      node.emitMessage({ type: 'measure-phase', available: false, requestId: stop.requestId, epoch: 3 });
+      expect(engine.measurePhaseSnapshot).toEqual(restartedSnapshot);
     } finally {
       engine.dispose();
     }
