@@ -161,6 +161,42 @@ describe('Native multi-track bridge client', () => {
     });
   });
 
+  it.each(['cancel response reports fault', 'cancel response is lost before fault status'] as const)(
+    'preserves the owner fault terminal when a cancellation race returns %s', async (race) => {
+      const hostIncarnationId = 'cccccccccccccccccccccccccccccccc';
+      const receipt = { trackId: 1, action: 'record' as const, revision: 11, baselineRevision: 10,
+        absoluteFrame: 48_000, phaseEpoch: 2, settingsRevision: 5, hostIncarnationId, intentId: 'b'.repeat(32) };
+      const pending = { trackIndex: 0, requestedRevision: 11, requestedAbsoluteFrame: receipt.absoluteFrame,
+        requestedIntentId: receipt.intentId, requestedPhaseEpoch: receipt.phaseEpoch,
+        requestedSettingsRevision: receipt.settingsRevision, requestedAction: 'record', appliedRevision: 0,
+        appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+      const faulted = { ...pending, faultRevision: 11, fault: 4 };
+      let reads = 0;
+      const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).endsWith('/v1/transport/rhythm-schedule/cancel')) {
+          if (race === 'cancel response is lost before fault status') throw new Error('connection reset after cancel race');
+          return { json: async () => ({ ok: true, hostIncarnationId,
+            nativeLoopFrameScheduling: { requests: [faulted] } }) } as Response;
+        }
+        reads += 1;
+        const item = reads === 1 ? pending : faulted;
+        return { json: async () => ({ ok: true, hostIncarnationId,
+          nativeLoopFrameScheduling: { requests: [item] } }) } as Response;
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new NativeBridgeClient();
+      (client as any).pendingRhythmSchedule = receipt;
+      const pendingStatus = { ok: true, hostIncarnationId, nativeLoopFrameScheduling: { requests: [pending] } };
+
+      await expect((client as any).finishRhythmCancellationReconcile(1, 11, receipt, pendingStatus, new Error('cancel race'))).rejects.toMatchObject({
+        name: 'NativeRhythmScheduleTerminalError', outcome: 'fault', receipt,
+        lastStatus: { hostIncarnationId, nativeLoopFrameScheduling: { requests: [faulted] } },
+      });
+      expect(client.getPendingRhythmSchedule()).toBeNull();
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/cancel'))).toHaveLength(1);
+      expect(reads).toBe(race === 'cancel response is lost before fault status' ? 2 : 1);
+    });
+
   it('retains the accepted schedule revision across a disconnect and cancels only that revision after reconnect', async () => {
     let statusReads = 0;
     let scheduleAccepted = false;
