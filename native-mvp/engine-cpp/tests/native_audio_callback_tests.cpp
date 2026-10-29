@@ -3242,6 +3242,23 @@ void testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testNativeLoopSyncRejectsRecDubCombination() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    std::string error;
+    assert(core.setRecordQuantizeMeasure(true, error));
+    assert(core.setRecordAction(true, error));
+    assert(!core.setTrackLoopSync(0U, true, error));
+    assert(error.find("REC->PLAY") != std::string::npos);
+    assert(core.setRecordAction(false, error));
+    assert(core.setTrackLoopSync(0U, true, error));
+    assert(!core.setRecordAction(true, error));
+    assert(error.find("LOOP SYNC") != std::string::npos);
+    assert(core.getStatus().nativeLoopSync[0U]);
+    assert(!core.getStatus().nativeRecordActionDub);
+}
+
 void testNativeScheduledRequestIsSettledAfterStreamStop() {
     using namespace webrc::native;
     NativeAudioCore core;
@@ -3710,6 +3727,7 @@ int main() {
     testNativeOneShotOverdubAdmissionIsSideEffectFree();
     testMixerIndependentPcmGains();
     testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable();
+    testNativeLoopSyncRejectsRecDubCombination();
     testNativeScheduledRequestIsSettledAfterStreamStop();
 #if defined(NATIVE_CALLBACK_NO_HARDWARE)
     testNativeScheduledDispatchAcknowledgesBeforeStopSettlement();

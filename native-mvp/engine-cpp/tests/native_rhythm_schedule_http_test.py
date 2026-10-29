@@ -98,7 +98,10 @@ def main():
         off_code, off_status = request('/v1/record/settings', 'POST', {'quantize': 'OFF'})
         require(off_code == 409 and 'loop sync' in off_status.get('error', '').lower(),
             ('REC QUANTIZE OFF was accepted with LOOP SYNC enabled', off_code, off_status))
-        direct_record_code, direct_record = request('/v1/transport/record', 'POST', {'trackId': 2})
+        dub_code, dub_status = request('/v1/record/settings', 'POST', {'recAction': 'REC->DUB'})
+        require(dub_code == 409 and 'loop sync' in dub_status.get('error', '').lower(),
+            ('REC->DUB was accepted with LOOP SYNC enabled', dub_code, dub_status))
+        direct_record_code, direct_record = request('/v1/transport/record?trackId=2', 'POST', {})
         require(direct_record_code == 409 and 'scheduler' in direct_record.get('error', '').lower(),
             ('direct REC bypassed Native LOOP SYNC scheduling', direct_record_code, direct_record))
         set_callback_gate(True)
@@ -154,7 +157,7 @@ def main():
         direct_finish_code, direct_finish = request('/v1/transport/finish-record', 'POST', {'trackId': 2})
         require(direct_finish_code == 409 and 'scheduler' in direct_finish.get('error', '').lower(),
             ('direct REC completion bypassed Native LOOP SYNC scheduling', direct_finish_code, direct_finish))
-        direct_stop_code, direct_stop = request('/v1/transport/stop', 'POST', {'trackId': 2})
+        direct_stop_code, direct_stop = request('/v1/transport/stop?trackId=2', 'POST', {})
         require(direct_stop_code == 409 and 'measure' in direct_stop.get('error', '').lower(),
             ('direct STOP bypassed Native LOOP SYNC scheduling', direct_stop_code, direct_stop))
         require(request('/v1/status')[1]['nativeTracks'][1]['state'] == 'Recording', 'direct STOP changed the recording state')
@@ -174,21 +177,19 @@ def main():
         metadata_code, metadata = request('/v1/export/track-metadata?trackId=2')
         require(metadata_code == 200 and metadata['frameCount'] ==
             stop_request['absoluteFrame'] - record_request['absoluteFrame'], metadata)
-        direct_play_code, direct_play = request('/v1/transport/play', 'POST', {'trackId': 2})
+        direct_play_code, direct_play = request('/v1/transport/play?trackId=2', 'POST', {})
         require(direct_play_code == 409 and 'scheduler' in direct_play.get('error', '').lower(),
             ('direct PLAY bypassed Native LOOP SYNC scheduling', direct_play_code, direct_play))
         set_callback_gate(True)
         play_request = phase(request('/v1/status')[1])
         play_request['action'] = 'play'
-        code, accepted_play = request('/v1/transport/rhythm-schedule', 'POST', play_request)
-        require(code == 200, accepted_play)
-        play_revision = accepted_play['nativeLoopFrameScheduling']['acceptedRevision']
+        code, rejected_play = request('/v1/transport/rhythm-schedule', 'POST', play_request)
+        require(code == 409 and 'provenance' in rejected_play.get('error', '').lower(),
+            ('synchronized PLAY accepted PCM with no retained phase provenance', code, rejected_play))
         set_callback_gate(False)
-        playing = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == play_revision
-            and value['nativeTracks'][1]['state'] == 'Playing')
-        require(playing['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
-            play_request['absoluteFrame'], playing)
-        require(playing['nativeTracks'][1]['loopLengthSamples'] == metadata['frameCount'], playing)
+        still_stopped = request('/v1/status')[1]
+        require(still_stopped['nativeTracks'][1]['state'] == 'Stopped' and
+            still_stopped['nativeTracks'][1]['loopLengthSamples'] == metadata['frameCount'], still_stopped)
         # A quantized REC request never replaces incumbent PCM implicitly.
         set_callback_gate(True)
         occupied_track_request = phase(request('/v1/status')[1])
@@ -219,7 +220,7 @@ def main():
         code, gate_status = request('/v1/test/simulation/callback-gate')
         require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
             ('simulation callback did not resume after restart', gate_status))
-        print('Native Rhythm LOOP SYNC HTTP: settings ACK, exact callback frame ACK, PCM frame length, incumbent PCM protection')
+        print('Native Rhythm LOOP SYNC HTTP: settings ACK, exact REC/STOP frame ACK, PCM frame length, REC->DUB and unproven PLAY rejection, incumbent PCM protection')
     finally:
         try:
             request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})

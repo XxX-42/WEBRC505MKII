@@ -177,6 +177,28 @@ describe('Native semantic Memory runtime', () => {
     await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/inconsistent/);
     expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
   });
+  it('rejects REC->DUB plus LOOP SYNC both at capture and when Memory fields are merged', async () => {
+    const captureCase = fixture();
+    captureCase.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: true,
+      recAction: 'REC->DUB', quantize: 'MEASURE', requestedRevision: 1, appliedRevision: 1,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    captureCase.hostStatus().nativeMemory!.recQuantize = 'MEASURE';
+    captureCase.hostStatus().nativeMemory!.loopSync = [false, true, false, false, false];
+    await expect(captureCase.runtime.capture()).rejects.toThrow(/REC->DUB.*LOOP SYNC/);
+
+    const importCase = fixture();
+    importCase.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: true,
+      recAction: 'REC->PLAY', quantize: 'MEASURE', requestedRevision: 1, appliedRevision: 1,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    importCase.hostStatus().nativeMemory!.recQuantize = 'MEASURE';
+    importCase.hostStatus().nativeMemory!.loopSync = [false, true, false, false, false];
+    const document = await importCase.runtime.capture();
+    const settings = document.extensions.WEBRC.nativeMemory as any;
+    settings.recAction = 'REC->DUB';
+    document.semantics.fields['record.recAction']!.value = 'REC->DUB';
+    await expect(importCase.runtime.prepare(document, importCase.runtime.revision())).rejects.toThrow(/REC->DUB.*LOOP SYNC/);
+    expect(importCase.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
   it('refuses a committed Memory whose REC QUANTIZE or any LOOP SYNC value fails same-host readback', async () => {
     const h = fixture();
     h.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: false,

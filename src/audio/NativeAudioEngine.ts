@@ -1468,6 +1468,9 @@ export class NativeAudioEngine {
     if (patch.quantize === 'OFF' && this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
       throw new Error('Native REC QUANTIZE OFF cannot be combined with LOOP SYNC until OFF stop-length behavior is implemented.');
     }
+    if (patch.recAction === 'REC->DUB' && this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
+      throw new Error('Native REC->DUB cannot be combined with LOOP SYNC; use REC->PLAY or disable LOOP SYNC.');
+    }
     if (patch.recAction !== undefined || patch.quantize !== undefined) {
       const applied = await this.dispatchStatusRequest(() => this.bridge.setRecordSettings({
         ...(patch.recAction ? { recAction: patch.recAction } : {}),
@@ -1484,6 +1487,9 @@ export class NativeAudioEngine {
   public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<void> {
     if (enabled && this.getRecordPlaySettings().quantize !== 'MEASURE') {
       throw new Error('Set Native REC QUANTIZE to MEASURE before enabling LOOP SYNC.');
+    }
+    if (enabled && this.getRecordPlaySettings().recAction === 'REC->DUB') {
+      throw new Error('Set Native REC ACTION to REC->PLAY before enabling LOOP SYNC.');
     }
     const status = await this.dispatchStatusRequest(() => this.bridge.setTrackLoopSync(trackId, enabled));
     if (status.nativeMemory?.loopSync?.[trackId - 1] !== enabled) throw new Error('Native LOOP SYNC setting was not acknowledged.');
@@ -1609,27 +1615,8 @@ export class NativeAudioEngine {
   }
 
   public getRhythmSyncPlayAvailability(trackId: number): {available: boolean; reason: string} {
-    const status = this.latestStatus;
-    const track = status?.nativeTracks?.find((item) => item.trackId === trackId);
-    const phase = status?.nativeRhythm?.phase;
     if (!this.getTrackLoopSync(trackId)) return { available: true, reason: '' };
-    if (!track || track.state !== 'Stopped' || !Number.isSafeInteger(track.loopLengthSamples) || track.loopLengthSamples! <= 0) {
-      return { available: false, reason: 'Native LOOP SYNC playback requires a stopped track with known PCM length.' };
-    }
-    const phaseAvailability = this.getRhythmSyncPhaseAvailability(trackId);
-    if (!phaseAvailability.available) return phaseAvailability;
-    if (!status || !phase?.available || phase.snapshotStable !== true || phase.frameSchedulingAvailable !== true ||
-        !Number.isSafeInteger(phase.nextMeasureFrame) || !Number.isSafeInteger(phase.measureStartFrame) ||
-        !Number.isFinite(status.sampleRate) || !Number.isFinite(status.nativeRhythm?.bpm) ||
-        !Number.isSafeInteger(phase.meterNumerator) || !Number.isSafeInteger(phase.meterDenominator)) {
-      return { available: false, reason: 'Native LOOP SYNC playback requires a stable Native Rhythm phase.' };
-    }
-    const measureFrames = status.sampleRate! * 60 / status.nativeRhythm!.bpm * phase.meterNumerator * 4 / phase.meterDenominator;
-    const measures = Math.round(track.loopLengthSamples! / measureFrames);
-    if (measureFrames <= 0 || measures < 1 || Math.abs(track.loopLengthSamples! - Math.round(measures * measureFrames)) > 2) {
-      return { available: false, reason: 'Native LOOP SYNC playback requires PCM whose length is an integer number of current Rhythm measures.' };
-    }
-    return { available: true, reason: '' };
+    return { available: false, reason: 'Native LOOP SYNC playback is disabled until phase provenance is retained for each track PCM.' };
   }
 
   public async toggleOverdub(trackId = 1) {
@@ -1650,17 +1637,41 @@ export class NativeAudioEngine {
   }
 
   public stopAllTracks() {
+    if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
+      this.lastError = 'ALL STOP is unavailable while Native LOOP SYNC is enabled; stop synchronized tracks individually.';
+      this.emitAll();
+      return;
+    }
+    const pending: Promise<unknown>[] = [];
     for (const track of this.tracks) {
       if (this.isNativeTrackAvailable(track.trackId) && this.nativeTrackState(track.trackId) !== 'Empty') {
-        void this.stopTrack(track.trackId).catch(() => undefined);
+        pending.push(this.stopTrack(track.trackId));
       }
     }
+    void Promise.allSettled(pending).then(results => {
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length) {
+        this.lastError = `ALL STOP partially failed (${failures.length}/${results.length} tracks): ${String((failures[0] as PromiseRejectedResult).reason)}`;
+        this.emitAll();
+      }
+    });
   }
 
   public playAllTracks() {
-    for (const track of this.tracks) {
-      if (this.isNativeTrackAvailable(track.trackId)) void this.playTrack(track.trackId);
+    if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
+      this.lastError = 'ALL START is unavailable while Native LOOP SYNC is enabled; synchronized PLAY is not phase-proven.';
+      this.emitAll();
+      return;
     }
+    const pending = this.tracks.filter(track => this.isNativeTrackAvailable(track.trackId))
+      .map(track => this.playTrack(track.trackId));
+    void Promise.allSettled(pending).then(results => {
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length) {
+        this.lastError = `ALL START partially failed (${failures.length}/${results.length} tracks): ${String((failures[0] as PromiseRejectedResult).reason)}`;
+        this.emitAll();
+      }
+    });
   }
 
   public setFxType(location: NativeFxPath, slotIndex: number, type: string, trackId = 0) {

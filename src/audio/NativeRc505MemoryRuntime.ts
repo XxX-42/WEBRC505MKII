@@ -114,6 +114,9 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   if (native.loopSync?.some(Boolean) && native.recQuantize !== 'MEASURE') {
     throw new Error('Native Memory cannot capture REC QUANTIZE OFF or unavailable with LOOP SYNC enabled.');
   }
+  if (native.loopSync?.some(Boolean) && record?.recAction === 'REC->DUB') {
+    throw new Error('Native Memory cannot capture REC->DUB with LOOP SYNC enabled; use REC->PLAY or disable LOOP SYNC.');
+  }
   const dubModes: NativeDubMode[] | undefined = native.dubModes === undefined
     ? undefined
     : native.dubModes.length === 5 && native.dubModes.every((mode): mode is NativeDubMode =>
@@ -276,6 +279,11 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const effectiveRecQuantize = targetRecQuantize ?? current.nativeMemory?.recQuantize;
       if (Array.isArray(targetLoopSync) && targetLoopSync.some(Boolean) && effectiveRecQuantize !== 'MEASURE') {
         throw new Error('Native Memory cannot combine REC QUANTIZE OFF or unavailable with LOOP SYNC; select MEASURE.');
+      }
+      const effectiveLoopSync = Array.isArray(targetLoopSync) ? targetLoopSync : current.nativeMemory?.loopSync;
+      const effectiveRecAction = settings.recAction ?? current.nativeRecordPlay?.recAction;
+      if (effectiveLoopSync?.some(Boolean) && effectiveRecAction === 'REC->DUB') {
+        throw new Error('Native Memory cannot combine REC->DUB with LOOP SYNC; use REC->PLAY or disable LOOP SYNC.');
       }
       if (targetRecQuantize !== undefined) {
         const field = document.semantics.fields['record.quantize'];
