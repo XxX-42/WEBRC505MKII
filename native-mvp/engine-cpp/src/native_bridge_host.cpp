@@ -44,6 +44,8 @@ struct NativeAudioCoreTestAccess {
         const auto sequence = core.nativeRhythmPhaseSnapshotSequence_.load(std::memory_order_acquire);
         if ((sequence & 1U) != 0U) return false;
         core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 1U, std::memory_order_seq_cst);
+        const auto prior = core.nativeRhythmPhaseAvailable_.load(std::memory_order_relaxed);
+        if (prior != available) core.nativeRhythmPhaseAvailabilityGeneration_.fetch_add(1U, std::memory_order_relaxed);
         core.nativeRhythmPhaseAvailable_.store(available, std::memory_order_relaxed);
         core.nativeRhythmPhaseSnapshotSequence_.store(sequence + 2U, std::memory_order_release);
         return true;

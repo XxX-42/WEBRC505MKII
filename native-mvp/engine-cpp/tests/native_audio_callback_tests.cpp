@@ -284,6 +284,9 @@ struct NativeAudioCoreTestAccess {
     static bool scheduledTrackPending(const NativeAudioCore& core, std::size_t track) {
         return core.nativeScheduledLoopPending_[track].load(std::memory_order_acquire);
     }
+    static std::uint64_t rhythmPhaseAvailabilityGeneration(const NativeAudioCore& core) {
+        return core.nativeRhythmPhaseAvailabilityGeneration_.load(std::memory_order_acquire);
+    }
     static bool recordStartPending(const NativeAudioCore& core, std::size_t track) {
         return core.recordStartPending_[track].load(std::memory_order_acquire);
     }
@@ -304,13 +307,22 @@ struct NativeAudioCoreTestAccess {
     }
     static void markRhythmPhaseUnavailableForTest(NativeAudioCore& core) {
         const auto sequence = beginRhythmPhaseWriteForTest(core);
+        if (core.nativeRhythmPhaseAvailable_.load(std::memory_order_relaxed)) {
+            core.nativeRhythmPhaseAvailabilityGeneration_.fetch_add(1U, std::memory_order_relaxed);
+        }
         core.nativeRhythmPhaseAvailable_.store(false, std::memory_order_relaxed);
         endRhythmPhaseWriteForTest(core, sequence);
     }
     static void markRhythmPhaseAvailableForTest(NativeAudioCore& core) {
         const auto sequence = beginRhythmPhaseWriteForTest(core);
+        if (!core.nativeRhythmPhaseAvailable_.load(std::memory_order_relaxed)) {
+            core.nativeRhythmPhaseAvailabilityGeneration_.fetch_add(1U, std::memory_order_relaxed);
+        }
         core.nativeRhythmPhaseAvailable_.store(true, std::memory_order_relaxed);
         endRhythmPhaseWriteForTest(core, sequence);
+    }
+    static void publishUnavailableRhythmPhaseForTest(NativeAudioCore& core, std::uint64_t sampleFrame) {
+        core.publishNativeRhythmPhase(sampleFrame, false);
     }
 
     static void injectRejectedPerTrackControl(NativeAudioCore& core) {
@@ -3346,6 +3358,17 @@ void testNativeRhythmPhaseIsProtectedAndEmergencyStopRetainsPcm() {
     assert(core.emergencyStopTrack(0U, error, std::nullopt, 0U, &stopRevision));
     assert(stopRevision > cancelled.nativeRecordStopApplied[0U]);
     assert(!core.clearTrack(0U, error));
+    const auto unavailableBase = core.getStatus();
+    const auto availabilityGeneration = NativeAudioCoreTestAccess::rhythmPhaseAvailabilityGeneration(core);
+    for (unsigned int block = 1U; block <= 4U; ++block) {
+        NativeAudioCoreTestAccess::publishUnavailableRhythmPhaseForTest(core,
+            unavailableBase.nativeRhythmPhase.sampleFrame + static_cast<std::uint64_t>(block) * frames);
+    }
+    const auto unavailableAfterBlocks = core.getStatus();
+    assert(unavailableAfterBlocks.nativeRhythmPhaseSnapshotStable && !unavailableAfterBlocks.nativeRhythmPhase.available);
+    assert(unavailableAfterBlocks.nativeRhythmPhase.epoch == unavailableBase.nativeRhythmPhase.epoch);
+    assert(unavailableAfterBlocks.nativeRhythmPhaseSnapshotRevision > unavailableBase.nativeRhythmPhaseSnapshotRevision);
+    assert(NativeAudioCoreTestAccess::rhythmPhaseAvailabilityGeneration(core) == availabilityGeneration);
     const auto stopped = core.getStatus();
     assert(stopped.nativeTrackStates[0U] == LooperState::Recording);
     assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), frames) == 0);

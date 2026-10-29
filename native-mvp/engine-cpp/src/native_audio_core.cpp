@@ -1674,7 +1674,9 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
-    std::uint64_t emergencyPhaseSnapshotRevision = 0U;
+    std::uint64_t emergencyPhaseEpoch = 0U;
+    std::uint64_t emergencyPhaseAvailabilityGeneration = 0U;
+    std::uint64_t emergencySettingsRevision = 0U;
     if (emergencySynchronizedStop &&
         (type != CommandType::StopRecordOrPlayback || !nativeLoopSync_[trackIndex].load(std::memory_order_acquire) ||
          state != LooperState::Recording || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire) ||
@@ -1684,8 +1686,13 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     }
     if (emergencySynchronizedStop) {
         bool phaseStable = false;
-        const auto phase = readNativeRhythmPhase(phaseStable, emergencyPhaseSnapshotRevision);
-        if (!phaseStable || phase.available || emergencyPhaseSnapshotRevision == 0U) {
+        std::uint64_t ignoredSnapshotRevision = 0U;
+        const auto phase = readNativeRhythmPhase(phaseStable, ignoredSnapshotRevision);
+        emergencyPhaseAvailabilityGeneration = nativeRhythmPhaseAvailabilityGeneration_.load(std::memory_order_acquire);
+        emergencySettingsRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+        emergencyPhaseEpoch = phase.epoch;
+        if (!phaseStable || phase.available || emergencyPhaseEpoch == 0U ||
+            emergencyPhaseAvailabilityGeneration == 0U || emergencySettingsRevision == 0U) {
             error = "PCM-preserving emergency STOP requires a stable unavailable Native Rhythm phase; use the scheduled measure STOP while phase is available.";
             return false;
         }
@@ -1751,7 +1758,9 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         provenanceRevision <= kMaximumSafeProjectContentRevision;
     Command command{type, false, static_cast<std::uint8_t>(trackIndex), stopRevision,
                     provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid};
-    command.emergencyPhaseSnapshotRevision = emergencyPhaseSnapshotRevision;
+    command.emergencyPhaseEpoch = emergencyPhaseEpoch;
+    command.emergencyPhaseAvailabilityGeneration = emergencyPhaseAvailabilityGeneration;
+    command.emergencySettingsRevision = emergencySettingsRevision;
     if (!commandQueue_.push(command)) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision - 1U;
@@ -1832,11 +1841,14 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     }
     if (command.trackIndex >= kNativeTrackCount) return;
     const std::size_t index = command.trackIndex;
-    if (command.emergencyPhaseSnapshotRevision != 0U) {
+    if (command.emergencyPhaseAvailabilityGeneration != 0U) {
         bool phaseStable = false;
-        std::uint64_t phaseRevision = 0U;
-        const auto phase = readNativeRhythmPhase(phaseStable, phaseRevision);
-        if (!phaseStable || phase.available || phaseRevision != command.emergencyPhaseSnapshotRevision) {
+        std::uint64_t ignoredSnapshotRevision = 0U;
+        const auto phase = readNativeRhythmPhase(phaseStable, ignoredSnapshotRevision);
+        if (!phaseStable || phase.available || phase.epoch != command.emergencyPhaseEpoch ||
+            nativeRhythmPhaseAvailabilityGeneration_.load(std::memory_order_acquire) !=
+                command.emergencyPhaseAvailabilityGeneration ||
+            nativeTempoAppliedRevision_.load(std::memory_order_acquire) != command.emergencySettingsRevision) {
             recordStopRuntimeGeneration_[index] = command.revision;
             recordStopCommittedRuntimeRevision_[index] = 0U;
             recordStopCancelledRevision_[index].store(command.revision, std::memory_order_release);
@@ -4876,6 +4888,10 @@ void NativeAudioCore::publishNativeRhythmPhase(std::uint64_t sampleFrame, bool a
     // payload then also orders the odd marker before the reader's second seq load.
     nativeRhythmPhaseSnapshotSequence_.store(sequence + 1U, std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_release);
+    const bool priorAvailable = nativeRhythmPhaseAvailable_.load(std::memory_order_relaxed);
+    if (priorAvailable != phase.available) {
+        nativeRhythmPhaseAvailabilityGeneration_.fetch_add(1U, std::memory_order_relaxed);
+    }
     nativeRhythmPhaseAvailable_.store(phase.available, std::memory_order_relaxed);
     nativeRhythmPhaseEpoch_.store(phase.epoch, std::memory_order_relaxed);
     nativeRhythmPhaseSampleFrame_.store(phase.sampleFrame, std::memory_order_relaxed);

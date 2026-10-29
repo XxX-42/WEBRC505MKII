@@ -1135,6 +1135,7 @@ private:
     std::atomic<std::uint64_t> publishedCallbackFrameCursor_{0U};
     std::atomic<std::uint64_t> nativeRhythmPhaseSnapshotSequence_{0U};
     std::atomic<bool> nativeRhythmPhaseAvailable_{false};
+    std::atomic<std::uint64_t> nativeRhythmPhaseAvailabilityGeneration_{0U};
     std::atomic<std::uint64_t> nativeRhythmPhaseEpoch_{0U};
     std::atomic<std::uint64_t> nativeRhythmPhaseSampleFrame_{0U};
     std::atomic<std::uint64_t> nativeRhythmPhaseOriginFrame_{0U};
