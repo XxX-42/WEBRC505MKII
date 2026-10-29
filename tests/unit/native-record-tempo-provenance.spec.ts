@@ -83,7 +83,7 @@ describe('Native REC tempo provenance tokens', () => {
       stopRequested: [4, 0, 0, 0, 0], stopApplied: [3, 0, 0, 0, 0],
       stopCommittedRevision: [0, 0, 0, 0, 0] } };
     const applied = { ok: true, nativeRecordPlay: { stopRequested: [4, 0, 0, 0, 0], stopApplied: [4, 0, 0, 0, 0],
-      stopCommittedRevision: [4, 0, 0, 0, 0] }, nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 8 }] };
+      stopCommittedRevision: [4, 0, 0, 0, 0] }, nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 8, loopLengthSamples: 0 }] };
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(initial)).mockResolvedValueOnce(jsonResponse(applied));
     vi.stubGlobal('fetch', fetchMock);
     const client = new NativeBridgeClient('http://127.0.0.1:17755');

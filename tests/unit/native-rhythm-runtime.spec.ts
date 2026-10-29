@@ -152,10 +152,10 @@ describe('Native rhythm runtime adapter', () => {
       ...nativeRhythmStatus(),
       nativeTracks: [{ trackId: 3, state: 'Stopped', loopProgress: 1, loopTransportStatus: 'waitingForPlayback' }],
     };
-    const setLoopTransport = vi.fn(async (_trackId: number, _config: NativeLoopTransportConfig) => status);
+    const setLoopTransportFx = vi.fn(async (_trackId: number, _config: NativeLoopTransportConfig) => status);
     const engine = NativeAudioEngine.getInstance();
     const internals = engine as unknown as { bridge: NativeBridgeClient; bridgeAvailable: boolean; latestStatus: NativeStatus | null };
-    internals.bridge = { setLoopTransport } as unknown as NativeBridgeClient;
+    internals.bridge = { setLoopTransportFx } as unknown as NativeBridgeClient;
     internals.bridgeAvailable = true;
     const facade = AudioEngine.getInstance();
     facade.setMode('native');
@@ -166,10 +166,10 @@ describe('Native rhythm runtime adapter', () => {
 
     await expect(facade.setNativeLoopTransport(3, config)).resolves.toBe(status);
 
-    expect(setLoopTransport).toHaveBeenCalledWith(3, config);
+    expect(setLoopTransportFx).toHaveBeenCalledWith(3, config);
     expect(facade.getNativeLoopTransportStatus(3)).toBe('waitingForPlayback');
     expect(facade.getNativeLoopTransportStatus(6)).toBeNull();
-    setLoopTransport.mockRejectedValueOnce(new Error('Native loop-transport update was rejected'));
+    setLoopTransportFx.mockRejectedValueOnce(new Error('Native loop-transport update was rejected'));
     await expect(facade.setNativeLoopTransport(3, config)).rejects.toThrow('Native loop-transport update was rejected');
   });
 });
