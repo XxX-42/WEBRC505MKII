@@ -61,15 +61,13 @@ describe('Native multi-track bridge client', () => {
     }));
   });
 
-  it('rebuilds a lost in-memory receipt from the host status after reconnect', async () => {
+  it('reports an applied schedule from host status after reconnect without issuing transport writes', async () => {
     const hostIncarnationId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-    const pending = { trackIndex: 0, requestedRevision: 12, requestedAbsoluteFrame: 48_000, requestedIntentId: 'c'.repeat(32),
-      requestedPhaseEpoch: 3, requestedSettingsRevision: 8, requestedAction: 'stop', appliedRevision: 0,
-      appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
-    const applied = { ...pending, appliedRevision: 12, appliedAbsoluteFrame: 48_000 };
-    let reads = 0;
+    const applied = { trackIndex: 0, requestedRevision: 12, requestedAbsoluteFrame: 48_000, requestedIntentId: 'c'.repeat(32),
+      requestedPhaseEpoch: 3, requestedSettingsRevision: 8, requestedAction: 'stop', appliedRevision: 12,
+      appliedAbsoluteFrame: 48_000, cancelledRevision: 0, faultRevision: 0, fault: 0 };
     const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true, hostIncarnationId,
-      nativeLoopFrameScheduling: { available: false, requests: [{}, reads++ === 0 ? pending : applied] } }) }) as Response);
+      nativeLoopFrameScheduling: { available: false, requests: [{}, applied] } }) }) as Response);
     vi.stubGlobal('fetch', fetchMock);
     const client = new NativeBridgeClient();
 
@@ -78,7 +76,25 @@ describe('Native multi-track bridge client', () => {
     expect(status.nativeLoopFrameScheduling?.requests?.[1]).toMatchObject({
       requestedRevision: 12, requestedIntentId: 'c'.repeat(32), appliedRevision: 12, appliedAbsoluteFrame: 48_000,
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks on an orphan pending schedule and never cancels another tab intent', async () => {
+    const hostIncarnationId = 'dddddddddddddddddddddddddddddddd';
+    const pending = { trackIndex: 2, requestedRevision: 21, requestedAbsoluteFrame: 96_000, requestedIntentId: 'e'.repeat(32),
+      requestedPhaseEpoch: 6, requestedSettingsRevision: 11, requestedAction: 'record', appliedRevision: 0,
+      appliedAbsoluteFrame: 0, cancelledRevision: 0, faultRevision: 0, fault: 0 };
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true, hostIncarnationId,
+      nativeLoopFrameScheduling: { available: false, requests: [{}, {}, pending] } }) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.reconcilePendingRhythmSchedule()).rejects.toMatchObject({
+      name: 'NativeRhythmScheduleOutcomeUnknownError',
+      receipt: { trackId: 3, action: 'record', revision: 21, hostIncarnationId, intentId: 'e'.repeat(32) },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('http://127.0.0.1:17755/v1/status');
   });
 
   it('rejects an unacknowledged or out-of-range Rhythm schedule request', async () => {

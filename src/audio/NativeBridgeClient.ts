@@ -1346,7 +1346,7 @@ export class NativeBridgeClient {
   }
 
   public async reconcilePendingRhythmSchedule(): Promise<NativeStatus> {
-    let receipt = this.pendingRhythmSchedule;
+    const receipt = this.pendingRhythmSchedule;
     if (!receipt) {
       // A page reload can discard the in-memory receipt while the Native host
       // still owns the accepted callback request. Rebuild only from a complete
@@ -1360,6 +1360,7 @@ export class NativeBridgeClient {
       const pending = scheduling.requests.flatMap((item, index) => item && item.requestedRevision > 0 &&
         item.appliedRevision !== item.requestedRevision && item.cancelledRevision !== item.requestedRevision &&
         item.faultRevision !== item.requestedRevision ? [{ item, trackId: index + 1 }] : []);
+      if (pending.length === 0 && scheduling.requests.some((item) => item?.requestedRevision > 0)) return status;
       if (pending.length !== 1) {
         throw new Error('Native status contains no uniquely pending Rhythm schedule; no transport action was retried.');
       }
@@ -1370,10 +1371,14 @@ export class NativeBridgeClient {
         throw new Error('Native status has an incomplete pending Rhythm schedule receipt; no transport action was retried.');
       }
       const revision = item.requestedRevision;
-      receipt = { trackId, action: item.requestedAction, revision, baselineRevision: revision - 1,
+      const orphanReceipt: NativeRhythmScheduleReceipt = { trackId, action: item.requestedAction, revision, baselineRevision: revision - 1,
         absoluteFrame: item.requestedAbsoluteFrame, phaseEpoch: item.requestedPhaseEpoch,
         settingsRevision: item.requestedSettingsRevision, hostIncarnationId, intentId: item.requestedIntentId };
-      this.pendingRhythmSchedule = receipt;
+      // Status proves what the host is doing, but not that this tab owns the
+      // command. Never cancel another tab's future REC/STOP from a reconstructed
+      // receipt. Block until the exact request reaches a terminal state.
+      throw new NativeRhythmScheduleOutcomeUnknownError(orphanReceipt, status,
+        new Error('A pending Native Rhythm schedule has no local owner receipt; this tab will not cancel or replace it.'));
     }
     return this.reconcileRhythmScheduledLoop(receipt, new Error('Reconciled after reconnect.'));
   }
