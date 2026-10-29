@@ -35,6 +35,11 @@ struct NativeScheduledLoopRequest {
     NativeScheduledLoopAction action = NativeScheduledLoopAction::Record;
     std::uint64_t intentIdHigh = 0U;
     std::uint64_t intentIdLow = 0U;
+    // Nonzero batchId marks a group published atomically by requestBatch.
+    // Every member shares batchId, absoluteFrame, phase/settings revisions,
+    // and batchMask. A group is dispatched only when every member is ready.
+    std::uint64_t batchId = 0U;
+    std::uint8_t batchMask = 0U;
 };
 
 struct NativeScheduledLoopEvent {
@@ -50,6 +55,8 @@ struct NativeScheduledLoopStatus {
     NativeScheduledLoopAction requestedAction = NativeScheduledLoopAction::Record;
     std::uint64_t intentIdHigh = 0U;
     std::uint64_t intentIdLow = 0U;
+    std::uint64_t batchId = 0U;
+    std::uint8_t batchMask = 0U;
     std::uint64_t appliedRevision = 0U;
     std::uint64_t appliedAbsoluteFrame = 0U;
     std::uint64_t cancelledRevision = 0U;
@@ -66,6 +73,10 @@ public:
     static constexpr std::size_t kQueueCapacity = 32U;
 
     [[nodiscard]] bool request(const NativeScheduledLoopRequest& request) noexcept;
+    [[nodiscard]] bool requestBatch(
+        const std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount>& requests,
+        std::size_t count
+    ) noexcept;
     [[nodiscard]] bool cancel(std::size_t trackIndex, std::uint64_t revision) noexcept;
 
     // Returns at most one event per track. Events are due in [blockStart,
@@ -121,6 +132,8 @@ private:
     std::array<std::atomic<NativeScheduledLoopAction>, kNativeScheduledLoopTrackCount> requestedAction_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedIntentIdHigh_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedIntentIdLow_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedBatchId_{};
+    std::array<std::atomic<std::uint8_t>, kNativeScheduledLoopTrackCount> requestedBatchMask_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> applied_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedSnapshotSequence_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedAbsoluteFrame_{};

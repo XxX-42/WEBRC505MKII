@@ -5082,6 +5082,42 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             nativeRhythmEngine_.phaseEpoch(),
             nativeTempoAppliedRevision_.load(std::memory_order_acquire), scheduledEvents, blockedTrackMask)
         : 0U;
+    std::array<bool, kNativeTrackCount> scheduledBatchPreflightRejected{};
+    for (std::size_t eventIndex = 0U; eventIndex < scheduledEventCount; ++eventIndex) {
+        const auto& event = scheduledEvents[eventIndex];
+        if (event.request.batchId == 0U) continue;
+        bool alreadyChecked = false;
+        for (std::size_t prior = 0U; prior < eventIndex; ++prior) {
+            if (scheduledEvents[prior].request.batchId == event.request.batchId) {
+                alreadyChecked = true;
+                break;
+            }
+        }
+        if (alreadyChecked) continue;
+        bool canApplyAll = true;
+        for (std::size_t memberIndex = 0U; memberIndex < scheduledEventCount; ++memberIndex) {
+            const auto& member = scheduledEvents[memberIndex];
+            if (member.request.batchId != event.request.batchId) continue;
+            const auto state = looperForTrack(member.request.trackIndex).state();
+            const auto loopFrames = looperForTrack(member.request.trackIndex).loopLengthSamples();
+            canApplyAll = canApplyAll && (member.request.action == NativeScheduledLoopAction::Play
+                ? state == LooperState::Stopped && loopFrames > 0U
+                : member.request.action == NativeScheduledLoopAction::Stop &&
+                    (state == LooperState::Recording || state == LooperState::Playing || state == LooperState::Overdubbing));
+        }
+        if (!canApplyAll) {
+            // Preflight the whole batch before the first Looper transition so
+            // an invalid member cannot start/stop only part of the group.
+            for (std::size_t memberIndex = 0U; memberIndex < scheduledEventCount; ++memberIndex) {
+                const auto& member = scheduledEvents[memberIndex];
+                if (member.request.batchId != event.request.batchId) continue;
+                const auto track = static_cast<std::size_t>(member.request.trackIndex);
+                scheduledBatchPreflightRejected[track] = true;
+                nativeLoopFrameScheduler_.acknowledgeApplied(track, member.request.revision,
+                    callbackFrameCursor_ + member.frameOffset, false);
+            }
+        }
+    }
 
     for (auto& bank : nativePerTrackFxBanks_) {
         synchronizeOscVocSlotClocks(bank, callbackFrameCursor_);
@@ -5181,7 +5217,8 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         }
         const NativeScheduledLoopEvent* scheduledEvent = nullptr;
         for (std::size_t eventIndex = 0U; eventIndex < scheduledEventCount; ++eventIndex) {
-            if (scheduledEvents[eventIndex].request.trackIndex == trackIndex) {
+            if (!scheduledBatchPreflightRejected[trackIndex] &&
+                scheduledEvents[eventIndex].request.trackIndex == trackIndex) {
                 scheduledEvent = &scheduledEvents[eventIndex];
                 break;
             }

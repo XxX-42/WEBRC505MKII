@@ -198,6 +198,69 @@ void appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition() {
     assert(state.fault == NativeScheduledLoopFault::ApplyRejected);
 }
 
+void batchPublishesAndDispatchesEveryTrackAtOneExactFrame() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (auto& item : requests) {
+        item.batchId = 77U;
+        item.batchMask = 0x03U;
+    }
+    requests[1].trackIndex = 1U;
+    assert(scheduler.requestBatch(requests, 2U));
+
+    const auto first = scheduler.status(0U);
+    const auto second = scheduler.status(1U);
+    assert(first.requestedRevision == 1U && second.requestedRevision == 1U);
+    assert(first.batchId == 77U && second.batchId == 77U);
+    assert(first.batchMask == 0x03U && second.batchMask == 0x03U);
+    assert(!scheduler.cancel(0U, 1U)); // Per-track cancellation could split a batch.
+
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 2U);
+    assert(events[0].request.batchId == events[1].request.batchId);
+    assert(events[0].frameOffset == 5U && events[1].frameOffset == 5U);
+    scheduler.acknowledgeApplied(0U, 1U, 105U, true);
+    scheduler.acknowledgeApplied(1U, 1U, 105U, true);
+    assert(scheduler.status(0U).appliedAbsoluteFrame == 105U);
+    assert(scheduler.status(1U).appliedAbsoluteFrame == 105U);
+}
+
+void batchPreflightFailureRejectsEveryMemberBeforeDispatch() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Stop);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Stop);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 88U;
+        requests[i].batchMask = 0x03U;
+    }
+    assert(scheduler.requestBatch(requests, 2U));
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 8U, 11U, events) == 0U);
+    for (std::size_t track = 0U; track < 2U; ++track) {
+        const auto state = scheduler.status(track);
+        assert(state.appliedRevision == 0U);
+        assert(state.faultRevision == 1U);
+        assert(state.fault == NativeScheduledLoopFault::StalePhaseEpoch);
+    }
+}
+
+void invalidBatchIsRejectedWithoutPublishingAnyMember() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(1U, 106U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 99U;
+        requests[i].batchMask = 0x03U;
+    }
+    assert(!scheduler.requestBatch(requests, 2U));
+    assert(scheduler.status(0U).requestedRevision == 0U);
+    assert(scheduler.status(1U).requestedRevision == 0U);
+}
+
 void concurrentControlProducersAreSerializedAndPublishWholeRequestTuples() {
     NativeLoopFrameScheduler scheduler;
     auto first = request(1U, 1234U, 21U, 31U, 0U, NativeScheduledLoopAction::Record);
@@ -246,6 +309,9 @@ int main() {
     lateFramesAndInvalidRequestsDoNotRun();
     looperStartsAndStopsOnTheExactScheduledSample();
     appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition();
+    batchPublishesAndDispatchesEveryTrackAtOneExactFrame();
+    batchPreflightFailureRejectsEveryMemberBeforeDispatch();
+    invalidBatchIsRejectedWithoutPublishingAnyMember();
     concurrentControlProducersAreSerializedAndPublishWholeRequestTuples();
     return 0;
 }

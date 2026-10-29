@@ -8,6 +8,7 @@ namespace webrc::native {
 bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& requestValue) noexcept {
     if (requestValue.trackIndex >= kNativeScheduledLoopTrackCount || requestValue.revision == 0U ||
         requestValue.absoluteFrame == std::numeric_limits<std::uint64_t>::max() ||
+        requestValue.batchId != 0U || requestValue.batchMask != 0U ||
         (requestValue.action != NativeScheduledLoopAction::Record &&
          requestValue.action != NativeScheduledLoopAction::Stop &&
          requestValue.action != NativeScheduledLoopAction::Play)) return false;
@@ -39,6 +40,8 @@ bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& request
     requestedAction_[track].store(requestValue.action, std::memory_order_seq_cst);
     requestedIntentIdHigh_[track].store(requestValue.intentIdHigh, std::memory_order_seq_cst);
     requestedIntentIdLow_[track].store(requestValue.intentIdLow, std::memory_order_seq_cst);
+    requestedBatchId_[track].store(0U, std::memory_order_seq_cst);
+    requestedBatchMask_[track].store(0U, std::memory_order_seq_cst);
     lifecycle_[track].store(encodeLifecycle(requestValue.revision, RequestLifecycle::Pending),
         std::memory_order_seq_cst);
     // Publish revision last so callback/status consumers identify the tuple.
@@ -58,9 +61,81 @@ bool NativeLoopFrameScheduler::request(const NativeScheduledLoopRequest& request
     return true;
 }
 
+bool NativeLoopFrameScheduler::requestBatch(
+    const std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount>& requests,
+    std::size_t count
+) noexcept {
+    if (count < 2U || count > kNativeScheduledLoopTrackCount) return false;
+    const auto& first = requests[0U];
+    if (first.batchId == 0U || first.batchMask == 0U || first.absoluteFrame == std::numeric_limits<std::uint64_t>::max()) return false;
+    std::uint8_t seenMask = 0U;
+    for (std::size_t i = 0U; i < count; ++i) {
+        const auto& item = requests[i];
+        if (item.trackIndex >= kNativeScheduledLoopTrackCount || item.revision == 0U ||
+            item.absoluteFrame != first.absoluteFrame || item.phaseEpoch != first.phaseEpoch ||
+            item.settingsRevision != first.settingsRevision || item.action != first.action ||
+            item.batchId != first.batchId || item.batchMask != first.batchMask ||
+            (item.action != NativeScheduledLoopAction::Record &&
+             item.action != NativeScheduledLoopAction::Stop &&
+             item.action != NativeScheduledLoopAction::Play)) return false;
+        const auto bit = static_cast<std::uint8_t>(1U << item.trackIndex);
+        if ((seenMask & bit) != 0U) return false;
+        seenMask = static_cast<std::uint8_t>(seenMask | bit);
+    }
+    if (seenMask != first.batchMask) return false;
+
+    // Serialize control producers once, then publish the complete fixed-size
+    // group through one write-index release. The callback sees either every
+    // member or none of them.
+    bool unlocked = false;
+    while (!requestWriterLocked_.compare_exchange_weak(unlocked, true,
+            std::memory_order_acquire, std::memory_order_relaxed)) unlocked = false;
+    struct WriterUnlock final {
+        std::atomic<bool>& lock;
+        ~WriterUnlock() { lock.store(false, std::memory_order_release); }
+    } writerUnlock{requestWriterLocked_};
+
+    const auto write = writeIndex_.load(std::memory_order_relaxed);
+    const auto read = readIndex_.load(std::memory_order_acquire);
+    const auto freeSlots = write >= read ? kQueueCapacity - (write - read) - 1U : read - write - 1U;
+    if (count > freeSlots) return false;
+
+    for (std::size_t i = 0U; i < count; ++i) {
+        const auto& item = requests[i];
+        const auto track = static_cast<std::size_t>(item.trackIndex);
+        const auto previous = requested_[track].load(std::memory_order_acquire);
+        const auto terminal = std::max({applied_[track].load(std::memory_order_acquire),
+            cancelled_[track].load(std::memory_order_acquire), faulted_[track].load(std::memory_order_acquire)});
+        if (previous != terminal || item.revision <= previous) return false;
+    }
+
+    auto probe = write;
+    for (std::size_t i = 0U; i < count; ++i) {
+        const auto& item = requests[i];
+        const auto track = static_cast<std::size_t>(item.trackIndex);
+        requestSnapshotSequence_[track].fetch_add(1U, std::memory_order_seq_cst);
+        requestedAbsoluteFrame_[track].store(item.absoluteFrame, std::memory_order_seq_cst);
+        requestedPhaseEpoch_[track].store(item.phaseEpoch, std::memory_order_seq_cst);
+        requestedSettingsRevision_[track].store(item.settingsRevision, std::memory_order_seq_cst);
+        requestedAction_[track].store(item.action, std::memory_order_seq_cst);
+        requestedIntentIdHigh_[track].store(item.intentIdHigh, std::memory_order_seq_cst);
+        requestedIntentIdLow_[track].store(item.intentIdLow, std::memory_order_seq_cst);
+        requestedBatchId_[track].store(item.batchId, std::memory_order_seq_cst);
+        requestedBatchMask_[track].store(item.batchMask, std::memory_order_seq_cst);
+        lifecycle_[track].store(encodeLifecycle(item.revision, RequestLifecycle::Pending), std::memory_order_seq_cst);
+        requested_[track].store(item.revision, std::memory_order_seq_cst);
+        requestSnapshotSequence_[track].fetch_add(1U, std::memory_order_seq_cst);
+        queue_[probe] = item;
+        probe = next(probe);
+    }
+    writeIndex_.store(probe, std::memory_order_release);
+    return true;
+}
+
 bool NativeLoopFrameScheduler::cancel(std::size_t trackIndex, std::uint64_t revision) noexcept {
     if (trackIndex >= kNativeScheduledLoopTrackCount || revision == 0U ||
-        requested_[trackIndex].load(std::memory_order_acquire) != revision) return false;
+        requested_[trackIndex].load(std::memory_order_acquire) != revision ||
+        requestedBatchMask_[trackIndex].load(std::memory_order_acquire) != 0U) return false;
     auto expected = encodeLifecycle(revision, RequestLifecycle::Pending);
     return lifecycle_[trackIndex].compare_exchange_strong(expected,
         encodeLifecycle(revision, RequestLifecycle::Cancelled),
@@ -97,10 +172,99 @@ std::size_t NativeLoopFrameScheduler::collectDue(
 
     const auto blockEnd = blockStart > std::numeric_limits<std::uint64_t>::max() - frameCount
         ? std::numeric_limits<std::uint64_t>::max() : blockStart + frameCount;
+
+    // Batch members are handled as one scheduling unit. Since requestBatch
+    // publishes the queue write index once, all members are visible together.
+    // A group waits if any member is callback-blocked and faults as a group if
+    // its target frame is missed or its phase/settings token becomes stale.
+    for (std::size_t track = 0U; track < pending_.size(); ++track) {
+        auto& leader = pending_[track];
+        if (!leader.occupied || leader.request.batchId == 0U) continue;
+        const auto& batch = leader.request;
+        bool alreadyHandled = false;
+        for (std::size_t prior = 0U; prior < track; ++prior) {
+            if (pending_[prior].occupied && pending_[prior].request.batchId == batch.batchId) {
+                alreadyHandled = true;
+                break;
+            }
+        }
+        if (alreadyHandled) continue;
+
+        std::uint8_t presentMask = 0U;
+        for (std::size_t member = 0U; member < pending_.size(); ++member) {
+            const auto& slot = pending_[member];
+            if (slot.occupied && slot.request.batchId == batch.batchId) {
+                presentMask = static_cast<std::uint8_t>(presentMask | (1U << member));
+            }
+        }
+        NativeScheduledLoopFault failure = NativeScheduledLoopFault::None;
+        if (presentMask != batch.batchMask) failure = NativeScheduledLoopFault::Superseded;
+        else if (batch.phaseEpoch != activePhaseEpoch) failure = NativeScheduledLoopFault::StalePhaseEpoch;
+        else if (batch.settingsRevision != activeSettingsRevision) failure = NativeScheduledLoopFault::StaleSettingsRevision;
+        else if (batch.absoluteFrame < blockStart) failure = NativeScheduledLoopFault::MissedFrame;
+        else if ((batch.batchMask & blockedTrackMask) != 0U && batch.absoluteFrame < blockEnd) continue;
+
+        if (failure != NativeScheduledLoopFault::None) {
+            for (std::size_t member = 0U; member < pending_.size(); ++member) {
+                auto& slot = pending_[member];
+                if (!slot.occupied || slot.request.batchId != batch.batchId) continue;
+                const auto revision = slot.request.revision;
+                auto expected = encodeLifecycle(revision, RequestLifecycle::Pending);
+                if (lifecycle_[member].compare_exchange_strong(expected,
+                        encodeLifecycle(revision, RequestLifecycle::Faulted),
+                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                    publishFault(member, revision, failure);
+                }
+                slot.occupied = false;
+            }
+            continue;
+        }
+        if (batch.absoluteFrame >= blockEnd) continue;
+
+        // Batch cancellation is intentionally unsupported: this CAS set is
+        // therefore stable against control-thread cancellation between members.
+        bool dispatched = true;
+        for (std::size_t member = 0U; member < pending_.size(); ++member) {
+            const auto& slot = pending_[member];
+            if (!slot.occupied || slot.request.batchId != batch.batchId) continue;
+            const auto revision = slot.request.revision;
+            auto expected = encodeLifecycle(revision, RequestLifecycle::Pending);
+            if (!lifecycle_[member].compare_exchange_strong(expected,
+                    encodeLifecycle(revision, RequestLifecycle::Dispatched),
+                    std::memory_order_acq_rel, std::memory_order_acquire)) {
+                dispatched = false;
+                break;
+            }
+        }
+        if (!dispatched) {
+            for (std::size_t member = 0U; member < pending_.size(); ++member) {
+                auto& slot = pending_[member];
+                if (!slot.occupied || slot.request.batchId != batch.batchId) continue;
+                const auto revision = slot.request.revision;
+                auto expected = encodeLifecycle(revision, RequestLifecycle::Dispatched);
+                (void)lifecycle_[member].compare_exchange_strong(expected,
+                    encodeLifecycle(revision, RequestLifecycle::Faulted),
+                    std::memory_order_acq_rel, std::memory_order_acquire);
+                publishFault(member, revision, NativeScheduledLoopFault::ApplyRejected);
+                slot.occupied = false;
+            }
+            continue;
+        }
+        for (std::size_t member = 0U; member < pending_.size(); ++member) {
+            auto& slot = pending_[member];
+            if (!slot.occupied || slot.request.batchId != batch.batchId) continue;
+            events[count].request = slot.request;
+            events[count].frameOffset = static_cast<unsigned int>(batch.absoluteFrame - blockStart);
+            ++count;
+            slot.occupied = false;
+        }
+    }
+
     for (std::size_t track = 0U; track < pending_.size(); ++track) {
         auto& pending = pending_[track];
         if (!pending.occupied) continue;
         const auto& requestValue = pending.request;
+        if (requestValue.batchId != 0U) continue;
         const auto pendingLifecycle = encodeLifecycle(requestValue.revision, RequestLifecycle::Pending);
         const auto currentLifecycle = lifecycle_[track].load(std::memory_order_acquire);
         if (currentLifecycle == encodeLifecycle(requestValue.revision, RequestLifecycle::Cancelled)) {
@@ -196,6 +360,8 @@ NativeScheduledLoopStatus NativeLoopFrameScheduler::status(std::size_t trackInde
         result.requestedAction = requestedAction_[trackIndex].load(std::memory_order_seq_cst);
         result.intentIdHigh = requestedIntentIdHigh_[trackIndex].load(std::memory_order_seq_cst);
         result.intentIdLow = requestedIntentIdLow_[trackIndex].load(std::memory_order_seq_cst);
+        result.batchId = requestedBatchId_[trackIndex].load(std::memory_order_seq_cst);
+        result.batchMask = requestedBatchMask_[trackIndex].load(std::memory_order_seq_cst);
         result.requestedRevision = requested_[trackIndex].load(std::memory_order_seq_cst);
         if (sequenceBefore == requestSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst)) break;
     }

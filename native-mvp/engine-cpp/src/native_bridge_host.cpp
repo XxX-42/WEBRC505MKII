@@ -995,6 +995,8 @@ json statusToJson(const EngineStatus& status) {
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
         {"nativeLoopFrameScheduling", {{"version", 1}, {"available", status.nativeRhythmFrameSchedulingAvailable},
+            {"batchTransportAvailable", false},
+            {"batchTransportReason", "Native multi-track transport remains unavailable until per-track STOP provenance, exact batch recovery/cancellation, and all-track state fencing are supported."},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
@@ -2382,6 +2384,11 @@ int main() {
     // caller supplies the phase token it observed; NativeAudioCore rechecks
     // the current callback-published phase and settings revision atomically
     // before enqueueing the future callback-frame transition.
+    server.Post("/v1/transport/batch-schedule", [](const httplib::Request&, httplib::Response& response) {
+        response.status = 409;
+        writeError(response, "Native multi-track transport is disabled: atomic batch provenance, reconciliation, cancellation, and all-track state fencing are not available.");
+    });
+
     server.Post("/v1/transport/rhythm-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
