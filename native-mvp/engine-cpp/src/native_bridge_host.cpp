@@ -1531,6 +1531,12 @@ int main() {
     enableLoopbackCors(server);
 
 #if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+    server.Get("/v1/test/simulation/callback-gate", [](const httplib::Request&, httplib::Response& response) {
+        writeJson(response, json{{"ok", true},
+            {"paused", webrc::native::test_support::isSimulationCallbackGateRequested()},
+            {"callbackParked", webrc::native::test_support::isSimulationCallbackGateParked()}});
+    });
+
     // Deterministic interleaving seam for HTTP route tests. This route is not
     // compiled into the Native production bridge and only parks the fake
     // RtAudio callback between complete callback blocks.

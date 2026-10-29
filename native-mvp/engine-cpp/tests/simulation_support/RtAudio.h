@@ -25,6 +25,10 @@ inline void setSimulationCallbackGate(bool paused) noexcept {
 [[nodiscard]] inline bool isSimulationCallbackGateParked() noexcept {
     return simulationCallbackGateParked.load(std::memory_order_acquire);
 }
+
+[[nodiscard]] inline bool isSimulationCallbackGateRequested() noexcept {
+    return simulationCallbackGateRequested.load(std::memory_order_acquire);
+}
 } // namespace webrc::native::test_support
 
 using RtAudioStreamStatus = unsigned int;
@@ -154,7 +158,9 @@ public:
     }
     int stopStream() noexcept {
         streamRunning_.store(false, std::memory_order_release);
+        webrc::native::test_support::setSimulationCallbackGate(false);
         if (callbackThread_.joinable()) callbackThread_.join();
+        webrc::native::test_support::simulationCallbackGateParked.store(false, std::memory_order_release);
         return RTAUDIO_NO_ERROR;
     }
     void closeStream() noexcept {

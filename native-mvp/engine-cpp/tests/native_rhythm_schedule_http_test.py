@@ -124,6 +124,22 @@ def main():
         require(stopped['nativeRecordPlay']['quantizeAvailable'] is False and
             stopped['nativeLoopFrameScheduling']['available'] is False and
             stopped['nativeRhythm']['phase']['frameSchedulingAvailable'] is False, stopped)
+
+        # A stopped stream must clear the simulation-only gate so restarting
+        # the same host/RtAudio instance does not inherit a parked callback.
+        set_callback_gate(True)
+        code, stopped_engine = request('/v1/engine/stop', 'POST', {})
+        require(code == 200 and stopped_engine['engineRunning'] is False, stopped_engine)
+        code, gate_status = request('/v1/test/simulation/callback-gate')
+        require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
+            ('simulation callback gate survived stream stop', gate_status))
+        code, restarted_engine = request('/v1/engine/start', 'POST', {})
+        require(code == 200 and restarted_engine['engineRunning'] is True, restarted_engine)
+        restarted = until(lambda value: value['engineRunning'] and value['nativeRhythm']['phase']['available'] and
+            value['nativeRhythm']['phase']['sampleFrame'] > 0)
+        code, gate_status = request('/v1/test/simulation/callback-gate')
+        require(code == 200 and gate_status['paused'] is False and gate_status['callbackParked'] is False,
+            ('simulation callback did not resume after restart', gate_status))
         print('Native Rhythm schedule HTTP: field validation, cancel/status ACK, callback REC/STOP ACK; full quantize capability remains false')
     finally:
         try:
