@@ -23,6 +23,60 @@ beforeEach(() => { Transport.getInstance().stop(); Transport.getInstance().reset
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Browser semantic Memory', () => {
+  it('keeps Rhythm epoch edges on the candidate Memory capture node through rollback and disposal', async () => {
+    const { engine, context } = harness();
+    (engine as any).trackFxApplyApplied.fill(false);
+    const created: Array<{ instance: any; name: string; options: AudioWorkletNodeOptions; disconnect: ReturnType<typeof vi.fn>; port: any }> = [];
+    class FakeWorkletNode {
+      port: any;
+      onprocessorerror: (() => void) | null = null;
+      constructor(_context: AudioContext, public name: string, public options: AudioWorkletNodeOptions) {
+        this.port = {
+          onmessage: null as ((event: { data: any }) => void) | null,
+          close: vi.fn(),
+          postMessage: vi.fn((message: any) => queueMicrotask(() => {
+            if (message.type === 'SET_TRACK_FX_APPLY') this.port.onmessage?.({ data: {
+              type: 'TRACK_FX_APPLY_ACK', trackIndex: message.trackIndex, route: name === 'rc505-track-fx-router' ? 'track' : 'input',
+              revision: message.revision, enabled: message.enabled, requestedFrame: message.applyFrame, appliedFrame: message.applyFrame, ok: true,
+            } });
+          })),
+        };
+        const record = { instance: this as any, name, options, disconnect: vi.fn(), port: this.port };
+        created.push(record);
+      }
+      connect = vi.fn();
+      disconnect = vi.fn();
+    }
+    vi.stubGlobal('AudioWorkletNode', FakeWorkletNode);
+    const oldCapture = new FakeWorkletNode(context, 'old-capture', { numberOfInputs: 8 } as AudioWorkletNodeOptions) as unknown as AudioWorkletNode;
+    (engine as any).inputCaptureNode = oldCapture;
+    const rhythmOutput = engine.rhythmEngine.outputNode as any;
+    vi.spyOn(rhythmOutput, 'connect');
+    vi.spyOn(rhythmOutput, 'disconnect');
+    vi.spyOn(engine as any, 'connectBouncePlaybackSources').mockReturnValue([null, null, null, null, null]);
+    for (const track of engine.tracks) {
+      vi.spyOn(track, 'prepareMemoryTrackFxRouter').mockReturnValue({
+        commit: vi.fn(), rollback: vi.fn(), retire: vi.fn(),
+      } as any);
+    }
+    const stageOutput = context.createGain();
+    const gate = await (engine as any).prepareMemoryGatePair([true, true, true, true, true], stageOutput);
+    expect(created.map((node) => node.name)).toContain('rc505-input-capture');
+    const captureRecord = created.find((node) => node.name === 'rc505-input-capture')!;
+    const capture = captureRecord.instance;
+    expect(capture.options.numberOfInputs).toBe(8);
+    expect((capture.options.processorOptions as any).rhythmPhaseEpochBuffer).toBe(engine.rhythmPhaseEpochBuffer);
+    expect(rhythmOutput.connect).toHaveBeenCalledWith(capture, 0, 7);
+
+    gate.commit();
+    expect(rhythmOutput.disconnect).toHaveBeenCalledWith(oldCapture);
+    gate.rollback();
+    expect(rhythmOutput.connect).toHaveBeenCalledWith(oldCapture, 0, 7);
+    gate.dispose();
+    expect(rhythmOutput.disconnect).toHaveBeenCalledWith(capture);
+    expect(capture.disconnect).toHaveBeenCalled();
+  });
+
   it('advertises the implemented Browser AutoRec capability independently of its current switch', () => {
     const { engine } = harness();
     expect(engine.getBrowserAutoRecSettings().enabled).toBe(false);

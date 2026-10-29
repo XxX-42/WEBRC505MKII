@@ -175,7 +175,7 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
         if (predicate()) return;
         await new Promise((resolve) => window.setTimeout(resolve, 10));
       }
-      throw new Error(`Timed out waiting for ${label}; context=${context.state}; rhythm=${browser.rhythmEngine?.isRunning}/${browser.rhythmEngine?.error || 'no-error'}/node=${!!browser.rhythmEngine?.workletNode}/time=${context.currentTime}; track=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
+      throw new Error(`Timed out waiting for ${label}; context=${context.state}; rhythm=${browser.rhythmEngine?.isRunning}/${browser.rhythmEngine?.error || 'no-error'}/node=${!!browser.rhythmEngine?.workletNode}/time=${context.currentTime}; phase=${browser.rhythmEngine?.measurePhaseSnapshot?.epoch ?? 'none'}; atomic=${Atomics.load(browser.rhythmPhaseEpochView, 0)}; track=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
     };
     const nextBoundary = (phase: any, frame: number) => {
       const bar = phase.stepsPerBar * phase.sampleRate * 15 / phase.bpm;

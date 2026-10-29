@@ -265,6 +265,45 @@ describe('TrackAudio transport sync helpers', () => {
     }).toEqual(historyBefore);
   });
 
+  it('rejects RECORD_COMPLETE that races ahead of the Rhythm phase notification', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => i / 512)]);
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => -i / 512)]);
+    trackAudio.stop();
+    const incumbent = (trackAudio as any).audioBuffer;
+    const incumbentPcm = Array.from(incumbent.getChannelData(0));
+    const historyBefore = { canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes };
+    const phase = { type: 'measure-phase', available: true, requestId: 7, epoch: 9,
+      originFrame: 100, nextMeasureFrame: 44_200, sampleRate: context.sampleRate, bpm: 120, stepsPerBar: 16 } as const;
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 91, inputGeneration: 3, startFrame: 100, rhythmPhaseEpoch: phase.epoch,
+    };
+    // The Rhythm processor has already atomically invalidated the epoch, but
+    // its separate MessagePort notification is intentionally held back.
+    engine.isBrowserRhythmPhaseEpochCurrent = vi.fn(() => false);
+    engine.abortInputCaptureSession = vi.fn();
+    engine.releaseInputCaptureSession = vi.fn();
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).quantizedRecordingRhythmPhase = phase;
+    (trackAudio as any).isRecording = false;
+    (trackAudio as any).isFinalizingRecording = true;
+    trackAudio.state = TrackState.REC_FINISHING;
+
+    (trackAudio as any).handleRecordingMessage(session.node, {
+      type: 'RECORD_COMPLETE', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      requestedStartFrame: session.startFrame, stopFrame: 44_200, framesCaptured: 44_100,
+      rhythmPhaseEpoch: phase.epoch,
+    });
+
+    expect(engine.isBrowserRhythmPhaseEpochCurrent).toHaveBeenCalledWith(phase.epoch);
+    expect(engine.abortInputCaptureSession).toHaveBeenCalledWith(session);
+    expect((trackAudio as any).audioBuffer).toBe(incumbent);
+    expect(Array.from(incumbent.getChannelData(0))).toEqual(incumbentPcm);
+    expect({ canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes }).toEqual(historyBefore);
+  });
+
   it('uses the worklet start-frame ACK to enter RECORDING without waiting for a chunk', async () => {
     const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';

@@ -25,6 +25,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.readyPreRollFrames = Math.min(this.preRollFrames,
       this.positiveInteger(config.readyPreRollFrames, this.preRollFrames));
     this.maxRecordingBytes = this.positiveInteger(config.maxRecordingBytes, DEFAULT_MAX_RECORDING_BYTES);
+    this.rhythmPhaseEpochView = config.rhythmPhaseEpochBuffer instanceof SharedArrayBuffer
+      ? new Int32Array(config.rhythmPhaseEpochBuffer) : null;
 
     // The ring is volatile pre-roll only. It is reset at every input/device or
     // timeline generation boundary and is never directly returned as a loop.
@@ -124,6 +126,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       requestedMaxRecordingFrames: null,
       stopRequested: false,
       stopFrame: 0,
+      rhythmPhaseEpoch: 0,
       channelCount: 0,
       maxFrames: 0,
       maxRecordingBytes: this.maxRecordingBytes,
@@ -157,6 +160,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
         startReceivedFrame: 0, requestAgeAtStartFrames: 0,
         preRollCapacityFrames: this.preRollFrames, preRollValidFrames: 0,
         timelineOverlapEvents: 0, timelineOverlapFrames: 0,
+        rhythmPhaseEpoch: 0,
       },
       configMessage: {
         type: 'RECORD_CONFIGURED', trackIndex, sessionId: 0, inputGeneration: 0,
@@ -217,7 +221,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (message.type === 'START_CAPTURE') {
       this.startCapture(slot, message);
     } else if (message.type === 'STOP_CAPTURE') {
-      if (slot.sessionId === message.sessionId) this.requestStop(slot, message.stopFrame);
+      if (slot.sessionId === message.sessionId) this.requestStop(slot, message.stopFrame, message.rhythmPhaseEpoch);
     } else if (message.type === 'ABORT_CAPTURE') {
       if (slot.sessionId === message.sessionId && message.inputGeneration === slot.inputGeneration) {
         if (slot.state === 'armed' || slot.state === 'pending' || slot.state === 'recording') {
@@ -396,6 +400,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       || !Number.isSafeInteger(bounceSourceMask) || bounceSourceMask < 0 || bounceSourceMask > 31
       || (bounceSourceMask & (1 << slot.trackIndex)) !== 0
       || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration
+      || (message.rhythmPhaseEpoch !== undefined && (!Number.isSafeInteger(message.rhythmPhaseEpoch)
+        || message.rhythmPhaseEpoch <= 0 || message.rhythmPhaseEpoch > 0x7fffffff))
       || !Number.isSafeInteger(message.captureReadyEpoch)) {
       this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration, startReceivedFrame, true);
       return;
@@ -447,6 +453,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.stopRequested = false;
     slot.startAckSent = false;
     slot.stopFrame = 0;
+    slot.rhythmPhaseEpoch = Number.isSafeInteger(message.rhythmPhaseEpoch) ? message.rhythmPhaseEpoch : 0;
     slot.channelCount = 0;
     slot.maxFrames = 0;
     slot.maxRecordingBytes = requestedBytes;
@@ -489,13 +496,22 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.port.postMessage(message);
   }
 
-  requestStop(slot, stopFrame) {
+  requestStop(slot, stopFrame, rhythmPhaseEpoch) {
     if (slot.state === 'armed') { this.abortCapture(slot, 'auto-rec-canceled', false); return; }
     if (slot.state !== 'armed' && slot.state !== 'pending' && slot.state !== 'recording') return;
     if (!Number.isSafeInteger(stopFrame) || stopFrame < slot.requestedStartFrame) {
       this.postError(slot, slot.sessionId, 'invalid-stop-frame', slot.requestedStartFrame, stopFrame);
       this.abortCapture(slot, 'invalid-stop-frame');
       return;
+    }
+    if (rhythmPhaseEpoch !== undefined) {
+      if (!Number.isSafeInteger(rhythmPhaseEpoch) || rhythmPhaseEpoch <= 0 || rhythmPhaseEpoch > 0x7fffffff
+        || (slot.rhythmPhaseEpoch > 0 && slot.rhythmPhaseEpoch !== rhythmPhaseEpoch)) {
+        this.postError(slot, slot.sessionId, 'rhythm-phase-epoch-mismatch', slot.requestedStartFrame, stopFrame);
+        this.abortCapture(slot, 'rhythm-phase-epoch-mismatch', false);
+        return;
+      }
+      slot.rhythmPhaseEpoch = rhythmPhaseEpoch;
     }
     slot.stopRequested = true;
     slot.stopFrame = stopFrame;
@@ -739,6 +755,12 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
 
   completeCapture(slot, requestedFrames) {
     if (slot.state === 'pending' && requestedFrames > 0) return;
+    if (slot.rhythmPhaseEpoch > 0 && (!this.rhythmPhaseEpochView
+      || Atomics.load(this.rhythmPhaseEpochView, 0) !== slot.rhythmPhaseEpoch)) {
+      this.postError(slot, slot.sessionId, 'rhythm-phase-epoch-mismatch', slot.requestedStartFrame, slot.stopFrame);
+      this.abortCapture(slot, 'rhythm-phase-epoch-mismatch', false);
+      return;
+    }
     const frameLimit = Math.max(0, Math.floor(requestedFrames));
     const finalFrames = Math.min(slot.framesCaptured, frameLimit);
     if (slot.activeChunkIndex >= 0 && slot.activeChunkOffset > 0) {
@@ -766,6 +788,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     complete.preRollValidFrames = this.preRollValidFrames;
     complete.timelineOverlapEvents = slot.timelineOverlapEvents;
     complete.timelineOverlapFrames = slot.timelineOverlapFrames;
+    complete.rhythmPhaseEpoch = slot.rhythmPhaseEpoch;
     complete.channelCount = slot.channelCount;
     complete.limitReached = slot.limitReached;
     complete.chunksSent = slot.chunksSent;

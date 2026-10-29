@@ -68,6 +68,8 @@ type RhythmTimelineStatusMessage =
 
 export class RhythmEngine {
   private readonly context: AudioContext;
+  private readonly phaseEpochBuffer: SharedArrayBuffer;
+  private readonly phaseEpochView: Int32Array;
   private readonly transport: Transport;
   public readonly outputNode: GainNode;
 
@@ -90,8 +92,10 @@ export class RhythmEngine {
     if (this.isPlaying && this.workletNode) this.configureWorklet(this.workletNode);
   };
 
-  constructor(context: AudioContext, notifyStatus: () => void = () => undefined) {
+  constructor(context: AudioContext, notifyStatus: () => void = () => undefined, phaseEpochBuffer?: SharedArrayBuffer) {
     this.context = context;
+    this.phaseEpochBuffer = phaseEpochBuffer ?? new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    this.phaseEpochView = new Int32Array(this.phaseEpochBuffer);
     this.notifyStatus = notifyStatus;
     this.transport = Transport.getInstance();
     this.outputNode = context.createGain();
@@ -319,6 +323,7 @@ export class RhythmEngine {
         outputChannelCount: [1],
         channelCount: 1,
         channelCountMode: 'explicit',
+        processorOptions: { phaseEpochBuffer: this.phaseEpochBuffer },
       });
       node.onprocessorerror = (): void => {
         this.invalidateMeasurePhase();
@@ -354,6 +359,7 @@ export class RhythmEngine {
     };
     const requestId = this.nextPhaseRequestId();
     this.measurePhase = null;
+    Atomics.store(this.phaseEpochView, 0, 0);
     this.notifyMeasurePhaseChange();
     node.port.postMessage({ type: 'start', requestId, configuration });
   }
@@ -436,6 +442,7 @@ export class RhythmEngine {
 
   private invalidateMeasurePhase(): number {
     this.measurePhase = null;
+    Atomics.store(this.phaseEpochView, 0, 0);
     this.notifyMeasurePhaseChange();
     return this.nextPhaseRequestId();
   }

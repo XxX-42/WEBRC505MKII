@@ -260,6 +260,7 @@ type RecordingWorkletMessage =
         status?: 'complete' | 'incomplete';
         requestedStartFrame?: number;
         stopFrame?: number;
+        rhythmPhaseEpoch?: number;
         startReceivedFrame?: number;
         requestAgeAtStartFrames?: number;
         preRollCapacityFrames?: number;
@@ -3142,11 +3143,14 @@ export class TrackAudio {
                 };
                 captureSession = bounceEnabled
                     ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
-                        undefined, autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined, bounceSourceMask)
+                        undefined, autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined, bounceSourceMask,
+                        ...(quantizedRhythmPhase ? [quantizedRhythmPhase.epoch] : []))
                     : autoRecEnabled
                         ? this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
-                            undefined, browserAutoRecThreshold(autoRec!.sensitivity))
-                        : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
+                            undefined, browserAutoRecThreshold(autoRec!.sensitivity), undefined,
+                            ...(quantizedRhythmPhase ? [quantizedRhythmPhase.epoch] : []))
+                        : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage,
+                            ...(quantizedRhythmPhase ? [undefined, undefined, undefined, quantizedRhythmPhase.epoch] : []));
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
                     this.recordingTempoRequestCandidate = tempoRequestCandidate;
@@ -3304,7 +3308,10 @@ export class TrackAudio {
             const stopFrame = requestedStopFrame === null || requestedStopFrame === undefined
                 ? null : Math.max(requestedStopFrame, captureSession.startFrame);
             if (stopFrame === null || stopFrame === undefined
-                || !this.engine.stopInputCaptureSession?.(captureSession, stopFrame)) {
+                || !this.engine.stopInputCaptureSession?.(captureSession, stopFrame,
+                    ...(quantizedRhythmPhase?.epoch ?? captureSession.rhythmPhaseEpoch) !== undefined
+                        ? [quantizedRhythmPhase?.epoch ?? captureSession.rhythmPhaseEpoch!]
+                        : [])) {
                 this.recordingDiagnostic = 'The shared input capture could not acknowledge the requested stop frame; the take was discarded.';
                 this.abortSharedRecording(captureSession, true);
             } else {
@@ -3429,6 +3436,14 @@ export class TrackAudio {
         }
 
         if (captureSession && message.type === 'RECORD_COMPLETE') {
+            const requiredRhythmEpoch = captureSession.rhythmPhaseEpoch;
+            if (requiredRhythmEpoch !== undefined
+                && (message.rhythmPhaseEpoch !== requiredRhythmEpoch
+                    || this.engine.isBrowserRhythmPhaseEpochCurrent?.(requiredRhythmEpoch) !== true)) {
+                this.recordingDiagnostic = 'The Rhythm phase epoch changed before capture completion; the stale take was discarded and the previous loop was kept.';
+                this.abortSharedRecording(captureSession, true);
+                return;
+            }
             const rangeLength = Number.isSafeInteger(message.requestedStartFrame)
                 && message.requestedStartFrame === captureSession.startFrame
                 && Number.isSafeInteger(message.stopFrame)

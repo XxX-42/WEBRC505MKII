@@ -9,6 +9,8 @@ export interface InputCaptureSession {
     readonly sessionId: number;
     readonly inputGeneration: number;
     readonly startFrame: number;
+    /** Shared Rhythm phase generation required to remain valid through capture completion. */
+    readonly rhythmPhaseEpoch?: number;
     /** Optional strict per-session frame cap used for startup backfill windows. */
     readonly maxRecordingFrames?: number;
 }
@@ -24,6 +26,7 @@ export interface IAudioEngine {
     /** Last acknowledged sample-frame phase from the real Browser Rhythm AudioWorklet. */
     getBrowserRhythmMeasurePhaseSnapshot?(): RhythmMeasurePhaseSnapshot | null;
     onBrowserRhythmPhaseChange?(listener: () => void): () => void;
+    isBrowserRhythmPhaseEpochCurrent?(epoch: number): boolean;
     /** True only when the requested Browser track exists and LOOP SYNC SW is ON. */
     isBrowserTrackLoopSyncEnabled?(trackId: number): boolean | null;
     context: AudioContext;
@@ -54,8 +57,10 @@ export interface IAudioEngine {
         autoRecThreshold?: number,
         /** Five-bit per-source Bounce mask, with the destination track excluded. */
         bounceSourceMask?: number,
+        /** Shared Rhythm generation required for a sample-frame quantized start. */
+        rhythmPhaseEpoch?: number,
     ): InputCaptureSession | null;
-    stopInputCaptureSession?(session: InputCaptureSession, stopFrame: number): boolean;
+    stopInputCaptureSession?(session: InputCaptureSession, stopFrame: number, rhythmPhaseEpoch?: number): boolean;
     abortInputCaptureSession?(session: InputCaptureSession): void;
     recycleInputCaptureChunk?(session: InputCaptureSession, chunkIndex: number, channels: Float32Array[]): boolean;
     releaseInputCaptureSession?(session: InputCaptureSession): void;

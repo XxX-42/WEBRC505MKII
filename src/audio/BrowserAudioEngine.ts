@@ -191,6 +191,8 @@ export class BrowserAudioEngine implements IAudioEngine {
     public outputDspFxNode: AudioWorkletNode | null = null;
     public tracks: TrackAudio[] = [];
     public sharedBuffer: SharedArrayBuffer | null = null;
+    public readonly rhythmPhaseEpochBuffer: SharedArrayBuffer;
+    private readonly rhythmPhaseEpochView: Int32Array;
     public trackStates: Int32Array | null = null; // State enum
     public trackPositions: Float32Array | null = null; // 0.0 to 1.0
     public roundTripLatency: number = 0; // in seconds
@@ -306,6 +308,9 @@ export class BrowserAudioEngine implements IAudioEngine {
     public onBrowserRhythmPhaseChange(listener: () => void): () => void {
         return this.rhythmEngine.onMeasurePhaseChange(listener);
     }
+    public isBrowserRhythmPhaseEpochCurrent(epoch: number): boolean {
+        return Number.isSafeInteger(epoch) && epoch > 0 && Atomics.load(this.rhythmPhaseEpochView, 0) === epoch;
+    }
     public isBrowserTrackLoopSyncEnabled(trackId: number): boolean | null {
         const track = this.tracks.find((candidate) => candidate.track.id === trackId);
         return track ? track.track.loopSyncSw === 'ON' : null;
@@ -405,6 +410,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.sharedBuffer = new SharedArrayBuffer(1024);
         this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
         this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
+        this.rhythmPhaseEpochBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+        this.rhythmPhaseEpochView = new Int32Array(this.rhythmPhaseEpochBuffer);
 
         // Create monitor gain node (for software monitoring)
         this.monitorGainNode = this.context.createGain();
@@ -436,7 +443,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.inputFxChain.output.connect(this.monitorGainNode);
 
         // Initialize Rhythm Engine
-        this.rhythmEngine = new RhythmEngine(this.context, () => this.emitStatus());
+        this.rhythmEngine = new RhythmEngine(this.context, () => this.emitStatus(), this.rhythmPhaseEpochBuffer);
         this.rhythmEngine.connect(this.mainGainNode);
 
         // Initialize 5 tracks
@@ -2665,6 +2672,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 try { preparedInputOutput.disconnect(capture); } catch { /* unpublished edge */ }
                 try { this.inputFxChain.output.disconnect(capture); } catch { /* unpublished edge */ }
                 try { source?.disconnect(capture); } catch { /* unpublished edge */ }
+                try { this.rhythmEngine.outputNode.disconnect(capture); } catch { /* unpublished edge */ }
                 this.disconnectBouncePlaybackSources(capture, candidateBounceSources);
                 capture.port.onmessage = null; capture.onprocessorerror = null;
                 try { capture.disconnect(); capture.port.close(); } catch { /* unpublished node */ }
@@ -2678,14 +2686,15 @@ export class BrowserAudioEngine implements IAudioEngine {
                 processorOptions: { trackCount: 5, initialTrackFxApply: values.slice() },
             });
             capture = new AudioWorkletNode(this.context, 'rc505-input-capture', {
-                numberOfInputs: 7, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
+                numberOfInputs: 8, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
                 processorOptions: { trackCount: 5, chunkSize: 16384, chunkPoolSize: 3, preRollFrames: 8192, maxRecordingBytes: 384 * 1024 * 1024,
-                    sampleRate: this.context.sampleRate, initialTrackFxApply: values.slice() },
+                    sampleRate: this.context.sampleRate, initialTrackFxApply: values.slice(), rhythmPhaseEpochBuffer: this.rhythmPhaseEpochBuffer },
             });
             router.connect(mute); capture.connect(mute); mute.connect(this.context.destination);
             // The candidate tap only observes the already-authorized source. Its output is always silent.
             if (source) source.connect(capture, 0, 0);
             preparedInputOutput.connect(capture, 0, 1);
+            this.rhythmEngine.outputNode.connect(capture, 0, 7);
             candidateBounceSources = this.connectBouncePlaybackSources(capture);
             const applyFrame = Math.ceil(this.context.currentTime * this.context.sampleRate) + Math.max(4096, this.selectedBufferFrames * 8);
             await new Promise<void>((resolve, reject) => {
@@ -2738,6 +2747,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         preparedInputOutput.disconnect(nextCapture);
                         this.inputFxChain.output.connect(nextCapture, 0, 1);
                         if (oldCapture) {
+                            this.rhythmEngine.outputNode.disconnect(oldCapture);
                             this.inputFxChain.output.disconnect(oldCapture);
                             if (oldRaw) oldRaw.disconnect(oldCapture);
                             this.disconnectBouncePlaybackSources(oldCapture, this.inputCaptureBounceSources);
@@ -2747,7 +2757,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         trackEdges.forEach((edge) => edge.rollback());
                         try { this.inputFxChain.output.disconnect(nextCapture); } catch { /* candidate edge not installed */ }
                         preparedInputOutput.connect(nextCapture, 0, 1);
-                        if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
+                        if (oldCapture) { this.rhythmEngine.outputNode.connect(oldCapture, 0, 7); this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
                         throw error;
                     }
                 },
@@ -2755,7 +2765,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     if (!wired) return;
                     trackEdges.forEach((edge) => edge.rollback());
                     this.inputFxChain.output.disconnect(nextCapture); preparedInputOutput.connect(nextCapture, 0, 1);
-                    if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
+                    if (oldCapture) { this.rhythmEngine.outputNode.connect(oldCapture, 0, 7); this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); this.inputCaptureBounceSources.forEach((source, index) => source?.connect(oldCapture, 0, index + 2)); }
                     wired = false;
                 },
                 adopt: () => {
@@ -3710,7 +3720,10 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         if (!this.inputCaptureNode) {
             const node = new AudioWorkletNode(this.context, 'rc505-input-capture', {
-                numberOfInputs: 7,
+                // Input 7 is a silent dependency edge from Rhythm. It forces
+                // Rhythm's phase epoch update to run before capture on each
+                // render quantum, without adding Rhythm samples to any lane.
+                numberOfInputs: 8,
                 numberOfOutputs: 1,
                 outputChannelCount: [2],
                 channelCount: 2,
@@ -3724,6 +3737,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     maxRecordingBytes: 384 * 1024 * 1024,
                     sampleRate: this.context.sampleRate,
                     initialTrackFxApply: this.trackFxApplyApplied.slice(),
+                    rhythmPhaseEpochBuffer: this.rhythmPhaseEpochBuffer,
                 },
             });
             const mute = this.context.createGain();
@@ -3732,11 +3746,13 @@ export class BrowserAudioEngine implements IAudioEngine {
                 // Inputs 0/1 carry raw and Input FX lanes; inputs 2..6 carry
                 // playback-only source lanes for the per-target Bounce mask.
                 this.inputFxChain.output.connect(node, 0, 1);
+                this.rhythmEngine.outputNode.connect(node, 0, 7);
                 this.inputCaptureBounceSources = this.connectBouncePlaybackSources(node);
                 node.connect(mute);
                 mute.connect(this.context.destination);
             } catch (error) {
                 try { disconnectAudioNodeIfConnected(this.inputFxChain.output, node); } catch { /* failed graph setup */ }
+                try { disconnectAudioNodeIfConnected(this.rhythmEngine.outputNode, node); } catch { /* failed graph setup */ }
                 this.disconnectBouncePlaybackSources(node, this.inputCaptureBounceSources);
                 this.inputCaptureBounceSources = [null, null, null, null, null];
                 node.disconnect();
@@ -4359,6 +4375,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         maxRecordingFrames?: number,
         autoRecThreshold?: number,
         bounceSourceMask?: number,
+        rhythmPhaseEpoch?: number,
     ): InputCaptureSession | null {
         const node = this.inputCaptureNode;
         if (!node || !this.inputCaptureReady || this.inputCaptureReadyGeneration !== this.inputCaptureGeneration
@@ -4378,6 +4395,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             inputGeneration: this.inputCaptureGeneration,
             get startFrame() { return effectiveStartFrame; },
             ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
+            ...(rhythmPhaseEpoch !== undefined ? { rhythmPhaseEpoch } : {}),
         };
         this.inputCaptureSessions.set(trackIndex, { session, listener: (message: any) => {
             if (autoRecThreshold !== undefined && message.type === 'RECORD_CONFIGURED'
@@ -4391,6 +4409,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 ...(bounceSourceMask !== undefined ? { bounceSourceMask } : {}),
                 inputGeneration: session.inputGeneration, captureReadyEpoch: this.inputCaptureReadyEpoch, startFrame,
                 ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
+                ...(rhythmPhaseEpoch !== undefined ? { rhythmPhaseEpoch } : {}),
                 maxRecordingBytes: 384 * 1024 * 1024,
             });
             return session;
@@ -4401,7 +4420,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
     }
 
-    public stopInputCaptureSession(session: InputCaptureSession, stopFrame: number): boolean {
+    public stopInputCaptureSession(session: InputCaptureSession, stopFrame: number, rhythmPhaseEpoch?: number): boolean {
         const record = this.inputCaptureSessions.get(session.trackIndex);
         if (!record || record.session.sessionId !== session.sessionId || record.session.node !== session.node
             || !Number.isSafeInteger(stopFrame) || stopFrame < session.startFrame) return false;
@@ -4410,6 +4429,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 type: 'STOP_CAPTURE', trackIndex: session.trackIndex,
                 sessionId: session.sessionId, inputGeneration: session.inputGeneration,
                 stopFrame,
+                ...(rhythmPhaseEpoch !== undefined ? { rhythmPhaseEpoch } : {}),
             });
             return true;
         } catch {
@@ -4487,6 +4507,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             node.port.onmessage = null;
             node.onprocessorerror = null;
             try { disconnectAudioNodeIfConnected(this.inputFxChain.output, node); } catch { /* context closing */ }
+            try { disconnectAudioNodeIfConnected(this.rhythmEngine.outputNode, node); } catch { /* context closing */ }
             if (this.inputCaptureRawSource) {
                 try { disconnectAudioNodeIfConnected(this.inputCaptureRawSource, node); } catch { /* context closing */ }
             }

@@ -265,19 +265,25 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
   private phaseRequestId: number | null = null;
   private phaseAcknowledged = false;
   private phaseInvalidated = false;
+  private readonly sharedPhaseEpoch: Int32Array | null;
 
   constructor() {
     super();
     this.core = new RhythmWorkletCore(workletGlobals.sampleRate ?? 44_100);
+    const phaseEpochBuffer = (this as unknown as { processorOptions?: { phaseEpochBuffer?: unknown } }).processorOptions?.phaseEpochBuffer;
+    this.sharedPhaseEpoch = typeof SharedArrayBuffer !== 'undefined' && phaseEpochBuffer instanceof SharedArrayBuffer
+      ? new Int32Array(phaseEpochBuffer) : null;
     this.port.onmessage = (event: { data: unknown }): void => {
       const message = event.data as WorkletMessage | null;
       if (message?.type === "start") {
+        this.setSharedPhaseEpoch(0);
         this.core.configure(message.configuration, message.requestId);
         this.phaseRequestId = message.requestId;
         this.phaseAcknowledged = false;
         this.phaseInvalidated = false;
       }
       else if (message?.type === "stop") {
+        this.setSharedPhaseEpoch(0);
         this.core.stop();
         this.phaseRequestId = message.requestId;
         this.phaseAcknowledged = true;
@@ -335,6 +341,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     if (!this.phaseAcknowledged && this.phaseRequestId !== null && renderedOnTimeline) {
       const phase = this.core.getMeasurePhaseSnapshot(this.phaseRequestId);
       if (phase && startFrame <= phase.originFrame && phase.originFrame < blockEndFrame) {
+        this.setSharedPhaseEpoch(phase.epoch);
         this.port.postMessage(phase satisfies RhythmPhaseMessage);
         this.phaseAcknowledged = true;
       } else if (phase && startFrame > phase.originFrame) {
@@ -352,6 +359,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
   }
 
   private invalidatePhase(): void {
+    this.setSharedPhaseEpoch(0);
     if (this.phaseInvalidated || this.phaseRequestId === null) return;
     this.phaseInvalidated = true;
     this.phaseAcknowledged = true;
@@ -361,6 +369,10 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       requestId: this.phaseRequestId,
       epoch: this.core.currentPhaseEpoch,
     } satisfies RhythmPhaseMessage);
+  }
+
+  private setSharedPhaseEpoch(epoch: number): void {
+    if (this.sharedPhaseEpoch) Atomics.store(this.sharedPhaseEpoch, 0, epoch > 0 ? epoch : 0);
   }
 }
 
