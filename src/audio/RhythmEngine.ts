@@ -12,7 +12,7 @@ import {
   type RhythmSection,
   type RhythmVariation,
 } from './rhythm';
-import type { RhythmWorkletConfiguration } from './worklet/RhythmProcessor';
+import type { RhythmMeasurePhaseSnapshot, RhythmWorkletConfiguration } from './worklet/RhythmProcessor';
 import type { BrowserRecoverySnapshot } from './BrowserRecoverySnapshot';
 
 /** The three selections retained by the existing RhythmControls UI. */
@@ -43,6 +43,17 @@ const MAX_VOICE_COUNT = 16;
 
 type RhythmTimelineStatusMessage =
   | {
+    readonly type: 'measure-phase';
+    readonly available: boolean;
+    readonly requestId: number;
+    readonly epoch: number;
+    readonly originFrame?: number;
+    readonly nextMeasureFrame?: number;
+    readonly sampleRate?: number;
+    readonly bpm?: number;
+    readonly stepsPerBar?: number;
+  }
+  | {
     readonly type: 'timeline-rewind';
     readonly requestedStartFrame: number;
     readonly expectedStartFrame: number;
@@ -69,6 +80,8 @@ export class RhythmEngine {
   private quantize: RhythmQuantizeGrid = '1/16';
   private workletNode: AudioWorkletNode | null = null;
   private workletReady: Promise<AudioWorkletNode> | null = null;
+  private phaseRequestId = 0;
+  private measurePhase: RhythmMeasurePhaseSnapshot | null = null;
   private lastError = '';
   private readonly notifyStatus: () => void;
   private transportListenerAttached = false;
@@ -129,6 +142,11 @@ export class RhythmEngine {
 
   get isRunning(): boolean {
     return this.isPlaying;
+  }
+
+  /** Worklet-authored phase only; null until an absolute-frame origin is acknowledged. */
+  get measurePhaseSnapshot(): RhythmMeasurePhaseSnapshot | null {
+    return this.measurePhase;
   }
 
   /** Event data and sound generation are clean-room approximations, not factory MIDI. */
@@ -252,7 +270,8 @@ export class RhythmEngine {
 
   stop(): void {
     this.isPlaying = false;
-    this.workletNode?.port.postMessage({ type: 'stop' });
+    const requestId = this.invalidateMeasurePhase();
+    this.workletNode?.port.postMessage({ type: 'stop', requestId });
     this.detachTransportListener();
   }
 
@@ -291,6 +310,7 @@ export class RhythmEngine {
         channelCountMode: 'explicit',
       });
       node.onprocessorerror = (): void => {
+        this.invalidateMeasurePhase();
         this.lastError = 'The rhythm AudioWorklet processor stopped unexpectedly';
         this.notifyStatus();
       };
@@ -321,7 +341,9 @@ export class RhythmEngine {
       maxVoices: MAX_VOICE_COUNT,
       eventTemplate: template,
     };
-    node.port.postMessage({ type: 'start', configuration });
+    const requestId = this.nextPhaseRequestId();
+    this.measurePhase = null;
+    node.port.postMessage({ type: 'start', requestId, configuration });
   }
 
   private createEventTemplate(metadata: RhythmPatternMetadata, bpm: number): CleanRoomDrumEvent[] {
@@ -342,6 +364,37 @@ export class RhythmEngine {
   private handleWorkletStatus(value: unknown): void {
     if (!value || typeof value !== 'object') return;
     const message = value as Partial<RhythmTimelineStatusMessage>;
+    if (message.type === 'measure-phase') {
+      if (message.requestId !== this.phaseRequestId || !Number.isSafeInteger(message.epoch) || message.epoch! < 1) return;
+      if (message.available === false) {
+        this.measurePhase = null;
+        this.notifyStatus();
+        return;
+      }
+      if (!this.isPlaying
+        || !Number.isSafeInteger(message.originFrame)
+        || !Number.isSafeInteger(message.nextMeasureFrame)
+        || message.nextMeasureFrame! <= message.originFrame!
+        || message.sampleRate !== this.context.sampleRate
+        || !Number.isFinite(message.bpm) || message.bpm! <= 0
+        || !Number.isSafeInteger(message.stepsPerBar) || message.stepsPerBar! < 1) return;
+      const expectedNextMeasureFrame = message.originFrame!
+        + Math.round((message.stepsPerBar! * message.sampleRate! * 15) / message.bpm!);
+      if (expectedNextMeasureFrame !== message.nextMeasureFrame) return;
+      this.measurePhase = Object.freeze({
+        type: 'measure-phase',
+        available: true,
+        requestId: message.requestId,
+        epoch: message.epoch!,
+        originFrame: message.originFrame!,
+        nextMeasureFrame: message.nextMeasureFrame!,
+        sampleRate: message.sampleRate!,
+        bpm: message.bpm!,
+        stepsPerBar: message.stepsPerBar!,
+      });
+      this.notifyStatus();
+      return;
+    }
     if (message.type === 'timeline-rewind'
       && Number.isSafeInteger(message.requestedStartFrame)
       && Number.isSafeInteger(message.expectedStartFrame)
@@ -357,6 +410,17 @@ export class RhythmEngine {
       this.lastError = `Rhythm resumed on the absolute timeline at frame ${message.resumedStartFrame}. Timeline continuity was interrupted; muted or skipped audio was not buffered for replay.`;
       this.notifyStatus();
     }
+  }
+
+  private nextPhaseRequestId(): number {
+    if (this.phaseRequestId >= Number.MAX_SAFE_INTEGER) throw new RangeError('Rhythm phase request id is exhausted');
+    this.phaseRequestId += 1;
+    return this.phaseRequestId;
+  }
+
+  private invalidateMeasurePhase(): number {
+    this.measurePhase = null;
+    return this.nextPhaseRequestId();
   }
 }
 

@@ -69,6 +69,48 @@ afterEach(() => {
 });
 
 describe('rhythm AudioWorklet integration', () => {
+  it('publishes a worklet-owned absolute measure origin and advances its epoch only on phase changes', () => {
+    const sampleRate = 44_100;
+    const bpm = 137;
+    const stepsPerBar = 14;
+    const configuration = createWorkletConfig({
+      sampleRate,
+      bpm,
+      startFrame: 8_765_432,
+      stepsPerBar,
+    });
+    const core = new RhythmWorkletCore(sampleRate);
+    expect(core.getMeasurePhaseSnapshot(1)).toBeNull();
+
+    core.configure(configuration);
+    const first = core.getMeasurePhaseSnapshot(1)!;
+    expect(first).toEqual({
+      type: 'measure-phase',
+      available: true,
+      requestId: 1,
+      epoch: 1,
+      originFrame: configuration.startFrame,
+      nextMeasureFrame: configuration.startFrame + Math.round((stepsPerBar * sampleRate * 15) / bpm),
+      sampleRate,
+      bpm,
+      stepsPerBar,
+    });
+    const output = new Float32Array(128);
+    core.renderInto(configuration.startFrame, output);
+    expect(core.getMeasurePhaseSnapshot(1)).toEqual(first);
+
+    core.configure({ ...configuration, startFrame: configuration.startFrame + 10_000 });
+    expect(core.getMeasurePhaseSnapshot(2)).toMatchObject({
+      available: true,
+      requestId: 2,
+      epoch: 2,
+      originFrame: configuration.startFrame + 10_000,
+    });
+    core.stop();
+    expect(core.getMeasurePhaseSnapshot(3)).toBeNull();
+    expect(core.currentPhaseEpoch).toBe(3);
+  });
+
   it('renders variable-sized blocks on the absolute timeline with a bounded voice pool', () => {
     const template = createCleanRoomPatternEvents(106, {
       sampleRate: 16_000,
@@ -205,7 +247,13 @@ describe('rhythm AudioWorklet integration', () => {
     vi.stubGlobal('sampleRate', sampleRate);
     const processor = new RhythmWorkletProcessor();
     const postMessage = vi.spyOn(processor.port, 'postMessage');
-    processor.port.onmessage?.({ data: { type: 'start', configuration } });
+    processor.port.onmessage?.({ data: { type: 'start', requestId: 7, configuration } });
+    expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual(['measure-phase']);
+    expect(postMessage.mock.calls[0]![0]).toMatchObject({
+      type: 'measure-phase', available: true, requestId: 7, epoch: 1,
+      originFrame: 1_024, sampleRate, bpm: 123, stepsPerBar: 16,
+      nextMeasureFrame: 1_024 + Math.round((16 * sampleRate * 15) / 123),
+    });
 
     const renderAt = (frame: number): { readonly alive: boolean; readonly output: Float32Array } => {
       vi.stubGlobal('currentFrame', frame);
@@ -229,6 +277,7 @@ describe('rhythm AudioWorklet integration', () => {
     expect([...stale.output, ...repeatedStale.output].every((sample) => sample === 0)).toBe(true);
     expect(resumed.output).toEqual(expectedResumed);
     expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
+      'measure-phase',
       'timeline-rewind',
       'timeline-recovered',
     ]);
@@ -349,8 +398,101 @@ describe('rhythm AudioWorklet integration', () => {
       });
       engine.stop();
       expect(bpmListeners()).toBe(bpmListenersBefore);
-      expect(node.port.postMessage.mock.calls.at(-1)?.[0]).toEqual({ type: 'stop' });
+      expect(node.port.postMessage.mock.calls.at(-1)?.[0]).toMatchObject({ type: 'stop', requestId: expect.any(Number) });
       expect(engine.outputNode.gain.value).toBe(0.75);
+    } finally {
+      engine.dispose();
+    }
+  });
+
+  it('accepts only the current acknowledged worklet phase and invalidates it immediately on stop', async () => {
+    vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
+    const context = createContext();
+    const engine = new RhythmEngine(context);
+    try {
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      engine.start();
+      await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
+      const node = TestWorkletNode.instances[0]!;
+      const start = node.port.postMessage.mock.calls[0]![0] as { requestId: number; configuration: RhythmWorkletConfiguration };
+      const phase = {
+        type: 'measure-phase',
+        available: true,
+        requestId: start.requestId,
+        epoch: 1,
+        originFrame: start.configuration.startFrame,
+        nextMeasureFrame: start.configuration.startFrame
+          + Math.round((start.configuration.stepsPerBar * context.sampleRate * 15) / start.configuration.bpm),
+        sampleRate: context.sampleRate,
+        bpm: start.configuration.bpm,
+        stepsPerBar: start.configuration.stepsPerBar,
+      };
+      node.emitMessage({ ...phase, requestId: start.requestId - 1 });
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      node.emitMessage({ ...phase, epoch: 0 });
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      node.emitMessage(phase);
+      expect(engine.measurePhaseSnapshot).toMatchObject({
+        epoch: 1,
+        originFrame: start.configuration.startFrame,
+        nextMeasureFrame: phase.nextMeasureFrame,
+      });
+      node.emitMessage({ ...phase, nextMeasureFrame: phase.nextMeasureFrame + 1 });
+      expect(engine.measurePhaseSnapshot?.nextMeasureFrame).toBe(phase.nextMeasureFrame);
+
+      engine.setCatalogPattern(240);
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      const reconfigured = node.port.postMessage.mock.calls.at(-1)?.[0] as {
+        requestId: number;
+        configuration: RhythmWorkletConfiguration;
+      };
+      expect(reconfigured.requestId).toBeGreaterThan(start.requestId);
+      const reconfiguredPhase = {
+        ...phase,
+        requestId: reconfigured.requestId,
+        epoch: 2,
+        originFrame: reconfigured.configuration.startFrame,
+        bpm: reconfigured.configuration.bpm,
+        stepsPerBar: reconfigured.configuration.stepsPerBar,
+        nextMeasureFrame: reconfigured.configuration.startFrame
+          + Math.round((reconfigured.configuration.stepsPerBar * context.sampleRate * 15)
+            / reconfigured.configuration.bpm),
+      };
+      node.emitMessage(phase);
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      node.emitMessage(reconfiguredPhase);
+      expect(engine.measurePhaseSnapshot).toMatchObject({ epoch: 2, requestId: reconfigured.requestId });
+
+      engine.stop();
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      const stop = node.port.postMessage.mock.calls.at(-1)?.[0] as { requestId: number };
+      node.emitMessage(reconfiguredPhase);
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      node.emitMessage({ type: 'measure-phase', available: false, requestId: stop.requestId, epoch: 2 });
+      expect(engine.measurePhaseSnapshot).toBeNull();
+
+      engine.start();
+      await vi.waitFor(() => expect(node.port.postMessage).toHaveBeenCalledTimes(4));
+      const restarted = node.port.postMessage.mock.calls.at(-1)?.[0] as {
+        requestId: number;
+        configuration: RhythmWorkletConfiguration;
+      };
+      expect(restarted.requestId).toBeGreaterThan(stop.requestId);
+      node.emitMessage({ type: 'measure-phase', available: false, requestId: stop.requestId, epoch: 3 });
+      expect(engine.measurePhaseSnapshot).toBeNull();
+      node.emitMessage({
+        type: 'measure-phase',
+        available: true,
+        requestId: restarted.requestId,
+        epoch: 4,
+        originFrame: restarted.configuration.startFrame,
+        nextMeasureFrame: restarted.configuration.startFrame
+          + Math.round((restarted.configuration.stepsPerBar * context.sampleRate * 15) / restarted.configuration.bpm),
+        sampleRate: context.sampleRate,
+        bpm: restarted.configuration.bpm,
+        stepsPerBar: restarted.configuration.stepsPerBar,
+      });
+      expect(engine.measurePhaseSnapshot).toMatchObject({ epoch: 4, requestId: restarted.requestId });
     } finally {
       engine.dispose();
     }

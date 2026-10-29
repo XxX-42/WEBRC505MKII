@@ -15,6 +15,19 @@ export interface RhythmWorkletConfiguration {
   readonly eventTemplate: readonly CleanRoomDrumEvent[];
 }
 
+/** Worklet-owned phase origin; measure boundaries are rounded from this absolute frame. */
+export interface RhythmMeasurePhaseSnapshot {
+  readonly type: "measure-phase";
+  readonly available: true;
+  readonly requestId: number;
+  readonly epoch: number;
+  readonly originFrame: number;
+  readonly nextMeasureFrame: number;
+  readonly sampleRate: number;
+  readonly bpm: number;
+  readonly stepsPerBar: number;
+}
+
 interface RhythmWorkletGlobals {
   readonly AudioWorkletProcessor?: new () => { readonly port: RhythmMessagePort };
   readonly registerProcessor?: (name: string, processor: new () => unknown) => void;
@@ -28,8 +41,15 @@ interface RhythmMessagePort {
 }
 
 type WorkletMessage =
-  | { readonly type: "start"; readonly configuration: RhythmWorkletConfiguration }
-  | { readonly type: "stop" };
+  | { readonly type: "start"; readonly requestId: number; readonly configuration: RhythmWorkletConfiguration }
+  | { readonly type: "stop"; readonly requestId: number };
+
+type RhythmPhaseMessage = RhythmMeasurePhaseSnapshot | {
+  readonly type: "measure-phase";
+  readonly available: false;
+  readonly requestId: number;
+  readonly epoch: number;
+};
 
 type RhythmTimelineMessage =
   | {
@@ -68,6 +88,7 @@ export class RhythmWorkletCore {
   private pool: DrumVoicePool | null = null;
   private nextBarToSchedule = 0;
   private lastRenderedFrameEnd: number | null = null;
+  private phaseEpoch = 0;
 
   constructor(sampleRate: number) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8_000) {
@@ -83,6 +104,30 @@ export class RhythmWorkletCore {
   /** End of the last successfully rendered absolute-frame block, if any. */
   get expectedNextFrame(): number | null {
     return this.lastRenderedFrameEnd;
+  }
+
+  get currentPhaseEpoch(): number {
+    return this.phaseEpoch;
+  }
+
+  /** Snapshot construction is control-path only and is never called from renderInto(). */
+  getMeasurePhaseSnapshot(requestId: number): RhythmMeasurePhaseSnapshot | null {
+    const configuration = this.configuration;
+    if (!configuration || !Number.isSafeInteger(requestId) || requestId < 0) return null;
+    const nextMeasureFrame = configuration.startFrame
+      + Math.round((configuration.stepsPerBar * this.sampleRate * 15) / configuration.bpm);
+    if (!Number.isSafeInteger(nextMeasureFrame)) return null;
+    return {
+      type: "measure-phase",
+      available: true,
+      requestId,
+      epoch: this.phaseEpoch,
+      originFrame: configuration.startFrame,
+      nextMeasureFrame,
+      sampleRate: this.sampleRate,
+      bpm: configuration.bpm,
+      stepsPerBar: configuration.stepsPerBar,
+    };
   }
 
   configure(configuration: RhythmWorkletConfiguration): void {
@@ -104,6 +149,9 @@ export class RhythmWorkletCore {
     if (!Number.isSafeInteger(configuration.stepsPerBar) || configuration.stepsPerBar < 1) {
       throw new RangeError("Rhythm worklet stepsPerBar must be a positive integer");
     }
+    if (this.phaseEpoch >= Number.MAX_SAFE_INTEGER) {
+      throw new RangeError("Rhythm worklet phase epoch is exhausted");
+    }
     // The browser supplies a structured-cloned configuration. Keep its immutable template
     // as-is; the hot path reads its scalar fields directly and does not map/copy events.
     this.configuration = configuration;
@@ -113,12 +161,14 @@ export class RhythmWorkletCore {
       maxVoices: configuration.maxVoices,
     });
     this.nextBarToSchedule = 0;
+    this.phaseEpoch += 1;
     // Keep the core's last successful cursor across live reconfiguration. The new pool
     // starts fresh, but a late callback from before the configuration must not be allowed
     // to render into the new rhythm state at an older absolute frame.
   }
 
   stop(): void {
+    if (this.phaseEpoch < Number.MAX_SAFE_INTEGER) this.phaseEpoch += 1;
     this.pool?.reset();
     this.pool = null;
     this.configuration = null;
@@ -213,11 +263,21 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     this.core = new RhythmWorkletCore(workletGlobals.sampleRate ?? 44_100);
     this.port.onmessage = (event: { data: unknown }): void => {
       const message = event.data as WorkletMessage | null;
-      if (message?.type === "start") this.core.configure(message.configuration);
+      if (message?.type === "start") {
+        this.core.configure(message.configuration);
+        const phase = this.core.getMeasurePhaseSnapshot(message.requestId);
+        if (phase) this.port.postMessage(phase satisfies RhythmPhaseMessage);
+      }
       else if (message?.type === "stop") {
         this.core.stop();
         this.staleEpisodeStartFrame = null;
         this.staleEpisodeExpectedFrame = null;
+        this.port.postMessage({
+          type: "measure-phase",
+          available: false,
+          requestId: message.requestId,
+          epoch: this.core.currentPhaseEpoch,
+        } satisfies RhythmPhaseMessage);
       }
     };
   }
