@@ -34,6 +34,14 @@ def phase_has_headroom(status):
         value['nextMeasureFrame'] - value['sampleFrame'] > 24000
 
 
+def set_callback_gate(paused):
+    code, status = request('/v1/test/simulation/callback-gate', 'POST', {'paused': paused})
+    require(code == 200 and status.get('paused') is paused,
+        ('simulation callback gate update failed', paused, status))
+    if paused:
+        require(status.get('callbackParked') is True, status)
+
+
 def main():
     process = subprocess.Popen([sys.argv[1]], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
@@ -75,9 +83,10 @@ def main():
         code, rhythm = request('/v1/native-rhythm/config', 'POST', {'enabled': True, 'bpm': 300, 'patternIndex': 92})
         require(code == 200, rhythm)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'engine start failed')
-        ready = until(phase_has_headroom)
-
-        first = phase(ready)
+        until(phase_has_headroom)
+        set_callback_gate(True)
+        first_status = request('/v1/status')[1]
+        first = phase(first_status)
         code, queued = request('/v1/transport/rhythm-schedule', 'POST', first)
         require(code == 200, queued)
         revision = queued['nativeLoopFrameScheduling']['acceptedRevision']
@@ -86,29 +95,30 @@ def main():
             'second pending schedule for the same track was accepted')
         cancel_code, cancel_accepted = request('/v1/transport/rhythm-schedule/cancel', 'POST', {'trackId': 2, 'revision': revision})
         require(cancel_code == 200, ('cancel request was not accepted', cancel_accepted))
+        set_callback_gate(False)
         cancelled_status = until(lambda value:
             value['nativeLoopFrameScheduling']['requests'][1]['cancelledRevision'] == revision)
         require(cancelled_status['nativeTracks'][1]['state'] == 'Empty', cancelled_status)
 
-        # Reuse the same still-future boundary when cancellation returns before
-        # it. This exercises cancel/replace at one phase without waiting an
-        # extra simulated measure; if that boundary passed, reacquire headroom.
-        current = cancelled_status
-        if current['nativeRhythm']['phase']['nextMeasureFrame'] != first['absoluteFrame'] or \
-                current['nativeRhythm']['phase']['nextMeasureFrame'] <= current['nativeRhythm']['phase']['sampleFrame']:
-            current = until(phase_has_headroom)
-        record_request = phase(current)
+        # Park the fake callback at a complete-block boundary before each
+        # future measure request. This makes cancellation and frame ACK ordering
+        # deterministic without pretending the simulation cadence is hardware.
+        set_callback_gate(True)
+        record_request = phase(request('/v1/status')[1])
         code, accepted = request('/v1/transport/rhythm-schedule', 'POST', record_request)
         require(code == 200, accepted)
         record_revision = accepted['nativeLoopFrameScheduling']['acceptedRevision']
+        set_callback_gate(False)
         recorded = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == record_revision
             and value['nativeTracks'][1]['state'] == 'Recording')
 
-        stop_request = phase(recorded)
+        set_callback_gate(True)
+        stop_request = phase(request('/v1/status')[1])
         stop_request['action'] = 'stop'
         code, accepted_stop = request('/v1/transport/rhythm-schedule', 'POST', stop_request)
         require(code == 200, accepted_stop)
         stop_revision = accepted_stop['nativeLoopFrameScheduling']['acceptedRevision']
+        set_callback_gate(False)
         stopped = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == stop_revision
             and value['nativeTracks'][1]['state'] == 'Stopped')
         require(stopped['nativeRecordPlay']['quantizeAvailable'] is False and
@@ -116,6 +126,10 @@ def main():
             stopped['nativeRhythm']['phase']['frameSchedulingAvailable'] is False, stopped)
         print('Native Rhythm schedule HTTP: field validation, cancel/status ACK, callback REC/STOP ACK; full quantize capability remains false')
     finally:
+        try:
+            request('/v1/test/simulation/callback-gate', 'POST', {'paused': False})
+        except Exception:
+            pass
         process.terminate()
         process.wait(timeout=5)
 

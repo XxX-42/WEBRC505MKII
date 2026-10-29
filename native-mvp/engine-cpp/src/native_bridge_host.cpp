@@ -1530,6 +1530,34 @@ int main() {
     server.set_payload_max_length(static_cast<std::size_t>(kProjectArchiveMaxBytes));
     enableLoopbackCors(server);
 
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+    // Deterministic interleaving seam for HTTP route tests. This route is not
+    // compiled into the Native production bridge and only parks the fake
+    // RtAudio callback between complete callback blocks.
+    server.Post("/v1/test/simulation/callback-gate", [](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || body.size() != 1U || !body.contains("paused") || !body.at("paused").is_boolean()) {
+                response.status = 400; writeError(response, "Simulation callback gate requires only a boolean paused field."); return;
+            }
+            const bool paused = body.at("paused").get<bool>();
+            webrc::native::test_support::setSimulationCallbackGate(paused);
+            if (paused) {
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+                while (!webrc::native::test_support::isSimulationCallbackGateParked() &&
+                    std::chrono::steady_clock::now() < deadline) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                if (!webrc::native::test_support::isSimulationCallbackGateParked()) {
+                    response.status = 409; writeError(response, "Simulation callback did not park before the test gate deadline."); return;
+                }
+            }
+            writeJson(response, json{{"ok", true}, {"paused", paused},
+                {"callbackParked", webrc::native::test_support::isSimulationCallbackGateParked()}});
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+#endif
+
     server.Get("/health", [&engine](const httplib::Request&, httplib::Response& response) {
         const auto status = engine.getStatus();
         writeJson(response, json{

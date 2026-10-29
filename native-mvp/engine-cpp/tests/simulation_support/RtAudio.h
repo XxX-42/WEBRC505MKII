@@ -14,6 +14,19 @@
 #include <thread>
 #include <vector>
 
+namespace webrc::native::test_support {
+inline std::atomic<bool> simulationCallbackGateRequested{false};
+inline std::atomic<bool> simulationCallbackGateParked{false};
+
+inline void setSimulationCallbackGate(bool paused) noexcept {
+    simulationCallbackGateRequested.store(paused, std::memory_order_release);
+}
+
+[[nodiscard]] inline bool isSimulationCallbackGateParked() noexcept {
+    return simulationCallbackGateParked.load(std::memory_order_acquire);
+}
+} // namespace webrc::native::test_support
+
 using RtAudioStreamStatus = unsigned int;
 
 constexpr unsigned int RTAUDIO_FLOAT32 = 0U;
@@ -93,6 +106,15 @@ public:
             inputScratch_.assign(static_cast<std::size_t>(frames_) * inputChannels_, 0.0f);
             callbackThread_ = std::thread([this] {
                 while (streamRunning_.load(std::memory_order_acquire)) {
+                    if (webrc::native::test_support::simulationCallbackGateRequested.load(std::memory_order_acquire)) {
+                        webrc::native::test_support::simulationCallbackGateParked.store(true, std::memory_order_release);
+                        while (streamRunning_.load(std::memory_order_acquire) &&
+                            webrc::native::test_support::simulationCallbackGateRequested.load(std::memory_order_acquire)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        }
+                        webrc::native::test_support::simulationCallbackGateParked.store(false, std::memory_order_release);
+                        continue;
+                    }
                     for (unsigned int frame = 0U; frame < frames_; ++frame) {
                         const float sample = sampleRate_ > 0U
                             ? static_cast<float>(0.1 * std::sin(
