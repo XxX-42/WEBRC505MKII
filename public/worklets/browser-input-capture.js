@@ -25,7 +25,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.readyPreRollFrames = Math.min(this.preRollFrames,
       this.positiveInteger(config.readyPreRollFrames, this.preRollFrames));
     this.maxRecordingBytes = this.positiveInteger(config.maxRecordingBytes, DEFAULT_MAX_RECORDING_BYTES);
-    this.rhythmPhaseEpochView = config.rhythmPhaseEpochBuffer instanceof SharedArrayBuffer
+    this.rhythmPhaseEpochView = typeof SharedArrayBuffer !== 'undefined'
+      && config.rhythmPhaseEpochBuffer instanceof SharedArrayBuffer
       ? new Int32Array(config.rhythmPhaseEpochBuffer) : null;
 
     // The ring is volatile pre-roll only. It is reset at every input/device or

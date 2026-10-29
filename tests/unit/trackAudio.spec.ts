@@ -304,6 +304,37 @@ describe('TrackAudio transport sync helpers', () => {
     expect({ canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes }).toEqual(historyBefore);
   });
 
+  it('ignores an out-of-order completion from an older capture session on the reused worklet node', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => Math.fround(i / 512))]);
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => Math.fround(-i / 512))]);
+    trackAudio.stop();
+    const incumbent = (trackAudio as any).audioBuffer as AudioBuffer;
+    const incumbentPcm = Array.from(incumbent.getChannelData(0));
+    const node = new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode;
+    const currentSession = { node, trackIndex: 0, sessionId: 93, inputGeneration: 8, startFrame: 20_000 };
+    engine.abortInputCaptureSession = vi.fn();
+    engine.releaseInputCaptureSession = vi.fn();
+    (trackAudio as any).recordingCaptureSession = currentSession;
+    (trackAudio as any).workletNode = node;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.RECORDING;
+    const historyBefore = { canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes };
+
+    (trackAudio as any).handleRecordingMessage(node, {
+      type: 'RECORD_COMPLETE', sessionId: 92, inputGeneration: 7,
+      requestedStartFrame: 1_000, stopFrame: 44_200, framesCaptured: 43_200,
+    });
+
+    expect((trackAudio as any).recordingCaptureSession).toBe(currentSession);
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+    expect((trackAudio as any).audioBuffer).toBe(incumbent);
+    expect(Array.from(incumbent.getChannelData(0))).toEqual(incumbentPcm);
+    expect(engine.abortInputCaptureSession).not.toHaveBeenCalled();
+    expect(engine.releaseInputCaptureSession).not.toHaveBeenCalled();
+    expect({ canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes }).toEqual(historyBefore);
+  });
+
   it('uses the worklet start-frame ACK to enter RECORDING without waiting for a chunk', async () => {
     const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';

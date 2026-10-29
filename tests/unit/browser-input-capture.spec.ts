@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 class WorkletPort {
   onmessage: ((event: { data: unknown }) => void) | null = null;
@@ -119,6 +119,32 @@ describe('Browser shared input capture worklet', () => {
       previousCallbackEndFrame: 4, preRollEndAtCallbackStart: 4,
     });
     expect(capture.messages('RECORD_ABORTED')).toHaveLength(1);
+  });
+
+  it('fails closed for Rhythm-quantized capture when SharedArrayBuffer is unavailable', () => {
+    const Processor = loadProcessor();
+    vi.stubGlobal('SharedArrayBuffer', undefined);
+    try {
+      const processor = new Processor({ processorOptions: {
+        trackCount: 1, chunkSize: 4, chunkPoolSize: 3, preRollFrames: 8,
+        maxRecordingBytes: 256, rhythmPhaseEpochBuffer: undefined,
+      } });
+      processor.port.receive({ type: 'INPUT_READY', ready: true, generation: 1 });
+      processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 83, inputGeneration: 1,
+        startFrame: 0, rhythmPhaseEpoch: 7, maxRecordingBytes: 256 });
+      const output = [[new Float32Array(4), new Float32Array(4)]];
+      expect(processor.process([[Float32Array.from([1, 2, 3, 4])], [Float32Array.from([1, 2, 3, 4])]], output)).toBe(true);
+      processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 83, stopFrame: 4, rhythmPhaseEpoch: 7 });
+      const messages = processor.port.messages.map(({ message }: { message: any }) => message);
+
+      expect(messages.find((message: any) => message.type === 'CAPTURE_ERROR')).toMatchObject({
+        reason: 'rhythm-phase-epoch-mismatch', rhythmPhaseInvalidationReasonCode: -1,
+      });
+      expect(messages.filter((message: any) => message.type === 'RECORD_COMPLETE')).toHaveLength(0);
+      expect(messages.filter((message: any) => message.type === 'RECORD_ABORTED')).toHaveLength(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('stops backfill after a frame continuity abort without repeated errors or completion', () => {

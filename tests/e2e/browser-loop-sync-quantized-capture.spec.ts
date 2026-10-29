@@ -277,6 +277,34 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
     if (offRecordedFrames !== expectedLoopFrames) {
       throw new Error(`QUANTIZE OFF loop has ${offRecordedFrames} frames; measure-adjusted capture length should be ${expectedLoopFrames} (capture ${offCapturedFrames})`);
     }
+    track.stop();
+    (await import('/src/core/Transport.ts')).Transport.getInstance().stop();
+    browser.inputCaptureRawSource.connect(captureNode, 0, 0);
+    browser.inputFxChain.output.connect(captureNode, 0, 1);
+    browser.rhythmEngine.stop();
+    await waitFor(() => !browser.rhythmEngine.isRunning, 'Rhythm stop before Memory save');
+    const memoryModule = await import('/src/composables/useRc505Memory.ts');
+    const memory = memoryModule.useRc505Memory();
+    memory.setName('SYNC');
+    await memory.save(96);
+    const memoryPcm = track.audioBuffer as AudioBuffer | null;
+    if (!memoryPcm) throw new Error('Memory setup has no committed loop PCM.');
+    const savedSample = memoryPcm.getChannelData(0)[0];
+    const priorUndo = track.canUndo;
+    track.track.loopSyncSw = 'OFF'; track.updateSettings();
+    browser.rhythmEngine.start();
+    await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'Rhythm restart before denied Memory switch');
+    let memorySwitchBlocked = false;
+    try { await memory.load(96); } catch { memorySwitchBlocked = true; }
+    const deniedSwitchPreserved = track.audioBuffer === memoryPcm
+      && (track.audioBuffer as AudioBuffer | null)?.getChannelData(0)[0] === savedSample
+      && track.canUndo === priorUndo && track.track.loopSyncSw === 'OFF';
+    browser.rhythmEngine.stop();
+    await waitFor(() => !browser.rhythmEngine.isRunning, 'Rhythm stop before Memory recall');
+    await memory.load(96);
+    const memoryRecallRestoredSync = track.track.loopSyncSw === 'ON'
+      && track.audioBuffer !== null
+      && (track.audioBuffer as AudioBuffer).getChannelData(0)[0] === savedSample;
     capturePort.postMessage = originalCapturePostMessage;
     signal.stop();
     browser.rhythmEngine.stop();
@@ -291,6 +319,9 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
       cancelledSessionId: pending?.sessionId ?? null,
       incumbentPreserved: cancellationPreservedPcm,
       previousBufferWasPresent: incumbent !== null,
+      memorySwitchBlocked,
+      deniedSwitchPreserved,
+      memoryRecallRestoredSync,
       immediateStartFrame,
       offStopFrame,
       offRecordedFrames,
@@ -304,6 +335,9 @@ test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and ke
   expect(result.workletAckStartFrame).toBe(result.startFrame);
   expect(result.cancelledSessionId).not.toBeNull();
   expect(result.incumbentPreserved).toBe(true);
+  expect(result.memorySwitchBlocked).toBe(true);
+  expect(result.deniedSwitchPreserved).toBe(true);
+  expect(result.memoryRecallRestoredSync).toBe(true);
   expect(result.offStopFrame - result.immediateStartFrame).toBe(result.offCapturedFrames);
   expect(result.offRecordedFrames).toBeGreaterThanOrEqual(result.offCapturedFrames);
 });
