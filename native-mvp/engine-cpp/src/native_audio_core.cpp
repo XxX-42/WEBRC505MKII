@@ -1009,6 +1009,13 @@ bool NativeAudioCore::setRecordQuantizeMeasure(bool enabled, std::string& error)
             error = "Finish recording/overdubbing before changing REC QUANTIZE."; return false;
         }
     }
+    if (!enabled) {
+        for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+            if (nativeLoopSync_[i].load(std::memory_order_acquire)) {
+                error = "REC QUANTIZE OFF with Native LOOP SYNC is unsupported; disable LOOP SYNC first."; return false;
+            }
+        }
+    }
     if (recordQuantizeMeasure_.load(std::memory_order_acquire) != enabled) {
         recordQuantizeMeasure_.store(enabled, std::memory_order_release);
         advanceProjectRevision(projectContentRevision_);
@@ -1030,6 +1037,9 @@ bool NativeAudioCore::setTrackLoopSync(std::size_t trackIndex, bool enabled, std
     if (enabled && state != LooperState::Empty) {
         error = "This Rhythm-only slice supports LOOP SYNC only before the first take; existing phrase lengths are not represented."; return false;
     }
+    if (enabled && !recordQuantizeMeasure_.load(std::memory_order_acquire)) {
+        error = "Native LOOP SYNC requires REC QUANTIZE MEASURE; OFF stop-length behavior is not implemented."; return false;
+    }
     if (nativeLoopSync_[trackIndex].load(std::memory_order_acquire) != enabled) {
         nativeLoopSync_[trackIndex].store(enabled, std::memory_order_release);
         advanceProjectRevision(projectContentRevision_);
@@ -1046,6 +1056,10 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
         nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire) ||
         static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire)) != LooperState::Recording) {
         error = "REC completion requires a recording track and no pending track/Memory command."; return false;
+    }
+    if (nativeLoopSync_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Native LOOP SYNC recording completion must use the Rhythm callback-frame scheduler; direct completion is disabled.";
+        return false;
     }
     if (nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
         error = "Wait for Native loop transport callback acknowledgement before completing REC."; return false;
@@ -1166,6 +1180,14 @@ bool NativeAudioCore::scheduleNativeRhythmRecordOrStop(
             error = "Native LOOP SYNC PLAY requires PCM whose length is an integer number of current Rhythm measures."; return false;
         }
     }
+    if (action == NativeScheduledLoopAction::Record && !recordQuantizeMeasure_.load(std::memory_order_acquire)) {
+        error = "Native Rhythm LOOP SYNC recording requires REC QUANTIZE MEASURE; OFF is unsupported.";
+        return false;
+    }
+    if (action == NativeScheduledLoopAction::Stop && !recordQuantizeMeasure_.load(std::memory_order_acquire)) {
+        error = "Native Rhythm LOOP SYNC stop requires REC QUANTIZE MEASURE; OFF is unsupported.";
+        return false;
+    }
     if (action == NativeScheduledLoopAction::Record) {
         const auto requestedBounce = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
         const auto appliedBounce = nativeBounceAppliedSnapshot_.load(std::memory_order_acquire);
@@ -1285,6 +1307,10 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
     if (trackIndex >= kNativeTrackCount) { error = "Native track index must be between 0 and 4."; return false; }
     if (!engineRunning_.load(std::memory_order_acquire)) { error = "Engine is not running."; return false; }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (nativeLoopSync_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Native LOOP SYNC overdub is unsupported in this slice.";
+        return false;
+    }
     if (nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
         error = "Wait for Native loop transport callback acknowledgement before changing overdub state.";
         return false;
@@ -1605,8 +1631,18 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if ((type == CommandType::Record || type == CommandType::Play) && nativeLoopSync_[trackIndex].load(std::memory_order_acquire)) {
+        error = "Native LOOP SYNC REC/PLAY must use the Rhythm callback-frame scheduler; direct transport is disabled.";
+        return false;
+    }
     if (nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
         error = "Wait for the scheduled Native REC/STOP callback acknowledgement before changing this track.";
+        return false;
+    }
+    if (type == CommandType::StopRecordOrPlayback && nativeLoopSync_[trackIndex].load(std::memory_order_acquire) &&
+        (state == LooperState::Recording || recordStartPending_[trackIndex].load(std::memory_order_acquire) ||
+         pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U)) {
+        error = "Native LOOP SYNC recording must stop at a verified Rhythm measure; direct immediate STOP is disabled.";
         return false;
     }
     if (type != CommandType::StopRecordOrPlayback && type != CommandType::Clear &&
@@ -3564,6 +3600,19 @@ bool NativeAudioCore::beginProjectArchiveImport(
     if (currentProjectRevision != expectedProjectContentRevision) {
         error = "Native project load was canceled because loop PCM or history changed while the archive was being read; all current tracks were preserved. Retry the load.";
         return false;
+    }
+    if (memory) {
+        const bool quantizeMeasure = memory->recordQuantizeIncluded
+            ? memory->recordQuantizeMeasure : recordQuantizeMeasure_.load(std::memory_order_acquire);
+        bool hasLoopSync = false;
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            hasLoopSync = hasLoopSync || (memory->loopSyncIncluded
+                ? memory->loopSync[track] : nativeLoopSync_[track].load(std::memory_order_acquire));
+        }
+        if (hasLoopSync && !quantizeMeasure) {
+            error = "Native Memory import cannot combine REC QUANTIZE OFF with LOOP SYNC; OFF stop-length behavior is unsupported.";
+            return false;
+        }
     }
     if ((archive.version != 1U && archive.version != 2U) || encodedBytes < kProjectArchiveHeaderBytes || encodedBytes > kProjectArchiveMaxBytes) {
         error = "Native project import archive version or encoded size is unsupported.";

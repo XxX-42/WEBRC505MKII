@@ -292,6 +292,11 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             }
             candidate->loopSyncIncluded = true;
         }
+        if (candidate->loopSyncIncluded && candidate->recordQuantizeIncluded &&
+            !candidate->recordQuantizeMeasure &&
+            std::any_of(candidate->loopSync.begin(), candidate->loopSync.end(), [](bool enabled) { return enabled; })) {
+            throw std::runtime_error("Native Memory cannot combine REC QUANTIZE OFF with LOOP SYNC; the OFF stop-length behavior is unsupported.");
+        }
         const auto& banks = settings.at("banks");
         if (!banks.is_array() || banks.size() != 7U) throw std::runtime_error("Memory requires seven FX banks.");
         for (std::size_t bank = 0U; bank < 7U; ++bank) {
@@ -455,6 +460,21 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             expectedFields[root + ".bounceTrack"] = candidate->bounce.bounceTrack[track];
             if (candidate->dubModesIncluded) expectedFields[root + ".dubMode"] = settings.at("dubModes")[track];
             if (candidate->loopSyncIncluded) expectedFields[root + ".loopSync"] = candidate->loopSync[track] ? "ON" : "OFF";
+        }
+        const auto& semanticFields = metadata.at("semantics").at("fields");
+        const auto requireSemanticField = [&semanticFields](const std::string& address, const json& expected) {
+            if (!semanticFields.contains(address) ||
+                semanticFields.at(address).value("availability", std::string{}) != "supported" ||
+                !semanticFields.at(address).contains("value") || semanticFields.at(address).at("value") != expected) {
+                throw std::runtime_error("Native Memory semantic field is missing or inconsistent: " + address);
+            }
+        };
+        if (candidate->recordQuantizeIncluded) requireSemanticField("record.quantize", settings.at("recQuantize"));
+        if (candidate->loopSyncIncluded) {
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                requireSemanticField("track." + std::to_string(track + 1U) + ".loopSync",
+                    candidate->loopSync[track] ? json("ON") : json("OFF"));
+            }
         }
         for (auto field = metadata.at("semantics").at("fields").begin(); field != metadata.at("semantics").at("fields").end(); ++field) {
             if (field.value().at("availability") == "supported" &&
@@ -2294,6 +2314,7 @@ int main() {
             response.status = 400; writeError(response, "REC tempo token requires tempoBpm 40..300 and a nonnegative safe tempoRevision."); return;
         }
         if (!engine.recordTrack(trackIndex, error, tempoBpm, tempoRevision)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }
@@ -2495,6 +2516,7 @@ int main() {
         }
         std::uint64_t requestedRevision = 0U;
         if (!engine.stopTrack(trackIndex, error, tempoBpm, tempoRevision, &requestedRevision)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }
@@ -2512,6 +2534,7 @@ int main() {
             return;
         }
         if (!engine.playTrack(trackIndex, error)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }

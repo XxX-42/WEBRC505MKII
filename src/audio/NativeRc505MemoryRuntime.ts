@@ -104,6 +104,16 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   if (record && (record.requestedRevision !== record.appliedRevision || !['REC->PLAY', 'REC->DUB'].includes(record.recAction))) {
     throw new Error('Wait for Native REC ACTION callback acknowledgement.');
   }
+  if (native.recQuantize !== undefined &&
+      (!['OFF', 'MEASURE'].includes(native.recQuantize) || record?.quantize !== native.recQuantize)) {
+    throw new Error('Native REC QUANTIZE Memory readback is missing or inconsistent.');
+  }
+  if (native.loopSync !== undefined && (native.loopSync.length !== 5 || native.loopSync.some((enabled) => typeof enabled !== 'boolean'))) {
+    throw new Error('Native LOOP SYNC Memory readback must contain five acknowledged track values.');
+  }
+  if (native.loopSync?.some(Boolean) && native.recQuantize !== 'MEASURE') {
+    throw new Error('Native Memory cannot capture REC QUANTIZE OFF or unavailable with LOOP SYNC enabled.');
+  }
   const dubModes: NativeDubMode[] | undefined = native.dubModes === undefined
     ? undefined
     : native.dubModes.length === 5 && native.dubModes.every((mode): mode is NativeDubMode =>
@@ -254,6 +264,41 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       };
       if (settings.recAction !== undefined) expectedFields['record.recAction'] = settings.recAction;
       if (settings.recQuantize !== undefined) expectedFields['record.quantize'] = settings.recQuantize;
+      const targetRecQuantize = settings.recQuantize;
+      const targetLoopSync = settings.loopSync;
+      if (targetRecQuantize !== undefined && targetRecQuantize !== 'OFF' && targetRecQuantize !== 'MEASURE') {
+        throw new Error('Native Memory REC QUANTIZE must be OFF or MEASURE.');
+      }
+      if (targetLoopSync !== undefined && (!Array.isArray(targetLoopSync) || targetLoopSync.length !== 5 ||
+          targetLoopSync.some((enabled) => typeof enabled !== 'boolean'))) {
+        throw new Error('Native Memory requires five LOOP SYNC booleans.');
+      }
+      const effectiveRecQuantize = targetRecQuantize ?? current.nativeMemory?.recQuantize;
+      if (Array.isArray(targetLoopSync) && targetLoopSync.some(Boolean) && effectiveRecQuantize !== 'MEASURE') {
+        throw new Error('Native Memory cannot combine REC QUANTIZE OFF or unavailable with LOOP SYNC; select MEASURE.');
+      }
+      if (targetRecQuantize !== undefined) {
+        const field = document.semantics.fields['record.quantize'];
+        if (field?.availability !== 'supported' || field.value !== targetRecQuantize) {
+          throw new Error('Native Memory REC QUANTIZE semantic field is missing or inconsistent.');
+        }
+      }
+      if (Array.isArray(targetLoopSync)) {
+        for (let track = 1; track <= 5; track += 1) {
+          const field = document.semantics.fields[`track.${track}.loopSync`];
+          const expected = targetLoopSync[track - 1] ? 'ON' : 'OFF';
+          if (field?.availability !== 'supported' || field.value !== expected) {
+            throw new Error(`Native Memory LOOP SYNC semantic field for Track ${track} is missing or inconsistent.`);
+          }
+        }
+      }
+      if (targetRecQuantize !== undefined && current.nativeMemory?.recQuantize !== undefined &&
+          current.nativeRecordPlay?.quantize !== current.nativeMemory.recQuantize) {
+        throw new Error('Connected Native host cannot confirm REC QUANTIZE before Memory import.');
+      }
+      if (Array.isArray(targetLoopSync) && current.nativeMemory?.loopSync?.length !== 5) {
+        throw new Error('Connected Native host cannot confirm all five LOOP SYNC settings before Memory import.');
+      }
       const bounceSettings = settings.bounce as { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] };
       expectedFields['record.bounceSw'] = bounceSettings.bounceSw;
       for (let track = 1; track <= 5; track += 1) {
@@ -368,8 +413,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
                 return status.nativeMemory!.dubModes![index] === mode && readback?.requested === mode && readback.applied === mode
                   && readback.requestedRevision === readback.appliedRevision;
               });
+            const quantizeAcknowledged = targetRecQuantize === undefined ||
+              (status.nativeRecordPlay?.quantize === targetRecQuantize &&
+                status.nativeMemory?.recQuantize === targetRecQuantize);
+            const loopSyncAcknowledged = !Array.isArray(targetLoopSync) ||
+              (status.nativeMemory?.loopSync?.length === 5 &&
+                targetLoopSync.every((enabled, index) => status.nativeMemory!.loopSync![index] === enabled));
             return Boolean(bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
-              && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted));
+              && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)
+              && quantizeAcknowledged && loopSyncAcknowledged);
           };
           for (;;) {
             const status = await port.bridge.getStatus();
@@ -377,6 +429,14 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
               throw new Error('Native host restarted during Memory readback; generation status is unverifiable and no stale settings were installed.');
             }
             port.publish(status, false);
+            if (targetRecQuantize !== undefined &&
+                (status.nativeMemory?.recQuantize !== targetRecQuantize || status.nativeRecordPlay?.quantize !== targetRecQuantize)) {
+              throw new Error('Native Memory committed, but REC QUANTIZE failed same-host readback.');
+            }
+            if (Array.isArray(targetLoopSync) && (status.nativeMemory?.loopSync?.length !== 5 ||
+                !targetLoopSync.every((enabled, index) => status.nativeMemory!.loopSync![index] === enabled))) {
+              throw new Error('Native Memory committed, but one or more LOOP SYNC tracks failed same-host readback.');
+            }
             if (readbackAcknowledged(status)) {
               if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
                 throw new Error('Native Memory committed, but transport changed during callback acknowledgement; imported transport was not applied and archive BPM was not synchronized to Native rhythm, preserving the user edit.');

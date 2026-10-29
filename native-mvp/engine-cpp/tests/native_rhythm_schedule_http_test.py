@@ -95,6 +95,12 @@ def main():
         require(code == 200 and quantize_status['nativeRecordPlay']['quantize'] == 'MEASURE', quantize_status)
         code, sync_status = request('/v1/record/loop-sync', 'POST', {'trackId': 2, 'enabled': True})
         require(code == 200 and sync_status['nativeMemory']['loopSync'][1] is True, sync_status)
+        off_code, off_status = request('/v1/record/settings', 'POST', {'quantize': 'OFF'})
+        require(off_code == 409 and 'loop sync' in off_status.get('error', '').lower(),
+            ('REC QUANTIZE OFF was accepted with LOOP SYNC enabled', off_code, off_status))
+        direct_record_code, direct_record = request('/v1/transport/record', 'POST', {'trackId': 2})
+        require(direct_record_code == 409 and 'scheduler' in direct_record.get('error', '').lower(),
+            ('direct REC bypassed Native LOOP SYNC scheduling', direct_record_code, direct_record))
         set_callback_gate(True)
         first_status = request('/v1/status')[1]
         first = phase(first_status)
@@ -137,11 +143,21 @@ def main():
         require(code == 200, accepted)
         record_revision = accepted['nativeLoopFrameScheduling']['acceptedRevision']
         require(accepted['nativeLoopFrameScheduling']['requests'][1]['requestedIntentId'] == record_request['intentId'], accepted)
+        pending_finish_code, pending_finish = request('/v1/transport/finish-record', 'POST', {'trackId': 2})
+        require(pending_finish_code == 409 and 'pending' in pending_finish.get('error', '').lower(),
+            ('REC completion raced a pending synchronized start', pending_finish_code, pending_finish))
         set_callback_gate(False)
         recorded = until(lambda value: value['nativeLoopFrameScheduling']['requests'][1]['appliedRevision'] == record_revision
             and value['nativeTracks'][1]['state'] == 'Recording')
         require(recorded['nativeLoopFrameScheduling']['requests'][1]['appliedAbsoluteFrame'] ==
             record_request['absoluteFrame'], recorded)
+        direct_finish_code, direct_finish = request('/v1/transport/finish-record', 'POST', {'trackId': 2})
+        require(direct_finish_code == 409 and 'scheduler' in direct_finish.get('error', '').lower(),
+            ('direct REC completion bypassed Native LOOP SYNC scheduling', direct_finish_code, direct_finish))
+        direct_stop_code, direct_stop = request('/v1/transport/stop', 'POST', {'trackId': 2})
+        require(direct_stop_code == 409 and 'measure' in direct_stop.get('error', '').lower(),
+            ('direct STOP bypassed Native LOOP SYNC scheduling', direct_stop_code, direct_stop))
+        require(request('/v1/status')[1]['nativeTracks'][1]['state'] == 'Recording', 'direct STOP changed the recording state')
 
         set_callback_gate(True)
         stop_request = phase(request('/v1/status')[1])
@@ -158,6 +174,9 @@ def main():
         metadata_code, metadata = request('/v1/export/track-metadata?trackId=2')
         require(metadata_code == 200 and metadata['frameCount'] ==
             stop_request['absoluteFrame'] - record_request['absoluteFrame'], metadata)
+        direct_play_code, direct_play = request('/v1/transport/play', 'POST', {'trackId': 2})
+        require(direct_play_code == 409 and 'scheduler' in direct_play.get('error', '').lower(),
+            ('direct PLAY bypassed Native LOOP SYNC scheduling', direct_play_code, direct_play))
         set_callback_gate(True)
         play_request = phase(request('/v1/status')[1])
         play_request['action'] = 'play'

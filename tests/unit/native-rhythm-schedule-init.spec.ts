@@ -17,6 +17,20 @@ function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcil
 }
 
 describe('Native Rhythm schedule initialization reconciliation', () => {
+  it('does not fall back to immediate STOP when a LOOP SYNC recording loses its measure phase', async () => {
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    const stopTrack = vi.fn();
+    engine.latestStatus = { nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
+      nativeRhythm: { phase: { available: false, snapshotStable: false } } };
+    engine.bridge = { stopTrack };
+    engine.emitAll = vi.fn();
+    engine.lastError = '';
+    await expect(engine.stopTrack(1)).rejects.toThrow(/immediate STOP is disabled/);
+    expect(stopTrack).not.toHaveBeenCalled();
+    expect(engine.lastError).toMatch(/remains active/);
+  });
+
   it('keeps synchronized playback disabled unless Rhythm phase and PCM measure length are verified', () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
     engine.latestStatus = { sampleRate: 48_000, nativeMemory: { loopSync: [true, false, false, false, false] },

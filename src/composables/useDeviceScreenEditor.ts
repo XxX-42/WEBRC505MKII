@@ -809,12 +809,13 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const loopSyncBusy = !!(audioTrack as { historyBusy?: boolean } | undefined)?.historyBusy
       || audioTrack?.state === 'RECORDING' || audioTrack?.state === 'OVERDUBBING';
     const nativeLoopSyncAvailable = engine.getMode() === 'native' && engine.getRecordPlaySettings?.().quantizeAvailable === true;
+    const nativeLoopSyncQuantizeReady = engine.getMode() !== 'native' || engine.getRecordPlaySettings?.().quantize === 'MEASURE';
     const loopSyncValue = engine.getMode() === 'native' ? engine.getTrackLoopSync?.(bounceTarget) === true : audioTrack?.track.loopSyncSw === 'ON';
     const nativeLoopSyncHasIncumbent = engine.getMode() === 'native' && !loopSyncValue && audioTrack?.state !== 'EMPTY';
     fields.push(makeBooleanField('track-loop-sync', 'LOOP SYNC SW', loopSyncValue, (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the track again.');
       if (engine.getMode() === 'native') {
-        if (!audioTrack || !nativeLoopSyncAvailable) throw new Error('Native LOOP SYNC requires the Native Rhythm measure source.');
+        if (!audioTrack || (enabled && (!nativeLoopSyncAvailable || !nativeLoopSyncQuantizeReady))) throw new Error('Native LOOP SYNC requires the Native Rhythm measure source and REC QUANTIZE MEASURE.');
         return engine.setTrackLoopSync(bounceTarget, enabled);
       }
       if (!audioTrack) throw new Error('Loop sync is unavailable in this audio mode.');
@@ -823,12 +824,16 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       }
       audioTrack.track.loopSyncSw = enabled ? 'ON' : 'OFF';
       audioTrack.updateSettings();
-    }, { disabled: !audioTrack || loopSyncBusy || (engine.getMode() === 'native' && (!nativeLoopSyncAvailable || nativeLoopSyncHasIncumbent)),
+    }, { disabled: !audioTrack || loopSyncBusy || (engine.getMode() === 'native' && !loopSyncValue && (!nativeLoopSyncAvailable || nativeLoopSyncHasIncumbent || !nativeLoopSyncQuantizeReady)),
       reason: loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : engine.getMode() === 'native' && nativeLoopSyncHasIncumbent
         ? 'This Native Rhythm slice can enable LOOP SYNC only on an empty track to preserve the existing phrase.' : engine.getMode() === 'native'
-        ? nativeLoopSyncAvailable
-          ? 'Native Rhythm-only slice: OFF/MEASURE recording start, measure stop and synchronized Play for measure-aligned PCM. Manual LOOP LENGTH values are unavailable.'
-          : 'Native LOOP SYNC requires a running Native Rhythm measure source.'
+        ? loopSyncValue && !nativeLoopSyncAvailable
+          ? 'Native Rhythm phase is unavailable. LOOP SYNC can be disabled here; synchronized transport remains unavailable.'
+          : !nativeLoopSyncQuantizeReady
+            ? 'Set REC QUANTIZE to MEASURE before enabling Native LOOP SYNC; OFF stop-length behavior is unavailable.'
+            : nativeLoopSyncAvailable
+              ? 'Native Rhythm-only slice: MEASURE recording start, measure stop and synchronized Play for measure-aligned PCM. REC QUANTIZE OFF and manual LOOP LENGTH are unavailable with LOOP SYNC.'
+              : 'Native LOOP SYNC requires a running Native Rhythm measure source.'
         : '' }));
     const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');
     const nativeOneShot = engine.getMode() === 'native' ? engine.getNativeOneShot?.(bounceTarget) ?? null : null;
@@ -1363,6 +1368,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       }
       const settings = engine.getRecordPlaySettings?.();
       const quantizeAvailable = settings?.quantizeAvailable ?? (engine.getMode?.() === 'browser' && settings?.available === true);
+      const nativeLoopSyncActive = engine.getMode?.() === 'native' && [1, 2, 3, 4, 5].some(trackId => engine.getTrackLoopSync?.(trackId) === true);
       const bounce = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
       const bounceBusy = bounceSettingsBusy();
       return chunks([
@@ -1371,7 +1377,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
           { disabled: !settings?.available, reason: settings?.reason || 'Record behavior is unavailable.' }),
         makeEnumField('record-quantize', 'QUANTIZE', settings?.quantize === 'OFF' ? 0 : 1,
           fieldOptions(['OFF', 'MEASURE']), value => engine.setRecordPlaySettings({ quantize: value === 0 ? 'OFF' : 'MEASURE' }),
-          { disabled: !quantizeAvailable, reason: quantizeAvailable ? '' : settings?.reason || 'Recording quantization is unavailable.' }),
+          { disabled: !quantizeAvailable || nativeLoopSyncActive,
+            reason: nativeLoopSyncActive ? 'Disable LOOP SYNC on all tracks before setting REC QUANTIZE OFF.'
+              : quantizeAvailable ? '' : settings?.reason || 'Recording quantization is unavailable.' }),
         ...(engine.getBrowserAutoRecSettings() ? (() => {
           const autoRec = engine.getBrowserAutoRecSettings()!;
           const approximation = 'Browser software approximation: raw-input peak threshold starts recording; no added pre-roll. Roland’s exact detector behavior is unpublished.';

@@ -177,6 +177,42 @@ describe('Native semantic Memory runtime', () => {
     await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/inconsistent/);
     expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
   });
+  it('refuses a committed Memory whose REC QUANTIZE or any LOOP SYNC value fails same-host readback', async () => {
+    const h = fixture();
+    h.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: false,
+      recAction: 'REC->PLAY', quantize: 'MEASURE', requestedRevision: 1, appliedRevision: 1,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    h.hostStatus().nativeMemory!.recQuantize = 'MEASURE';
+    h.hostStatus().nativeMemory!.loopSync = [false, true, false, false, false];
+    const document = await h.runtime.capture();
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    h.bridge.commitPreparedMemory.mockImplementationOnce(async () => {
+      const status = h.hostStatus();
+      status.projectContentRevision = 8;
+      status.nativeRecordPlay!.quantize = 'OFF';
+      status.nativeMemory!.recQuantize = 'OFF';
+      status.nativeMemory!.loopSync = [false, false, false, false, false];
+    });
+    await expect(prepared.commit()).rejects.toMatchObject({
+      committed: true, generation: 19, message: expect.stringContaining('REC QUANTIZE failed same-host readback'),
+    });
+    expect(h.bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it('rejects LOOP SYNC-only Memory when its current REC QUANTIZE is OFF', async () => {
+    const h = fixture();
+    h.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: false,
+      recAction: 'REC->PLAY', quantize: 'OFF', requestedRevision: 1, appliedRevision: 1,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    h.hostStatus().nativeMemory!.recQuantize = 'OFF';
+    const document = await h.runtime.capture();
+    const settings = document.extensions.WEBRC.nativeMemory as any;
+    delete settings.recQuantize;
+    settings.loopSync = [false, true, false, false, false];
+    document.semantics.fields['record.quantize'] = { availability: 'unsupported', value: null, reason: 'Archive omits REC QUANTIZE.' };
+    document.semantics.fields['track.2.loopSync'] = { availability: 'supported', value: 'ON' };
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/cannot combine REC QUANTIZE OFF/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
   it('captures real banks/gates/output state and marks TrackProxy placeholders unavailable', async () => {
     const { runtime } = fixture();
     const document = await runtime.capture();

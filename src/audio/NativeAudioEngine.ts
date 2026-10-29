@@ -1465,6 +1465,9 @@ export class NativeAudioEngine {
     if (Object.keys(patch).some(key => key !== 'recAction' && key !== 'quantize')) throw new Error('Unsupported Native record setting.');
     if (!this.getRecordPlaySettings().recActionAvailable) throw new Error(this.getRecordPlaySettings().reason);
     if (patch.quantize !== undefined && !this.getRecordPlaySettings().quantizeAvailable) throw new Error(this.getRecordPlaySettings().reason);
+    if (patch.quantize === 'OFF' && this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
+      throw new Error('Native REC QUANTIZE OFF cannot be combined with LOOP SYNC until OFF stop-length behavior is implemented.');
+    }
     if (patch.recAction !== undefined || patch.quantize !== undefined) {
       const applied = await this.dispatchStatusRequest(() => this.bridge.setRecordSettings({
         ...(patch.recAction ? { recAction: patch.recAction } : {}),
@@ -1479,12 +1482,16 @@ export class NativeAudioEngine {
 
   public getTrackLoopSync(trackId: number): boolean { return this.latestStatus?.nativeMemory?.loopSync?.[trackId - 1] === true; }
   public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<void> {
+    if (enabled && this.getRecordPlaySettings().quantize !== 'MEASURE') {
+      throw new Error('Set Native REC QUANTIZE to MEASURE before enabling LOOP SYNC.');
+    }
     const status = await this.dispatchStatusRequest(() => this.bridge.setTrackLoopSync(trackId, enabled));
     if (status.nativeMemory?.loopSync?.[trackId - 1] !== enabled) throw new Error('Native LOOP SYNC setting was not acknowledged.');
     const track = this.tracks.find((candidate) => candidate.trackId === trackId);
     if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
+    if (this.getTrackLoopSync(trackId)) throw new Error('Native LOOP SYNC recording completion must use the Rhythm callback-frame scheduler.');
     const finishToken = this.nativeRecordTempoToken();
     await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, finishToken));
     if (!finishToken) return;
@@ -1540,11 +1547,13 @@ export class NativeAudioEngine {
     if (synchronizedStop && phaseAvailable) {
       stopStatus = await this.scheduleNativeRhythmAction(trackId, 'stop');
     } else {
-      stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
       if (synchronizedStop) {
-        this.lastError = 'Native Rhythm phase was unavailable; recording stopped at the current callback boundary without quantization.';
+        const message = 'Native LOOP SYNC recording remains active because no stable Native Rhythm measure is available; immediate STOP is disabled.';
+        this.lastError = message;
         this.emitAll();
+        throw new Error(message);
       }
+      stopStatus = await this.dispatchStatusRequest(() => this.bridge.stopTrack(trackId, stopToken, callbackAckSupported));
     }
     if (!wasRecording || !stopToken || !callbackAckSupported || !Number.isSafeInteger(beforeContentRevision)) return;
     const stopAck = stopStatus.nativeStopTrackAcknowledgement;
@@ -1624,6 +1633,7 @@ export class NativeAudioEngine {
   }
 
   public async toggleOverdub(trackId = 1) {
+    if (this.getTrackLoopSync(trackId)) throw new Error('Native LOOP SYNC overdub is unsupported in this slice.');
     await this.dispatchStatusRequest(() => this.bridge.toggleTrackOverdub(trackId));
   }
 
@@ -1642,7 +1652,7 @@ export class NativeAudioEngine {
   public stopAllTracks() {
     for (const track of this.tracks) {
       if (this.isNativeTrackAvailable(track.trackId) && this.nativeTrackState(track.trackId) !== 'Empty') {
-        void this.stopTrack(track.trackId);
+        void this.stopTrack(track.trackId).catch(() => undefined);
       }
     }
   }

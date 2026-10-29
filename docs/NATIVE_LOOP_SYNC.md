@@ -4,18 +4,21 @@
 
 Native supports Rhythm-phased recording and playback on tracks enabled for
 LOOP SYNC. A track must be empty when LOOP SYNC is enabled. REC ACTION must be
-REC->PLAY, Native Rhythm must be running with a stable callback-published
-measure phase, and REVERSE, 1SHOT, Bounce, overdub, and MIDI Sync are
-unsupported. The RC-505 guide lists Rhythm, an existing synchronized track,
-and MIDI Sync as alternative phase sources; this implementation uses Native
-Rhythm only and does not estimate phase from BPM or the UI clock.
+REC->PLAY, REC QUANTIZE must be MEASURE, Native Rhythm must be running with a
+stable callback-published measure phase, and REVERSE, 1SHOT, Bounce, overdub,
+and MIDI Sync are unsupported. REC QUANTIZE OFF with any LOOP SYNC track is
+rejected because its exact stop-length behavior is not implemented. The
+RC-505 guide lists Rhythm, an existing synchronized track, and MIDI Sync as
+alternative phase sources; this implementation uses Native Rhythm only and
+does not estimate phase from BPM or the UI clock.
 
-With LOOP SYNC on, REC QUANTIZE OFF starts immediately. MEASURE schedules the
-record start at the next Native Rhythm measure. Stopping a recording schedules
-the stop at the next Native Rhythm measure. Scheduled transitions return the
-callback-applied frame, and Native publishes the finalized PCM frame count from
-the loop store. Since an OFF start can occur between measures, Native does not
-assume that its resulting PCM length is an integer number of measures.
+With LOOP SYNC on, MEASURE schedules the record start at the next Native
+Rhythm measure. Stopping a recording schedules the stop at the next Native
+Rhythm measure. Scheduled transitions return the callback-applied frame, and
+Native publishes the finalized PCM frame count from the loop store. The
+hardware's REC QUANTIZE OFF immediate-start plus measure-length stop behavior
+is not implemented, so the Native UI and host reject OFF whenever any LOOP
+SYNC track is enabled.
 Playback of a stopped synchronized track starts at the next measure only after
 Native verifies that its PCM length is an integer number of current Rhythm
 measures (within two frames of sample-rate rounding). Lengths that fail this
