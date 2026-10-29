@@ -2232,9 +2232,9 @@ int main() {
             if (!body.is_object() || body.size() != 5U ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !body.contains("action") || !body.at("action").is_string() ||
-                !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeProjectContentRevision, absoluteFrame) ||
-                !readUnsignedJsonInteger(body.value("phaseEpoch", json()), kMaximumSafeProjectContentRevision, phaseEpoch) ||
-                !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeProjectContentRevision, settingsRevision)) {
+                !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeTempoRevision, absoluteFrame) ||
+                !readUnsignedJsonInteger(body.value("phaseEpoch", json()), kMaximumSafeTempoRevision, phaseEpoch) ||
+                !readUnsignedJsonInteger(body.value("settingsRevision", json()), kMaximumSafeTempoRevision, settingsRevision)) {
                 response.status = 400; writeError(response, "Rhythm-scheduled REC/STOP requires trackId, action, absoluteFrame, phaseEpoch, and settingsRevision."); return;
             }
             const auto actionText = body.at("action").get<std::string>();
@@ -2261,7 +2261,7 @@ int main() {
             std::uint64_t trackId = 0U, revision = 0U;
             if (!body.is_object() || body.size() != 2U ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
-                !readUnsignedJsonInteger(body.value("revision", json()), kMaximumSafeProjectContentRevision, revision) || revision == 0U) {
+                !readUnsignedJsonInteger(body.value("revision", json()), kMaximumSafeTempoRevision, revision) || revision == 0U) {
                 response.status = 400; writeError(response, "Cancelling Rhythm-scheduled REC/STOP requires trackId and revision."); return;
             }
             std::string error;
