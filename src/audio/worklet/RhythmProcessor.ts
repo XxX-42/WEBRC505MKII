@@ -85,6 +85,7 @@ const WorkletProcessorBase = workletGlobals.AudioWorkletProcessor ?? FallbackPro
 export class RhythmWorkletCore {
   private readonly sampleRate: number;
   private configuration: RhythmWorkletConfiguration | null = null;
+  private measurePhaseSnapshot: RhythmMeasurePhaseSnapshot | null = null;
   private pool: DrumVoicePool | null = null;
   private nextBarToSchedule = 0;
   private lastRenderedFrameEnd: number | null = null;
@@ -112,25 +113,12 @@ export class RhythmWorkletCore {
 
   /** Snapshot construction is control-path only and is never called from renderInto(). */
   getMeasurePhaseSnapshot(requestId: number): RhythmMeasurePhaseSnapshot | null {
-    const configuration = this.configuration;
-    if (!configuration || !Number.isSafeInteger(requestId) || requestId < 0) return null;
-    const nextMeasureFrame = configuration.startFrame
-      + Math.round((configuration.stepsPerBar * this.sampleRate * 15) / configuration.bpm);
-    if (!Number.isSafeInteger(nextMeasureFrame)) return null;
-    return {
-      type: "measure-phase",
-      available: true,
-      requestId,
-      epoch: this.phaseEpoch,
-      originFrame: configuration.startFrame,
-      nextMeasureFrame,
-      sampleRate: this.sampleRate,
-      bpm: configuration.bpm,
-      stepsPerBar: configuration.stepsPerBar,
-    };
+    const snapshot = this.measurePhaseSnapshot;
+    if (!snapshot || !Number.isSafeInteger(requestId) || requestId < 0) return null;
+    return snapshot.requestId === requestId ? snapshot : { ...snapshot, requestId };
   }
 
-  configure(configuration: RhythmWorkletConfiguration): void {
+  configure(configuration: RhythmWorkletConfiguration, phaseRequestId = 0): void {
     if (configuration.sampleRate !== this.sampleRate) {
       throw new RangeError("Rhythm worklet sample rate does not match its AudioContext");
     }
@@ -149,6 +137,9 @@ export class RhythmWorkletCore {
     if (!Number.isSafeInteger(configuration.stepsPerBar) || configuration.stepsPerBar < 1) {
       throw new RangeError("Rhythm worklet stepsPerBar must be a positive integer");
     }
+    if (!Number.isSafeInteger(phaseRequestId) || phaseRequestId < 0) {
+      throw new RangeError("Rhythm worklet phase request id must be a non-negative safe integer");
+    }
     if (this.phaseEpoch >= Number.MAX_SAFE_INTEGER) {
       throw new RangeError("Rhythm worklet phase epoch is exhausted");
     }
@@ -162,6 +153,19 @@ export class RhythmWorkletCore {
     });
     this.nextBarToSchedule = 0;
     this.phaseEpoch += 1;
+    const nextMeasureFrame = configuration.startFrame
+      + Math.round((configuration.stepsPerBar * this.sampleRate * 15) / configuration.bpm);
+    this.measurePhaseSnapshot = Number.isSafeInteger(nextMeasureFrame) ? {
+      type: "measure-phase",
+      available: true,
+      requestId: phaseRequestId,
+      epoch: this.phaseEpoch,
+      originFrame: configuration.startFrame,
+      nextMeasureFrame,
+      sampleRate: this.sampleRate,
+      bpm: configuration.bpm,
+      stepsPerBar: configuration.stepsPerBar,
+    } : null;
     // Keep the core's last successful cursor across live reconfiguration. The new pool
     // starts fresh, but a late callback from before the configuration must not be allowed
     // to render into the new rhythm state at an older absolute frame.
@@ -172,6 +176,7 @@ export class RhythmWorkletCore {
     this.pool?.reset();
     this.pool = null;
     this.configuration = null;
+    this.measurePhaseSnapshot = null;
     this.nextBarToSchedule = 0;
     this.lastRenderedFrameEnd = null;
   }
@@ -257,6 +262,9 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
   private readonly core: RhythmWorkletCore;
   private staleEpisodeStartFrame: number | null = null;
   private staleEpisodeExpectedFrame: number | null = null;
+  private phaseRequestId: number | null = null;
+  private phaseAcknowledged = false;
+  private phaseInvalidated = false;
 
   constructor() {
     super();
@@ -264,12 +272,16 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     this.port.onmessage = (event: { data: unknown }): void => {
       const message = event.data as WorkletMessage | null;
       if (message?.type === "start") {
-        this.core.configure(message.configuration);
-        const phase = this.core.getMeasurePhaseSnapshot(message.requestId);
-        if (phase) this.port.postMessage(phase satisfies RhythmPhaseMessage);
+        this.core.configure(message.configuration, message.requestId);
+        this.phaseRequestId = message.requestId;
+        this.phaseAcknowledged = false;
+        this.phaseInvalidated = false;
       }
       else if (message?.type === "stop") {
         this.core.stop();
+        this.phaseRequestId = message.requestId;
+        this.phaseAcknowledged = true;
+        this.phaseInvalidated = true;
         this.staleEpisodeStartFrame = null;
         this.staleEpisodeExpectedFrame = null;
         this.port.postMessage({
@@ -291,6 +303,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
     }
     const startFrame = workletGlobals.currentFrame ?? 0;
     const rendered = outputChannels[renderChannelIndex]!;
+    const blockEndFrame = startFrame + rendered.length;
     const expectedStartFrame = this.core.expectedNextFrame;
     const renderedOnTimeline = this.core.renderInto(startFrame, rendered);
     if (!renderedOnTimeline) {
@@ -306,6 +319,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
         };
         this.port.postMessage(message);
       }
+      this.invalidatePhase();
     } else if (this.staleEpisodeStartFrame !== null) {
       const message: RhythmTimelineMessage = {
         type: "timeline-recovered",
@@ -316,6 +330,16 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       this.port.postMessage(message);
       this.staleEpisodeStartFrame = null;
       this.staleEpisodeExpectedFrame = null;
+      this.invalidatePhase();
+    }
+    if (!this.phaseAcknowledged && this.phaseRequestId !== null && renderedOnTimeline) {
+      const phase = this.core.getMeasurePhaseSnapshot(this.phaseRequestId);
+      if (phase && startFrame <= phase.originFrame && phase.originFrame < blockEndFrame) {
+        this.port.postMessage(phase satisfies RhythmPhaseMessage);
+        this.phaseAcknowledged = true;
+      } else if (phase && startFrame > phase.originFrame) {
+        this.invalidatePhase();
+      }
     }
     for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex += 1) {
       if (channelIndex === renderChannelIndex) continue;
@@ -325,6 +349,18 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       for (let frame = length; frame < channel.length; frame += 1) channel[frame] = 0;
     }
     return true;
+  }
+
+  private invalidatePhase(): void {
+    if (this.phaseInvalidated || this.phaseRequestId === null) return;
+    this.phaseInvalidated = true;
+    this.phaseAcknowledged = true;
+    this.port.postMessage({
+      type: "measure-phase",
+      available: false,
+      requestId: this.phaseRequestId,
+      epoch: this.core.currentPhaseEpoch,
+    } satisfies RhythmPhaseMessage);
   }
 }
 

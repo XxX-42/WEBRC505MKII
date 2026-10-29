@@ -157,6 +157,64 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.recordingDiagnostic).toContain('cancelled before the worklet start acknowledgement');
   });
 
+  it('cancels Rhythm-quantized start reservations and replaces a stale future stop with the current capture frame', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => Math.fround(i / 512))]);
+    (trackAudio as any).processRecordedBuffers([Float32Array.from({ length: 256 }, (_, i) => Math.fround(-i / 512))]);
+    trackAudio.stop();
+    const previous = (trackAudio as any).audioBuffer as AudioBuffer;
+    const historyBefore = {
+      canUndo: trackAudio.canUndo,
+      canRedo: trackAudio.canRedo,
+      retainedBytes: trackAudio.historyTotalRetainedBytes,
+    };
+    expect(historyBefore.canUndo).toBe(true);
+    trackAudio.track.loopSyncSw = 'ON';
+    const phase = {
+      type: 'measure-phase', available: true, requestId: 4, epoch: 2,
+      originFrame: 1_000, nextMeasureFrame: 97_000, sampleRate: context.sampleRate,
+      bpm: 120, stepsPerBar: 16,
+    } as const;
+    let currentPhase: typeof phase | null = phase;
+    engine.isBrowserRhythmRunning = () => true;
+    engine.getBrowserRhythmMeasurePhaseSnapshot = () => currentPhase;
+    (trackAudio as any).pendingQuantizedRhythmPhase = phase;
+    trackAudio.state = TrackState.REC_STANDBY;
+    currentPhase = null;
+    (trackAudio as any).rhythmPhaseChangeListener();
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('Rhythm phase changed before the scheduled start');
+
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 19, inputGeneration: 1, startFrame: 500,
+    };
+    currentPhase = phase;
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).isRecording = true;
+    (trackAudio as any).recordingCaptureStartAcknowledged = true;
+    (trackAudio as any).quantizedRecordingStopFrame = 97_000;
+    (trackAudio as any).quantizedRecordingStopRhythmPhase = phase;
+    (trackAudio as any).quantizedRecordingStopTrackSyncRevision = (trackAudio as any).loopSyncSettingsRevision;
+    engine.getInputCaptureRequestFrame = () => 2_000;
+    engine.stopInputCaptureSession = vi.fn(() => true);
+    trackAudio.state = TrackState.REC_FINISHING;
+    currentPhase = null;
+    (trackAudio as any).rhythmPhaseChangeListener();
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 2_000);
+    expect(trackAudio.recordingDiagnostic).toContain('stopped at the current audio frame');
+    (trackAudio as any).handleRecordingMessage(session.node, {
+      type: 'RECORD_COMPLETE', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      requestedStartFrame: session.startFrame, stopFrame: 97_000, framesCaptured: 96_500,
+    });
+    expect(trackAudio.recordingDiagnostic).toContain('stale take was discarded');
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect((trackAudio as any).recordingCaptureSession).toBeNull();
+    expect({ canUndo: trackAudio.canUndo, canRedo: trackAudio.canRedo, retainedBytes: trackAudio.historyTotalRetainedBytes }).toEqual(historyBefore);
+  });
+
   it('preserves incumbent PCM and undo history when the shared worklet rejects a discontinuous take', async () => {
     const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
     const seed = (offset: number) => Float32Array.from({ length: 256 }, (_, frame) =>
@@ -659,6 +717,7 @@ describe('TrackAudio transport sync helpers', () => {
     trackAudio.track.loopSyncSw = 'ON';
     Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
     expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    engine.isBrowserTrackLoopSyncEnabled = () => true;
     const session = {
       node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
       trackIndex: 0, sessionId: 12, inputGeneration: 4, startFrame: 200,

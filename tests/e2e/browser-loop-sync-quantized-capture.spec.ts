@@ -158,3 +158,148 @@ test('real Chromium quantized capture follows master frames exactly and cancella
   expect(result.cancelled).toBe(true);
   expect(result.incumbentPreserved).toBe(true);
 });
+
+test('real Chromium Rhythm AudioWorklet phase schedules LOOP SYNC capture and keeps PCM on cancellation', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const engine = AudioEngine.getInstance();
+    const browser = (engine as any).browser;
+    const context = browser.context as AudioContext;
+    const [track] = engine.tracks as any[];
+    const waitFor = async (predicate: () => boolean, label: string, timeoutMs = 12_000) => {
+      const deadline = performance.now() + timeoutMs;
+      while (performance.now() < deadline) {
+        if (predicate()) return;
+        await new Promise((resolve) => window.setTimeout(resolve, 10));
+      }
+      throw new Error(`Timed out waiting for ${label}; context=${context.state}; rhythm=${browser.rhythmEngine?.isRunning}/${browser.rhythmEngine?.error || 'no-error'}/node=${!!browser.rhythmEngine?.workletNode}/time=${context.currentTime}; track=${track.state}; diagnostic=${track.recordingDiagnostic ?? 'none'}`);
+    };
+    const nextBoundary = (phase: any, frame: number) => {
+      const bar = phase.stepsPerBar * phase.sampleRate * 15 / phase.bpm;
+      let measures = Math.max(0, Math.ceil((frame - phase.originFrame) / bar));
+      let target = phase.originFrame + Math.round(measures * bar);
+      while (target < frame) target = phase.originFrame + Math.round(++measures * bar);
+      while (measures > 0 && phase.originFrame + Math.round((measures - 1) * bar) >= frame) {
+        measures -= 1; target = phase.originFrame + Math.round(measures * bar);
+      }
+      return target;
+    };
+
+    if (context.state !== 'running' || !browser.inputCaptureNode || !browser.inputCaptureReady) {
+      throw new Error(`Expected live Chromium shared input worklet; state=${context.state}, ready=${browser.inputCaptureReady}`);
+    }
+    await engine.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'MEASURE' });
+    const transport = (await import('/src/core/Transport.ts')).Transport.getInstance();
+    transport.resetMasterTrack();
+    track.track.loopSyncSw = 'ON'; track.updateSettings();
+
+    const captureNode = browser.inputCaptureNode as AudioWorkletNode;
+    browser.inputCaptureRawSource.disconnect(captureNode);
+    browser.inputFxChain.output.disconnect(captureNode);
+    const signal = context.createConstantSource();
+    const signalGain = context.createGain(); signalGain.gain.value = 0.125;
+    signal.connect(signalGain); signalGain.connect(captureNode, 0, 0); signalGain.connect(captureNode, 0, 1);
+    signal.start();
+
+    browser.rhythmEngine.start();
+    await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'real Rhythm phase acknowledgement');
+    const phase = browser.rhythmEngine.measurePhaseSnapshot;
+    if (!phase || phase.sampleRate !== context.sampleRate || phase.bpm !== transport.bpm) throw new Error('Rhythm phase snapshot did not match the active audio clock and tempo');
+    await browser.waitForInputCaptureReady();
+    const requestFrame = browser.getInputCaptureRequestFrame();
+    const expectedStartFrame = nextBoundary(phase, requestFrame);
+
+    track.triggerRecord();
+    await waitFor(() => track.state === 'RECORDING', 'Rhythm-quantized start acknowledgement');
+    const session = track.recordingCaptureSession;
+    if (!session || session.startFrame !== expectedStartFrame) throw new Error(`Start frame ${session?.startFrame} did not match Rhythm grid ${expectedStartFrame}`);
+    const incumbent = track.audioBuffer;
+    const expectedStopFrame = nextBoundary(phase, Math.max(browser.getInputCaptureRequestFrame(), session.startFrame) + 1);
+    track.triggerRecord();
+    await waitFor(() => track.state === 'PLAYING' && !track.historyBusy && !!track.audioBuffer && track.audioBuffer !== incumbent, 'Rhythm-quantized stop and PCM commit');
+    const recorded = track.audioBuffer as AudioBuffer;
+    if (recorded.length !== expectedStopFrame - expectedStartFrame) {
+      throw new Error(`Recorded ${recorded.length} frames; Rhythm grid interval is ${expectedStopFrame - expectedStartFrame}`);
+    }
+    const committed = track.audioBuffer;
+    track.stop(); track.state = 'EMPTY';
+    browser.rhythmEngine.setSwingPercent(51);
+    await waitFor(() => !!browser.rhythmEngine.measurePhaseSnapshot, 'fresh Rhythm phase after reconfiguration');
+    const offPhase = browser.rhythmEngine.measurePhaseSnapshot;
+    if (!offPhase) throw new Error('Reconfigured Rhythm did not publish a phase snapshot');
+    await browser.waitForInputCaptureReady();
+    track.triggerRecord();
+    await waitFor(() => track.state === 'REC_STANDBY' && !!track.recordingCaptureSession, 'second reserved Rhythm start');
+    const pending = track.recordingCaptureSession;
+    track.triggerStop();
+    if (track.audioBuffer !== committed) throw new Error('Cancelling a pending Rhythm start replaced the committed PCM');
+    const cancellationPreservedPcm = track.audioBuffer === committed;
+
+    await engine.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'OFF' });
+    track.state = 'EMPTY';
+    await browser.waitForInputCaptureReady();
+    track.triggerRecord();
+    await waitFor(() => track.state === 'RECORDING', 'QUANTIZE OFF immediate start');
+    const offSession = track.recordingCaptureSession;
+    if (!offSession) throw new Error('QUANTIZE OFF did not reserve the immediate shared-capture frame');
+    const immediateStartFrame = offSession.startFrame;
+    if (immediateStartFrame === nextBoundary(offPhase, immediateStartFrame)) {
+      throw new Error('QUANTIZE OFF unexpectedly waited for a Rhythm measure boundary');
+    }
+    const offStopReferenceFrame = Math.max(browser.getInputCaptureRequestFrame(), immediateStartFrame);
+    const offStopRequests: any[] = [];
+    const capturePort = captureNode.port as any;
+    const originalCapturePostMessage = captureNode.port.postMessage.bind(captureNode.port);
+    capturePort.postMessage = (message: any, transfer?: Transferable[]) => {
+      if (message?.type === 'STOP_CAPTURE') offStopRequests.push({ ...message });
+      if (transfer === undefined) originalCapturePostMessage(message);
+      else originalCapturePostMessage(message, transfer);
+    };
+    const beforeOffCommit = track.audioBuffer;
+    track.triggerRecord();
+    await waitFor(() => offStopRequests.length > 0, 'QUANTIZE OFF Rhythm stop reservation');
+    const offStopFrame = offStopRequests[0]!.stopFrame as number;
+    if (offStopFrame <= offStopReferenceFrame || nextBoundary(offPhase, offStopFrame) !== offStopFrame) {
+      throw new Error(`QUANTIZE OFF stop frame ${offStopFrame} was not a future Rhythm measure boundary`);
+    }
+    await waitFor(() => track.state === 'PLAYING' && !track.historyBusy && !!track.audioBuffer && track.audioBuffer !== beforeOffCommit, 'QUANTIZE OFF aligned stop and PCM commit');
+    const offRecordedFrames = (track.audioBuffer as AudioBuffer).length;
+    const offCapturedFrames = offStopFrame - immediateStartFrame;
+    const measureFrames = Math.round(offPhase.stepsPerBar * offPhase.sampleRate * 15 / offPhase.bpm);
+    const expectedLoopFrames = Math.max(measureFrames, Math.round(offCapturedFrames / measureFrames) * measureFrames);
+    if (offRecordedFrames !== expectedLoopFrames) {
+      throw new Error(`QUANTIZE OFF loop has ${offRecordedFrames} frames; measure-adjusted capture length should be ${expectedLoopFrames} (capture ${offCapturedFrames})`);
+    }
+    capturePort.postMessage = originalCapturePostMessage;
+    signal.stop();
+    browser.rhythmEngine.stop();
+    return {
+      sampleRate: context.sampleRate,
+      epoch: phase.epoch,
+      requestFrame,
+      startFrame: expectedStartFrame,
+      stopFrame: expectedStopFrame,
+      frames: recorded.length,
+      workletAckStartFrame: session.startFrame,
+      cancelledSessionId: pending?.sessionId ?? null,
+      incumbentPreserved: cancellationPreservedPcm,
+      previousBufferWasPresent: incumbent !== null,
+      immediateStartFrame,
+      offStopFrame,
+      offRecordedFrames,
+      offCapturedFrames,
+    };
+  });
+
+  expect(result.epoch).toBeGreaterThan(0);
+  expect(result.startFrame).toBeGreaterThanOrEqual(result.requestFrame);
+  expect(result.stopFrame - result.startFrame).toBe(result.frames);
+  expect(result.workletAckStartFrame).toBe(result.startFrame);
+  expect(result.cancelledSessionId).not.toBeNull();
+  expect(result.incumbentPreserved).toBe(true);
+  expect(result.offStopFrame - result.immediateStartFrame).toBe(result.offCapturedFrames);
+  expect(result.offRecordedFrames).toBeGreaterThanOrEqual(result.offCapturedFrames);
+});

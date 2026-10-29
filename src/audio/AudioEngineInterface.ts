@@ -1,5 +1,6 @@
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
+import type { RhythmMeasurePhaseSnapshot } from './worklet/RhythmProcessor';
 import type { RecordPlaySettings } from './RecordPlaySettings';
 export type BrowserMidiSyncMode = 'off' | 'all' | 'rhythm';
 export interface InputCaptureSession {
@@ -20,6 +21,9 @@ export interface IAudioEngine {
     getRecordPlaySettings?(): RecordPlaySettings;
     /** True only when the Browser's internal rhythm source is currently running. */
     isBrowserRhythmRunning?(): boolean;
+    /** Last acknowledged sample-frame phase from the real Browser Rhythm AudioWorklet. */
+    getBrowserRhythmMeasurePhaseSnapshot?(): RhythmMeasurePhaseSnapshot | null;
+    onBrowserRhythmPhaseChange?(listener: () => void): () => void;
     /** True only when the requested Browser track exists and LOOP SYNC SW is ON. */
     isBrowserTrackLoopSyncEnabled?(trackId: number): boolean | null;
     context: AudioContext;

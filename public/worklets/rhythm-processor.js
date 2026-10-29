@@ -466,9 +466,11 @@
   var RhythmWorkletCore = class {
     sampleRate;
     configuration = null;
+    measurePhaseSnapshot = null;
     pool = null;
     nextBarToSchedule = 0;
     lastRenderedFrameEnd = null;
+    phaseEpoch = 0;
     constructor(sampleRate) {
       if (!Number.isFinite(sampleRate) || sampleRate < 8e3) {
         throw new RangeError("Rhythm worklet sample rate must be at least 8000 Hz");
@@ -482,7 +484,16 @@
     get expectedNextFrame() {
       return this.lastRenderedFrameEnd;
     }
-    configure(configuration) {
+    get currentPhaseEpoch() {
+      return this.phaseEpoch;
+    }
+    /** Snapshot construction is control-path only and is never called from renderInto(). */
+    getMeasurePhaseSnapshot(requestId) {
+      const snapshot = this.measurePhaseSnapshot;
+      if (!snapshot || !Number.isSafeInteger(requestId) || requestId < 0) return null;
+      return snapshot.requestId === requestId ? snapshot : { ...snapshot, requestId };
+    }
+    configure(configuration, phaseRequestId = 0) {
       if (configuration.sampleRate !== this.sampleRate) {
         throw new RangeError("Rhythm worklet sample rate does not match its AudioContext");
       }
@@ -501,6 +512,12 @@
       if (!Number.isSafeInteger(configuration.stepsPerBar) || configuration.stepsPerBar < 1) {
         throw new RangeError("Rhythm worklet stepsPerBar must be a positive integer");
       }
+      if (!Number.isSafeInteger(phaseRequestId) || phaseRequestId < 0) {
+        throw new RangeError("Rhythm worklet phase request id must be a non-negative safe integer");
+      }
+      if (this.phaseEpoch >= Number.MAX_SAFE_INTEGER) {
+        throw new RangeError("Rhythm worklet phase epoch is exhausted");
+      }
       this.configuration = configuration;
       this.pool = new DrumVoicePool({
         sampleRate: this.sampleRate,
@@ -508,11 +525,26 @@
         maxVoices: configuration.maxVoices
       });
       this.nextBarToSchedule = 0;
+      this.phaseEpoch += 1;
+      const nextMeasureFrame = configuration.startFrame + Math.round(configuration.stepsPerBar * this.sampleRate * 15 / configuration.bpm);
+      this.measurePhaseSnapshot = Number.isSafeInteger(nextMeasureFrame) ? {
+        type: "measure-phase",
+        available: true,
+        requestId: phaseRequestId,
+        epoch: this.phaseEpoch,
+        originFrame: configuration.startFrame,
+        nextMeasureFrame,
+        sampleRate: this.sampleRate,
+        bpm: configuration.bpm,
+        stepsPerBar: configuration.stepsPerBar
+      } : null;
     }
     stop() {
+      if (this.phaseEpoch < Number.MAX_SAFE_INTEGER) this.phaseEpoch += 1;
       this.pool?.reset();
       this.pool = null;
       this.configuration = null;
+      this.measurePhaseSnapshot = null;
       this.nextBarToSchedule = 0;
       this.lastRenderedFrameEnd = null;
     }
@@ -583,16 +615,32 @@
     core;
     staleEpisodeStartFrame = null;
     staleEpisodeExpectedFrame = null;
+    phaseRequestId = null;
+    phaseAcknowledged = false;
+    phaseInvalidated = false;
     constructor() {
       super();
       this.core = new RhythmWorkletCore(workletGlobals.sampleRate ?? 44100);
       this.port.onmessage = (event) => {
         const message = event.data;
-        if (message?.type === "start") this.core.configure(message.configuration);
-        else if (message?.type === "stop") {
+        if (message?.type === "start") {
+          this.core.configure(message.configuration, message.requestId);
+          this.phaseRequestId = message.requestId;
+          this.phaseAcknowledged = false;
+          this.phaseInvalidated = false;
+        } else if (message?.type === "stop") {
           this.core.stop();
+          this.phaseRequestId = message.requestId;
+          this.phaseAcknowledged = true;
+          this.phaseInvalidated = true;
           this.staleEpisodeStartFrame = null;
           this.staleEpisodeExpectedFrame = null;
+          this.port.postMessage({
+            type: "measure-phase",
+            available: false,
+            requestId: message.requestId,
+            epoch: this.core.currentPhaseEpoch
+          });
         }
       };
     }
@@ -605,6 +653,7 @@
       }
       const startFrame = workletGlobals.currentFrame ?? 0;
       const rendered = outputChannels[renderChannelIndex];
+      const blockEndFrame = startFrame + rendered.length;
       const expectedStartFrame = this.core.expectedNextFrame;
       const renderedOnTimeline = this.core.renderInto(startFrame, rendered);
       if (!renderedOnTimeline) {
@@ -620,6 +669,7 @@
           };
           this.port.postMessage(message);
         }
+        this.invalidatePhase();
       } else if (this.staleEpisodeStartFrame !== null) {
         const message = {
           type: "timeline-recovered",
@@ -630,6 +680,16 @@
         this.port.postMessage(message);
         this.staleEpisodeStartFrame = null;
         this.staleEpisodeExpectedFrame = null;
+        this.invalidatePhase();
+      }
+      if (!this.phaseAcknowledged && this.phaseRequestId !== null && renderedOnTimeline) {
+        const phase = this.core.getMeasurePhaseSnapshot(this.phaseRequestId);
+        if (phase && startFrame <= phase.originFrame && phase.originFrame < blockEndFrame) {
+          this.port.postMessage(phase);
+          this.phaseAcknowledged = true;
+        } else if (phase && startFrame > phase.originFrame) {
+          this.invalidatePhase();
+        }
       }
       for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex += 1) {
         if (channelIndex === renderChannelIndex) continue;
@@ -639,6 +699,17 @@
         for (let frame = length; frame < channel.length; frame += 1) channel[frame] = 0;
       }
       return true;
+    }
+    invalidatePhase() {
+      if (this.phaseInvalidated || this.phaseRequestId === null) return;
+      this.phaseInvalidated = true;
+      this.phaseAcknowledged = true;
+      this.port.postMessage({
+        type: "measure-phase",
+        available: false,
+        requestId: this.phaseRequestId,
+        epoch: this.core.currentPhaseEpoch
+      });
     }
   };
   if (typeof workletGlobals.registerProcessor === "function") {

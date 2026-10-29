@@ -10,6 +10,7 @@ import { Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { audioBufferPcmBytes, getBrowserPcmHistoryBudget, PcmHistoryBudget } from './PcmHistoryBudget';
 import type { BrowserRecoveryTrack } from './BrowserRecoverySnapshot';
+import type { RhythmMeasurePhaseSnapshot } from './worklet/RhythmProcessor';
 import type { TrackMarkActionResult, TrackMarkState } from './TrackMark';
 
 const RECORDING_CHUNK_SIZE = 16_384;
@@ -55,6 +56,26 @@ const MAX_RECORDING_CHUNKS = MAX_RECORDING_CAPTURE_BYTES / Float32Array.BYTES_PE
 const MAX_RECORDING_CHANNELS = 2;
 
 export type LoopTransportFxName = 'BEAT SHIFT' | 'VINYL FLICK';
+
+function nextRhythmMeasureFrame(phase: RhythmMeasurePhaseSnapshot, frame: number): number | null {
+    if (!Number.isSafeInteger(frame) || frame < 0) return null;
+    const numerator = phase.stepsPerBar * phase.sampleRate * 15;
+    if (!Number.isSafeInteger(numerator) || numerator <= 0 || !Number.isFinite(phase.bpm) || phase.bpm <= 0) return null;
+    if (frame <= phase.originFrame) return phase.originFrame;
+    let measure = Math.max(0, Math.ceil(((frame - phase.originFrame) * phase.bpm) / numerator));
+    let boundary = phase.originFrame + Math.round((measure * numerator) / phase.bpm);
+    while (boundary < frame) {
+        measure += 1;
+        boundary = phase.originFrame + Math.round((measure * numerator) / phase.bpm);
+    }
+    while (measure > 0) {
+        const previous = phase.originFrame + Math.round(((measure - 1) * numerator) / phase.bpm);
+        if (previous < frame) break;
+        measure -= 1;
+        boundary = previous;
+    }
+    return Number.isSafeInteger(boundary) ? boundary : null;
+}
 
 interface OverdubStopRollbackJournal {
     readonly capacity: number;
@@ -439,22 +460,62 @@ export class TrackAudio {
     private recordingStarting = false;
     private quantizedRecordingStartFrame: number | null = null;
     private quantizedRecordingPhaseRevision: number | null = null;
+    private quantizedRecordingRhythmPhase: RhythmMeasurePhaseSnapshot | null = null;
+    private pendingQuantizedRhythmPhase: RhythmMeasurePhaseSnapshot | null = null;
     private quantizedRecordingTrackSyncRevision: number | null = null;
     private quantizedRecordingStopFrame: number | null = null;
     private quantizedRecordingStopPhaseRevision: number | null = null;
+    private quantizedRecordingStopRhythmPhase: RhythmMeasurePhaseSnapshot | null = null;
+    private invalidatedQuantizedStop: { readonly sessionId: number; readonly stopFrame: number } | null = null;
     private quantizedRecordingStopTrackSyncRevision: number | null = null;
     private readonly masterPhaseChangeListener = () => {
         this.invalidateQuantizedRecordingStopIfStale('The master phase changed before the quantized stop; recording stopped at the current audio frame.');
     };
+    private readonly rhythmPhaseChangeListener = (): void => {
+        if (this.pendingQuantizedRhythmPhase && !this.isRhythmPhaseCurrent(this.pendingQuantizedRhythmPhase)) {
+            this.failQuantizedRecordingStart('The Rhythm phase changed before the scheduled start was acknowledged; the capture was cancelled and the previous loop was kept.');
+        }
+        if (this.quantizedRecordingStopFrame !== null && !this.isQuantizedStopCurrent()) {
+            this.retainInvalidatedStopAckTarget();
+            this.quantizedRecordingStopFrame = null;
+            this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopRhythmPhase = null;
+            this.quantizedRecordingStopTrackSyncRevision = null;
+            this.recordingDiagnostic = 'The Rhythm phase changed before the scheduled stop; the capture was stopped at the current audio frame without claiming quantization.';
+            void this.stopRecording();
+        }
+    };
+    private unsubscribeRhythmPhaseChange: (() => void) | null = null;
     private invalidateQuantizedRecordingStopIfStale(message: string): void {
         if (this.quantizedRecordingStopFrame === null) return;
-        if (this.quantizedRecordingStopPhaseRevision === this.transport.masterPhaseRevision
-            && this.quantizedRecordingStopTrackSyncRevision === this.loopSyncSettingsRevision) return;
+        if (this.isQuantizedStopCurrent()) return;
+        this.retainInvalidatedStopAckTarget();
         this.quantizedRecordingStopFrame = null;
         this.quantizedRecordingStopPhaseRevision = null;
+        this.quantizedRecordingStopRhythmPhase = null;
         this.quantizedRecordingStopTrackSyncRevision = null;
         this.recordingDiagnostic = message;
         void this.stopRecording();
+    }
+
+    private retainInvalidatedStopAckTarget(): void {
+        const session = this.recordingCaptureSession;
+        if (session && this.quantizedRecordingStopFrame !== null) {
+            this.invalidatedQuantizedStop = { sessionId: session.sessionId, stopFrame: this.quantizedRecordingStopFrame };
+        }
+    }
+
+    private isQuantizedStopCurrent(): boolean {
+        if (this.quantizedRecordingStopFrame === null
+            || this.quantizedRecordingStopTrackSyncRevision !== this.loopSyncSettingsRevision
+            || this.track.loopSyncSw !== 'ON') return false;
+        const rhythmPhase = this.quantizedRecordingStopRhythmPhase;
+        if (rhythmPhase) return this.isRhythmPhaseCurrent(rhythmPhase);
+        const masterTrackId = this.transport.masterTrackId;
+        return this.quantizedRecordingStopPhaseRevision === this.transport.masterPhaseRevision
+            && this.engine.isBrowserRhythmRunning?.() !== true
+            && masterTrackId !== null
+            && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true;
     }
     private loopSyncSettingsRevision = 0;
     private lastLoopSyncSw: Track['loopSyncSw'];
@@ -555,6 +616,7 @@ export class TrackAudio {
         this.pcmHistoryBudget = historyBudget;
         this.transport = Transport.getInstance();
         this.transport.on('master-phase-change', this.masterPhaseChangeListener);
+        this.unsubscribeRhythmPhaseChange = this.engine.onBrowserRhythmPhaseChange?.(this.rhythmPhaseChangeListener) ?? null;
         const ctx = this.engine.context;
 
         this.gainNode = ctx.createGain();
@@ -2174,6 +2236,8 @@ export class TrackAudio {
         const frame = this.positionUpdaterFrame;
         this.positionUpdaterFrame = null;
         this.transport.off('master-phase-change', this.masterPhaseChangeListener);
+        this.unsubscribeRhythmPhaseChange?.();
+        this.unsubscribeRhythmPhaseChange = null;
         if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
 
         this.clearRecordingCaptureStopAckTimeout();
@@ -2440,11 +2504,6 @@ export class TrackAudio {
             this.recordingDiagnostic = 'MIDI-clock quantized recording is unavailable because external clock pulses are not mapped to audio sample frames. Set QUANTIZE OFF or disable MIDI sync; the existing loop was preserved.';
             return;
         }
-        if (this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF'
-            && this.engine.isBrowserRhythmRunning?.()) {
-            this.recordingDiagnostic = 'Measure quantization with the internal Rhythm is unavailable because its phrase phase is not exposed to the Browser capture clock. Existing loops are preserved.';
-            return;
-        }
         if (this.engine.getBrowserAutoRecSettings?.().enabled) {
             if (this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
                 const masterTrackId = this.transport.masterTrackId;
@@ -2465,6 +2524,20 @@ export class TrackAudio {
         // ========================================
 
         const measureQuantize = this.engine.getRecordPlaySettings?.().quantize !== 'OFF';
+        if (this.track.loopSyncSw === 'ON' && measureQuantize && this.engine.isBrowserRhythmRunning?.()) {
+            const rhythmPhase = this.engine.getBrowserRhythmMeasurePhaseSnapshot?.() ?? null;
+            const requestFrame = this.engine.getInputCaptureRequestFrame?.();
+            const targetFrame = rhythmPhase && this.isRhythmPhaseCurrent(rhythmPhase)
+                && requestFrame !== null && requestFrame !== undefined
+                ? nextRhythmMeasureFrame(rhythmPhase, requestFrame) : null;
+            if (!rhythmPhase || targetFrame === null) {
+                this.recordingDiagnostic = 'Measure quantization is unavailable because the running Rhythm has no current acknowledged AudioWorklet phase or shared capture frame. Existing loops are preserved.';
+                return;
+            }
+            this.state = TrackState.REC_STANDBY;
+            void this.startRecording(targetFrame, undefined, this.loopSyncSettingsRevision, 0, rhythmPhase);
+            return;
+        }
         // A master loop phase is usable only after an ordinary audio source
         // has established its start on the AudioContext frame clock.
         if (this.track.loopSyncSw === 'ON' && measureQuantize && this.transport.hasMasterTrack()) {
@@ -2474,8 +2547,7 @@ export class TrackAudio {
             if (masterLoopSync === false) {
                 // Roland applies REC QUANTIZE only when Rhythm, another synced
                 // track, or MIDI clock supplies a grid. Browser MIDI clock is
-                // unsupported and Rhythm was ruled out above, so this is an
-                // ordinary unquantized start rather than a false failure.
+                // unsupported; with no grid, begin immediately.
                 this.startRecording();
                 if (this.transport.state !== TransportState.PLAYING) this.transport.start();
                 return;
@@ -2515,9 +2587,7 @@ export class TrackAudio {
     private scheduleRecordingStop() {
         if (this.disposed) return;
         if ((this.engine.getMidiClockSyncMode?.() ?? 'off') !== 'off'
-            && this.track.loopSyncSw === 'ON'
-            && this.engine.getRecordPlaySettings?.().quantize !== 'OFF'
-            && this.transport.hasMasterTrack()) {
+            && this.track.loopSyncSw === 'ON') {
             this.recordingDiagnostic = 'MIDI-clock quantized stop is unavailable because external clock pulses are not mapped to audio sample frames. This take stopped at the current audio frame without quantization.';
             this.stopRecording();
             return;
@@ -2526,9 +2596,7 @@ export class TrackAudio {
         // QUANTIZED RECORDING STOP LOGIC
         // ========================================
 
-        // Check if there's a master track
-        if (this.track.loopSyncSw !== 'ON' || !this.transport.hasMasterTrack()) {
-            // The first take establishes the grid; OFF only disables start quantization.
+        if (this.track.loopSyncSw !== 'ON') {
             console.log(`Track ${this.track.id}: Stopping recording immediately`);
             this.stopRecording();
             return;
@@ -2536,7 +2604,28 @@ export class TrackAudio {
 
         const requestFrame = this.engine.getInputCaptureRequestFrame?.();
         if (this.engine.isBrowserRhythmRunning?.()) {
-            this.recordingDiagnostic = 'The internal Rhythm has no verified Browser capture phase; the take will stop at the current audio frame without claiming quantization.';
+            const rhythmPhase = this.engine.getBrowserRhythmMeasurePhaseSnapshot?.() ?? null;
+            const captureStartFrame = this.recordingCaptureSession?.startFrame ?? requestFrame ?? -1;
+            const stopReferenceFrame = Math.max(requestFrame ?? -1, captureStartFrame);
+            const targetFrame = rhythmPhase && this.isRhythmPhaseCurrent(rhythmPhase)
+                && stopReferenceFrame < Number.MAX_SAFE_INTEGER
+                ? nextRhythmMeasureFrame(rhythmPhase, stopReferenceFrame + 1) : null;
+            if (!rhythmPhase || targetFrame === null) {
+                this.recordingDiagnostic = 'The running Rhythm has no current acknowledged phase; this take stopped at the current audio frame without claiming quantization.';
+                this.stopRecording();
+                return;
+            }
+            this.state = TrackState.REC_FINISHING;
+            this.quantizedRecordingStopFrame = targetFrame;
+            this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopRhythmPhase = rhythmPhase;
+            this.quantizedRecordingStopTrackSyncRevision = this.loopSyncSettingsRevision;
+            void this.stopRecording(targetFrame, rhythmPhase);
+            return;
+        }
+        // With no Rhythm, a previously-recorded synced master provides the grid.
+        // The first take establishes the grid; QUANTIZE OFF only skips its start.
+        if (!this.transport.hasMasterTrack()) {
             this.stopRecording();
             return;
         }
@@ -2552,6 +2641,7 @@ export class TrackAudio {
         this.state = TrackState.REC_FINISHING;
         this.quantizedRecordingStopFrame = targetFrame;
         this.quantizedRecordingStopPhaseRevision = this.transport.masterPhaseRevision;
+        this.quantizedRecordingStopRhythmPhase = null;
         this.quantizedRecordingStopTrackSyncRevision = this.loopSyncSettingsRevision;
         void this.stopRecording(targetFrame);
     }
@@ -2880,8 +2970,9 @@ export class TrackAudio {
 
     public autoRecArmed = false;
 
-    public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number, sharedCaptureRetryCount = 0) {
+    public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number, sharedCaptureRetryCount = 0, quantizedRhythmPhase?: RhythmMeasurePhaseSnapshot) {
         if (this.disposed) return;
+        this.pendingQuantizedRhythmPhase = quantizedStartFrame === undefined ? null : quantizedRhythmPhase ?? null;
         const tempoCandidateAtQuantizedReservation = quantizedStartFrame === undefined
             ? null : this.captureRecordingTempoCandidate();
         if (this.livePolyTempoFollowPending || this.livePolyTempoFollow) {
@@ -2920,7 +3011,7 @@ export class TrackAudio {
             const bounceSourceMask = this.engine.getBrowserBounceSourceMask?.(this.trackIndex) ?? 0;
             const bounceEnabled = bounceSourceMask !== 0;
             if (quantizedStartFrame !== undefined) {
-                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision, quantizedRhythmPhase)) {
                     this.failQuantizedRecordingStart('The audio-clock phase or shared capture path changed before the quantized start was reserved. Existing loops are preserved.');
                     return;
                 }
@@ -2966,7 +3057,7 @@ export class TrackAudio {
                 }
             }
             if (quantizedStartFrame !== undefined) {
-                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision, quantizedRhythmPhase)) {
                     this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
                     return;
                 }
@@ -2985,7 +3076,7 @@ export class TrackAudio {
                     }
                     if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
                     const readyFrame = this.engine.getInputCaptureRequestFrame?.();
-                    if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                    if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision, quantizedRhythmPhase)) {
                         this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed while shared capture readiness was confirmed. Existing loops are preserved.');
                         return;
                     }
@@ -3064,6 +3155,7 @@ export class TrackAudio {
                     if (quantizedStartFrame !== undefined) {
                         this.quantizedRecordingStartFrame = quantizedStartFrame;
                         this.quantizedRecordingPhaseRevision = quantizedPhaseRevision ?? null;
+                        this.quantizedRecordingRhythmPhase = quantizedRhythmPhase ?? null;
                         this.quantizedRecordingTrackSyncRevision = quantizedTrackSyncRevision ?? null;
                     }
                     this.workletNode = captureSession.node;
@@ -3146,19 +3238,38 @@ export class TrackAudio {
         this.syncTransportState();
     }
 
-    private isQuantizedStartCurrent(phaseRevision?: number, trackSyncRevision?: number): boolean {
+    private isRhythmPhaseCurrent(phase: RhythmMeasurePhaseSnapshot): boolean {
+        const current = this.engine.getBrowserRhythmMeasurePhaseSnapshot?.() ?? null;
+        return this.engine.isBrowserRhythmRunning?.() === true
+            && current !== null
+            && current.requestId === phase.requestId
+            && current.epoch === phase.epoch
+            && current.originFrame === phase.originFrame
+            && current.nextMeasureFrame === phase.nextMeasureFrame
+            && current.sampleRate === phase.sampleRate
+            && current.sampleRate === this.engine.context.sampleRate
+            && current.bpm === phase.bpm
+            && current.bpm === this.transport.bpm
+            && current.stepsPerBar === phase.stepsPerBar;
+    }
+
+    private isQuantizedStartCurrent(phaseRevision?: number, trackSyncRevision?: number, rhythmPhase?: RhythmMeasurePhaseSnapshot): boolean {
         const masterTrackId = this.transport.masterTrackId;
         const inputFrame = this.engine.getInputCaptureRequestFrame?.();
-        return phaseRevision === this.transport.masterPhaseRevision
+        const sourceIsCurrent = rhythmPhase
+            ? this.isRhythmPhaseCurrent(rhythmPhase)
+            : phaseRevision === this.transport.masterPhaseRevision && this.engine.isBrowserRhythmRunning?.() !== true;
+        const sourceSyncIsCurrent = rhythmPhase
+            ? true
+            : masterTrackId !== null && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true;
+        return sourceIsCurrent
             && trackSyncRevision === this.loopSyncSettingsRevision
-            && this.track.loopSyncSw === 'ON' && masterTrackId !== null
-            && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true
-            && this.engine.isBrowserRhythmRunning?.() !== true
+            && this.track.loopSyncSw === 'ON' && sourceSyncIsCurrent
             && inputFrame !== null && inputFrame !== undefined
             && !!this.engine.beginInputCaptureSession;
     }
 
-    public async stopRecording(quantizedStopFrame?: number) {
+    public async stopRecording(quantizedStopFrame?: number, quantizedRhythmPhase?: RhythmMeasurePhaseSnapshot) {
         this.recordingStartRetrySuppressionGeneration += 1;
         if (this.recordingCaptureSession && !this.recordingCaptureStartAcknowledged) {
             this.recordingCaptureStartCancelled = true;
@@ -3167,11 +3278,19 @@ export class TrackAudio {
         if (this.autoRecArmed) { this.triggerStop(); return; }
         if ((!this.isRecording && !this.isFinalizingRecording) || !this.workletNode) return;
 
+        if (quantizedStopFrame !== undefined) {
+            if ((quantizedRhythmPhase ?? null) !== this.quantizedRecordingStopRhythmPhase || !this.isQuantizedStopCurrent()) {
+                this.recordingDiagnostic = 'The Rhythm/master phase or LOOP SYNC setting changed before the quantized stop was submitted; this take stopped at the current audio frame without claiming quantization.';
+                quantizedStopFrame = undefined;
+            }
+        }
+
         this.isRecording = false;
         this.isFinalizingRecording = true;
         if (quantizedStopFrame === undefined) {
             this.quantizedRecordingStopFrame = null;
             this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopRhythmPhase = null;
             this.quantizedRecordingStopTrackSyncRevision = null;
         }
         const captureSession = this.recordingCaptureSession;
@@ -3322,6 +3441,15 @@ export class TrackAudio {
                 this.abortSharedRecording(captureSession, true);
                 return;
             }
+            const invalidatedStop = this.invalidatedQuantizedStop;
+            if (invalidatedStop?.sessionId === captureSession.sessionId) {
+                this.invalidatedQuantizedStop = null;
+                if (message.stopFrame === invalidatedStop.stopFrame) {
+                    this.recordingDiagnostic = 'The Rhythm/master phase changed after the queued measure boundary completed; the stale take was discarded and the previous loop was kept.';
+                    this.abortSharedRecording(captureSession, true);
+                    return;
+                }
+            }
         }
 
         if (message.type === 'RECORD_CONFIGURED') {
@@ -3338,22 +3466,27 @@ export class TrackAudio {
                 && this.isRecordingTempoCandidateCurrent(this.recordingTempoRequestCandidate)
                 ? this.recordingTempoRequestCandidate : null;
             if (captureSession && this.quantizedRecordingStartFrame !== null) {
-                const masterTrackId = this.transport.masterTrackId;
-                const phaseIsCurrent = this.quantizedRecordingPhaseRevision === this.transport.masterPhaseRevision;
+                const rhythmPhase = this.quantizedRecordingRhythmPhase;
+                const phaseIsCurrent = rhythmPhase
+                    ? this.isRhythmPhaseCurrent(rhythmPhase)
+                    : this.quantizedRecordingPhaseRevision === this.transport.masterPhaseRevision
+                        && this.engine.isBrowserRhythmRunning?.() !== true;
                 const trackSyncIsCurrent = this.quantizedRecordingTrackSyncRevision === this.loopSyncSettingsRevision;
                 const acknowledgedFrame = message.captureStartFrame === this.quantizedRecordingStartFrame
                     && message.requestedStartFrame === this.quantizedRecordingStartFrame
                     && captureSession.startFrame === this.quantizedRecordingStartFrame;
-                const syncIsCurrent = this.track.loopSyncSw === 'ON' && masterTrackId !== null
-                    && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true
-                    && this.engine.isBrowserRhythmRunning?.() !== true;
+                const masterTrackId = this.transport.masterTrackId;
+                const syncIsCurrent = this.track.loopSyncSw === 'ON' && (rhythmPhase !== null
+                    || (masterTrackId !== null && this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) === true));
                 if (!phaseIsCurrent || !trackSyncIsCurrent || !acknowledgedFrame || !syncIsCurrent) {
-                    this.recordingDiagnostic = 'The master phase or LOOP SYNC setting changed before the worklet start acknowledgement; the scheduled capture was cancelled and the previous loop was kept.';
+                    this.recordingDiagnostic = 'The Rhythm/master phase or LOOP SYNC setting changed before the worklet start acknowledgement; the scheduled capture was cancelled and the previous loop was kept.';
                     this.abortSharedRecording(captureSession, true);
                     return;
                 }
                 this.quantizedRecordingStartFrame = null;
                 this.quantizedRecordingPhaseRevision = null;
+                this.quantizedRecordingRhythmPhase = null;
+                this.pendingQuantizedRhythmPhase = null;
                 this.quantizedRecordingTrackSyncRevision = null;
                 this.isRecording = true;
                 this.state = TrackState.RECORDING;
@@ -3388,10 +3521,19 @@ export class TrackAudio {
         if (message.type === 'RECORD_COMPLETE') {
             // The worklet also completes itself at the PCM capture limit,
             // without a preceding control-thread stopRecording() call.
+            if (this.quantizedRecordingStopFrame !== null && !this.isQuantizedStopCurrent()) {
+                const captureSession = this.recordingCaptureSession;
+                this.recordingDiagnostic = 'The Rhythm/master phase or LOOP SYNC setting changed before the scheduled capture completed; the take was discarded and the previous loop was kept.';
+                if (captureSession) {
+                    this.abortSharedRecording(captureSession, true);
+                    return;
+                }
+            }
             this.isRecording = false;
             this.isFinalizingRecording = true;
             this.quantizedRecordingStopFrame = null;
             this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopRhythmPhase = null;
             this.quantizedRecordingStopTrackSyncRevision = null;
             this.pendingRecordingComplete = message;
             this.finishRecordingWhenReady(workletNode);
@@ -3540,10 +3682,14 @@ export class TrackAudio {
         this.recordingCaptureSession = null;
         this.quantizedRecordingStartFrame = null;
         this.quantizedRecordingPhaseRevision = null;
+        this.quantizedRecordingRhythmPhase = null;
+        this.pendingQuantizedRhythmPhase = null;
         this.quantizedRecordingTrackSyncRevision = null;
         this.quantizedRecordingStopFrame = null;
         this.quantizedRecordingStopPhaseRevision = null;
+        this.quantizedRecordingStopRhythmPhase = null;
         this.quantizedRecordingStopTrackSyncRevision = null;
+        this.invalidatedQuantizedStop = null;
         try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
         this.recordingInputNode = null;
         if (this.workletNode === session.node) this.workletNode = null;
@@ -5421,6 +5567,8 @@ export class TrackAudio {
         this.recordingStarting = false;
         this.quantizedRecordingStartFrame = null;
         this.quantizedRecordingPhaseRevision = null;
+        this.quantizedRecordingRhythmPhase = null;
+        this.pendingQuantizedRhythmPhase = null;
         this.quantizedRecordingTrackSyncRevision = null;
         this.autoRecArmed = false;
         this.isRecording = false;

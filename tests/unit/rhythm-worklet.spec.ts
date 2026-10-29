@@ -248,12 +248,7 @@ describe('rhythm AudioWorklet integration', () => {
     const processor = new RhythmWorkletProcessor();
     const postMessage = vi.spyOn(processor.port, 'postMessage');
     processor.port.onmessage?.({ data: { type: 'start', requestId: 7, configuration } });
-    expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual(['measure-phase']);
-    expect(postMessage.mock.calls[0]![0]).toMatchObject({
-      type: 'measure-phase', available: true, requestId: 7, epoch: 1,
-      originFrame: 1_024, sampleRate, bpm: 123, stepsPerBar: 16,
-      nextMeasureFrame: 1_024 + Math.round((16 * sampleRate * 15) / 123),
-    });
+    expect(postMessage).not.toHaveBeenCalled();
 
     const renderAt = (frame: number): { readonly alive: boolean; readonly output: Float32Array } => {
       vi.stubGlobal('currentFrame', frame);
@@ -263,6 +258,13 @@ describe('rhythm AudioWorklet integration', () => {
     };
 
     const first = renderAt(1_024);
+    expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual(['measure-phase']);
+    expect(postMessage.mock.calls[0]![0]).toMatchObject({
+      type: 'measure-phase', available: true, requestId: 7, epoch: 1,
+      originFrame: 1_024, sampleRate, bpm: 123, stepsPerBar: 16,
+      nextMeasureFrame: 1_024 + Math.round((16 * sampleRate * 15) / 123),
+    });
+
     const second = renderAt(1_152);
     const stale = renderAt(1_024);
     const repeatedStale = renderAt(1_152);
@@ -279,6 +281,7 @@ describe('rhythm AudioWorklet integration', () => {
     expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
       'measure-phase',
       'timeline-rewind',
+      'measure-phase',
       'timeline-recovered',
     ]);
   });
@@ -528,6 +531,7 @@ describe('rhythm AudioWorklet integration', () => {
       engine.start();
       await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
       const node = TestWorkletNode.instances[0]!;
+      notifyStatus.mockClear();
       node.emitMessage({
         type: 'timeline-rewind',
         requestedStartFrame: 1_024,
@@ -536,7 +540,7 @@ describe('rhythm AudioWorklet integration', () => {
       });
       expect(engine.error).toContain('block was muted');
       expect(engine.error).toContain('state was not rewound');
-      expect(notifyStatus).toHaveBeenCalledOnce();
+      expect(notifyStatus).toHaveBeenCalledTimes(2);
 
       node.emitMessage({
         type: 'timeline-recovered',
@@ -546,7 +550,7 @@ describe('rhythm AudioWorklet integration', () => {
       });
       expect(engine.error).toContain('Timeline continuity was interrupted');
       expect(engine.error).toContain('not buffered for replay');
-      expect(notifyStatus).toHaveBeenCalledTimes(2);
+      expect(notifyStatus).toHaveBeenCalledTimes(4);
     } finally {
       engine.dispose();
     }

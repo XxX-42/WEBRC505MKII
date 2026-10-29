@@ -302,6 +302,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: true });
     }
     public isBrowserRhythmRunning(): boolean { return this.rhythmEngine.isRunning; }
+    public getBrowserRhythmMeasurePhaseSnapshot() { return this.rhythmEngine.measurePhaseSnapshot; }
+    public onBrowserRhythmPhaseChange(listener: () => void): () => void {
+        return this.rhythmEngine.onMeasurePhaseChange(listener);
+    }
     public isBrowserTrackLoopSyncEnabled(trackId: number): boolean | null {
         const track = this.tracks.find((candidate) => candidate.track.id === trackId);
         return track ? track.track.loopSyncSw === 'ON' : null;

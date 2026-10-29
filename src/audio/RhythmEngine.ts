@@ -82,6 +82,7 @@ export class RhythmEngine {
   private workletReady: Promise<AudioWorkletNode> | null = null;
   private phaseRequestId = 0;
   private measurePhase: RhythmMeasurePhaseSnapshot | null = null;
+  private readonly phaseChangeListeners = new Set<() => void>();
   private lastError = '';
   private readonly notifyStatus: () => void;
   private transportListenerAttached = false;
@@ -147,6 +148,16 @@ export class RhythmEngine {
   /** Worklet-authored phase only; null until an absolute-frame origin is acknowledged. */
   get measurePhaseSnapshot(): RhythmMeasurePhaseSnapshot | null {
     return this.measurePhase;
+  }
+
+  onMeasurePhaseChange(listener: () => void): () => void {
+    this.phaseChangeListeners.add(listener);
+    return () => this.phaseChangeListeners.delete(listener);
+  }
+
+  private notifyMeasurePhaseChange(): void {
+    for (const listener of this.phaseChangeListeners) listener();
+    this.notifyStatus();
   }
 
   /** Event data and sound generation are clean-room approximations, not factory MIDI. */
@@ -343,6 +354,7 @@ export class RhythmEngine {
     };
     const requestId = this.nextPhaseRequestId();
     this.measurePhase = null;
+    this.notifyMeasurePhaseChange();
     node.port.postMessage({ type: 'start', requestId, configuration });
   }
 
@@ -368,7 +380,7 @@ export class RhythmEngine {
       if (message.requestId !== this.phaseRequestId || !Number.isSafeInteger(message.epoch) || message.epoch! < 1) return;
       if (message.available === false) {
         this.measurePhase = null;
-        this.notifyStatus();
+        this.notifyMeasurePhaseChange();
         return;
       }
       if (!this.isPlaying
@@ -392,13 +404,15 @@ export class RhythmEngine {
         bpm: message.bpm!,
         stepsPerBar: message.stepsPerBar!,
       });
-      this.notifyStatus();
+      this.notifyMeasurePhaseChange();
       return;
     }
     if (message.type === 'timeline-rewind'
       && Number.isSafeInteger(message.requestedStartFrame)
       && Number.isSafeInteger(message.expectedStartFrame)
       && Number.isSafeInteger(message.frameCount)) {
+      this.measurePhase = null;
+      this.notifyMeasurePhaseChange();
       this.lastError = `Rhythm sample timeline moved backward at frame ${message.requestedStartFrame} (expected ${message.expectedStartFrame}). The overlapping ${message.frameCount}-frame block was muted; rhythm state was not rewound.`;
       this.notifyStatus();
       return;
@@ -407,6 +421,8 @@ export class RhythmEngine {
       && Number.isSafeInteger(message.firstStaleStartFrame)
       && Number.isSafeInteger(message.expectedStartFrame)
       && Number.isSafeInteger(message.resumedStartFrame)) {
+      this.measurePhase = null;
+      this.notifyMeasurePhaseChange();
       this.lastError = `Rhythm resumed on the absolute timeline at frame ${message.resumedStartFrame}. Timeline continuity was interrupted; muted or skipped audio was not buffered for replay.`;
       this.notifyStatus();
     }
@@ -420,6 +436,7 @@ export class RhythmEngine {
 
   private invalidateMeasurePhase(): number {
     this.measurePhase = null;
+    this.notifyMeasurePhaseChange();
     return this.nextPhaseRequestId();
   }
 }
