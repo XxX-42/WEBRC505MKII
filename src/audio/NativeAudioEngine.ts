@@ -722,7 +722,7 @@ export class NativeAudioEngine {
         message: 'NATIVE HOST BATCH PENDING', lastError: 'Another Native ALL batch is pending; waiting for host status.' };
     }
 
-    if (this.initInFlight || this.restartInFlight || this.nativeReceiptRecoveryInFlight) {
+    if (this.initInFlight || this.restartInFlight || this.nativeReceiptRecoveryInFlight || this.nativeTrackTempoConfirmationInFlight) {
       return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
         message: 'NATIVE AUDIO RECOVERING', lastError: this.lastError };
     }
@@ -747,7 +747,7 @@ export class NativeAudioEngine {
   }
 
   public isNativeReady() {
-    return !this.hasUnresolvedHostBatch() && !this.initInFlight && !this.restartInFlight && !this.nativeReceiptRecoveryInFlight && this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked && !this.nativeTempoRecoveryError && !this.nativeProjectTempoCleanupError &&
+    return !this.hasUnresolvedHostBatch() && !this.initInFlight && !this.restartInFlight && !this.nativeReceiptRecoveryInFlight && !this.nativeTrackTempoConfirmationInFlight && this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked && !this.nativeTempoRecoveryError && !this.nativeProjectTempoCleanupError &&
       !this.nativeTransportBatchPending && !this.bridge.getPendingNativeTransportBatch();
   }
 
@@ -1685,6 +1685,9 @@ export class NativeAudioEngine {
     if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
   private assertTempoRecoveryClear(): void {
+    if (this.nativeTrackTempoConfirmationInFlight || this.nativeReceiptRecoveryInFlight || this.initInFlight || this.restartInFlight) {
+      throw new Error('Native receipt recovery or tempo confirmation is still in progress.');
+    }
     if (this.nativeTempoRecoveryError) throw new Error(this.nativeTempoRecoveryError);
   }
   private assertPublishedProjectTempoCleanup(): void {
@@ -1715,8 +1718,12 @@ export class NativeAudioEngine {
     }
     const confirmation = this.performCommittedTakeTempoConfirmation(trackId, finishToken, expectedContentRevision, expectedStopRevision);
     this.nativeTrackTempoConfirmationInFlight = confirmation;
+    this.emitAll();
     try { await confirmation; }
-    finally { if (this.nativeTrackTempoConfirmationInFlight === confirmation) this.nativeTrackTempoConfirmationInFlight = null; }
+    finally {
+      if (this.nativeTrackTempoConfirmationInFlight === confirmation) this.nativeTrackTempoConfirmationInFlight = null;
+      this.emitAll();
+    }
   }
 
   private async performCommittedTakeTempoConfirmation(trackId: number, finishToken: NativeRecordTempoToken,
@@ -2022,6 +2029,11 @@ export class NativeAudioEngine {
   }
 
   private assertNoUnresolvedNativeTransportBatch(action: string): boolean {
+    if (this.nativeTrackTempoConfirmationInFlight || this.nativeReceiptRecoveryInFlight || this.initInFlight || this.restartInFlight) {
+      this.lastError = `Cannot ${action} while Native receipt recovery or tempo confirmation is in progress.`;
+      this.emitAll();
+      return false;
+    }
     const receipt = this.bridge.getPendingNativeTransportBatch();
     if (!receipt && !this.hasUnresolvedHostBatch()) return true;
     if (!receipt) {

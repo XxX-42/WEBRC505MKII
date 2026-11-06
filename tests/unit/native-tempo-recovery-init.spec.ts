@@ -73,6 +73,17 @@ describe('Native tempo recovery through init and retry', () => {
     expect(engine.isNativeReady()).toBe(true);
   });
 
+  it('blocks ready and ALL while the first single-track confirmation is pending', () => {
+    const { engine, current } = setup();
+    engine.bridgeAvailable = true;
+    engine.engineRunning = true;
+    engine.latestStatus = current;
+    engine.nativeTrackTempoConfirmationInFlight = new Promise<void>(() => {});
+    expect(engine.getUiStatus().ready).toBe(false);
+    expect(engine.isNativeReady()).toBe(false);
+    expect(engine.assertNoUnresolvedNativeTransportBatch('play ALL')).toBe(false);
+  });
+
   it('waits for an active single-track confirmation before recovery reads retained receipts', async () => {
     const { engine, bridge } = setup();
     let unblock!: () => void;
