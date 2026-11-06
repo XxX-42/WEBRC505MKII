@@ -32,11 +32,13 @@ test('Browser archive v2 survives Native simulation round trip; v1 stays unknown
     const result = await page.evaluate(async () => {
       const loadModule = (specifier: string) =>
         (new Function('specifier', 'return import(specifier)') as (value: string) => Promise<any>)(specifier);
-      const [{ AudioEngine }, { decodeProjectArchive, encodeProjectArchive }] = await Promise.all([
+      const [{ AudioEngine }, { ProjectMemory }, { decodeProjectArchive, encodeProjectArchive }] = await Promise.all([
         loadModule('/src/audio/AudioEngine.ts'),
+        loadModule('/src/audio/projectMemory.ts'),
         loadModule('/src/audio/projectArchive.ts'),
       ]);
       const engine = AudioEngine.getInstance();
+      const memory = new ProjectMemory(engine);
       const originalFetch = window.fetch.bind(window);
       const status = async () => {
         const response = await originalFetch('http://127.0.0.1:18755/v1/status');
@@ -102,8 +104,7 @@ test('Browser archive v2 survives Native simulation round trip; v1 stays unknown
         }) };
       };
       const importDecoded = async (archive: { bytes: ArrayBuffer; decoded: any }) => {
-        const token = await engine.captureProjectRestoreOperationToken();
-        await engine.restoreProjectArchive(archive.decoded, archive.bytes, token);
+        await memory.importFile(new File([archive.bytes], 'round-trip.rc505proj', { type: 'application/x-rc505-project' }));
         await waitForStableStopped();
       };
       const exportDecoded = async () => {
@@ -174,9 +175,8 @@ test('Browser archive v2 survives Native simulation round trip; v1 stays unknown
       };
       let refusal = '';
       try {
-        const token = await engine.captureProjectRestoreOperationToken();
         hideCapability = true;
-        await engine.restoreProjectArchive(v2.decoded, v2.bytes, token);
+        await memory.importFile(new File([v2.bytes], 'old-capability.rc505proj', { type: 'application/x-rc505-project' }));
       } catch (error) {
         refusal = error instanceof Error ? error.message : String(error);
       } finally {

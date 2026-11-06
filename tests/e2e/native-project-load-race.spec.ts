@@ -5,7 +5,8 @@ const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware bridge simulation target.');
 
-test('Native project decode refuses to overwrite a recording completed after load began', async ({ page }) => {
+for (const raceKind of ['host-and-local', 'local-only'] as const) {
+test(`Native project load preserves newer ${raceKind} edits after commit`, async ({ page }) => {
   if (!simulationHost) return;
 
   let host: ChildProcess | undefined;
@@ -26,7 +27,7 @@ test('Native project decode refuses to overwrite a recording completed after loa
     await page.goto('/?audio=native');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
 
-    const result = await page.evaluate(async () => {
+    const result = await page.evaluate(async (raceKind) => {
       const loadModule = (specifier: string) =>
         (new Function('specifier', 'return import(specifier)') as (value: string) => Promise<any>)(specifier);
       const [{ AudioEngine }, { NativeAudioEngine }, { ProjectMemory }, { encodeProjectArchive }, { Transport }] = await Promise.all([
@@ -177,17 +178,24 @@ test('Native project decode refuses to overwrite a recording completed after loa
       );
       await waitingForStatus;
       await waitForStatus((status) => (status.projectContentRevision ?? -1) > revisionBeforeTransportRace!);
-      Transport.getInstance().setBpm(83);
-      if (!await nativeEngine.rhythmEngine.setBpm(83)) {
-        throw new Error('Native rhythm did not acknowledge the BPM edit made while the project import was pending');
-      }
-      // Return to the operation-start value before the delayed status response.
-      // A value-only comparison would miss this ABA edit and apply the archive.
-      Transport.getInstance().setBpm(bpmBeforeTransportRace);
-      if (!await nativeEngine.rhythmEngine.setBpm(bpmBeforeTransportRace)) {
-        throw new Error('Native rhythm did not acknowledge the reverted BPM edit made while the project import was pending');
+      const committedHostRevision = (await getStatus()).projectContentRevision;
+      if (raceKind === 'host-and-local') {
+        Transport.getInstance().setBpm(83);
+        if (!await nativeEngine.rhythmEngine.setBpm(83)) {
+          throw new Error('Native rhythm did not acknowledge the BPM edit made while the project import was pending');
+        }
+        // Return to the operation-start value to exercise the ABA guard.
+        Transport.getInstance().setBpm(bpmBeforeTransportRace);
+        if (!await nativeEngine.rhythmEngine.setBpm(bpmBeforeTransportRace)) {
+          throw new Error('Native rhythm did not acknowledge the reverted BPM edit made while the project import was pending');
+        }
+      } else {
+        // Direct local assignment changes the transport revision without emitting
+        // bpm-change, so the Native host revision remains at the commit value.
+        Transport.getInstance().bpm = 83;
       }
       const bpmAfterUserEdit = Transport.getInstance().bpm;
+      const hostRevisionAfterEdit = (await getStatus()).projectContentRevision;
       releaseStatus();
       const transportRaceOutcome = await transportRacePromise;
       window.fetch = originalWindowFetch;
@@ -217,10 +225,12 @@ test('Native project decode refuses to overwrite a recording completed after loa
         bpmBeforeTransportRace,
         transportRaceOutcome,
         bpmAfterUserEdit,
+        committedHostRevision,
+        hostRevisionAfterEdit,
         bpmAfterResolution,
         transportRacePcmFirstSamples: [pcmSamples[0], pcmSamples[1]],
       };
-    });
+    }, raceKind);
 
     expect(result.recordingState).toBe('Recording');
     expect(result.recordedState).toBe('Stopped');
@@ -242,7 +252,14 @@ test('Native project decode refuses to overwrite a recording completed after loa
     expect(result.transportRaceOutcome.state).toBe('rejected');
     if (result.transportRaceOutcome.state === 'rejected') {
       expect(result.transportRaceOutcome.archiveCommitted).toBe(true);
-      expect(result.transportRaceOutcome.error).toMatch(/transport changed while the Native import was pending/i);
+      if (raceKind === 'host-and-local') {
+        expect(result.hostRevisionAfterEdit).toBeGreaterThan(result.committedHostRevision!);
+        expect(result.transportRaceOutcome.error).toMatch(/Native project content changed after generation \d+ committed \(committed=\d+, current=\d+\); recovery was not published\./);
+      } else {
+        expect(result.hostRevisionAfterEdit).toBe(result.committedHostRevision);
+        expect(result.bpmAfterUserEdit).toBe(83);
+        expect(result.transportRaceOutcome.error).toMatch(/Transport changed while the Native import was pending\. The new PCM is committed/);
+      }
     }
     expect(result.afterTransportRace).not.toEqual(result.beforeTransportRace);
     expect(result.transportRacePcmFirstSamples[0]).toBeCloseTo(0.9, 5);
@@ -257,3 +274,4 @@ test('Native project decode refuses to overwrite a recording completed after loa
     }
   }
 });
+}

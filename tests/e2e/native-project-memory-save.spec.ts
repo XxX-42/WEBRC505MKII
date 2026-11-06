@@ -77,7 +77,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeEnabled();
 
     const saved = await page.evaluate(async () => {
-      const open = indexedDB.open('webrc505-project-memory', 1);
+      const open = indexedDB.open('webrc505-project-memory');
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);
