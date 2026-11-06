@@ -1,0 +1,118 @@
+{
+  "status": "PARTIAL_SOFTWARE_GATES",
+  "baseline": {
+    "sourceCommit": "5e6c42d62628c090efd95088b4b22af1e6a2cfcb",
+    "statistics": {
+      "startTime": "2026-11-06T21:35:10.176Z",
+      "duration": 490028.069,
+      "expected": 127,
+      "skipped": 0,
+      "unexpected": 8,
+      "flaky": 0
+    },
+    "failures": [
+      {
+        "file": "browser-audio-context-closed.spec.ts",
+        "line": 5,
+        "title": "closed Browser AudioContext clears READY, preserves PCM/history and leaves project export available"
+      },
+      {
+        "file": "browser-midi-clock-monitor.spec.ts",
+        "line": 201,
+        "title": "explicitly connects a read-only MIDI clock monitor in the transport bar"
+      },
+      {
+        "file": "browser-native-project-archive-v2.spec.ts",
+        "line": 9,
+        "title": "Browser archive v2 survives Native simulation round trip; v1 stays unknown and old capability fails closed"
+      },
+      {
+        "file": "browser-one-shot-bounce.spec.ts",
+        "line": 4,
+        "title": "Browser Bounce captures a finite stereo one-shot while the destination recording continues after its source ends"
+      },
+      {
+        "file": "browser-project-memory.spec.ts",
+        "line": 398,
+        "title": "Browser project loads reject PCM, history, or transport edits completed during asynchronous reads"
+      },
+      {
+        "file": "native-project-load-race.spec.ts",
+        "line": 8,
+        "title": "Native project decode refuses to overwrite a recording completed after load began"
+      },
+      {
+        "file": "native-project-memory-save.spec.ts",
+        "line": 9,
+        "title": "Native runtime saves a revision-consistent PCM project to a browser-local slot through Enhanced tools"
+      },
+      {
+        "file": "native-simulated-hq-render.spec.ts",
+        "line": 10,
+        "title": "Native browser bridge captures and exports a synthetic loop through Enhanced HQ_RENDER tools"
+      }
+    ],
+    "rawReportSha256": "400545557a176afc533c9c0d1b4eecc79399acac6413e5399d63b7adcf80a793",
+    "rawReportFile": "rc505-main-e2e-5e6c42d-20261107.json"
+  },
+  "candidate": {
+    "sourceCommit": "7bc042267e6c4e3b2b9627a0548e16b461126788",
+    "statistics": {
+      "startTime": "2026-11-06T21:52:23.527Z",
+      "duration": 627927.078,
+      "expected": 133,
+      "skipped": 0,
+      "unexpected": 2,
+      "flaky": 0
+    },
+    "failures": [
+      {
+        "file": "browser-audio-context-closed.spec.ts",
+        "line": 5,
+        "title": "closed Browser AudioContext clears READY, preserves PCM/history and leaves project export available"
+      },
+      {
+        "file": "browser-native-project-archive-v2.spec.ts",
+        "line": 9,
+        "title": "Browser archive v2 survives Native simulation round trip; v1 stays unknown and old capability fails closed"
+      }
+    ],
+    "rawReportSha256": "b552fc9283271678dbe1d47ac3fce2826174be4315404b41ba0f43c18623b7cf",
+    "rawReportFile": "rc505-main-e2e-7bc0422-hq-20261107.json"
+  },
+  "execution": {
+    "machine": "user Windows development machine",
+    "workers": 1,
+    "testTimeoutMs": 30000,
+    "retries": 0,
+    "nativeMode": "explicit no-hardware simulation",
+    "simulationPort": 18755,
+    "uiPort": 4174,
+    "productionUiPort": 4196
+  },
+  "nativeHqBuild": {
+    "freshBuild": true,
+    "compiler": "MSVC 19.29 / VS2019 x64 Release /MD",
+    "rubberBandVersion": "4.0.0 (local recorded source identity)",
+    "hostSha256": "5bcd07d18a2edc437e3e519a9688680168a23b74219a7c16ed093bede2da225c",
+    "librarySha256": "4de4accab9eb7717277cb69731bd25d94a783008f12371358382d1a5a28d982c",
+    "headerSha256": "47d13af502c675f5da39297586d1bd28f6df511a2e77f7f73149be4111816529",
+    "r2ActualWavExport": "PASS",
+    "r3SeparateRender": "NOT_RUN",
+    "independentStatusQuery": "NOT_RUN: automatic approval rejected standalone process launch with blocked by policy"
+  },
+  "remainingFailures": {
+    "closedContext": "30s composite test budget exceeded; trace does not prove context.close leak; independent scenario reorganization pending verification",
+    "nativeArchiveRoundTrip": "Real BPM callback ACK race: requested revision 1/applied 0 accepted before later status reached 1/1; exact receipt fix in isolated branch"
+  },
+  "hardware": {
+    "rc505SoundDeviceDetected": false,
+    "rc505PresentPnpDetected": false,
+    "physicalAcceptance": "HARDWARE_RC505_BLOCKED"
+  },
+  "limits": [
+    "Not a complete E2E green result.",
+    "No hardware sound parity, latency, XRUN or LED photometry acceptance.",
+    "Native batch/tempo protocol WIP branches are not included in this tested source."
+  ]
+}
