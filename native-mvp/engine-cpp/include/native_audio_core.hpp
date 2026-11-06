@@ -823,11 +823,9 @@ private:
     ) noexcept;
     [[nodiscard]] ProcessStats processNativeTracksForCallback(
         const float* rawInputInterleaved,
-        const float* processedInputInterleaved,
         float* outputInterleaved,
         unsigned int frames,
         unsigned int rawInputChannels,
-        unsigned int processedInputChannels,
         NativePitchRouteDecision* pitchRouteDecision
     ) noexcept;
     void applyNativePitchCommands() noexcept;

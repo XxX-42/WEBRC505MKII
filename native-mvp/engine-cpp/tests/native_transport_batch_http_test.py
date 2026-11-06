@@ -177,6 +177,7 @@ def main():
             'trackId': 3, 'expectedContentRevision': all_stopped['nativeTracks'][2]['contentRevision'],
             'tempoBpm': 120, 'tempoRevision': 117, 'stopRevision': recording_member['stopRevision']})
         require(code == 200, ('Track 3 provenance confirmation rejected', code, confirmed))
+        all_stopped = until(lambda value: value['nativeRecordTempoProvenance']['acceptedRevision'][2] > 0)
 
         # Cancellation uses the exact identity and is linearized before callback dispatch.
         gate(True)

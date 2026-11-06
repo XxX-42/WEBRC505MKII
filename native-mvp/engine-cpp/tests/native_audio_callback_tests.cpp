@@ -171,6 +171,19 @@ struct NativeAudioCoreTestAccess {
         core.nativeScheduledLoopPending_[trackIndex].store(true, std::memory_order_release);
         core.pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
     }
+    static void scheduleStopForSegmentTest(NativeAudioCore& core, std::size_t trackIndex, std::uint64_t frame) {
+        NativeScheduledLoopRequest request{};
+        request.trackIndex = static_cast<std::uint8_t>(trackIndex);
+        request.revision = core.nativeLoopFrameScheduler_.status(trackIndex).requestedRevision + 1U;
+        request.absoluteFrame = frame;
+        request.phaseEpoch = core.nativeRhythmEngine_.phaseEpoch();
+        request.settingsRevision = core.nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+        request.action = NativeScheduledLoopAction::Stop;
+        assert(core.nativeLoopFrameScheduler_.request(request));
+        core.nativeScheduledLoopRevision_[trackIndex].store(request.revision, std::memory_order_release);
+        core.nativeScheduledLoopPending_[trackIndex].store(true, std::memory_order_release);
+        core.pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
+    }
 
     static LoopMetadata trackMetadata(const NativeAudioCore& core, std::size_t trackIndex) {
         return core.looperForTrack(trackIndex).metadata();
@@ -644,6 +657,45 @@ void testBatchAckWaitsForPublishedTrackSnapshots() {
 }
 #endif
 
+void testNativeBatchVocoderCarrierMatchesSplitCallbackReference() {
+    constexpr unsigned int frames = 64U;
+    auto scheduled = std::make_unique<NativeAudioCore>();
+    auto reference = std::make_unique<NativeAudioCore>();
+    std::array<float, frames * 2U> scratch{};
+    const auto source = makeCallbackTestTone(880.0f, 1024U, 0.1f);
+    for (auto* core : {scheduled.get(), reference.get()}) {
+        NativeAudioCoreTestAccess::prepareWithoutDevice(*core);
+        NativeAudioCoreTestAccess::recordLoop(*core, 0U, source, frames, scratch.data());
+        NativeAudioCoreTestAccess::recordLoop(*core, 1U, source, frames, scratch.data());
+        std::string error;
+        assert(core->setNativeCatalogSlot(NativeEffectSlot::A, "vocoder",
+            {{"official_carrier", 6.0f}, {"official_balance", 100.0f}}, false, error, NativeCatalogFxPath::Input));
+        assert(core->setMonitoring(true, error));
+        NativeAudioCoreTestAccess::setRunningForQueueTest(*core, true);
+    }
+    const auto baseline = scheduled->getStatus();
+    std::array<std::uint64_t, kNativeTrackCount> expected{}, accepted{}, provenance{};
+    std::array<double, kNativeTrackCount> bpm{};
+    std::uint64_t batchId = 0U;
+    std::string error;
+    assert(scheduled->scheduleNativeTrackTransportBatch(3U, NativeScheduledLoopAction::Play,
+        baseline.nativeSampleFrame, baseline.nativeSampleFrame + 16U, baseline.nativeTrackStates,
+        expected, baseline.nativeRecordStopRequested, bpm, provenance, 0U, 60U, 61U, error, &batchId, &accepted));
+    std::array<float, frames> input{};
+    for (unsigned int i = 0U; i < frames; ++i)
+        input[i] = 0.2f * std::sin(static_cast<float>(i) * 6.28318530718f * 220.0f / 48000.0f);
+    std::array<float, frames * 2U> actual{}, expectedOutput{};
+    assert(NativeAudioCoreTestAccess::callback(*scheduled, input.data(), actual.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*reference, input.data(), expectedOutput.data(), 16U) == 0);
+    assert(reference->playTrack(0U, error));
+    assert(reference->playTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(*reference, input.data() + 16U, expectedOutput.data() + 32U, 48U) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i)
+        assert(std::fabs(actual[i] - expectedOutput[i]) < 1.0e-6f);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(*scheduled, false);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(*reference, false);
+}
+
 void testNativeGlobalPitchRouteChangesAtBatchBoundary() {
     constexpr unsigned int frames = 64U;
     NativeAudioCore core;
@@ -653,6 +705,10 @@ void testNativeGlobalPitchRouteChangesAtBatchBoundary() {
     pitch.enabled = true;
     pitch.semitones = 7.0f;
     assert(core.setNativePitchConfig(pitch, error));
+    NativePitchProcessor pitchReference;
+    assert(pitchReference.prepare(48000U));
+    assert(pitchReference.setSemitones(7.0f));
+    pitchReference.reset();
     std::array<float, frames * 2U> output{};
     NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(8192U, 0.2f), frames, output.data());
     NativeAudioCoreTestAccess::recordLoop(core, 1U, std::vector<float>(16U, 0.1f), 16U, output.data());
@@ -660,6 +716,9 @@ void testNativeGlobalPitchRouteChangesAtBatchBoundary() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
     assert(core.playTrack(0U, error));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 1U) == 0);
+    std::array<float, frames * 2U> referenceSamples{};
+    referenceSamples[0] = referenceSamples[1] = 0.2f;
+    assert(pitchReference.processInterleaved(referenceSamples.data(), 1U, 2U));
     const auto baseline = core.getStatus();
     assert(baseline.nativePitchActive);
     std::array<std::uint64_t, kNativeTrackCount> expected{}, accepted{}, provenance{};
@@ -669,10 +728,34 @@ void testNativeGlobalPitchRouteChangesAtBatchBoundary() {
         baseline.nativeSampleFrame, baseline.nativeSampleFrame + 16U, baseline.nativeTrackStates,
         expected, baseline.nativeRecordStopRequested, bpm, provenance, 0U, 58U, 59U, error, &batchId, &accepted));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    std::fill_n(referenceSamples.data(), 32U, 0.2f);
+    assert(pitchReference.processInterleaved(referenceSamples.data(), 16U, 2U));
+    std::fill_n(referenceSamples.data(), 96U, 0.4f);
+    assert(pitchReference.processInterleaved(referenceSamples.data(), 48U, 2U));
     for (unsigned int frame = 0U; frame < 16U; ++frame) assert(std::fabs(output[frame * 2U]) < 0.01f);
     for (unsigned int frame = 16U; frame < frames; ++frame)
         assert(std::fabs(output[frame * 2U] - 0.4f) < 1.0e-6f);
     assert(core.getStatus().nativePitchFallbackReason == NativePitchFallbackReason::LoopShorterThanLatency);
+    for (unsigned int block = 0U; block < 128U; ++block) {
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        referenceSamples.fill(0.4f);
+        assert(pitchReference.processInterleaved(referenceSamples.data(), frames, 2U));
+    }
+    const auto stopFrame = core.getStatus().nativeSampleFrame + 16U;
+    NativeAudioCoreTestAccess::scheduleStopForSegmentTest(core, 1U, stopFrame);
+    NativeAudioCoreTestAccess::scheduleStopForSegmentTest(core, 2U, stopFrame);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    std::fill_n(referenceSamples.data(), 32U, 0.4f);
+    assert(pitchReference.processInterleaved(referenceSamples.data(), 16U, 2U));
+    std::fill_n(referenceSamples.data(), 96U, 0.2f);
+    assert(pitchReference.processInterleaved(referenceSamples.data(), 48U, 2U));
+    double restoredEnergy = 0.0;
+    for (unsigned int frame = 16U; frame < frames; ++frame) {
+        const float expectedWet = referenceSamples[(frame - 16U) * 2U];
+        assert(std::fabs(output[frame * 2U] - expectedWet) < 1.0e-6f);
+        restoredEnergy += std::fabs(expectedWet);
+    }
+    assert(restoredEnergy > 0.01);
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
@@ -4497,6 +4580,7 @@ int main() {
     testNativePerTrackFxLeavesRecordOverdubAndMonitoringCanonical();
     testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames();
     testNativePitchTargetsOnlySelectedTrackAndFallsBackOnItsLoopLength();
+    testNativeBatchVocoderCarrierMatchesSplitCallbackReference();
     testNativeGlobalPitchRouteChangesAtBatchBoundary();
     testNativeScheduledBatchStartsPitchRouteInSameBlock();
     testNativeMultipleScheduledOffsetsCaptureExactPcm();

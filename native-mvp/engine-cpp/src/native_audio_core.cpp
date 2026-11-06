@@ -5382,11 +5382,9 @@ const LooperCore& NativeAudioCore::looperForTrack(std::size_t trackIndex) const 
 
 ProcessStats NativeAudioCore::processNativeTracksForCallback(
     const float* rawInputInterleaved,
-    const float* processedInputInterleaved,
     float* outputInterleaved,
     unsigned int frames,
     unsigned int rawInputChannels,
-    unsigned int processedInputChannels,
     NativePitchRouteDecision* pitchRouteDecision
 ) noexcept {
     ProcessStats stats{};
@@ -5419,10 +5417,6 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     NativePitchRouteDecision pitchRoute{};
     float* const playbackBus = outputStage_->playbackOnlyScratch();
     const bool playbackBufferAvailable = playbackBus != nullptr && frames <= NativeOutputStage::kMaxProcessFrames;
-    if (pitchRoute.useProcessor && !playbackBufferAvailable) {
-        pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-    }
-    if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
 
     std::array<float, 7> mixerGain{};
     for (std::size_t i = 0U; i < mixerGain.size(); ++i) mixerGain[i] = mixerLevels_[i].load(std::memory_order_acquire) / 100.0f;
@@ -5436,14 +5430,13 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         nativeBounceAppliedSnapshot_.store(requestedBounceSnapshot, std::memory_order_release);
     }
     const bool bouncePrepared = playbackBufferAvailable && nativeBounceRuntime_.bounceSw;
-    // Render loopers in intervals shared by all tracks. The audio/FX graph
-    // below still receives one complete block, in its original order.
+    // Advance the complete audio graph over shared event intervals; control
+    // settings are captured once at the enclosing callback boundary.
     std::array<ProcessStats, kNativeTrackCount> segmentedStats{};
+    std::array<float, kNativeTrackCount> segmentTrackPeaks{};
+    std::array<double, kNativeTrackCount> segmentTrackSquares{};
     std::array<bool, kNativeTrackCount> eventDone{};
     std::array<bool, kNativeTrackCount> eventApplied{};
-    struct PitchSegment { unsigned int start = 0U; unsigned int frames = 0U; NativePitchRouteDecision route{}; };
-    std::array<PitchSegment, kNativeTrackCount + 1U> pitchSegments{};
-    std::size_t pitchSegmentCount = 0U;
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         std::fill_n(nativeSegmentBuffers_->mix[track].data(), sampleCount, 0.0f);
         std::fill_n(nativeSegmentBuffers_->playback[track].data(), sampleCount, 0.0f);
@@ -5455,6 +5448,13 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             if (!eventDone[i]) boundary = std::min(boundary, scheduledEvents[i].frameOffset);
         const unsigned int segmentFrames = boundary - segmentStart;
         if (segmentFrames > 0U) {
+            // Carrier readiness and every input/track effect advance on this
+            // exact interval, after prior boundary commands have committed.
+            prepareVocoderCarriers(segmentFrames);
+            const float* segmentRaw = rawInputInterleaved != nullptr
+                ? rawInputInterleaved + static_cast<std::size_t>(segmentStart) * rawInputChannels : nullptr;
+            unsigned int segmentProcessedChannels = rawInputChannels;
+            const float* segmentProcessed = processInputFxForCallback(segmentRaw, segmentFrames, &segmentProcessedChannels);
             bool pitchRequested = false;
             std::uint64_t shortest = std::numeric_limits<std::uint64_t>::max();
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -5472,12 +5472,6 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 nativePitchRuntimeReverse_, outputChannels_, shortest, pitchLatency);
             if (route.useProcessor && !playbackBufferAvailable)
                 route = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-            if (pitchSegmentCount > 0U && pitchSegments[pitchSegmentCount - 1U].route.useProcessor == route.useProcessor &&
-                pitchSegments[pitchSegmentCount - 1U].route.fallbackReason == route.fallbackReason) {
-                pitchSegments[pitchSegmentCount - 1U].frames += segmentFrames;
-            } else {
-                pitchSegments[pitchSegmentCount++] = {segmentStart, segmentFrames, route};
-            }
             pitchRoute = route;
             if (bouncePrepared) for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
                 auto* scratch = nativeBounceSourceScratch_[source].data() + static_cast<std::size_t>(segmentStart) * outputChannels_;
@@ -5488,9 +5482,8 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
                 if (historyPinSuppressesPlayback(track)) continue;
                 const bool fxApply = nativeTrackFxApplyRuntime_[track];
-                const float* base = fxApply ? processedInputInterleaved : rawInputInterleaved;
-                unsigned int channels = fxApply ? processedInputChannels : rawInputChannels;
-                const float* input = base != nullptr ? base + static_cast<std::size_t>(segmentStart) * channels : nullptr;
+                const float* input = fxApply ? segmentProcessed : segmentRaw;
+                unsigned int channels = fxApply ? segmentProcessedChannels : rawInputChannels;
                 std::uint8_t bounceMask = 0U;
                 const auto state = looperForTrack(track).state();
                 if (bouncePrepared && nativeBounceRuntime_.bounceIn[track] &&
@@ -5516,15 +5509,77 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                     channels = 2U;
                 }
                 const auto offset = static_cast<std::size_t>(segmentStart) * outputChannels_;
-                const float* monitor = processedInputInterleaved != nullptr
-                    ? processedInputInterleaved + static_cast<std::size_t>(segmentStart) * processedInputChannels : nullptr;
+                const float* monitor = segmentProcessed;
                 const auto part = looperForTrack(track).process(input, nativeSegmentBuffers_->mix[track].data() + offset,
                     segmentFrames, channels, outputChannels_, playbackBufferAvailable ?
                         nativeSegmentBuffers_->playback[track].data() + offset : nullptr,
-                    false, monitor, processedInputChannels);
+                    false, monitor, segmentProcessedChannels);
                 const float peak = std::max(segmentedStats[track].inputPeak, part.inputPeak);
                 segmentedStats[track] = part;
                 segmentedStats[track].inputPeak = peak;
+            }
+            const auto segmentSamples = static_cast<std::size_t>(segmentFrames) * outputChannels_;
+            const auto segmentOffset = static_cast<std::size_t>(segmentStart) * outputChannels_;
+            float* const segmentOutput = outputInterleaved + segmentOffset;
+            if (playbackBufferAvailable) {
+                std::fill_n(playbackBus, segmentSamples, 0.0f);
+                std::fill_n(nativeTrackDryPlaybackScratch_.data(), segmentSamples, 0.0f);
+            }
+            const auto processPitch = [&](float* buffer) noexcept {
+                if (!nativePitchRuntimeEnabled_ || !processorPrepared || nativePitchRuntimeReverse_) return;
+                float* processing = buffer;
+                if (!route.useProcessor) {
+                    std::copy_n(buffer, segmentSamples, nativePitchTargetProcessedScratch_.data());
+                    processing = nativePitchTargetProcessedScratch_.data();
+                } else {
+                    std::copy_n(buffer, segmentSamples, nativePitchTargetDryScratch_.data());
+                }
+                const bool processed = monoProcessor != nullptr
+                    ? monoProcessor->processInterleaved(processing, segmentFrames, outputChannels_)
+                    : polyProcessor->processInterleaved(processing, segmentFrames, outputChannels_);
+                if (!processed && route.useProcessor) {
+                    std::copy_n(nativePitchTargetDryScratch_.data(), segmentSamples, buffer);
+                    pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
+                }
+            };
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (historyPinSuppressesPlayback(track)) continue;
+                const auto* mix = nativeSegmentBuffers_->mix[track].data() + segmentOffset;
+                auto* playback = nativeSegmentBuffers_->playback[track].data() + segmentOffset;
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    segmentOutput[sample] += mix[sample] - (playbackBufferAvailable ? playback[sample] : 0.0f);
+                if (playbackBufferAvailable && nativePitchRuntimeTrackId_ == track + 1U) processPitch(playback);
+                auto& bank = nativePerTrackFxBanks_[track];
+                if (playbackBufferAvailable && bank.hasEffects())
+                    bank.processInPlaceNoPeak(playback, segmentFrames, outputChannels_);
+                if (playbackBufferAvailable) {
+                    float* destination = nativeTrackFxApplyRuntime_[track] ? playbackBus : nativeTrackDryPlaybackScratch_.data();
+                    for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
+                        const float value = playback[sample] * mixerGain[track + 2U];
+                        segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(value));
+                        segmentTrackSquares[track] += static_cast<double>(value) * value;
+                        destination[sample] += value;
+                    }
+                }
+            }
+            if (playbackBufferAvailable) {
+                if (trackFxActive) trackFx->processInPlaceNoPeak(playbackBus, segmentFrames, outputChannels_);
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    playbackBus[sample] += nativeTrackDryPlaybackScratch_[sample];
+                if (nativePitchRuntimeTrackId_ == 0U) processPitch(playbackBus);
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    segmentOutput[sample] += playbackBus[sample] * mixerGain[0U];
+            }
+            std::fill_n(nativeTrackMixScratch_.data(), segmentSamples, 0.0f);
+            nativeRhythmEngine_.processAdditive(nativeTrackMixScratch_.data(), segmentFrames, outputChannels_,
+                callbackFrameCursor_ + segmentStart);
+            for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                segmentOutput[sample] = std::max(-1.0f, std::min(1.0f,
+                    segmentOutput[sample] + nativeTrackMixScratch_[sample] * mixerGain[0U]));
+            (void)outputStage_->processInPlace(segmentOutput, segmentFrames, outputChannels_);
+            for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
+                segmentOutput[sample] *= mixerGain[1U];
+                stats.outputPeak = std::max(stats.outputPeak, std::fabs(segmentOutput[sample]));
             }
         }
         if (boundary == frames) break;
@@ -5625,22 +5680,6 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         if (hook != nullptr) hook(callbackBeforeBatchPublishTestContext_.load(std::memory_order_acquire));
     }
 #endif
-    const auto processPitchSegments = [&](float* buffer) noexcept {
-        std::copy_n(buffer, sampleCount, nativePitchTargetDryScratch_.data());
-        for (std::size_t i = 0U; i < pitchSegmentCount; ++i) {
-            const auto& segment = pitchSegments[i];
-            if (!segment.route.useProcessor) continue;
-            const auto offset = static_cast<std::size_t>(segment.start) * outputChannels_;
-            const bool processed = monoProcessor != nullptr
-                ? monoProcessor->processInterleaved(buffer + offset, segment.frames, outputChannels_)
-                : polyProcessor->processInterleaved(buffer + offset, segment.frames, outputChannels_);
-            if (!processed) {
-                std::copy_n(nativePitchTargetDryScratch_.data() + offset,
-                    static_cast<std::size_t>(segment.frames) * outputChannels_, buffer + offset);
-                pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-            }
-        }
-    };
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
         if (historyPinSuppressesPlayback(trackIndex)) {
             std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
@@ -5650,10 +5689,6 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             continue;
         }
         auto& track = looperForTrack(trackIndex);
-        const bool trackFxApply = nativeTrackFxApplyRuntime_[trackIndex];
-        std::copy_n(nativeSegmentBuffers_->mix[trackIndex].data(), sampleCount, nativeTrackMixScratch_.data());
-        if (playbackBufferAvailable)
-            std::copy_n(nativeSegmentBuffers_->playback[trackIndex].data(), sampleCount, nativeTrackPlaybackScratch_.data());
         const auto& trackStats = segmentedStats[trackIndex];
         nativeTrackLoopLengthSamples_[trackIndex].store(track.loopLengthSamples(), std::memory_order_release);
         bool dispatchedThisBlock = false;
@@ -5686,70 +5721,22 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         trackProgress_[trackIndex].store(trackStats.loopProgress, std::memory_order_release);
         trackLoopTransportStatus_[trackIndex].store(nativeOfficialSourcePitchConflict_[trackIndex]
             ? LoopTransportStatus::UnsupportedPitchProcessing : trackStats.loopTransportStatus, std::memory_order_release);
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-            outputInterleaved[sample] += nativeTrackMixScratch_[sample] -
-                (playbackBufferAvailable ? nativeTrackPlaybackScratch_[sample] : 0.0f);
-        }
-        const bool isPitchTargetTrack = nativePitchRuntimeTrackId_ != 0U &&
-            trackIndex + 1U == nativePitchRuntimeTrackId_;
-        if (playbackBufferAvailable && isPitchTargetTrack) processPitchSegments(nativeTrackPlaybackScratch_.data());
-        auto& localBank = nativePerTrackFxBanks_[trackIndex];
-        if (playbackBufferAvailable && localBank.hasEffects()) {
-            localBank.processInPlaceNoPeak(nativeTrackPlaybackScratch_.data(), frames, outputChannels_);
-        }
-        if (playbackBufferAvailable) {
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) nativeTrackPlaybackScratch_[sample] *= mixerGain[trackIndex + 2U];
-        }
-        float trackPeak = 0.0f;
-        double trackSquareSum = 0.0;
-        if (playbackBufferAvailable) {
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-                const float value = nativeTrackPlaybackScratch_[sample];
-                trackPeak = std::max(trackPeak, std::fabs(value));
-                trackSquareSum += static_cast<double>(value) * static_cast<double>(value);
-            }
-        }
-        nativeTrackFxApplyPeak_[trackIndex].store(trackPeak, std::memory_order_release);
+        nativeTrackFxApplyPeak_[trackIndex].store(segmentTrackPeaks[trackIndex], std::memory_order_release);
         nativeTrackFxApplyRms_[trackIndex].store(sampleCount > 0U
-            ? static_cast<float>(std::sqrt(trackSquareSum / static_cast<double>(sampleCount))) : 0.0f,
+            ? static_cast<float>(std::sqrt(segmentTrackSquares[trackIndex] / static_cast<double>(sampleCount))) : 0.0f,
             std::memory_order_release);
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
-            const auto* processor = localBank.processor(static_cast<NativeEffectSlot>(slot));
+            const auto* processor = nativePerTrackFxBanks_[trackIndex].processor(static_cast<NativeEffectSlot>(slot));
             const bool faulted = processor != nullptr &&
                 (!playbackBufferAvailable || processor->sampleRate() == 0U || processor->processingFaulted());
             nativePerTrackFxPublished_[trackIndex][slot].processingFaulted.store(faulted, std::memory_order_release);
-        }
-        if (playbackBufferAvailable) {
-            float* const destination = trackFxApply ? playbackBus : nativeTrackDryPlaybackScratch_.data();
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) destination[sample] += nativeTrackPlaybackScratch_[sample];
         }
     }
 
     stats.state = static_cast<LooperState>(trackStates_[0U].load(std::memory_order_acquire));
     stats.loopProgress = trackProgress_[0U].load(std::memory_order_relaxed);
-    if (playbackBufferAvailable) {
-        if (trackFxActive) trackFx->processInPlaceNoPeak(playbackBus, frames, outputChannels_);
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-            playbackBus[sample] += nativeTrackDryPlaybackScratch_[sample];
-        }
-        if (nativePitchRuntimeTrackId_ == 0U) processPitchSegments(playbackBus);
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += playbackBus[sample] * mixerGain[0U];
-    }
     publishSharedCatalogProcessingFaults(1U, playbackBufferAvailable);
     if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
-
-    std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
-    nativeRhythmEngine_.processAdditive(nativeTrackMixScratch_.data(), frames, outputChannels_, callbackFrameCursor_);
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += nativeTrackMixScratch_[sample] * mixerGain[0U];
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-        outputInterleaved[sample] = std::max(-1.0f, std::min(1.0f, outputInterleaved[sample]));
-    }
-    stats.outputPeak = outputStage_->processInPlace(outputInterleaved, frames, outputChannels_);
-    stats.outputPeak = 0.0f;
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-        outputInterleaved[sample] *= mixerGain[1U];
-        stats.outputPeak = std::max(stats.outputPeak, std::fabs(outputInterleaved[sample]));
-    }
 
     // Publish only after this block has rendered both record selection and
     // playback routing. Queue acceptance alone must never light a gate LED.
@@ -6201,21 +6188,11 @@ int NativeAudioCore::handleAudioCallback(
     synchronizeHrmAutoSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     NativePitchRouteDecision pitchRoute{};
-    prepareVocoderCarriers(nBufferFrames);
-    unsigned int processedInputChannels = inputChannels_;
-    const float* processedInput = processInputFxForCallback(
-        static_cast<const float*>(inputBuffer),
-        nBufferFrames,
-        &processedInputChannels
-    );
-
     auto stats = processNativeTracksForCallback(
         static_cast<const float*>(inputBuffer),
-        processedInput,
         static_cast<float*>(outputBuffer),
         nBufferFrames,
         inputChannels_,
-        processedInputChannels,
         &pitchRoute
     );
     settlePoppedTrackCommands();
@@ -6323,21 +6300,11 @@ int NativeAudioCore::handleInputAudioCallback(
 
     AudioBlock block{};
     block.frames = nBufferFrames;
-    prepareVocoderCarriers(nBufferFrames);
-    unsigned int processedInputChannels = inputChannels_;
-    const float* processedInput = processInputFxForCallback(
-        static_cast<const float*>(inputBuffer),
-        nBufferFrames,
-        &processedInputChannels
-    );
-
     auto stats = processNativeTracksForCallback(
         static_cast<const float*>(inputBuffer),
-        processedInput,
         block.samples.data(),
         nBufferFrames,
         inputChannels_,
-        processedInputChannels,
         &pitchRoute
     );
     settlePoppedTrackCommands();
