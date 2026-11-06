@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 afterEach(() => sessionStorage.clear());
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 import { Transport } from '../../src/core/Transport';
+import { NativeBridgeClient } from '../../src/audio/NativeBridgeClient';
+import { ProjectMemoryStore } from '../../src/audio/projectMemoryStore';
 
 function hostStatus(projectContentRevision: number, rhythmBpm: number) {
   return {
@@ -185,6 +187,39 @@ describe('Native project import reconciliation after transport sync failure', ()
       archiveCommitted: true, generation: 57, recoveryUnavailable: true,
     });
     expect(instance.pendingProjectImportSync.has(57)).toBe(false);
+  });
+
+  it.each(['rhythm', 'import'] as const)('retries published receipt cleanup after %s key deletion fails', async (failure) => {
+    const host = 'a'.repeat(32); const intent = 'b'.repeat(32); const generation = 71;
+    const importKey = `rc505.native.import-tempo.${generation}`;
+    const rhythmKey = 'rc505.native.rhythm-tempo-request';
+    sessionStorage.setItem(importKey, JSON.stringify({ host, revision: 4, intent, bpm: 110 }));
+    sessionStorage.setItem(rhythmKey, JSON.stringify({ host, intent, baseline: 3, baselineBpm: 120,
+      baselineConfig: 2, baselineTempoIntent: '0'.repeat(32), owner: `import:${generation}`, config: { bpm: 110 } }));
+    const metadata = vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportRecoveryMetadata').mockResolvedValue({
+      state: 'active', generation, availableAtHostIncarnationId: host,
+    } as any);
+    const originalRemove = Storage.prototype.removeItem;
+    const failedKey = failure === 'rhythm' ? rhythmKey : importKey;
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === failedKey) return; // Model storage silently refusing deletion.
+      return originalRemove.call(this, key);
+    });
+    const makeEngine = () => {
+      const engine = Object.create(NativeAudioEngine.prototype) as any;
+      engine.bridge = new NativeBridgeClient(); engine.emitAll = vi.fn(); return engine;
+    };
+    const first = makeEngine();
+    await expect(first.cleanupPublishedProjectTempoReceipt()).rejects.toThrow(/cleanup failed/);
+    expect(sessionStorage.getItem(importKey)).not.toBeNull();
+    expect(first.nativeProjectTempoCleanupError).toContain('Retry audio');
+    remove.mockRestore();
+    const reloaded = makeEngine();
+    await reloaded.cleanupPublishedProjectTempoReceipt();
+    expect(sessionStorage.getItem(importKey)).toBeNull();
+    expect(sessionStorage.getItem(rhythmKey)).toBeNull();
+    expect(reloaded.nativeProjectTempoCleanupError).toBe('');
+    metadata.mockRestore();
   });
 
   it('after reload reports committed audio without adopting a retained BPM receipt', async () => {

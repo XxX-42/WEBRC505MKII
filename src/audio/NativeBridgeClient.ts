@@ -2693,6 +2693,7 @@ export class NativeBridgeClient {
       throw new Error('Retained Native rhythm request does not match the imported tempo receipt.');
     }
     globalThis.sessionStorage.removeItem(key);
+    if (globalThis.sessionStorage.getItem(key) !== null) throw new Error('Native rhythm request receipt could not be released.');
   }
 
   public async setPitch(config: NativePitchConfig): Promise<NativeStatus> {
