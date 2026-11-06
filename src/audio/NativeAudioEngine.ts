@@ -321,17 +321,19 @@ export class NativeAudioEngine {
     const tempoRevision = Transport.getInstance().tempoMutationRevision;
     this.recoveryTempoAdoptionBlocked = true;
     this.suppressRecoveryTempoSync = true;
-    this.initInFlight = this.initializeNative();
-    try {
-      await this.initInFlight;
+    const operation = (async () => {
+      await this.initializeNative();
       await this.reconcileLocalTempoIntent();
       this.suppressRecoveryTempoSync = false;
       this.recoveryTempoAdoptionBlocked = false;
       if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
       this.dispatchLocalTempoIntent();
-    } finally {
+    })();
+    this.initInFlight = operation;
+    try { await operation; }
+    finally {
       this.suppressRecoveryTempoSync = false;
-      this.initInFlight = null;
+      if (this.initInFlight === operation) this.initInFlight = null;
       this.emitAll();
     }
   }
@@ -344,16 +346,17 @@ export class NativeAudioEngine {
     const tempoRevision = Transport.getInstance().tempoMutationRevision;
     this.recoveryTempoAdoptionBlocked = true;
     this.suppressRecoveryTempoSync = true;
-    const restart = this.performRestartAudio();
-    this.restartInFlight = restart;
-    try {
-      await restart;
+    const restart = (async () => {
+      await this.performRestartAudio();
       await this.reconcileLocalTempoIntent();
       this.suppressRecoveryTempoSync = false;
       this.recoveryTempoAdoptionBlocked = false;
       if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
       this.dispatchLocalTempoIntent();
-    } finally {
+    })();
+    this.restartInFlight = restart;
+    try { await restart; }
+    finally {
       this.suppressRecoveryTempoSync = false;
       if (this.restartInFlight === restart) this.restartInFlight = null;
       this.emitAll();
@@ -367,8 +370,8 @@ export class NativeAudioEngine {
     try {
       if (this.bridgeAvailable) {
         await this.bridge.health();
-        this.bindTempoHostFromConnection(await this.bridge.getStatus());
         batchNotice = await this.recoverNativeReceipts();
+        this.bindTempoHostFromConnection(await this.bridge.getStatus());
       }
       if (!this.bridgeAvailable) {
         failureHandled = true;
@@ -728,11 +731,6 @@ export class NativeAudioEngine {
         message: 'NATIVE HOST CHANGED', lastError: 'Retry audio to verify the new Native host before adopting its state.' };
     }
 
-    if (this.recoveryTempoAdoptionBlocked && !this.initInFlight && !this.restartInFlight) {
-      return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
-        message: 'NATIVE AUDIO NEEDS RETRY', lastError: this.lastError || 'Retry audio before adopting Native tempo.' };
-    }
-
     if (this.nativeTempoRecoveryError) {
       return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
         message: 'NATIVE TEMPO RECEIPT NEEDS REVIEW', lastError: this.nativeTempoRecoveryError };
@@ -740,6 +738,11 @@ export class NativeAudioEngine {
     if (this.nativeProjectTempoCleanupError) {
       return { bridgeAvailable: this.bridgeAvailable, engineRunning: this.engineRunning, ready: false,
         message: 'NATIVE PROJECT RECEIPT NEEDS REVIEW', lastError: this.nativeProjectTempoCleanupError };
+    }
+
+    if (this.recoveryTempoAdoptionBlocked && !this.initInFlight && !this.restartInFlight) {
+      return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
+        message: 'NATIVE AUDIO NEEDS RETRY', lastError: this.lastError || 'Retry audio before adopting Native tempo.' };
     }
 
     if (this.nativeRhythmScheduleRecoveryBlocked) {
@@ -2089,6 +2092,11 @@ export class NativeAudioEngine {
   }
 
   private assertNoUnresolvedNativeTransportBatch(action: string): boolean {
+    if (this.nativeTempoRecoveryError || this.nativeProjectTempoCleanupError) {
+      this.lastError = this.nativeTempoRecoveryError || this.nativeProjectTempoCleanupError;
+      this.emitAll();
+      return false;
+    }
     if (this.localTempoIntent) {
       this.lastError = `Cannot ${action} until the Native BPM intent is resolved.`;
       this.emitAll();

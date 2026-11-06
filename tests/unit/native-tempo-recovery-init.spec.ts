@@ -51,6 +51,27 @@ describe('Native tempo recovery through init and retry', () => {
     await expect(recovery).resolves.toBe('');
     expect(bridge.getPendingNativeTransportBatch).toHaveBeenCalledOnce();
   });
+  it('keeps concurrent init calls behind the entire local BPM reconciliation', async () => {
+    const { engine } = setup();
+    let unblock!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const gate = new Promise<void>(resolve => { unblock = resolve; });
+    engine.initializeNative = vi.fn(async () => {});
+    engine.reconcileLocalTempoIntent = vi.fn(async () => { entered(); await gate; });
+    const first = engine.init();
+    await started;
+    let secondFinished = false;
+    const second = engine.init().then(() => { secondFinished = true; });
+    await Promise.resolve();
+    expect(secondFinished).toBe(false);
+    expect(engine.isNativeReady()).toBe(false);
+    unblock();
+    await Promise.all([first, second]);
+    expect(engine.initializeNative).toHaveBeenCalledOnce();
+    expect(engine.reconcileLocalTempoIntent).toHaveBeenCalledOnce();
+  });
+
   it('shares one receipt recovery when init and automatic reconciliation overlap', async () => {
     const { engine, bridge, current } = setup();
     let unblock!: () => void;
