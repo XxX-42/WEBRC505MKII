@@ -592,8 +592,11 @@ test('exposes the full clean-room rhythm catalog and shared kit, variation, sect
   await expect(lcdField(page, 'kit')).toHaveAttribute('aria-valuetext', '16 · 808+909');
   await findLcdField(page, 'variation');
   await expect(lcdField(page, 'variation')).toHaveAttribute('aria-valuetext', 'D');
+  await findLcdField(page, 'section');
   await expect(lcdField(page, 'section')).toHaveAttribute('aria-valuetext', 'FILL');
+  await findLcdField(page, 'quantize');
   await expect(lcdField(page, 'quantize')).toHaveAttribute('aria-valuetext', '1/8');
+  await findLcdField(page, 'swing');
   await expect(lcdField(page, 'swing')).toHaveValue('67');
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });

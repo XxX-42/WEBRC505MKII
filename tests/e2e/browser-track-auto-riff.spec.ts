@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { openFxEditor } from './uiHelpers';
+import { openEnhancedTools } from './uiHelpers';
 
 test('routes experimental AUTO RIFF through one private A–D chain with transport tempo and track isolation', async ({ page }) => {
   await page.goto('/?audio=browser');
@@ -112,14 +112,15 @@ test('routes experimental AUTO RIFF through one private A–D chain with transpo
   expect(result.neighbor330.db).toBeGreaterThan(-45);
 });
 
-test('per-track LCD exposes AUTO RIFF experiment controls on the selected track and persists them', async ({ page }) => {
+test('Enhanced per-track FX editor exposes AUTO RIFF experiment controls on the selected track and persists them', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
   const startButton = page.getByTestId('start-audio');
   if ((await startButton.innerText()).trim() !== 'READY') await startButton.click();
   await expect(startButton).toHaveText('READY', { timeout: 25_000 });
   await expect(page.getByTestId('input-status')).toContainText('OUTPUT READY');
 
-  const panel = await openFxEditor(page, 'track');
+  const tools = await openEnhancedTools(page, 'PRIVATE / SHARED FX');
+  const panel = tools.locator('[data-panel="track-fx"]');
   await panel.getByLabel('Track FX target', { exact: true }).selectOption('3');
   await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('AUTO RIFF (EXPERIMENTAL)');
   await expect(panel.locator('[data-track-fx-runtime-status]')).toContainText('READY', { timeout: 10_000 });
