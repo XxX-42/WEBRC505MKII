@@ -1,0 +1,166 @@
+{
+  "fixture": "real HardwareButton Vue components in Classic FX rows; simulated props; Browser audio not started",
+  "report": [
+    {
+      "id": "input-sim-a",
+      "color": "red",
+      "on": "true",
+      "active": "true",
+      "selected": "false",
+      "disabled": false,
+      "ringBorder": "rgb(255, 0, 51)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        251,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "input-sim-b",
+      "color": "pink",
+      "on": "true",
+      "active": "true",
+      "selected": "true",
+      "disabled": false,
+      "ringBorder": "rgb(236, 72, 153)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        322,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "input-sim-c",
+      "color": "off",
+      "on": "false",
+      "active": "false",
+      "selected": "false",
+      "disabled": false,
+      "ringBorder": "rgba(0, 0, 0, 0)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        389,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "input-sim-d",
+      "color": "off",
+      "on": "false",
+      "active": "false",
+      "selected": "false",
+      "disabled": true,
+      "ringBorder": "rgba(0, 0, 0, 0)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        457,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "track-sim-a",
+      "color": "red",
+      "on": "true",
+      "active": "true",
+      "selected": "false",
+      "disabled": false,
+      "ringBorder": "rgb(255, 0, 51)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        1416,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "track-sim-b",
+      "color": "pink",
+      "on": "true",
+      "active": "true",
+      "selected": "true",
+      "disabled": false,
+      "ringBorder": "rgb(236, 72, 153)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        1485,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "track-sim-c",
+      "color": "off",
+      "on": "false",
+      "active": "false",
+      "selected": "false",
+      "disabled": false,
+      "ringBorder": "rgba(0, 0, 0, 0)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        1551,
+        366.84375,
+        48,
+        48
+      ]
+    },
+    {
+      "id": "track-sim-d",
+      "color": "off",
+      "on": "false",
+      "active": "false",
+      "selected": "false",
+      "disabled": true,
+      "ringBorder": "rgba(0, 0, 0, 0)",
+      "before": "none",
+      "after": "none",
+      "hit": true,
+      "box": [
+        1622,
+        366.84375,
+        48,
+        48
+      ]
+    }
+  ],
+  "blueBorder": "rgb(0, 153, 255)",
+  "pressedReleaseEvents": [
+    "input-A-press",
+    "input-A-release"
+  ],
+  "disabledNoEvents": true,
+  "screenshots": {
+    "bank-blue.png": "aa093e5b368f82b1b8cb2c91e6d21d3f3a738907a13244e7199e22b06e7f88cc",
+    "pressed-blue.png": "c30fbc42980a910f39c3030adc1ce6fbcf2a45ea29407495db41886db65c2e22",
+    "red-pink-disabled.png": "069b6ba1051ccfbefbf0a17fec72ca5763901cbcdd32f08658fc4ca1af9a923a"
+  },
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 1
+  },
+  "baseCommit": "ddf459b10b2600ed7a6c5a05c5bca1587f9d2fc7"
+}
