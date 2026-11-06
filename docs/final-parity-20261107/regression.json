@@ -102,8 +102,46 @@
     "independentStatusQuery": "NOT_RUN: automatic approval rejected standalone process launch with blocked by policy"
   },
   "remainingFailures": {
-    "closedContext": "30s composite test budget exceeded; trace does not prove context.close leak; independent scenario reorganization pending verification",
+    "closedContext": "Composite case separated into three independently initialized scenarios with original assertions and 30s budget; scoped 3/3 passed, final complete integrated run still required",
     "nativeArchiveRoundTrip": "Real BPM callback ACK race: requested revision 1/applied 0 accepted before later status reached 1/1; exact receipt fix in isolated branch"
+  },
+  "subsequentScopedChecks": {
+    "completeUnit": {
+      "sourceCommit": "7e4c1ac550cc8ceb921397cb6014636cc4dd43a2",
+      "passed": 2813,
+      "failed": 0,
+      "skipped": 0,
+      "workers": 1,
+      "reportFile": "rc505-main-unit-fab3-split-20261107.json",
+      "reportSha256": "be08e1e7ef751ff5ba9dc64e5c9487e013011d8ee5c44b8ac710f17b59ddf14e"
+    },
+    "closedContext": {
+      "implementationCommit": "be9975c6ce0595bab2737a4503fff1417f659a34",
+      "integrationCommit": "7e4c1ac550cc8ceb921397cb6014636cc4dd43a2",
+      "independentScenarios": "3/3, as reported by executing agent",
+      "productionRecoveryRepeat": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "retry": 0,
+        "reportSha256": "ca088db868c116be2f20ce3e8191279018433d52aef93b14aab1110f1a5f40ca",
+        "reportFile": "rc505-closed-scenes-timing-20261107.json",
+        "failedBuildMs": 257.0878,
+        "adoptionMs": 692.6229,
+        "failedOutputSetupMs": 241.0383,
+        "outputResumeMs": 237.3329,
+        "scope": "Single run operation timings; scenario split is not a production performance improvement"
+      }
+    },
+    "watchScope": {
+      "sourceCommit": "7e4c1ac550cc8ceb921397cb6014636cc4dd43a2",
+      "passed": true,
+      "watchedDirectories": 53,
+      "sourceDocsBenchHmr": true,
+      "nativeBenchGoldenCaptureOutputsIgnored": true,
+      "ignoredOutputEvents": [],
+      "browserErrors": []
+    }
   },
   "hardware": {
     "rc505SoundDeviceDetected": false,
