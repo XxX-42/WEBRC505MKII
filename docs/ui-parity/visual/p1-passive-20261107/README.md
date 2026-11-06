@@ -1,0 +1,5 @@
+# Classic passive hardware housings
+
+Compared independent headless Chromium captures of base `783174e` and the CSS changes at 1920×1080 and 1366×768, device scale factor 1. Browser Classic was not started. Captures were visually inspected against the locally cached official front reference; the uninitialized LED state is not matched to the official photograph. Original captures are in the local temporary folders `rc505-p1-783-before-20261107` and `rc505-p1-783-after-20261107`; SHA-256 hashes and exact geometry are in `geometry.json`.
+
+The FX keys gain passive concentric rims inside the existing buttons; the five-track bay gains a noninteractive stepped perimeter. Face, bay, eight FX key, five track-strip and five record-button rectangles and scales matched exactly before and after at both viewport sizes. The eight FX button centers hit their own buttons and the decoration pseudo-elements have `pointer-events: none`. No behavior, LED-state or Tech UI logic was changed. The initial 1366 viewport retains the existing 80% scale and scroll behavior. Lit-state interaction and physical hardware appearance were not verified by this capture.

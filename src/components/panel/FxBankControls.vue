@@ -342,6 +342,25 @@ onUnmounted(() => { cancelAll(); controls.setFxBusy(props.location, false); wind
   .fx-bank { padding: 0; }
 }
 
+/* Passive concentric housings stay inside the existing FX key hit areas. */
+.fx-slot-row :deep(.fx-slot-button)::before,
+.fx-slot-row :deep(.fx-slot-button)::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.fx-slot-row :deep(.fx-slot-button)::before {
+  inset: 1px;
+  border: 2px solid #777e88;
+  box-shadow: 0 1px 2px #050609, inset 0 1px 1px #c1c7cf;
+}
+.fx-slot-row :deep(.fx-slot-button)::after {
+  inset: 9px;
+  border: 1px solid #07090c;
+  box-shadow: 0 1px 1px rgba(185, 193, 204, .34), inset 0 2px 3px #090b0f;
+}
+
 /* Passive ring and printing; edit handlers and LED-off contract are retained. */
 .bank-actions :deep(.fx-edit-button) { border: 4px solid #bcc8d9; background: #23262e; box-shadow: 0 0 0 3px #090c11,inset 0 0 0 2px #0b0e14; }
 .bank-actions :deep(.fx-edit-button .button-label) { position: absolute; top: -39px; border: 1px solid #c7ccd5; border-radius: 9px; padding: 0 8px; font-size: 12px; line-height: 15px; }

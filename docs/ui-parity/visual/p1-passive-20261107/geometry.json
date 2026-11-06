@@ -1,0 +1,387 @@
+{
+  "baseCommit": "783174e85f0e7d328510a410b239307f327aaa6d",
+  "url": "http://127.0.0.1:4197/?audio=browser&ui=classic",
+  "audioStarted": false,
+  "browser": "independent headless Chromium contexts",
+  "deviceScaleFactor": 1,
+  "geometryBeforeEqualsAfter": true,
+  "geometry": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "geometry": {
+        "face": {
+          "x": 200,
+          "y": 123.84375,
+          "width": 1520,
+          "height": 846,
+          "centerX": 960,
+          "centerY": 546.84375
+        },
+        "bay": {
+          "x": 272.5,
+          "y": 444.84375,
+          "width": 1375,
+          "height": 524,
+          "centerX": 960,
+          "centerY": 706.84375
+        },
+        "stageTransform": "matrix(1, 0, 0, 1, 0, 0)",
+        "fx": [
+          {
+            "x": 251,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 275,
+            "centerY": 390.84375
+          },
+          {
+            "x": 322,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 346,
+            "centerY": 390.84375
+          },
+          {
+            "x": 389,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 413,
+            "centerY": 390.84375
+          },
+          {
+            "x": 457,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 481,
+            "centerY": 390.84375
+          },
+          {
+            "x": 1416,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 1440,
+            "centerY": 390.84375
+          },
+          {
+            "x": 1485,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 1509,
+            "centerY": 390.84375
+          },
+          {
+            "x": 1551,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 1575,
+            "centerY": 390.84375
+          },
+          {
+            "x": 1622,
+            "y": 366.84375,
+            "width": 48,
+            "height": 48,
+            "centerX": 1646,
+            "centerY": 390.84375
+          }
+        ],
+        "strips": [
+          {
+            "x": 272.5,
+            "y": 447.84375,
+            "width": 275,
+            "height": 520,
+            "centerX": 410,
+            "centerY": 707.84375
+          },
+          {
+            "x": 547.5,
+            "y": 447.84375,
+            "width": 275,
+            "height": 520,
+            "centerX": 685,
+            "centerY": 707.84375
+          },
+          {
+            "x": 822.5,
+            "y": 447.84375,
+            "width": 275,
+            "height": 520,
+            "centerX": 960,
+            "centerY": 707.84375
+          },
+          {
+            "x": 1097.5,
+            "y": 447.84375,
+            "width": 275,
+            "height": 520,
+            "centerX": 1235,
+            "centerY": 707.84375
+          },
+          {
+            "x": 1372.5,
+            "y": 447.84375,
+            "width": 275,
+            "height": 520,
+            "centerX": 1510,
+            "centerY": 707.84375
+          }
+        ],
+        "record": [
+          {
+            "x": 339,
+            "y": 784.34375,
+            "width": 129,
+            "height": 129,
+            "centerX": 403.5,
+            "centerY": 848.84375
+          },
+          {
+            "x": 614,
+            "y": 784.34375,
+            "width": 129,
+            "height": 129,
+            "centerX": 678.5,
+            "centerY": 848.84375
+          },
+          {
+            "x": 889,
+            "y": 784.34375,
+            "width": 129,
+            "height": 129,
+            "centerX": 953.5,
+            "centerY": 848.84375
+          },
+          {
+            "x": 1164,
+            "y": 784.34375,
+            "width": 129,
+            "height": 129,
+            "centerX": 1228.5,
+            "centerY": 848.84375
+          },
+          {
+            "x": 1439,
+            "y": 784.34375,
+            "width": 129,
+            "height": 129,
+            "centerX": 1503.5,
+            "centerY": 848.84375
+          }
+        ],
+        "stop": []
+      }
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "geometry": {
+        "face": {
+          "x": 75,
+          "y": 110.84375,
+          "width": 1216,
+          "height": 676.7999877929688,
+          "centerX": 683,
+          "centerY": 449.2437438964844
+        },
+        "bay": {
+          "x": 133,
+          "y": 367.6437683105469,
+          "width": 1100,
+          "height": 419.1999816894531,
+          "centerX": 683,
+          "centerY": 577.2437591552734
+        },
+        "stageTransform": "matrix(0.8, 0, 0, 0.8, 0, 0)",
+        "fx": [
+          {
+            "x": 115.80000305175781,
+            "y": 305.2437744140625,
+            "width": 38.40000915527344,
+            "height": 38.39996337890625,
+            "centerX": 135.00000762939453,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 172.60000610351562,
+            "y": 305.2437744140625,
+            "width": 38.399993896484375,
+            "height": 38.39996337890625,
+            "centerX": 191.8000030517578,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 226.1999969482422,
+            "y": 305.2437744140625,
+            "width": 38.40000915527344,
+            "height": 38.39996337890625,
+            "centerX": 245.4000015258789,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 280.6000061035156,
+            "y": 305.2437744140625,
+            "width": 38.399993896484375,
+            "height": 38.39996337890625,
+            "centerX": 299.8000030517578,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 1047.800048828125,
+            "y": 305.2437744140625,
+            "width": 38.39990234375,
+            "height": 38.39996337890625,
+            "centerX": 1067,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 1103,
+            "y": 305.2437744140625,
+            "width": 38.4000244140625,
+            "height": 38.39996337890625,
+            "centerX": 1122.2000122070312,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 1155.800048828125,
+            "y": 305.2437744140625,
+            "width": 38.4000244140625,
+            "height": 38.39996337890625,
+            "centerX": 1175.0000610351562,
+            "centerY": 324.4437561035156
+          },
+          {
+            "x": 1212.5999755859375,
+            "y": 305.2437744140625,
+            "width": 38.4000244140625,
+            "height": 38.39996337890625,
+            "centerX": 1231.7999877929688,
+            "centerY": 324.4437561035156
+          }
+        ],
+        "strips": [
+          {
+            "x": 133,
+            "y": 370.04376220703125,
+            "width": 220,
+            "height": 416,
+            "centerX": 243,
+            "centerY": 578.0437622070312
+          },
+          {
+            "x": 353,
+            "y": 370.04376220703125,
+            "width": 220,
+            "height": 416,
+            "centerX": 463,
+            "centerY": 578.0437622070312
+          },
+          {
+            "x": 573,
+            "y": 370.04376220703125,
+            "width": 220,
+            "height": 416,
+            "centerX": 683,
+            "centerY": 578.0437622070312
+          },
+          {
+            "x": 793,
+            "y": 370.04376220703125,
+            "width": 220,
+            "height": 416,
+            "centerX": 903,
+            "centerY": 578.0437622070312
+          },
+          {
+            "x": 1013,
+            "y": 370.04376220703125,
+            "width": 220,
+            "height": 416,
+            "centerX": 1123,
+            "centerY": 578.0437622070312
+          }
+        ],
+        "record": [
+          {
+            "x": 186.20001220703125,
+            "y": 639.2437744140625,
+            "width": 103.20001220703125,
+            "height": 103.20001220703125,
+            "centerX": 237.80001831054688,
+            "centerY": 690.8437805175781
+          },
+          {
+            "x": 406.20001220703125,
+            "y": 639.2437744140625,
+            "width": 103.19998168945312,
+            "height": 103.20001220703125,
+            "centerX": 457.8000030517578,
+            "centerY": 690.8437805175781
+          },
+          {
+            "x": 626.2000122070312,
+            "y": 639.2437744140625,
+            "width": 103.20001220703125,
+            "height": 103.20001220703125,
+            "centerX": 677.8000183105469,
+            "centerY": 690.8437805175781
+          },
+          {
+            "x": 846.2000122070312,
+            "y": 639.2437744140625,
+            "width": 103.20001220703125,
+            "height": 103.20001220703125,
+            "centerX": 897.8000183105469,
+            "centerY": 690.8437805175781
+          },
+          {
+            "x": 1066.199951171875,
+            "y": 639.2437744140625,
+            "width": 103.2000732421875,
+            "height": 103.20001220703125,
+            "centerX": 1117.7999877929688,
+            "centerY": 690.8437805175781
+          }
+        ],
+        "stop": []
+      }
+    }
+  ],
+  "screenSha256": {
+    "before": {
+      "1366-face.png": "7a32137ee1849ba1979c9d5ff932eddb99cf83e26bce2300be134cceb42893ed",
+      "1366-viewport.png": "5a7270932feba689e3313ce749762c48ced8513452e401920511c54394405199",
+      "1920-face.png": "5df964d5fc6da7f325b453ef5b995ad0257a5d3ce5d5f5a5b7baa997b0d2e67a",
+      "1920-viewport.png": "8f1f4df80e18f251aefa2224035235571d71b953c2d31b46c933a2222722e3e6"
+    },
+    "after": {
+      "1366-face.png": "f53e5ac6152c0a6c11f798622fdacde3859d2594ba3bea979c9318f04e269411",
+      "1366-viewport.png": "95ed39cbc802dfdc0820ddf8e8d2e0c37838fb0327ac8c83f5d6ca3963f5a08c",
+      "1920-face.png": "46896459ba2766a5ed8c3095738a8e343783a5e1c017e1c92beec57f6bec92a6",
+      "1920-viewport.png": "84a98759a67b38ea9b336ec1cc58c2589cd146362d1feeeaddf8abdc744b7a34"
+    }
+  },
+  "hitCheck": {
+    "fxCenters": 8,
+    "allCentersHitOwnButton": true,
+    "fxPseudoPointerEvents": "none",
+    "bayPseudoPointerEvents": "none",
+    "allFxLedOn": false
+  },
+  "limits": [
+    "Uninitialized idle Browser state only; illuminated states and physical device behavior were not tested.",
+    "1366 viewport uses 80% face scale and scrolling; its lower portion is outside the initial viewport."
+  ]
+}

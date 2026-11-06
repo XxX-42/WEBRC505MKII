@@ -171,8 +171,23 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   min-width: 1375px;
   margin-inline: auto;
   padding-bottom: 0;
+  position: relative;
   border-top: 3px solid #2f1d2a;
   background: linear-gradient(180deg, #281c28 0%, #17171c 8px, transparent 8px);
+}
+
+/* Noninteractive stepped perimeter around the five-track deck. */
+.rc505-face :deep(.track-bay)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 5px solid transparent;
+  border-radius: 7px 7px 12px 12px;
+  box-shadow: inset 2px 0 #53565d, inset -2px 0 #34373d,
+    inset 0 -3px #51545b, inset 0 4px 0 #08090b,
+    inset 6px 0 0 #111318, inset -6px 0 0 #0c0e12;
+  pointer-events: none;
 }
 
 .menu-page { display: grid; gap: 10px; max-width: 760px; margin-inline: auto; font-family: var(--font-hardware); }
