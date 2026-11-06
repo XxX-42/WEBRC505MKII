@@ -681,7 +681,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(download.suggestedFilename()).toBe('closed-context-rescue.rc505proj');
   expect(path).not.toBeNull();
   expect((await fs.stat(path!)).size).toBeGreaterThan(0);
-  await expect(status).toContainText('EXPORTED closed-context-rescue · PCM/TEMPO');
+  await expect(status).toHaveText('EXPORTED V1 closed-context-rescue · NATIVE-COMPATIBLE PCM/TEMPO');
   await tools.getByRole('button', { name: 'CLOSE', exact: true }).click();
   await expect(tools).toHaveCount(0);
 
