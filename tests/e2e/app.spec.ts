@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { closeDeviceDrawer, findLcdField, lcdField, lcdScreen, openAppSettingsMenu, openClassicFxEditor, openFxEditor, openLcdPage, startBrowserAudio } from './uiHelpers';
+import { closeDeviceDrawer, findLcdField, lcdField, lcdScreen, openAppSettingsMenu, openClassicFxEditor, openEnhancedTools, openFxEditor, openLcdPage, startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -468,12 +468,10 @@ test('sends and restores Browser SYNTH controls on Input and Track A worklet rou
   await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  const techInput = await openFxEditor(page, 'input');
-  await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
-  await expect(techInput.locator('[data-synth-editor]')).toBeVisible();
-  await closeDeviceDrawer(page);
-  const techTrack = await openFxEditor(page, 'track');
-  await expect(techTrack.locator('[data-synth-editor]')).toBeVisible();
+  const tools = await openEnhancedTools(page, 'INPUT FX');
+  await expect(tools.locator('[data-panel="input-fx"] [data-synth-editor]')).toBeVisible();
+  await tools.getByRole('button', { name: 'PRIVATE / SHARED FX', exact: true }).click();
+  await expect(tools.locator('[data-panel="track-fx"] [data-synth-editor]')).toBeVisible();
 });
 
 test('sends and restores Browser G2B tracking, octave blend, and body controls on Input and Track A', async ({ page }) => {
@@ -542,12 +540,10 @@ test('sends and restores Browser G2B tracking, octave blend, and body controls o
   await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  const techInput = await openFxEditor(page, 'input');
-  await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
-  await expect(techInput.locator('[data-g2b-editor]')).toBeVisible();
-  await closeDeviceDrawer(page);
-  const techTrack = await openFxEditor(page, 'track');
-  await expect(techTrack.locator('[data-g2b-editor]')).toBeVisible();
+  const tools = await openEnhancedTools(page, 'INPUT FX');
+  await expect(tools.locator('[data-panel="input-fx"] [data-g2b-editor]')).toBeVisible();
+  await tools.getByRole('button', { name: 'PRIVATE / SHARED FX', exact: true }).click();
+  await expect(tools.locator('[data-panel="track-fx"] [data-g2b-editor]')).toBeVisible();
 });
 
 test('exposes the full clean-room rhythm catalog and shared kit, variation, section, and timing controls', async ({ page }) => {
