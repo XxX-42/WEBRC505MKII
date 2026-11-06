@@ -23,7 +23,7 @@ import TrackUnit from '../TrackUnit.vue';
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .tech-top {
@@ -32,8 +32,7 @@ import TrackUnit from '../TrackUnit.vue';
 }
 
 .tech-workspace {
-  flex: 1;
-  overflow: auto;
+  flex: 1 0 auto;
   padding: 28px 24px 32px;
 }
 
