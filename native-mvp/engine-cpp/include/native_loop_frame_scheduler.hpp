@@ -48,6 +48,10 @@ struct NativeScheduledLoopRequest {
     // Snapshot of every track at admission. The callback revalidates this
     // complete fence after applying queued control commands at the due block.
     std::array<std::uint8_t, kNativeScheduledLoopTrackCount> batchExpectedStates{};
+    // Optional Rhythm-grid receipt bound to this scheduled boundary. The core
+    // fills it before enqueue; the callback consumes it from the same SPSC item.
+    std::uint64_t measureOrdinal = 0U;
+    std::uint64_t firstMeasureFrames = 0U;
 };
 
 struct NativeScheduledLoopEvent {

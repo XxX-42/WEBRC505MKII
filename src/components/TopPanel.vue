@@ -949,7 +949,7 @@ const nativeStatusText = (status: NativeCatalogFxSlotRuntime | null) => {
   align-items: center;
   gap: 8px;
   justify-content: flex-start;
-  min-width: 0;
+  min-width: max-content;
 }
 
 .section-label {

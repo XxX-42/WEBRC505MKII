@@ -52,6 +52,7 @@ type RhythmTimelineStatusMessage =
     readonly sampleRate?: number;
     readonly bpm?: number;
     readonly stepsPerBar?: number;
+    readonly reasonCode?: number;
   }
   | {
     readonly type: 'timeline-rewind';
@@ -74,6 +75,7 @@ export class RhythmEngine {
   public readonly outputNode: GainNode;
 
   private isPlaying = false;
+  private startGeneration = 0;
   private selection: PatternSelection = { kind: 'legacy', value: 'ROCK' };
   private kitIndex = 1;
   private variation: RhythmVariation = 'A';
@@ -270,13 +272,15 @@ export class RhythmEngine {
       this.transportListenerAttached = true;
     }
     this.isPlaying = true;
+    const generation = ++this.startGeneration;
     this.lastError = '';
     if (this.context.state === 'suspended') {
       void this.context.resume().catch((error: unknown) => this.recordError(error));
     }
     void this.ensureWorklet().then((node) => {
-      if (this.isPlaying) this.configureWorklet(node);
+      if (this.isPlaying && generation === this.startGeneration) this.configureWorklet(node);
     }).catch((error: unknown) => {
+      if (generation !== this.startGeneration) return;
       this.isPlaying = false;
       this.detachTransportListener();
       this.recordError(error);
@@ -284,6 +288,7 @@ export class RhythmEngine {
   }
 
   stop(): void {
+    this.startGeneration += 1;
     this.isPlaying = false;
     const requestId = this.invalidateMeasurePhase(2);
     this.workletNode?.port.postMessage({ type: 'stop', requestId });
@@ -361,7 +366,8 @@ export class RhythmEngine {
     this.measurePhase = null;
     this.storePhaseEpoch(0, 1, Math.max(0, Math.ceil(this.context.currentTime * this.context.sampleRate)));
     this.notifyMeasurePhaseChange();
-    node.port.postMessage({ type: 'start', requestId, configuration });
+    node.port.postMessage({ type: 'start', requestId, configuration, originMode: 'worklet',
+      startLeadFrames: Math.ceil(START_LEAD_SECONDS * this.context.sampleRate) });
   }
 
   private createEventTemplate(metadata: RhythmPatternMetadata, bpm: number): CleanRoomDrumEvent[] {
@@ -385,6 +391,11 @@ export class RhythmEngine {
     if (message.type === 'measure-phase') {
       if (message.requestId !== this.phaseRequestId || !Number.isSafeInteger(message.epoch) || message.epoch! < 1) return;
       if (message.available === false) {
+        if (message.reasonCode === 9 && this.isPlaying) {
+          this.stop();
+          this.recordError(new Error('Rhythm could not start on its scheduled audio frame. Start Rhythm again to retry.'));
+          return;
+        }
         this.measurePhase = null;
         this.notifyMeasurePhaseChange();
         return;

@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { openFxEditor } from './uiHelpers';
+import { openEnhancedTools } from './uiHelpers';
 
 test('runs two private HRM MANUAL voices on one track without changing its neighbor', async ({ page }) => {
   await page.goto('/?audio=browser');
@@ -141,13 +141,14 @@ test('runs two private HRM MANUAL voices on one track without changing its neigh
   expect(result.neighbor330.db).toBeGreaterThan(-40);
 });
 
-test('per-track LCD persists HRM MANUAL voice, pan and mix controls', async ({ page }) => {
+test('Enhanced per-track FX editor persists HRM MANUAL voice, pan and mix controls', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
   const startButton = page.getByTestId('start-audio');
   if ((await startButton.innerText()).trim() !== 'READY') await startButton.click();
   await expect(startButton).toHaveText('READY', { timeout: 25_000 });
   await expect(page.getByTestId('input-status')).toContainText('OUTPUT READY');
-  const panel = await openFxEditor(page, 'track');
+  const tools = await openEnhancedTools(page, 'PRIVATE / SHARED FX');
+  const panel = tools.locator('[data-panel="track-fx"]');
   await panel.getByLabel('Track FX target', { exact: true }).selectOption('2');
   await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('HRM MANUAL');
   await expect(panel.locator('[data-track-fx-runtime-status]')).toContainText('READY', { timeout: 10_000 });

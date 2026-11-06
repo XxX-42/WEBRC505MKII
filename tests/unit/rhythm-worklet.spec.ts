@@ -286,6 +286,73 @@ describe('rhythm AudioWorklet integration', () => {
     ]);
   });
 
+  it('chooses delayed ordinary starts on the audio clock while exact origins fail closed', () => {
+    vi.stubGlobal('sampleRate', 16_000);
+    vi.stubGlobal('currentFrame', 20_000); // Delivery occurs long after the main-thread estimate.
+    const processor = new RhythmWorkletProcessor();
+    const post = vi.spyOn(processor.port, 'postMessage');
+    const configuration = createWorkletConfig({ startFrame: 1_000 });
+    processor.port.onmessage?.({ data: { type: 'start', requestId: 1, configuration, originMode: 'worklet', startLeadFrames: 800 } });
+    const render = (frame: number) => {
+      vi.stubGlobal('currentFrame', frame);
+      processor.process([], [[new Float32Array(128)]]);
+    };
+    render(20_000);
+    expect(post).not.toHaveBeenCalled();
+    render(20_768);
+    expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ available: true, requestId: 1, originFrame: 20_800 }));
+
+    // Tempo reconfiguration also chooses a fresh origin from its actual delivery frame.
+    vi.stubGlobal('currentFrame', 30_000);
+    processor.port.onmessage?.({ data: { type: 'start', requestId: 2, configuration: { ...configuration, bpm: 91 }, originMode: 'worklet', startLeadFrames: 800 } });
+    render(30_768);
+    expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ available: true, requestId: 2, originFrame: 30_800, bpm: 91 }));
+    vi.stubGlobal('currentFrame', 40_000);
+    processor.port.onmessage?.({ data: { type: 'start', requestId: 3, configuration } });
+    render(40_000);
+    expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ available: false, requestId: 3 }));
+  });
+
+  it('cancels an in-flight load and does not configure twice after restart', async () => {
+    vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
+    const context = createContext();
+    let finish!: () => void;
+    (context.audioWorklet.addModule as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const engine = new RhythmEngine(context);
+    try {
+      engine.start();
+      engine.stop();
+      engine.start();
+      finish();
+      await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
+      const node = TestWorkletNode.instances[0]!;
+      await vi.waitFor(() => expect(node.port.postMessage).toHaveBeenCalledTimes(1));
+      expect(node.port.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'start', originMode: 'worklet', startLeadFrames: 2400 }));
+      engine.stop();
+      const start = node.port.postMessage.mock.calls[0]![0] as { requestId: number };
+      node.emitMessage({ type: 'measure-phase', available: true, requestId: start.requestId, epoch: 1, originFrame: 1, nextMeasureFrame: 96001, sampleRate: 48000, bpm: 120, stepsPerBar: 16 });
+      expect(engine.measurePhaseSnapshot).toBeNull();
+    } finally { engine.dispose(); }
+  });
+
+  it('surfaces a missed origin and permits an explicit retry', async () => {
+    vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
+    const engine = new RhythmEngine(createContext());
+    try {
+      engine.start();
+      await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
+      const node = TestWorkletNode.instances[0]!;
+      const start = node.port.postMessage.mock.calls[0]![0] as { requestId: number };
+      node.emitMessage({ type: 'measure-phase', available: false, requestId: start.requestId, epoch: 1, reasonCode: 9 });
+      expect(engine.isRunning).toBe(false);
+      expect(engine.error).toContain('Start Rhythm again');
+      engine.start();
+      await vi.waitFor(() => expect(node.port.postMessage).toHaveBeenCalledTimes(3));
+      expect(engine.isRunning).toBe(true);
+      expect(engine.error).toBe('');
+    } finally { engine.dispose(); }
+  });
+
   it('renders directly into reused caller buffers for variable block sizes', () => {
     const sampleRate = 44_100;
     const bpm = 131;

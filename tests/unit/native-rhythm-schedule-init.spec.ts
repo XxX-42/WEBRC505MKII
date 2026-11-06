@@ -102,17 +102,77 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     expect(finishRecordingTrack).not.toHaveBeenCalled();
   });
 
-  it('keeps synchronized playback disabled until track PCM has retained phase provenance', () => {
+  it('requires complete, current Native Rhythm provenance before synchronized playback', () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
-    engine.latestStatus = { sampleRate: 48_000, nativeMemory: { loopSync: [true, false, false, false, false] },
-      nativeTracks: [{ trackId: 1, state: 'Stopped', loopLengthSamples: 38_400 }],
-      nativeRhythm: { enabled: true, bpm: 300, phase: { available: true, snapshotStable: true, frameSchedulingAvailable: true,
-        epoch: 1, nextMeasureFrame: 48_000, measureStartFrame: 9_600, meterNumerator: 4, meterDenominator: 4 } } };
-    expect(engine.getRhythmSyncPlayAvailability(1).available).toBe(false);
-    expect(engine.getRhythmSyncPlayAvailability(1).reason).toMatch(/phase provenance/);
-    engine.latestStatus.nativeTracks[0].loopLengthSamples = 38_000;
-    expect(engine.getRhythmSyncPlayAvailability(1).available).toBe(false);
-    expect(engine.getRhythmSyncPlayAvailability(1).reason).toMatch(/phase provenance/);
+    const provenance = { verified: true, firstMeasureFrames: 96_000, startFrame: 96_000, stopFrame: 288_000,
+      rhythmEpoch: 2, sampleRate: 48_000, contentRevision: 7, pcmFrames: 192_000,
+      startMeasureOrdinal: 1, stopMeasureOrdinal: 3, measureCount: 2 };
+    engine.latestStatus = { engineRunning: true, sampleRate: 48_000,
+      nativeMemory: { loopSync: [true, false, false, false, false] },
+      nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 7, loopLengthSamples: 192_000,
+        loopTransportAppliedOneShot: false, loopTransportAppliedReverse: false,
+        phaseProvenance: undefined }],
+      nativeRhythm: { enabled: true, bpm: 120, phase: { version: 1, available: true, snapshotStable: true,
+        snapshotRevision: 1, frameSchedulingAvailable: true, epoch: 2, originFrame: 0, sampleFrame: 48_000,
+        measureOrdinal: 0, measureStartFrame: 0, nextMeasureFrame: 96_000,
+        meterNumerator: 4, meterDenominator: 4 } } };
+    expect(engine.getRhythmSyncPlayAvailability(1)).toMatchObject({ available: false });
+    expect(engine.getRhythmSyncPlayAvailability(1).reason).toMatch(/verified Native Rhythm phase provenance/);
+
+    engine.latestStatus.nativeTracks[0].phaseProvenance = provenance;
+    expect(engine.getRhythmSyncPlayAvailability(1)).toEqual({ available: true, reason: '' });
+
+    const invalidReceipts = [
+      { verified: false },
+      { contentRevision: 6 },
+      { pcmFrames: 192_001 },
+      { sampleRate: 44_100 },
+      { firstMeasureFrames: 0 },
+      { startFrame: 95_999 },
+      { stopFrame: 287_999 },
+      { startMeasureOrdinal: 2 },
+      { stopMeasureOrdinal: 4 },
+      { measureCount: 0 },
+    ];
+    for (const mutation of invalidReceipts) {
+      engine.latestStatus.nativeTracks[0].phaseProvenance = { ...provenance, ...mutation };
+      const availability = engine.getRhythmSyncPlayAvailability(1);
+      expect(availability.available, JSON.stringify(mutation)).toBe(false);
+      expect(availability.reason, JSON.stringify(mutation)).toMatch(/verified Native Rhythm phase provenance/);
+    }
+
+    engine.latestStatus.nativeTracks[0].phaseProvenance = provenance;
+    engine.latestStatus.nativeRhythm.phase.nextMeasureFrame = 192_000;
+    expect(engine.getRhythmSyncPlayAvailability(1)).toMatchObject({ available: false });
+    expect(engine.getRhythmSyncPlayAvailability(1).reason).toMatch(/current Native Rhythm measure boundaries/);
+  });
+
+  it.each([
+    [48_000, 87_273, 960_000],
+    [44_100, 80_182, 882_000],
+  ])('accepts rounded fractional measure boundaries at %i Hz without accepting an extra PCM frame', (sampleRate, firstMeasureFrames, pcmFrames) => {
+    // Exact 99 BPM / 6/8 boundaries: round(ordinal * sampleRate * 180 / 99).
+    // Eleven measures have an integral total, although the first boundary is fractional before rounding.
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    const originFrame = 4_096;
+    const startFrame = originFrame + firstMeasureFrames;
+    const proof = { verified: true, firstMeasureFrames, startFrame, stopFrame: startFrame + pcmFrames,
+      rhythmEpoch: 2, sampleRate, contentRevision: 7, pcmFrames,
+      startMeasureOrdinal: 1, stopMeasureOrdinal: 12, measureCount: 11 };
+    const track = { trackId: 1, state: 'Stopped', contentRevision: 7, loopLengthSamples: pcmFrames, phaseProvenance: proof };
+    engine.latestStatus = { engineRunning: true, sampleRate,
+      nativeMemory: { loopSync: [true, false, false, false, false] }, nativeTracks: [track],
+      nativeRhythm: { enabled: true, bpm: 99, phase: { available: true, snapshotStable: true,
+        frameSchedulingAvailable: true, originFrame, measureOrdinal: 0, nextMeasureFrame: startFrame,
+        meterNumerator: 6, meterDenominator: 8 } } };
+    expect(engine.getRhythmSyncPlayAvailability(1)).toEqual({ available: true, reason: '' });
+    for (const delta of [-1, 1]) {
+      track.loopLengthSamples = pcmFrames + delta;
+      proof.pcmFrames = pcmFrames + delta;
+      proof.stopFrame = startFrame + pcmFrames + delta;
+      expect(engine.getRhythmSyncPlayAvailability(1)).toMatchObject({ available: false,
+        reason: expect.stringContaining('current Native Rhythm measure boundaries') });
+    }
   });
 
   it.each([

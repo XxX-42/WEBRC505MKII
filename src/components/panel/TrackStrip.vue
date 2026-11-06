@@ -118,7 +118,11 @@
           data-panel-control="record-play"
           data-hardware-control="button"
           @press="handleTrackRecPlay"
-        />
+        >
+          <template #label>
+            <span class="rec-play-symbols" aria-hidden="true"><span>▶ /</span><span class="record-symbol"></span></span>
+          </template>
+        </HardwareButton>
       </div>
       <div class="loop-indicator-row">
         <span class="indicator-chip" :class="{ active: trackState === TrackState.RECORDING }">REC</span>
@@ -867,6 +871,8 @@ const stateLabel = computed(() => {
   text-shadow: 0 1px 2px #050609;
   pointer-events: none;
 }
+.rec-play-symbols { display: inline-flex; align-items: center; gap: 8px; }
+.record-symbol { display: inline-block; flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%; background: currentColor; }
 .loop-indicator-row { position: absolute; top: 267px; left: 44px; display: flex; gap: 7px; width: 170px; justify-content: center; }
 .loop-indicator-row { width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; clip-path: inset(50%); white-space: nowrap; }
 .indicator-chip { min-width: auto; min-height: 0; padding: 1px 2px; border: 0; border-radius: 0; background: transparent; font-size: 11px; line-height: 1; letter-spacing: 0.06em; }

@@ -628,7 +628,16 @@
         const message = event.data;
         if (message?.type === "start") {
           this.setSharedPhaseEpoch(0, 5, workletGlobals.currentFrame ?? 0);
-          this.core.configure(message.configuration, message.requestId);
+          let configuration = message.configuration;
+          if (message.originMode === "worklet") {
+            const lead = message.startLeadFrames;
+            if (!Number.isSafeInteger(lead) || lead < 1) throw new RangeError("Rhythm start lead must be a positive safe integer");
+            const current = workletGlobals.currentFrame ?? 0;
+            const origin = Math.max(current, this.core.expectedNextFrame ?? current) + lead;
+            if (!Number.isSafeInteger(origin)) throw new RangeError("Rhythm start origin exceeds the safe frame range");
+            configuration = { ...configuration, startFrame: origin };
+          }
+          this.core.configure(configuration, message.requestId);
           this.phaseRequestId = message.requestId;
           this.phaseAcknowledged = false;
           this.phaseInvalidated = false;
@@ -715,7 +724,8 @@
         type: "measure-phase",
         available: false,
         requestId: this.phaseRequestId,
-        epoch: this.core.currentPhaseEpoch
+        epoch: this.core.currentPhaseEpoch,
+        reasonCode
       });
     }
     setSharedPhaseEpoch(epoch, reasonCode, absoluteFrame) {

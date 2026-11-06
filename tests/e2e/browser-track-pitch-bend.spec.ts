@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { openFxEditor } from './uiHelpers';
+import { openEnhancedTools } from './uiHelpers';
 
 test('routes private Browser PITCH BEND to one track, leaves its neighbor untouched, and retriggers', async ({ page }) => {
   await page.goto('/?audio=browser');
@@ -109,13 +109,14 @@ test('routes private Browser PITCH BEND to one track, leaves its neighbor untouc
   expect(result.resourceNote).toContain('Live Signalsmith WASM reserved');
 });
 
-test('per-track LCD exposes and persists private PITCH BEND controls', async ({ page }) => {
+test('Enhanced per-track FX editor exposes and persists private PITCH BEND controls', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
   const startButton = page.getByTestId('start-audio');
   if ((await startButton.innerText()).trim() !== 'READY') await startButton.click();
   await expect(startButton).toHaveText('READY', { timeout: 25_000 });
   await expect(page.getByTestId('input-status')).toContainText('OUTPUT READY');
-  const panel = await openFxEditor(page, 'track');
+  const tools = await openEnhancedTools(page, 'PRIVATE / SHARED FX');
+  const panel = tools.locator('[data-panel="track-fx"]');
   await panel.getByLabel('Track FX target', { exact: true }).selectOption('3');
   await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('PITCH BEND');
   await expect(panel.locator('[data-track-fx-runtime-status]')).toContainText('READY', { timeout: 10_000 });

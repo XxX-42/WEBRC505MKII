@@ -30,7 +30,7 @@ describe('Browser AutoRec track lifecycle', () => {
     const h = harness(); await h.track.startRecording();
     expect(h.track.autoRecArmed).toBe(true); expect(h.track.state).toBe(TrackState.REC_STANDBY);
     expect(h.track.historyBusy).toBe(true);
-    expect(h.engine.beginInputCaptureSession).toHaveBeenCalledWith(0, 128, expect.any(Function), undefined, expect.any(Number));
+    expect(h.engine.beginInputCaptureSession).toHaveBeenCalledWith(0, 128, expect.any(Function), undefined, expect.any(Number), undefined);
     h.send({ type: 'RECORD_CONFIGURED', channelCount: 2, maxRecordingFrames: 100, maxRecordingBytes: 800 });
     expect(h.track.autoRecArmed).toBe(false); expect(h.track.state).toBe(TrackState.RECORDING);
     h.track.triggerStop();

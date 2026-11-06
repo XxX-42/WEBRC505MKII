@@ -41,7 +41,7 @@
     </div>
     
     <!-- Button Label -->
-    <span v-if="label" class="button-label">{{ label }}</span>
+    <span v-if="label || $slots.label" class="button-label"><slot name="label">{{ label }}</slot></span>
   </button>
 </template>
 
