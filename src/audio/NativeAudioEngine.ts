@@ -2624,15 +2624,10 @@ export class NativeAudioEngine {
     try {
       await this.bridge.health();
       this.bridgeAvailable = true;
-      await this.refreshCatalog();
-      let status = await this.bridge.getStatus();
-      if (this.bridge.getRetainedTrackTempoConfirmations().length) {
-        this.nativeTempoRecoveryError = 'Native tempo receipt recovery is in progress; transport remains disabled.';
-      }
-      this.applyStatus(status, false);
       const receiptRecoveryNotice = await this.recoverNativeReceipts();
+      await this.refreshCatalog();
       // The receipt is historical; obtain current state after reconciliation.
-      status = await this.bridge.getStatus();
+      let status = await this.bridge.getStatus();
       const scheduleRecovery = await this.reconcileRhythmScheduleForInit(status);
       status = scheduleRecovery.status;
       this.applyStatus(status);
