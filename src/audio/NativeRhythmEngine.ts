@@ -1,5 +1,5 @@
 import { Transport } from '../core/Transport';
-import { isNativeHostIncarnationId, isNativeRhythmConfig, type NativeBridgeClient, type NativeRhythmConfig, type NativeStatus } from './NativeBridgeClient';
+import { NativeBridgeHttpError, isNativeHostIncarnationId, isNativeRhythmConfig, type NativeBridgeClient, type NativeRhythmConfig, type NativeStatus } from './NativeBridgeClient';
 import type { RhythmPattern, RhythmPlaybackSettings } from './RhythmEngine';
 import { getDrumKitByIndex, getDrumKitByName, getRhythmPatternByIndex, type RhythmQuantizeGrid, type RhythmSection, type RhythmVariation } from './rhythm';
 
@@ -80,10 +80,22 @@ export class NativeRhythmEngine {
   setSwingPercent(swingPercent: number): Promise<boolean> { return this.configure({ swingPercent }); }
   setQuantizeGrid(quantizeGrid: RhythmQuantizeGrid): Promise<boolean> { return this.configure({ quantizeGrid }); }
   setVolume(volume: number): Promise<boolean> { return this.configure({ volume }); }
-  setBpm(bpm: number, hostIncarnationId?: string, receiptOwner?: string): Promise<boolean> { return this.configure({ bpm }, hostIncarnationId, receiptOwner); }
+  setBpm(bpm: number, hostIncarnationId?: string, receiptOwner?: string,
+      onAcknowledged?: (receipt: { host: string; revision: number; intent: string; bpm: number }) => void,
+      onFailure?: (failure: { rejected: boolean; message: string }) => void): Promise<boolean> {
+    return this.configure({ bpm }, hostIncarnationId, receiptOwner, onAcknowledged, onFailure);
+  }
+  getPendingTempoIdentity(): { host: string; intent: string; baseline: number; receiptIntent?: string; owner?: string | null; bpm?: number } | null {
+    return this.host.bridge().getPendingRhythmTempoIdentity();
+  }
+  releaseSupersededTempoIdentity(host: string, revision: number, intent: string): boolean {
+    return this.host.bridge().releaseSupersededRhythmTempoIdentity(host, revision, intent);
+  }
   setSettings(settings: RhythmPlaybackSettings): Promise<boolean> { return this.configure(settings); }
 
-  private configure(patch: Partial<NativeRhythmConfig>, hostIncarnationId?: string, receiptOwner?: string): Promise<boolean> {
+  private configure(patch: Partial<NativeRhythmConfig>, hostIncarnationId?: string, receiptOwner?: string,
+      onAcknowledged?: (receipt: { host: string; revision: number; intent: string; bpm: number }) => void,
+      onFailure?: (failure: { rejected: boolean; message: string }) => void): Promise<boolean> {
     // Serialize partial edits against the last ACK. Rapid volume/pattern/start/stop
     // changes cannot race and overwrite a newer selection with an older response.
     const command = this.commandTail.then(async (): Promise<boolean> => {
@@ -94,7 +106,9 @@ export class NativeRhythmEngine {
       if (!isNativeRhythmConfig(config)) return this.reject('Unsupported Native rhythm settings. Check BPM, pattern, kit, variation, section, swing, quantize, and volume.');
       this.lastError = '';
       try {
-        const status = await this.host.bridge().setRhythm(config, hostIncarnationId, receiptOwner, patch);
+        const currentHost = this.host.status()?.hostIncarnationId;
+        const expectedHost = hostIncarnationId ?? (isNativeHostIncarnationId(currentHost) ? currentHost : undefined);
+        const status = await this.host.bridge().setRhythm(config, expectedHost, receiptOwner, patch);
         if (hostIncarnationId !== undefined &&
             (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== hostIncarnationId)) {
           throw new Error('Native host incarnation changed during rhythm BPM synchronization; stale status was not applied.');
@@ -105,6 +119,7 @@ export class NativeRhythmEngine {
           this.lastTempoReceipt = { host: status.hostIncarnationId, revision: status.nativeRhythm!.tempoRequestedRevision!,
             intent: status.nativeRhythm!.tempoRequestIntentId!, bpm: status.nativeRhythm!.bpm };
         } else if (patch.bpm !== undefined) this.lastTempoReceipt = null;
+        if (this.lastTempoReceipt && patch.bpm !== undefined) onAcknowledged?.({ ...this.lastTempoReceipt });
         this.host.applyStatus(status, hostIncarnationId === undefined);
         if (!this.available) return this.reject(this.unavailableReason);
         const acknowledged = this.settings;
@@ -114,6 +129,14 @@ export class NativeRhythmEngine {
         return true;
       } catch (error) {
         this.lastError = error instanceof Error ? error.message : String(error);
+        if (patch.bpm !== undefined) {
+          // A 4xx from a later status read does not prove the original POST was rejected.
+          // Only the client clearing its retained request after a definite pre-submit 4xx does.
+          const getPending = this.host.bridge().getPendingRhythmTempoIdentity;
+          const cleared = typeof getPending === 'function' && getPending.call(this.host.bridge()) === null;
+          onFailure?.({ rejected: error instanceof NativeBridgeHttpError && error.status === 409 && cleared,
+            message: this.lastError });
+        }
         this.host.reportError(error);
         return false;
       } finally {

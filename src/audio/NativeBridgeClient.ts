@@ -2576,7 +2576,47 @@ export class NativeBridgeClient {
     });
   }
 
-  public async reconcilePendingRhythmTempo(expectedBpm?: number, expectedHost?: string, expectedOwner?: string): Promise<NativeStatus | null> {
+  /** Exact retained identity, including an explicit invalid sentinel for corrupt storage. */
+  public getPendingRhythmTempoIdentity(): { host: string; intent: string; baseline: number; receiptIntent?: string; owner?: string | null; bpm?: number } | null {
+    let raw: string | null | undefined;
+    try { raw = globalThis.sessionStorage?.getItem('rc505.native.rhythm-tempo-request'); }
+    catch { return { host: '', intent: '', baseline: -1 }; }
+    if (!raw) return null;
+    try {
+      const value: unknown = JSON.parse(raw);
+      if (isObject(value) && isNativeHostIncarnationId(value.host) && isNativeHostIncarnationId(value.intent) &&
+          !/^0+$/.test(value.intent) && Number.isSafeInteger(value.baseline) && (value.baseline as number) >= 0) {
+        const config = value.config as NativeRhythmConfig | undefined;
+        const receiptIntent = isObject(config) && config.bpm === value.baselineBpm &&
+          isNativeHostIncarnationId(value.baselineTempoIntent) ? value.baselineTempoIntent : value.intent;
+        return { host: value.host, intent: value.intent, baseline: value.baseline as number, receiptIntent,
+          owner: value.owner === null || typeof value.owner === 'string' ? value.owner : undefined,
+          bpm: isObject(config) && Number.isFinite(config.bpm) ? config.bpm : undefined };
+      }
+    } catch { /* Invalid storage must not authorize adoption. */ }
+    return { host: '', intent: '', baseline: -1 };
+  }
+
+  /** Retire only an ordinary request proven superseded by a later confirmed host generation. */
+  public releaseSupersededRhythmTempoIdentity(host: string, revision: number, intent: string): boolean {
+    const key = 'rc505.native.rhythm-tempo-request';
+    try {
+      const storage = globalThis.sessionStorage;
+      const raw = storage.getItem(key);
+      if (!raw) return true;
+      const value: unknown = JSON.parse(raw);
+      if (!isObject(value) || value.owner !== null || value.host !== host || !isNativeHostIncarnationId(value.intent) ||
+          value.intent === intent || !Number.isSafeInteger(value.baseline) || (value.baseline as number) < 0 ||
+          !Number.isFinite(value.baselineBpm) || !isObject(value.config) ||
+          !isNativeRhythmConfig(value.config as unknown as NativeRhythmConfig)) return false;
+      const expected = (value.baseline as number) + (value.baselineBpm === (value.config as unknown as NativeRhythmConfig).bpm ? 0 : 1);
+      if (!Number.isSafeInteger(revision) || revision <= expected) return false;
+      storage.removeItem(key);
+      return storage.getItem(key) === null;
+    } catch { return false; }
+  }
+
+  public async reconcilePendingRhythmTempo(expectedBpm?: number, expectedHost?: string, expectedOwner?: string | null): Promise<NativeStatus | null> {
     const saved = globalThis.sessionStorage?.getItem('rc505.native.rhythm-tempo-request');
     if (!saved) return null;
     const pending = JSON.parse(saved) as { host: string; owner: string | null; config: NativeRhythmConfig };
@@ -2674,7 +2714,10 @@ export class NativeBridgeClient {
             'X-Native-Rhythm-Revision': String(pending.baselineConfig) }, body: JSON.stringify(config) });
         if (status.nativeRhythm?.acceptedTempoRevision !== pending.baseline + (pending.baselineBpm === config.bpm ? 0 : 1)) throw new Error('Native rhythm acceptance did not identify this tempo revision.');
       } catch (error) {
-        if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+        // This endpoint's explicit 409 paths return before setNativeRhythmConfig
+        // succeeds. Its generic 400 exception handler also wraps response
+        // serialization after the mutation, so a 400 is not proof of rejection.
+        if (error instanceof NativeBridgeHttpError && error.status === 409) {
           globalThis.sessionStorage.removeItem(key); throw error;
         }
         status = await this.getStatus();

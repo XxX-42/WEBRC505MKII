@@ -120,10 +120,22 @@ describe('Native rhythm runtime adapter', () => {
 
   it('wires capabilities and live shared BPM changes to the same Native client without ACK echoes', async () => {
     const engine = NativeAudioEngine.getInstance();
-    const internals = engine as unknown as { bridge: NativeBridgeClient; applyStatus(status: NativeStatus): void; bridgeAvailable: boolean; latestStatus: NativeStatus | null };
-    const setRhythm = vi.fn(async (config: NativeRhythmConfig) => nativeRhythmStatus(config));
-    internals.bridge = { setRhythm, getPendingNativeTransportBatch: vi.fn(() => null) } as unknown as NativeBridgeClient;
-    internals.applyStatus(nativeRhythmStatus({ bpm: 91 }));
+    const internals = engine as unknown as { bridge: NativeBridgeClient; applyStatus(status: NativeStatus): void;
+      bindTempoHostFromConnection(status: NativeStatus): void; bridgeAvailable: boolean; latestStatus: NativeStatus | null; localTempoIntent: unknown };
+    const host = 'a'.repeat(32);
+    let revision = 0;
+    const modern = (config: Partial<NativeRhythmConfig>, value: number) => {
+      const base = nativeRhythmStatus(config);
+      return { ...base, hostIncarnationId: host, nativeRhythm: { ...base.nativeRhythm!, tempoRequestReceiptVersion: 1,
+        tempoRequestIntentId: value ? 'b'.repeat(32) : '0'.repeat(32), tempoRequestedRevision: value,
+        tempoAppliedRevision: value, tempoAppliedValid: true } };
+    };
+    const setRhythm = vi.fn(async (config: NativeRhythmConfig) => modern(config, ++revision));
+    internals.bridge = { setRhythm, getPendingNativeTransportBatch: vi.fn(() => null),
+      getPendingRhythmTempoIdentity: vi.fn(() => null) } as unknown as NativeBridgeClient;
+    const initial = modern({ bpm: 91 }, 0);
+    internals.bindTempoHostFromConnection(initial);
+    internals.applyStatus(initial);
     expect(engine.supportsRhythm()).toBe(true);
     const facade = AudioEngine.getInstance();
     facade.setMode('native');
@@ -137,7 +149,7 @@ describe('Native rhythm runtime adapter', () => {
     setRhythm.mockRejectedValueOnce(new Error('Native rhythm BPM change rejected'));
     Transport.getInstance().setBpm(149);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(Transport.getInstance().bpm).toBe(137);
+    expect(Transport.getInstance().bpm).toBe(149);
     expect(engine.rhythmEngine.error).toContain('BPM change rejected');
     expect(setRhythm).toHaveBeenCalledTimes(2);
     internals.bridgeAvailable = false;
@@ -145,6 +157,7 @@ describe('Native rhythm runtime adapter', () => {
     expect(facade.getCapabilities()).toMatchObject({ supportsRhythm: false, rhythmReason: expect.stringContaining('Connect the Native bridge') });
     internals.latestStatus = null;
     Transport.getInstance().setBpm(120);
+    internals.localTempoIntent = null;
   });
 
   it('routes per-track Native loop transport through AudioEngine and refreshes status from the host ACK', async () => {
