@@ -180,6 +180,9 @@ struct EngineStatus {
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmRequested{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmApplied{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmAccepted{};
+    std::array<bool, kNativeTrackCount> nativeRecordingTempoTokenValid{};
+    std::array<double, kNativeTrackCount> nativeRecordingTempoTokenBpm{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordingTempoTokenRevision{};
     std::array<NativeScheduledLoopStatus, kNativeTrackCount> nativeScheduledLoop{};
     std::array<unsigned int, 7> mixerLevels{100U, 100U, 100U, 100U, 100U, 100U, 100U};
     bool bridgeHealthy = true;
@@ -599,6 +602,24 @@ public:
         std::uint64_t intentIdHigh = 0U, std::uint64_t intentIdLow = 0U,
         std::uint64_t expectedRequestRevision = std::numeric_limits<std::uint64_t>::max());
     bool cancelNativeScheduledLoop(std::size_t trackIndex, std::uint64_t revision, std::string& error);
+    bool scheduleNativeTrackTransportBatch(
+        std::uint8_t trackMask, NativeScheduledLoopAction action, std::uint64_t expectedSampleFrame,
+        std::uint64_t absoluteFrame, const std::array<LooperState, kNativeTrackCount>& expectedStates,
+        const std::array<std::uint64_t, kNativeTrackCount>& expectedScheduleRevisions,
+        const std::array<std::uint64_t, kNativeTrackCount>& expectedStopRevisions,
+        const std::array<double, kNativeTrackCount>& provenanceBpm,
+        const std::array<std::uint64_t, kNativeTrackCount>& provenanceRevisions,
+        std::uint8_t provenanceMask, std::uint64_t intentIdHigh, std::uint64_t intentIdLow,
+        std::string& error, std::uint64_t* batchId,
+        std::array<std::uint64_t, kNativeTrackCount>* acceptedRevisions);
+    bool cancelNativeScheduledTrackTransportBatch(
+        std::uint64_t batchId, std::uint8_t trackMask, std::uint64_t intentIdHigh,
+        std::uint64_t intentIdLow, const std::array<std::uint64_t, kNativeTrackCount>& revisions,
+        std::string& error);
+    [[nodiscard]] bool getNativeScheduledTrackTransportBatchReceipt(
+        std::uint64_t batchId, std::uint8_t trackMask, std::uint64_t intentIdHigh,
+        std::uint64_t intentIdLow, const std::array<std::uint64_t, kNativeTrackCount>& revisions,
+        NativeScheduledLoopBatchReceipt& receipt) const noexcept;
     bool confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                      double bpm, std::uint64_t tempoRevision, std::string& error,
                                      std::uint64_t* requestedRevision = nullptr,
@@ -755,6 +776,8 @@ private:
     using CallbackBeforeEnterTestHook = void (*)(void*) noexcept;
     static std::atomic<CallbackBeforeEnterTestHook> callbackBeforeEnterTestHook_;
     static std::atomic<void*> callbackBeforeEnterTestContext_;
+    static std::atomic<CallbackEntryTestHook> callbackBeforeBatchPublishTestHook_;
+    static std::atomic<void*> callbackBeforeBatchPublishTestContext_;
 #endif
 
     static constexpr unsigned int kMaxCallbackFrames = 4096;
@@ -809,11 +832,9 @@ private:
     ) noexcept;
     [[nodiscard]] ProcessStats processNativeTracksForCallback(
         const float* rawInputInterleaved,
-        const float* processedInputInterleaved,
         float* outputInterleaved,
         unsigned int frames,
         unsigned int rawInputChannels,
-        unsigned int processedInputChannels,
         NativePitchRouteDecision* pitchRouteDecision
     ) noexcept;
     void applyNativePitchCommands() noexcept;
@@ -847,6 +868,7 @@ private:
     struct ScheduledTrackCommandContext {
         NativeAudioCore* core = nullptr;
         Command command{};
+        bool applied = false;
     };
     static void applyScheduledTrackCommand(void* context) noexcept;
     [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
@@ -961,6 +983,12 @@ private:
     std::map<std::uint64_t, NativeProjectImportStatus> projectImportHistory_;
     std::atomic<bool> projectImportCancelledByCallback_{false};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
+    struct NativeSegmentBuffers {
+        std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> mix{};
+        std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> playback{};
+    };
+    // Allocated at construction, never in the callback; keep host stack bounded.
+    std::unique_ptr<NativeSegmentBuffers> nativeSegmentBuffers_{std::make_unique<NativeSegmentBuffers>()};
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeBounceSourceScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativeBounceRecordScratch_{};
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeVocoderCarrierScratch_{};
@@ -979,6 +1007,7 @@ private:
 
     SpscRingQueue<Command, 64> commandQueue_;
     NativeLoopFrameScheduler nativeLoopFrameScheduler_;
+    std::atomic<std::uint64_t> nativeScheduledBatchNextId_{1U};
     std::array<std::atomic<bool>, kNativeTrackCount> nativeScheduledLoopPending_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeScheduledLoopRevision_{};
     bool recordActionDubRequested_ = false;
@@ -1217,6 +1246,9 @@ private:
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartBpmBits_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoStartNativeRevision_{};
     std::array<bool, kNativeTrackCount> recordingTempoStartValid_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeRecordingTempoTokenValid_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeRecordingTempoTokenBpmBits_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeRecordingTempoTokenRevision_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateBpmBits_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateRevision_{};
     std::array<std::uint64_t, kNativeTrackCount> recordingTempoCandidateNativeRevision_{};

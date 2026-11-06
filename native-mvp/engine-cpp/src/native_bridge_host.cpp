@@ -58,6 +58,26 @@ namespace {
 
 constexpr std::uint64_t kMaximumSafeTempoRevision = 9007199254740991ULL;
 
+struct TempoConfirmationReceipt {
+    json identity;
+    std::uint64_t revision = 0U;
+    unsigned int track = 0U;
+    int state = 0; // 0 pending, 1 accepted, 2 rejected
+};
+std::mutex tempoReceiptMutex;
+std::array<TempoConfirmationReceipt, 64U> tempoReceipts{};
+
+void refreshTempoReceipts(const EngineStatus& status) {
+    for (auto& receipt : tempoReceipts) {
+        if (receipt.revision == 0U || receipt.state != 0) continue;
+        const auto index = receipt.track - 1U;
+        if (status.nativeRecordTempoConfirmApplied[index] == receipt.revision) {
+            receipt.state = status.nativeRecordTempoConfirmAccepted[index] == receipt.revision ? 1 : 2;
+        }
+    }
+}
+
+
 std::string createHostIncarnationId() {
     std::array<unsigned char, 16U> bytes{};
 #if defined(_WIN32)
@@ -741,6 +761,7 @@ json statusToJson(const EngineStatus& status) {
         nativeTracks.push_back({
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
+            {"stateCode", static_cast<unsigned int>(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
             {"loopLengthSamples", status.nativeTrackLoopLengthSamples[track]},
             {"contentRevision", status.nativeTrackContentRevision[track]},
@@ -981,6 +1002,10 @@ json statusToJson(const EngineStatus& status) {
             {"requestedAction", item.requestedAction == NativeScheduledLoopAction::Record ? "record" :
                 item.requestedAction == NativeScheduledLoopAction::Stop ? "stop" : "play"},
             {"requestedIntentId", formatRhythmIntentId(item.intentIdHigh, item.intentIdLow)},
+            {"batchId", item.batchId}, {"batchMask", item.batchMask}, {"stopRevision", item.stopRevision},
+            {"provenanceValid", item.provenanceValid},
+            {"provenanceBpm", item.provenanceValid ? json(item.provenanceBpm) : json(nullptr)},
+            {"provenanceRevision", item.provenanceRevision},
             {"appliedRevision", item.appliedRevision}, {"appliedAbsoluteFrame", item.appliedAbsoluteFrame},
             {"cancelledRevision", item.cancelledRevision},
             {"faultRevision", item.faultRevision}, {"fault", static_cast<unsigned int>(item.fault)},
@@ -1001,7 +1026,20 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
+        {"nativeRecordingTempoTokens", [&status]() {
+            json tokens = json::array();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                tokens.push_back({{"trackId", track + 1U},
+                    {"valid", status.nativeRecordingTempoTokenValid[track]},
+                    {"bpm", status.nativeRecordingTempoTokenValid[track]
+                        ? json(status.nativeRecordingTempoTokenBpm[track]) : json(nullptr)},
+                    {"revision", status.nativeRecordingTempoTokenRevision[track]}});
+            }
+            return tokens;
+        }()},
         {"nativeLoopFrameScheduling", {{"version", 1}, {"available", status.nativeRhythmFrameSchedulingAvailable},
+            {"batchTransportAvailable", true},
+            {"batchTransportReason", ""},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
@@ -2397,6 +2435,152 @@ int main() {
     // caller supplies the phase token it observed; NativeAudioCore rechecks
     // the current callback-published phase and settings revision atomically
     // before enqueueing the future callback-frame transition.
+    server.Post("/v1/transport/batch-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t expectedSampleFrame = 0U, absoluteFrame = 0U, trackMaskValue = 0U, provenanceMaskValue = 0U;
+            std::uint64_t intentIdHigh = 0U, intentIdLow = 0U;
+            if (!body.is_object() || body.size() != 12U ||
+                !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentIdHigh, intentIdLow) ||
+                !body.contains("action") || !body.at("action").is_string() ||
+                !readUnsignedJsonInteger(body.value("expectedSampleFrame", json()), kMaximumSafeTempoRevision, expectedSampleFrame) ||
+                !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeTempoRevision, absoluteFrame) ||
+                !readUnsignedJsonInteger(body.value("trackMask", json()), 0x1FU, trackMaskValue) ||
+                !readUnsignedJsonInteger(body.value("provenanceMask", json()), 0x1FU, provenanceMaskValue)) {
+                response.status = 400;
+                writeError(response, "Native batch transport requires exact host, intent, action, frame, mask, and provenance fields.");
+                return;
+            }
+            const auto hostId = body.at("hostIncarnationId").get<std::string>();
+            if (hostId != hostIncarnationId()) {
+                response.status = 409;
+                writeError(response, "Native host incarnation changed; batch was not submitted.");
+                return;
+            }
+            const auto actionText = body.at("action").get<std::string>();
+            if (actionText != "play" && actionText != "stop") {
+                response.status = 400;
+                writeError(response, "Native transport batch supports PLAY and STOP only.");
+                return;
+            }
+            const auto readArray = [&body](const char* name, auto& output, std::uint64_t maximum) {
+                if (!body.contains(name) || !body.at(name).is_array() || body.at(name).size() != kNativeTrackCount) return false;
+                for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
+                    std::uint64_t value = 0U;
+                    if (!readUnsignedJsonInteger(body.at(name)[index], maximum, value)) return false;
+                    output[index] = static_cast<std::remove_reference_t<decltype(output[index])>>(value);
+                }
+                return true;
+            };
+            std::array<LooperState, kNativeTrackCount> expectedStates{};
+            std::array<std::uint64_t, kNativeTrackCount> scheduleRevisions{};
+            std::array<std::uint64_t, kNativeTrackCount> stopRevisions{};
+            std::array<double, kNativeTrackCount> provenanceBpm{};
+            std::array<std::uint64_t, kNativeTrackCount> provenanceRevisions{};
+            if (!readArray("expectedStates", expectedStates, static_cast<std::uint64_t>(LooperState::Overdubbing)) ||
+                !readArray("expectedScheduleRevisions", scheduleRevisions, kMaximumSafeTempoRevision) ||
+                !readArray("expectedStopRevisions", stopRevisions, kMaximumSafeTempoRevision) ||
+                !readArray("provenanceRevisions", provenanceRevisions, kMaximumSafeTempoRevision) ||
+                !body.contains("provenanceBpm") || !body.at("provenanceBpm").is_array() ||
+                body.at("provenanceBpm").size() != kNativeTrackCount) {
+                response.status = 400;
+                writeError(response, "Native batch transport requires five safe integer state/revision entries and five tempo values.");
+                return;
+            }
+            for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
+                if (!body.at("provenanceBpm")[index].is_number()) {
+                    response.status = 400; writeError(response, "Native batch tempo values must be finite numbers."); return;
+                }
+                provenanceBpm[index] = body.at("provenanceBpm")[index].get<double>();
+            }
+            std::string error;
+            std::uint64_t batchId = 0U;
+            std::array<std::uint64_t, kNativeTrackCount> acceptedRevisions{};
+            const auto action = actionText == "play" ? NativeScheduledLoopAction::Play : NativeScheduledLoopAction::Stop;
+            if (!engine.scheduleNativeTrackTransportBatch(static_cast<std::uint8_t>(trackMaskValue), action,
+                    expectedSampleFrame, absoluteFrame, expectedStates, scheduleRevisions, stopRevisions,
+                    provenanceBpm, provenanceRevisions, static_cast<std::uint8_t>(provenanceMaskValue),
+                    intentIdHigh, intentIdLow, error, &batchId, &acceptedRevisions)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeLoopFrameScheduling"]["acceptedBatchId"] = batchId;
+            status["nativeLoopFrameScheduling"]["acceptedBatchMask"] = trackMaskValue;
+            status["nativeLoopFrameScheduling"]["acceptedBatchIntentId"] = body.at("intentId");
+            status["nativeLoopFrameScheduling"]["acceptedBatchRevisions"] = acceptedRevisions;
+            writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    const auto readBatchIdentity = [](const httplib::Request& request, std::uint64_t& batchId,
+        std::uint8_t& mask, std::uint64_t& intentHigh, std::uint64_t& intentLow,
+        std::array<std::uint64_t, kNativeTrackCount>& revisions, std::string& hostId) {
+        const auto body = json::parse(request.body);
+        std::uint64_t maskValue = 0U;
+        if (!body.is_object() || body.size() != 5U ||
+            !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+            !body.contains("intentId") || !body.at("intentId").is_string() ||
+            !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentHigh, intentLow) ||
+            !readUnsignedJsonInteger(body.value("batchId", json()), kMaximumSafeTempoRevision, batchId) || batchId == 0U ||
+            !readUnsignedJsonInteger(body.value("trackMask", json()), 0x1FU, maskValue) ||
+            !body.contains("revisions") || !body.at("revisions").is_array() || body.at("revisions").size() != kNativeTrackCount) return false;
+        hostId = body.at("hostIncarnationId").get<std::string>();
+        mask = static_cast<std::uint8_t>(maskValue);
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            if (!readUnsignedJsonInteger(body.at("revisions")[track], kMaximumSafeTempoRevision, revisions[track])) return false;
+        }
+        return true;
+    };
+    const auto writeBatchReceiptResponse = [&engine, &readBatchIdentity](const httplib::Request& request, httplib::Response& response, bool cancel) {
+        try {
+            std::uint64_t batchId = 0U, intentHigh = 0U, intentLow = 0U;
+            std::uint8_t mask = 0U;
+            std::array<std::uint64_t, kNativeTrackCount> revisions{};
+            std::string hostId;
+            if (!readBatchIdentity(request, batchId, mask, intentHigh, intentLow, revisions, hostId)) {
+                response.status = 400; writeError(response, "Native batch receipt requires exact batch identity, member revisions, and host incarnation."); return;
+            }
+            if (hostId != hostIncarnationId()) {
+                response.status = 409; writeError(response, "Native host incarnation changed; refusing prior batch identity."); return;
+            }
+            if (cancel) {
+                std::string error;
+                if (!engine.cancelNativeScheduledTrackTransportBatch(batchId, mask, intentHigh, intentLow, revisions, error)) {
+                    response.status = 409; writeError(response, error); return;
+                }
+                writeJson(response, statusToJson(engine.getStatus()));
+                return;
+            }
+            NativeScheduledLoopBatchReceipt receipt{};
+            if (!engine.getNativeScheduledTrackTransportBatchReceipt(batchId, mask, intentHigh, intentLow, revisions, receipt)) {
+                response.status = 409; writeError(response, "Native status does not match the exact batch identity; no action was retried."); return;
+            }
+            json members = json::array();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if ((mask & static_cast<std::uint8_t>(1U << track)) == 0U) continue;
+                const auto& member = receipt.members[track];
+                members.push_back({{"trackId", track + 1U}, {"revision", revisions[track]},
+                    {"requestedAbsoluteFrame", member.requestedAbsoluteFrame},
+                    {"action", member.requestedAction == NativeScheduledLoopAction::Play ? "play" : "stop"},
+                    {"stopRevision", member.stopRevision}, {"appliedRevision", member.appliedRevision},
+                    {"appliedAbsoluteFrame", member.appliedAbsoluteFrame}, {"appliedContentRevision", member.appliedContentRevision},
+                    {"cancelledRevision", member.cancelledRevision}, {"faultRevision", member.faultRevision},
+                    {"fault", static_cast<unsigned int>(member.fault)}});
+            }
+            writeJson(response, {{"ok", true}, {"hostIncarnationId", hostId}, {"batchId", batchId},
+                {"trackMask", mask}, {"intentId", formatRhythmIntentId(intentHigh, intentLow)},
+                {"state", static_cast<unsigned int>(receipt.state)}, {"members", members}});
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    };
+    server.Post("/v1/transport/batch-status", [&writeBatchReceiptResponse](const httplib::Request& request, httplib::Response& response) {
+        writeBatchReceiptResponse(request, response, false);
+    });
+    server.Post("/v1/transport/batch-cancel", [&writeBatchReceiptResponse](const httplib::Request& request, httplib::Response& response) {
+        writeBatchReceiptResponse(request, response, true);
+    });
+
     server.Post("/v1/transport/rhythm-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
         try {
             const auto body = json::parse(request.body);
@@ -2553,24 +2737,113 @@ int main() {
             const auto body = json::parse(request.body);
             std::uint64_t trackId = 0U, expectedContentRevision = 0U, tempoRevision = 0U, expectedStopRevision = 0U;
             std::optional<double> tempoBpm;
-            if (!body.is_object() || (body.size() != 4U && body.size() != 5U) ||
+            const bool identified = body.contains("operationId") || body.contains("hostIncarnationId");
+            if (identified && (!body.contains("operationId") || !body.at("operationId").is_string() ||
+                !isOperationId(body.at("operationId").get<std::string>()) || !body.contains("hostIncarnationId") ||
+                !body.at("hostIncarnationId").is_string() || body.at("hostIncarnationId").get<std::string>() != hostIncarnationId())) {
+                response.status = 409; writeError(response, "Tempo confirmation identity or host incarnation is invalid."); return;
+            }
+            const auto expectedSize = identified ? (body.contains("stopRevision") ? 8U : 7U) : (body.contains("stopRevision") ? 5U : 4U);
+            if (!body.is_object() || body.size() != expectedSize ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !readUnsignedJsonInteger(body.value("expectedContentRevision", json()), kMaximumSafeTempoRevision, expectedContentRevision) ||
                 (body.contains("stopRevision") &&
                     (!readUnsignedJsonInteger(body.at("stopRevision"), kMaximumSafeTempoRevision, expectedStopRevision) || expectedStopRevision == 0U)) ||
-                (body.size() == 5U) != body.contains("stopRevision") ||
                 !readRecordTempoToken(body, tempoBpm, tempoRevision) || !tempoBpm.has_value()) {
                 response.status = 400; writeError(response, "REC tempo confirmation requires trackId, expectedContentRevision, tempoBpm, tempoRevision, and optional stopRevision."); return;
             }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            // Until the control thread has captured the callback result, no
+            // subsequent identified or legacy confirmation may overwrite this
+            // track's single applied/accepted revision slots.
+            for (const auto& item : tempoReceipts) {
+                if (item.revision != 0U && item.track == trackId && item.state == 0) {
+                    response.status = identified ? 422 : 409;
+                    writeError(response, "Prior tempo confirmation is still awaiting its callback receipt; no confirmation was submitted."); return;
+                }
+            }
+            TempoConfirmationReceipt* slot = nullptr;
+            if (identified) {
+                std::uint64_t expectedConfirmationRevision = 0U;
+                if (!readUnsignedJsonInteger(body.value("expectedConfirmationRevision", json()), kMaximumSafeTempoRevision,
+                        expectedConfirmationRevision)) {
+                    response.status = 400; writeError(response, "Tempo confirmation generation is invalid."); return;
+                }
+                for (auto& item : tempoReceipts) {
+                    if (item.revision != 0U && item.identity.at("operationId") == body.at("operationId")) {
+                        response.status = 409; writeError(response, "Tempo confirmation operation already exists; query its receipt instead of resending."); return;
+                    }
+                    if (item.revision == 0U && slot == nullptr) slot = &item;
+                }
+                if (engine.getStatus().nativeRecordTempoConfirmRequested[trackId - 1U] != expectedConfirmationRevision) {
+                    response.status = 410; writeError(response, "Tempo confirmation generation is stale; no confirmation was submitted."); return;
+                }
+                if (!slot) { response.status = 429; writeError(response, "Tempo confirmation receipt capacity exhausted; no confirmation was submitted."); return; }
+            }
+            if (slot) { slot->identity = body; slot->track = static_cast<unsigned int>(trackId); slot->state = 0; }
             std::string error;
             std::uint64_t requestedRevision = 0U;
             if (!engine.confirmTrackTempoProvenance(trackId - 1U, expectedContentRevision, *tempoBpm,
                     tempoRevision, error, &requestedRevision, expectedStopRevision)) {
-                response.status = 409; writeError(response, error); return;
+                // 422 is a definite pre-enqueue rejection for identified operations.
+                response.status = identified ? 422 : 409; writeError(response, error); return;
             }
+            if (slot) slot->revision = requestedRevision;
             auto status = statusToJson(engine.getStatus());
             status["nativeRecordTempoProvenance"]["acceptedRequestRevision"] = requestedRevision;
             writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Get("/v1/transport/record-tempo/receipts", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409; writeError(response, "Tempo receipt list requires the current host incarnation."); return;
+        }
+        std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+        refreshTempoReceipts(engine.getStatus());
+        auto receipts = json::array();
+        for (const auto& item : tempoReceipts) {
+            if (item.revision != 0U) receipts.push_back(json{{"identity", item.identity}, {"revision", item.revision}, {"state", item.state}});
+        }
+        writeJson(response, json{{"ok", true}, {"hostIncarnationId", hostIncarnationId()}, {"receipts", receipts}});
+    });
+    server.Post("/v1/transport/record-tempo/receipt", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                body.at("hostIncarnationId").get<std::string>() != hostIncarnationId() || !body.contains("operationId") ||
+                !body.at("operationId").is_string() || !isOperationId(body.at("operationId").get<std::string>())) {
+                response.status = 409; writeError(response, "Tempo receipt identity or host incarnation is invalid."); return;
+            }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            for (const auto& item : tempoReceipts) {
+                if (item.revision == 0U || item.identity.at("operationId") != body.at("operationId")) continue;
+                if (item.identity != body) { response.status = 409; writeError(response, "Tempo receipt identity conflicts."); return; }
+                writeJson(response, json{{"ok", true}, {"identity", item.identity}, {"revision", item.revision}, {"state", item.state}}); return;
+            }
+            response.status = 410; writeError(response, "Tempo receipt unavailable or released; outcome remains unknown.");
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/transport/record-tempo/release", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                body.at("hostIncarnationId").get<std::string>() != hostIncarnationId() || !body.contains("operationId") ||
+                !body.at("operationId").is_string() || !isOperationId(body.at("operationId").get<std::string>())) {
+                response.status = 409; writeError(response, "Tempo release identity or host incarnation is invalid."); return;
+            }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            for (auto& item : tempoReceipts) {
+                if (item.revision == 0U || item.identity.at("operationId") != body.at("operationId")) continue;
+                if (item.identity != body || item.state == 0) {
+                    response.status = 409; writeError(response, "Tempo receipt conflicts or has not reached a terminal state."); return;
+                }
+                item = TempoConfirmationReceipt{};
+                writeJson(response, json{{"ok", true}, {"identity", body}}); return;
+            }
+            response.status = 410; writeError(response, "Tempo receipt unavailable or already released.");
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
     server.Post("/v1/transport/stop", [&engine](const httplib::Request& request, httplib::Response& response) {

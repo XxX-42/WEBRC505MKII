@@ -69,6 +69,7 @@ describe('Native STEP SLICER parameters and catalog API', () => {
       track: slots.map((slot) => ({ slot, effectId: '', bypassed: false })),
     };
     const fakeBridge = {
+      getPendingNativeTransportBatch: vi.fn(() => null),
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
         selected[config.path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);
         return statusFor(selected);

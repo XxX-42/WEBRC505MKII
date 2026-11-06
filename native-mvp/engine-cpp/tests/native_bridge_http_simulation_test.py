@@ -2,6 +2,7 @@
 """No-hardware HTTP contract test for the explicit simulation host target."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 import http.client
 import hashlib
 import math
@@ -1436,11 +1437,27 @@ def main():
         status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
         require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
                 f"unconfirmed STOP tempo candidate leaked through the metadata endpoint: {staged_metadata}")
-        status, stale_confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
-            "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
-            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision + 1})
-        require(status == 200,
-                f"Native did not queue the deliberately stale STOP confirmation: {stale_confirmation}")
+        before_race = request("/v1/status")[1]
+        stale_identity = {"trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
+            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision + 1,
+            "hostIncarnationId": before_race["hostIncarnationId"],
+            "expectedConfirmationRevision": before_race["nativeRecordTempoProvenance"]["requestedRevision"][2],
+            "operationId": "a" * 32}
+        competitor = {**stale_identity, "operationId": "b" * 32}
+        code, gate = request("/v1/test/simulation/callback-gate", "POST", {"paused": True})
+        require(code == 200 and gate.get("callbackParked") is True, ("could not park callback", gate))
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            outcomes = list(pool.map(lambda identity: request("/v1/transport/record-tempo/confirm", "POST", identity),
+                                     [stale_identity, competitor]))
+        require(sorted(code for code, _ in outcomes) == [200, 422], ("same-generation CAS accepted more than one", outcomes))
+        require(request("/v1/transport/record-tempo/confirm", "POST", {
+            "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"], "tempoBpm": tempo_bpm,
+            "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision + 1})[0] == 409,
+            "legacy confirmation overwrote a pending identified receipt")
+        require(request("/v1/test/simulation/callback-gate", "POST", {"paused": False})[0] == 200,
+            "could not resume callback")
+        winner = stale_identity if outcomes[0][0] == 200 else competitor
+        stale_confirmation = outcomes[0][1] if outcomes[0][0] == 200 else outcomes[1][1]
         stale_confirm_revision = stale_confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
@@ -1453,9 +1470,19 @@ def main():
         status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
         require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
                 f"revision-mismatched STOP confirmation published tempo metadata: {staged_metadata}")
-        status, confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
-            "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
-            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision})
+        status, rejected_receipt = request("/v1/transport/record-tempo/receipt", "POST", winner)
+        require(status == 200 and rejected_receipt.get("state") == 2, ("rejected callback receipt missing", rejected_receipt))
+        require(request("/v1/transport/record-tempo/release", "POST", winner)[0] == 200,
+                "rejected tempo receipt could not be released")
+        require(request("/v1/transport/record-tempo/confirm", "POST", winner)[0] == 410,
+                "released rejected operation was replayed")
+        before_confirmation = request("/v1/status")[1]
+        host_id = before_confirmation["hostIncarnationId"]
+        exact_tempo_receipt = {"trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
+            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision, "stopRevision": stop_revision,
+            "hostIncarnationId": host_id, "operationId": "2" * 32,
+            "expectedConfirmationRevision": before_confirmation["nativeRecordTempoProvenance"]["requestedRevision"][2]}
+        status, confirmation = request("/v1/transport/record-tempo/confirm", "POST", exact_tempo_receipt)
         require(status == 200, f"callback confirmation for Native STOP take failed: {confirmation}")
         confirm_revision = confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
         deadline = time.monotonic() + 2.0
@@ -1466,9 +1493,102 @@ def main():
             time.sleep(0.005)
         require(provenance.get("acceptedRevision", [0, 0, 0])[2] == confirm_revision,
                 f"Native STOP tempo confirmation callback rejected the staged take: {provenance}")
+        require(confirmation_status["nativeTracks"][2]["contentRevision"] > stopped_track["contentRevision"],
+                "confirmation ACK preceded its content revision")
+        status, receipt = request("/v1/transport/record-tempo/receipt", "POST", exact_tempo_receipt)
+        require(status == 200 and receipt.get("identity") == exact_tempo_receipt and receipt.get("state") == 1 and
+                receipt.get("revision") == confirm_revision, f"exact tempo receipt was not queryable: {receipt}")
+        require(request("/v1/transport/record-tempo/receipts")[0] == 409,
+                "tempo receipt inventory accepted an unbound host")
+        list_code, inventory = request("/v1/transport/record-tempo/receipts", headers={"X-Native-Host-Incarnation": host_id})
+        require(list_code == 200 and inventory.get("hostIncarnationId") == host_id and
+                any(item.get("identity") == exact_tempo_receipt and item.get("state") == 1 for item in inventory.get("receipts", [])),
+                ("exact orphan receipt is not discoverable", inventory))
+        require(request("/v1/transport/record-tempo/confirm", "POST", exact_tempo_receipt)[0] == 409,
+                "duplicate confirmation was accepted")
+        require(request("/v1/transport/record-tempo/receipt", "POST", {**exact_tempo_receipt, "stopRevision": stop_revision + 1})[0] == 409,
+                "conflicting tempo receipt identity was accepted")
+        require(request("/v1/transport/record-tempo/receipt", "POST", {**exact_tempo_receipt, "hostIncarnationId": "f" * 32})[0] == 409,
+                "foreign host tempo receipt was accepted")
+        require(request("/v1/transport/record-tempo/receipt", "POST", {**exact_tempo_receipt, "operationId": "3" * 32})[0] == 410,
+                "unknown tempo receipt was accepted")
         status, stopped_metadata = request("/v1/export/track-metadata?trackId=3")
         require(status == 200 and stopped_metadata.get("originalTempoBpm") == tempo_bpm,
                 f"callback-validated Native STOP tempo was not published with PCM: {stopped_metadata}")
+        # Fill the bounded ledger with terminal rejected confirmations. No
+        # unresolved receipt may be evicted, and a released slot is reusable.
+        additional_receipts = []
+        current_content_revision = request("/v1/status")[1]["nativeTracks"][2]["contentRevision"]
+        for ordinal in range(1, 64):
+            current_generation = request("/v1/status")[1]["nativeRecordTempoProvenance"]["requestedRevision"][2]
+            identity = {**exact_tempo_receipt, "expectedContentRevision": current_content_revision,
+                        "expectedConfirmationRevision": current_generation, "operationId": f"{ordinal + 100:032x}"}
+            code, queued = request("/v1/transport/record-tempo/confirm", "POST", identity)
+            require(code == 200, ("tempo ledger fill failed", ordinal, queued))
+            revision = queued["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                code, item = request("/v1/transport/record-tempo/receipt", "POST", identity)
+                if code == 200 and item.get("state") != 0: break
+                time.sleep(.005)
+            require(code == 200 and item.get("revision") == revision and item.get("state") == 2,
+                    ("tempo ledger terminal receipt missing", identity, item))
+            additional_receipts.append(identity)
+        current_generation = request("/v1/status")[1]["nativeRecordTempoProvenance"]["requestedRevision"][2]
+        overflow = {**exact_tempo_receipt, "expectedContentRevision": current_content_revision,
+                    "expectedConfirmationRevision": current_generation, "operationId": "f" * 32}
+        require(request("/v1/transport/record-tempo/confirm", "POST", overflow)[0] == 429,
+                "full tempo ledger silently evicted a receipt")
+        require(request("/v1/transport/record-tempo/receipt", "POST", exact_tempo_receipt)[1].get("state") == 1,
+                "original confirmed receipt was lost during ledger fill")
+        require(request("/v1/transport/record-tempo/release", "POST", {**exact_tempo_receipt, "tempoRevision": stop_tempo_revision + 1})[0] == 409,
+                "conflicting tempo release was accepted")
+        status, released = request("/v1/transport/record-tempo/release", "POST", exact_tempo_receipt)
+        require(status == 200 and released.get("identity") == exact_tempo_receipt, f"tempo release failed: {released}")
+        require(request("/v1/transport/record-tempo/receipt", "POST", exact_tempo_receipt)[0] == 410,
+                "released tempo receipt remained queryable")
+        before_replay = request("/v1/status")[1]
+        pcm_before_code, _, pcm_before_replay = request_raw("/v1/export/loop-snapshot?trackId=3", {"Origin": "http://localhost:5173"})
+        require(request("/v1/transport/record-tempo/confirm", "POST", exact_tempo_receipt)[0] == 410,
+                "released operation identity was accepted again")
+        after_replay = request("/v1/status")[1]
+        pcm_after_code, _, pcm_after_replay = request_raw("/v1/export/loop-snapshot?trackId=3", {"Origin": "http://localhost:5173"})
+        require(before_replay["nativeTracks"][2]["contentRevision"] == after_replay["nativeTracks"][2]["contentRevision"] and
+                before_replay["nativeRecordTempoProvenance"]["requestedRevision"][2] == after_replay["nativeRecordTempoProvenance"]["requestedRevision"][2] and
+                pcm_before_code == 200 and pcm_after_code == 200 and len(pcm_before_replay) > 0 and
+                pcm_before_replay == pcm_after_replay and request("/v1/export/track-metadata?trackId=3")[1]["originalTempoBpm"] == tempo_bpm,
+                "released replay changed PCM, tempo, or revision")
+        code, reused = request("/v1/transport/record-tempo/confirm", "POST", overflow)
+        require(code == 200, ("released tempo slot was not reusable", reused))
+        for identity in additional_receipts:
+            require(request("/v1/transport/record-tempo/release", "POST", identity)[0] == 200,
+                    ("terminal tempo receipt release failed", identity))
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            code, overflow_receipt = request("/v1/transport/record-tempo/receipt", "POST", overflow)
+            if code == 200 and overflow_receipt.get("state") != 0: break
+            time.sleep(.005)
+        require(code == 200 and overflow_receipt.get("state") == 2 and
+                request("/v1/transport/record-tempo/release", "POST", overflow)[0] == 200,
+                ("reused tempo slot did not reach release", overflow_receipt))
+
+        # More than one full ledger's worth of explicit handoffs must not
+        # exhaust capacity or probabilistically reject a fresh generation.
+        for ordinal in range(65):
+            status_snapshot = request("/v1/status")[1]
+            identity = {**exact_tempo_receipt, "expectedContentRevision": current_content_revision,
+                "expectedConfirmationRevision": status_snapshot["nativeRecordTempoProvenance"]["requestedRevision"][2],
+                "operationId": f"{ordinal + 1000:032x}"}
+            code, queued = request("/v1/transport/record-tempo/confirm", "POST", identity)
+            require(code == 200, ("fresh tempo operation refused", ordinal, queued))
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                code, item = request("/v1/transport/record-tempo/receipt", "POST", identity)
+                if code == 200 and item.get("state") != 0: break
+                time.sleep(.005)
+            require(code == 200 and item.get("state") == 2, ("tempo cycle did not finish", ordinal, item))
+            require(request("/v1/transport/record-tempo/release", "POST", identity)[0] == 200,
+                    ("tempo cycle release failed", ordinal))
         status, cleared = request("/v1/transport/clear?trackId=3", "POST", {})
         require(status == 200, f"Native STOP provenance test track could not be cleared: {cleared}")
 

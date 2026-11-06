@@ -101,6 +101,7 @@ describe('PREAMP controls', () => {
     });
     const engine = NativeAudioEngine.getInstance();
     const fakeBridge = {
+      getPendingNativeTransportBatch: vi.fn(() => null),
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
         const path = config.path ?? 'track';
         selected[path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);

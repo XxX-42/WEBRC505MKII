@@ -233,6 +233,10 @@ export interface NativeStatus {
   /** Cryptographically random process incarnation; missing means the host cannot be safely correlated across restarts. */
   hostIncarnationId?: string;
   nativeStopTrackAcknowledgement?: { trackId: number; requestedRevision: number; appliedRevision: number; committedRevision: number };
+  nativeTransportBatchAcknowledgement?: { batchId: number; action: 'play' | 'stop'; trackMask: number;
+    intentId: string; appliedAbsoluteFrame: number; revisions: number[];
+    stopRevisions: number[];
+    recordingTempoTokens: Array<NativeRecordTempoToken | null> };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
   nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
@@ -246,10 +250,16 @@ export interface NativeStatus {
     stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[]; stopCancelled?: number[];
     acceptedStopRequestRevision?: number };
   nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
-    acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
+    batchTransportAvailable?: boolean; batchTransportReason?: string;
+    acceptedRevision?: number; acceptedBatchId?: number; acceptedBatchMask?: number;
+    acceptedBatchIntentId?: string; acceptedBatchRevisions?: number[];
+    requests?: Array<{ trackIndex: number; requestedRevision: number;
       requestedAbsoluteFrame: number; requestedPhaseEpoch: number; requestedSettingsRevision: number;
       requestedAction: 'record' | 'stop' | 'play'; requestedIntentId: string; appliedRevision: number; appliedAbsoluteFrame: number;
+      batchId?: number; batchMask?: number; stopRevision?: number;
+      provenanceValid?: boolean; provenanceBpm?: number | null; provenanceRevision?: number;
       cancelledRevision: number; faultRevision: number; fault: number }> };
+  nativeRecordingTempoTokens?: Array<{ trackId: number; valid: boolean; bpm: number | null; revision: number }>;
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -289,6 +299,7 @@ export interface NativeStatus {
   nativeTracks?: Array<{
     trackId: number;
     state: NativeLooperState;
+    stateCode?: number;
     loopProgress: number;
     loopLengthSamples?: number;
     /** Monotonic loop-content revision; older hosts omit it. */
@@ -778,13 +789,84 @@ export class NativeRhythmScheduleRecoveryBlockedError extends Error {
   }
 }
 
+export interface NativeTransportBatchReceipt {
+  readonly batchId: number | null;
+  readonly trackMask: number;
+  readonly action: 'play' | 'stop';
+  readonly intentId: string;
+  readonly hostIncarnationId: string;
+  readonly absoluteFrame: number;
+  readonly revisions: readonly number[];
+  readonly recordingTempoTokens: readonly (NativeRecordTempoToken | null)[];
+  readonly tempoHandoff?: readonly ({ contentRevision: number; stopRevision: number; confirmed: boolean; superseded: boolean; rejected: boolean; releaseStarted: boolean; released: boolean } | null)[];
+  readonly acknowledgedStopRevisions?: readonly number[];
+}
+
+export class NativeTransportBatchOutcomeUnknownError extends Error {
+  public readonly receipt: NativeTransportBatchReceipt;
+  public readonly lastStatus: NativeStatus | null;
+  public constructor(receipt: NativeTransportBatchReceipt, lastStatus: NativeStatus | null, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Native ALL ${receipt.action.toUpperCase()} batch has an unknown outcome. Reconcile this exact host-bound batch; do not replay it. ${detail}`);
+    this.name = 'NativeTransportBatchOutcomeUnknownError';
+    this.receipt = receipt;
+    this.lastStatus = lastStatus;
+  }
+}
+
 export class NativeBridgeClient {
+  private static readonly pendingBatchStorageKey = 'webrc.nativeTransportBatchReceipt.v1';
   private readonly baseUrl: string;
   private latestStatus: NativeStatus | null = null;
   private pendingRhythmSchedule: NativeRhythmScheduleReceipt | null = null;
+  private pendingNativeTransportBatch: NativeTransportBatchReceipt | null = null;
+  private invalidBatchReceipt = false;
 
   constructor(baseUrl = nativeBridgeEndpoint()) {
     this.baseUrl = baseUrl;
+    let batchStoragePresent = false;
+    try {
+      const raw = globalThis.sessionStorage?.getItem(NativeBridgeClient.pendingBatchStorageKey);
+      if (raw) {
+        batchStoragePresent = true;
+        const parsed: unknown = JSON.parse(raw);
+        const mask = isObject(parsed) && Number.isInteger(parsed.trackMask) ? parsed.trackMask as number : 0;
+        const batchId = isObject(parsed) ? parsed.batchId : undefined;
+        const revisions = isObject(parsed) && Array.isArray(parsed.revisions) ? parsed.revisions : [];
+        const tokens = isObject(parsed) && Array.isArray(parsed.recordingTempoTokens) ? parsed.recordingTempoTokens : [];
+        const validTokens = tokens.length === 5 && tokens.every((token, index) => {
+          if (token === null) return true;
+          return isObject(parsed) && parsed.action === 'stop' && (mask & (1 << index)) !== 0 &&
+            isObject(token) && Number.isFinite(token.bpm) && (token.bpm as number) >= 40 &&
+            (token.bpm as number) <= 300 && Number.isSafeInteger(token.revision) && (token.revision as number) >= 0;
+        });
+        const handoff = isObject(parsed) ? parsed.tempoHandoff : undefined;
+        const stopRevisions = isObject(parsed) ? parsed.acknowledgedStopRevisions : undefined;
+        const validHandoff = handoff === undefined || Array.isArray(handoff) && handoff.length === 5 &&
+          handoff.every((item, index) => tokens[index] === null ? item === null : isObject(item) &&
+            Number.isSafeInteger(item.contentRevision) && (item.contentRevision as number) > 0 &&
+            Number.isSafeInteger(item.stopRevision) && (item.stopRevision as number) > 0 &&
+            typeof item.confirmed === 'boolean' && typeof item.superseded === 'boolean' && typeof item.rejected === 'boolean' &&
+            Number(item.confirmed) + Number(item.superseded) + Number(item.rejected) <= 1 &&
+            typeof item.releaseStarted === 'boolean' && typeof item.released === 'boolean' &&
+            (!item.releaseStarted || item.confirmed || item.superseded || item.rejected) && (!item.released || item.releaseStarted)) &&
+          Array.isArray(stopRevisions) && stopRevisions.length === 5 && stopRevisions.every((value, index) =>
+            Number.isSafeInteger(value) && ((mask & (1 << index)) !== 0 ? value > 0 : value === 0)) &&
+          handoff.every((item, index) => item === null || item.stopRevision === stopRevisions[index]);
+        const validMask = mask > 0 && (mask & ~0x1f) === 0 && (mask & (mask - 1)) !== 0;
+        const validRevisions = revisions.length === 5 && revisions.every((value, index) =>
+          Number.isSafeInteger(value) && (value as number) >= 0 &&
+          ((mask & (1 << index)) !== 0 ? (batchId === null ? (value as number) === 0 : (value as number) > 0) : (value as number) === 0));
+        if (isObject(parsed) && (batchId === null || Number.isSafeInteger(batchId) && (batchId as number) > 0) &&
+            validMask && (parsed.action === 'play' || parsed.action === 'stop') &&
+            typeof parsed.intentId === 'string' && /^[0-9a-f]{32}$/.test(parsed.intentId) &&
+            isNativeHostIncarnationId(parsed.hostIncarnationId) &&
+            Number.isSafeInteger(parsed.absoluteFrame) && (parsed.absoluteFrame as number) > 0 &&
+            validRevisions && validTokens && validHandoff) {
+          this.pendingNativeTransportBatch = parsed as unknown as NativeTransportBatchReceipt;
+        } else this.invalidBatchReceipt = true;
+      }
+    } catch { if (batchStoragePresent) this.invalidBatchReceipt = true; }
   }
 
   public async health(): Promise<NativeHealth> {
@@ -803,6 +885,351 @@ export class NativeBridgeClient {
 
   public getPendingRhythmSchedule(): NativeRhythmScheduleReceipt | null {
     return this.pendingRhythmSchedule ? { ...this.pendingRhythmSchedule } : null;
+  }
+
+  public getPendingNativeTransportBatch(): NativeTransportBatchReceipt | null {
+    if (this.invalidBatchReceipt) return { batchId: null, trackMask: 0, action: 'stop', intentId: 'invalid retained receipt',
+      hostIncarnationId: '', absoluteFrame: 0, revisions: [0, 0, 0, 0, 0], recordingTempoTokens: [null, null, null, null, null] };
+    return this.pendingNativeTransportBatch ? { ...this.pendingNativeTransportBatch,
+      revisions: [...this.pendingNativeTransportBatch.revisions],
+      recordingTempoTokens: this.pendingNativeTransportBatch.recordingTempoTokens.map(token => token ? { ...token } : null),
+      tempoHandoff: this.pendingNativeTransportBatch.tempoHandoff?.map(item => item ? { ...item } : null),
+      acknowledgedStopRevisions: this.pendingNativeTransportBatch.acknowledgedStopRevisions
+        ? [...this.pendingNativeTransportBatch.acknowledgedStopRevisions] : undefined } : null;
+  }
+
+  private retainBatchTempoHandoff(receipt: NativeTransportBatchReceipt): void {
+    const encoded = JSON.stringify(receipt);
+    try {
+      globalThis.sessionStorage.setItem(NativeBridgeClient.pendingBatchStorageKey, encoded);
+      if (globalThis.sessionStorage.getItem(NativeBridgeClient.pendingBatchStorageKey) !== encoded) throw new Error('storage verification failed');
+    } catch { throw new Error('Native ALL tempo handoff could not be retained; no confirmation was submitted.'); }
+    this.pendingNativeTransportBatch = receipt;
+  }
+
+  public updateNativeBatchTempoHandoff(trackId: number, update: 'confirmed' | 'superseded' | 'rejected' | 'releaseStarted' | 'released'): void {
+    const receipt = this.getPendingNativeTransportBatch();
+    const index = trackId - 1;
+    const item = receipt?.tempoHandoff?.[index];
+    if (!receipt || !item || (update === 'confirmed' && (item.superseded || item.rejected)) ||
+        (update === 'superseded' && (item.confirmed || item.rejected)) || (update === 'rejected' && (item.confirmed || item.superseded)) ||
+        (update === 'releaseStarted' && !item.confirmed && !item.superseded && !item.rejected) ||
+        (update === 'released' && !item.releaseStarted)) throw new Error('Native ALL tempo handoff identity is unavailable.');
+    const handoff = receipt.tempoHandoff!.map((value, i) => i === index && value
+      ? { ...value, confirmed: value.confirmed || update === 'confirmed',
+        superseded: value.superseded || update === 'superseded',
+        rejected: value.rejected || update === 'rejected',
+        releaseStarted: value.releaseStarted || update === 'releaseStarted', released: value.released || update === 'released' } : value);
+    this.retainBatchTempoHandoff({ ...receipt, tempoHandoff: handoff });
+  }
+
+  public finishNativeBatchTempoHandoff(): void {
+    const receipt = this.pendingNativeTransportBatch;
+    if (!receipt?.tempoHandoff || receipt.tempoHandoff.some(item => item !== null && !item.released))
+      throw new Error('Native ALL tempo handoff is not complete.');
+    try {
+      globalThis.sessionStorage.removeItem(NativeBridgeClient.pendingBatchStorageKey);
+      if (globalThis.sessionStorage.getItem(NativeBridgeClient.pendingBatchStorageKey) !== null) throw new Error('storage verification failed');
+    } catch { throw new Error('Native ALL tempo handoff could not be cleared; it remains recoverable.'); }
+    this.pendingNativeTransportBatch = null;
+  }
+
+  public async scheduleNativeTransportBatch(action: 'play' | 'stop'): Promise<NativeStatus> {
+    if (this.invalidBatchReceipt) throw new Error('The retained Native ALL receipt is invalid; no batch was submitted.');
+    if (this.pendingNativeTransportBatch) throw new NativeTransportBatchOutcomeUnknownError(
+      this.pendingNativeTransportBatch, this.latestStatus,
+      new Error('An earlier ALL batch is unresolved; reconcile it before another transport action.'),
+    );
+    const before = await this.getStatus();
+    const scheduling = before.nativeLoopFrameScheduling;
+    const hostIncarnationId = before.hostIncarnationId;
+    const sampleFrame = before.nativeSampleFrame;
+    if (scheduling?.batchTransportAvailable !== true || !isNativeHostIncarnationId(hostIncarnationId) ||
+        !Number.isSafeInteger(sampleFrame) || !Array.isArray(scheduling.requests) || scheduling.requests.length !== 5 ||
+        !Array.isArray(before.nativeTracks) || before.nativeTracks.length !== 5 ||
+        !Array.isArray(before.nativeMemory?.loopSync) || before.nativeMemory.loopSync.length !== 5) {
+      throw new Error(scheduling?.batchTransportReason || 'Native host does not advertise safe ALL batch transport; no request was submitted.');
+    }
+    const expectedStates: number[] = [];
+    const expectedScheduleRevisions: number[] = [];
+    const expectedStopRevisions = before.nativeRecordPlay?.stopRequested;
+    if (!Array.isArray(expectedStopRevisions) || expectedStopRevisions.length !== 5) {
+      throw new Error('Native status lacks five per-track STOP revision baselines; ALL was not submitted.');
+    }
+    let trackMask = 0;
+    let provenanceMask = 0;
+    const provenanceBpm = [0, 0, 0, 0, 0];
+    const provenanceRevisions = [0, 0, 0, 0, 0];
+    const recordingTempoTokens: Array<NativeRecordTempoToken | null> = [null, null, null, null, null];
+    for (let index = 0; index < 5; index += 1) {
+      const track = before.nativeTracks[index]!;
+      const request = scheduling.requests[index]!;
+      if (track.trackId !== index + 1 || !Number.isInteger(track.stateCode) || track.stateCode! < 0 || track.stateCode! > 4 ||
+          request.trackIndex !== index || !Number.isSafeInteger(request.requestedRevision) || request.requestedRevision < 0 ||
+          !Number.isSafeInteger(expectedStopRevisions[index]) || expectedStopRevisions[index]! < 0) {
+        throw new Error(`Native status has an incomplete ALL transport baseline at Track ${index + 1}; no request was submitted.`);
+      }
+      expectedStates.push(track.stateCode!);
+      expectedScheduleRevisions.push(request.requestedRevision);
+      const eligible = action === 'play'
+        ? track.state === 'Stopped' && Number.isSafeInteger(track.loopLengthSamples) && track.loopLengthSamples! > 0
+        : ['Recording', 'Playing', 'Overdubbing'].includes(track.state);
+      if (eligible) {
+        if (before.nativeMemory.loopSync[index]) {
+          throw new Error(`ALL ${action.toUpperCase()} is not available while Track ${index + 1} has LOOP SYNC enabled.`);
+        }
+        trackMask |= 1 << index;
+        if (action === 'stop' && track.state === 'Recording') {
+          const token = before.nativeRecordingTempoTokens?.[index];
+          if (token?.trackId !== index + 1 || token.valid !== true || !Number.isFinite(token.bpm) ||
+              token.bpm! < 40 || token.bpm! > 300 || !Number.isSafeInteger(token.revision) || token.revision < 0) {
+            throw new Error(`ALL STOP cannot preserve Track ${index + 1} take tempo; its Native recording token is unavailable.`);
+          }
+          provenanceMask |= 1 << index;
+          provenanceBpm[index] = token.bpm!;
+          provenanceRevisions[index] = token.revision;
+          recordingTempoTokens[index] = { bpm: token.bpm!, revision: token.revision };
+        }
+      }
+    }
+    if ((trackMask & (trackMask - 1)) === 0) throw new Error(`ALL ${action.toUpperCase()} requires at least two eligible Native tracks.`);
+    if (!Number.isSafeInteger(before.sampleRate) || before.sampleRate <= 0 ||
+        !Number.isSafeInteger(before.bufferFrames) || before.bufferFrames <= 0) {
+      throw new Error('Native status lacks an audio frame clock; ALL was not submitted.');
+    }
+    const absoluteFrame = sampleFrame! + Math.max(before.bufferFrames * 4, Math.ceil(before.sampleRate / 2));
+    if (!Number.isSafeInteger(absoluteFrame) || absoluteFrame <= sampleFrame!) throw new Error('Native ALL target frame is outside the safe integer range.');
+    const intentId = createNativeRhythmIntentId();
+    const unknownReceipt: NativeTransportBatchReceipt = { batchId: null, trackMask, action, intentId,
+      hostIncarnationId, absoluteFrame, revisions: [0, 0, 0, 0, 0], recordingTempoTokens };
+    // A lost response must remain recoverable across reload before any POST.
+    const serializedReceipt = JSON.stringify(unknownReceipt);
+    try {
+      const storage = globalThis.sessionStorage;
+      if (!storage) throw new Error('sessionStorage is unavailable');
+      storage.setItem(NativeBridgeClient.pendingBatchStorageKey, serializedReceipt);
+      if (storage.getItem(NativeBridgeClient.pendingBatchStorageKey) !== serializedReceipt) {
+        throw new Error('sessionStorage did not retain the exact identity');
+      }
+    } catch (error) {
+      throw new Error(`Native ALL identity could not be persisted; no batch was sent. ${error instanceof Error ? error.message : String(error)}`);
+    }
+    this.pendingNativeTransportBatch = unknownReceipt;
+    let accepted: NativeStatus;
+    try {
+      accepted = await this.request<NativeStatus>('/v1/transport/batch-schedule', { method: 'POST',
+        body: JSON.stringify({ hostIncarnationId, intentId, action, expectedSampleFrame: sampleFrame,
+          absoluteFrame, trackMask, expectedStates, expectedScheduleRevisions, expectedStopRevisions,
+          provenanceBpm, provenanceRevisions, provenanceMask }) });
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+        this.setPendingNativeTransportBatch(null);
+        throw error;
+      }
+      const status = error instanceof NativeBridgeRequestTimeoutError ? error.reconciledStatus : await this.tryGetStatus();
+      const discovered = status ? this.discoverBatchReceipt(status, unknownReceipt, expectedScheduleRevisions) : null;
+      if (!discovered) {
+        this.setPendingNativeTransportBatch(unknownReceipt);
+        throw new NativeTransportBatchOutcomeUnknownError(unknownReceipt, status, error);
+      }
+      this.setPendingNativeTransportBatch(discovered);
+      return this.waitForNativeTransportBatch(discovered, status ?? this.latestStatus ?? before);
+    }
+    const discovered = this.discoverBatchReceipt(accepted, unknownReceipt, expectedScheduleRevisions);
+    if (!discovered || accepted.nativeLoopFrameScheduling?.acceptedBatchId !== discovered.batchId ||
+        accepted.nativeLoopFrameScheduling.acceptedBatchMask !== trackMask ||
+        accepted.nativeLoopFrameScheduling.acceptedBatchIntentId !== intentId) {
+      this.setPendingNativeTransportBatch(unknownReceipt);
+      throw new NativeTransportBatchOutcomeUnknownError(unknownReceipt, accepted,
+        new Error('Native host response did not bind the exact ALL batch identity and per-track revisions.'));
+    }
+    this.setPendingNativeTransportBatch(discovered);
+    return this.waitForNativeTransportBatch(discovered, accepted);
+  }
+
+  public async reconcilePendingNativeTransportBatch(): Promise<NativeStatus> {
+    if (this.invalidBatchReceipt) throw new Error('The retained Native ALL receipt is invalid; no recovery action was submitted.');
+    let receipt = this.pendingNativeTransportBatch;
+    const status = await this.getStatus();
+    if (!receipt) {
+      if (!isNativeHostIncarnationId(status.hostIncarnationId)) throw new NativeTransportBatchOutcomeUnknownError(
+        { batchId: null, trackMask: 0, action: 'stop', intentId: '', hostIncarnationId: '', absoluteFrame: 0,
+          revisions: [], recordingTempoTokens: [] }, status,
+        new Error('Native status cannot bind a batch to a host incarnation.'),
+      );
+      const candidates = (status.nativeLoopFrameScheduling?.requests ?? []).filter(item =>
+        Number.isSafeInteger(item?.batchId) && item.batchId! > 0 && item.batchMask !== undefined && item.batchMask !== 0 &&
+        item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
+        item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
+      const unique = [...new Set(candidates.map(item => item.batchId))];
+      if (unique.length !== 1) return status;
+      const first = candidates[0]!;
+      const action = first.requestedAction;
+      if (action !== 'play' && action !== 'stop') throw new Error('Native batch receipt has an unsupported action.');
+      const template: NativeTransportBatchReceipt = { batchId: first.batchId!, trackMask: first.batchMask!, action,
+        intentId: first.requestedIntentId, hostIncarnationId: status.hostIncarnationId, absoluteFrame: first.requestedAbsoluteFrame,
+        revisions: [0, 0, 0, 0, 0], recordingTempoTokens: [null, null, null, null, null] };
+      receipt = this.discoverBatchReceipt(status, template, [0, 0, 0, 0, 0]);
+      if (!receipt) throw new NativeTransportBatchOutcomeUnknownError(template, status,
+        new Error('Current Native status does not contain a complete, unique batch receipt; no action was retried.'));
+      this.setPendingNativeTransportBatch(receipt);
+    }
+    if (status.hostIncarnationId !== receipt.hostIncarnationId &&
+        !(receipt.tempoHandoff && receipt.tempoHandoff.every(item => item === null || item.released))) {
+      throw new NativeTransportBatchOutcomeUnknownError(receipt, status,
+        new Error('Native host incarnation changed; the old batch cannot be replayed against this host.'));
+    }
+    if (receipt.tempoHandoff && receipt.batchId !== null) {
+      return { ...status, nativeTransportBatchAcknowledgement: {
+        batchId: receipt.batchId, action: receipt.action, trackMask: receipt.trackMask, intentId: receipt.intentId,
+        appliedAbsoluteFrame: receipt.absoluteFrame, revisions: [...receipt.revisions],
+        stopRevisions: [...receipt.acknowledgedStopRevisions!],
+        recordingTempoTokens: receipt.recordingTempoTokens.map(token => token ? { ...token } : null),
+      } };
+    }
+    if (receipt.batchId === null) {
+      const discovered = this.discoverBatchReceipt(status, receipt, [0, 0, 0, 0, 0]);
+      if (!discovered) throw new NativeTransportBatchOutcomeUnknownError(receipt, status,
+        new Error('No exact accepted intent is present in Native status; outcome remains unknown and no batch was replayed.'));
+      receipt = discovered;
+      this.setPendingNativeTransportBatch(receipt);
+    }
+    return this.waitForNativeTransportBatch(receipt, status);
+  }
+
+  public async cancelNativeTransportBatch(receipt = this.pendingNativeTransportBatch): Promise<NativeStatus> {
+    if (!receipt || receipt.batchId === null || !isNativeHostIncarnationId(receipt.hostIncarnationId)) {
+      throw new Error('Native ALL cancellation requires a complete host-bound batch receipt.');
+    }
+    const status = await this.request<NativeStatus>('/v1/transport/batch-cancel', { method: 'POST',
+      body: JSON.stringify({ hostIncarnationId: receipt.hostIncarnationId, batchId: receipt.batchId,
+        trackMask: receipt.trackMask, intentId: receipt.intentId, revisions: receipt.revisions }) });
+    return this.waitForNativeTransportBatch(receipt, status, true);
+  }
+
+  private async tryGetStatus(): Promise<NativeStatus | null> {
+    try { return await this.getStatus(); } catch { return null; }
+  }
+
+  private setPendingNativeTransportBatch(receipt: NativeTransportBatchReceipt | null): void {
+    this.pendingNativeTransportBatch = receipt;
+    try {
+      if (receipt) globalThis.sessionStorage?.setItem(NativeBridgeClient.pendingBatchStorageKey, JSON.stringify(receipt));
+      else globalThis.sessionStorage?.removeItem(NativeBridgeClient.pendingBatchStorageKey);
+    } catch { /* Storage failure never authorizes replay; keep the live receipt. */ }
+  }
+
+  private discoverBatchReceipt(status: NativeStatus, template: NativeTransportBatchReceipt,
+      baselineRevisions: readonly number[]): NativeTransportBatchReceipt | null {
+    if (status.hostIncarnationId !== template.hostIncarnationId) return null;
+    const requests = status.nativeLoopFrameScheduling?.requests;
+    if (!Array.isArray(requests) || requests.length !== 5) return null;
+    const revisions = [0, 0, 0, 0, 0];
+    let seenMask = 0;
+    let batchId = template.batchId;
+    const recordingTempoTokens = [...template.recordingTempoTokens];
+    for (let index = 0; index < 5; index += 1) {
+      if ((template.trackMask & (1 << index)) === 0) continue;
+      const item = requests[index];
+      if (!item || item.requestedIntentId !== template.intentId || item.requestedAction !== template.action ||
+          item.requestedAbsoluteFrame !== template.absoluteFrame || item.batchMask !== template.trackMask ||
+          !Number.isSafeInteger(item.batchId) || item.batchId! <= 0 ||
+          !Number.isSafeInteger(item.requestedRevision) || item.requestedRevision <= (baselineRevisions[index] ?? 0) ||
+          (batchId !== null && item.batchId !== batchId)) return null;
+      batchId = item.batchId!;
+      revisions[index] = item.requestedRevision;
+      if (!recordingTempoTokens[index] && item.provenanceValid === true && Number.isFinite(item.provenanceBpm) &&
+          Number.isSafeInteger(item.provenanceRevision)) {
+        recordingTempoTokens[index] = { bpm: item.provenanceBpm!, revision: item.provenanceRevision! };
+      }
+      seenMask |= 1 << index;
+    }
+    return seenMask === template.trackMask && batchId !== null
+      ? { ...template, batchId, revisions, recordingTempoTokens } : null;
+  }
+
+  private async waitForNativeTransportBatch(receipt: NativeTransportBatchReceipt, initialStatus: NativeStatus,
+      expectCancelled = false): Promise<NativeStatus> {
+    if (receipt.batchId === null || initialStatus.hostIncarnationId !== receipt.hostIncarnationId) {
+      throw new NativeTransportBatchOutcomeUnknownError(receipt, initialStatus,
+        new Error('Native batch receipt is not bound to the current host incarnation.'));
+    }
+    const body = JSON.stringify({ hostIncarnationId: receipt.hostIncarnationId, batchId: receipt.batchId,
+      trackMask: receipt.trackMask, intentId: receipt.intentId, revisions: receipt.revisions });
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    let currentStatus = initialStatus;
+    for (;;) {
+      let receiptStatus: { ok: boolean; state?: number; batchId?: number; trackMask?: number; intentId?: string;
+        hostIncarnationId?: string; members?: Array<{ trackId: number; revision: number; action: string;
+          requestedAbsoluteFrame: number; stopRevision: number; appliedRevision: number; appliedAbsoluteFrame: number;
+          appliedContentRevision: number; cancelledRevision: number; faultRevision: number; fault: number }> };
+      try { receiptStatus = await this.request('/v1/transport/batch-status', { method: 'POST', body }); }
+      catch (error) {
+        const reconciled = await this.tryGetStatus();
+        throw new NativeTransportBatchOutcomeUnknownError(receipt, reconciled ?? currentStatus, error);
+      }
+      if (receiptStatus.batchId !== receipt.batchId || receiptStatus.trackMask !== receipt.trackMask ||
+          receiptStatus.intentId !== receipt.intentId || receiptStatus.hostIncarnationId !== receipt.hostIncarnationId ||
+          !Array.isArray(receiptStatus.members) || receiptStatus.members.length !== (receipt.trackMask.toString(2).replace(/0/g, '').length)) {
+        throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus,
+          new Error('Native batch status does not match every member of the accepted identity.'));
+      }
+      const memberIds = new Set(receiptStatus.members.map(member => member.trackId));
+      const allApplied = memberIds.size === receiptStatus.members.length && receiptStatus.members.every(member =>
+        Number.isInteger(member.trackId) && member.trackId >= 1 && member.trackId <= 5 &&
+        (receipt.trackMask & (1 << (member.trackId - 1))) !== 0 && member.action === receipt.action &&
+        member.requestedAbsoluteFrame === receipt.absoluteFrame && member.revision === receipt.revisions[member.trackId - 1] &&
+        member.appliedRevision === member.revision && member.appliedAbsoluteFrame === receipt.absoluteFrame &&
+        (!receipt.recordingTempoTokens[member.trackId - 1] || member.stopRevision > 0 &&
+          Number.isSafeInteger(member.appliedContentRevision) && member.appliedContentRevision > 0));
+      if (expectCancelled && receiptStatus.state === 4) {
+        this.setPendingNativeTransportBatch(null);
+        return currentStatus;
+      }
+      if (receiptStatus.state === 5 && allApplied) {
+        let acknowledged: NativeStatus;
+        try { acknowledged = await this.getStatus(); }
+        catch (error) { throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus, error); }
+        if (acknowledged.hostIncarnationId !== receipt.hostIncarnationId) {
+          throw new NativeTransportBatchOutcomeUnknownError(receipt, acknowledged,
+            new Error('Native host restarted after the batch ACK.'));
+        }
+        if (receipt.recordingTempoTokens.some(Boolean)) {
+          if (!receipt.tempoHandoff) {
+            const handoff = receipt.recordingTempoTokens.map((token, index) => {
+              if (!token) return null;
+              const member = receiptStatus.members!.find(value => value.trackId === index + 1);
+              if (!member || !Number.isSafeInteger(member.appliedContentRevision) || member.appliedContentRevision <= 0)
+                throw new NativeTransportBatchOutcomeUnknownError(receipt, acknowledged,
+                  new Error(`Track ${index + 1} has no exact committed take revision in its batch receipt.`));
+              return { contentRevision: member.appliedContentRevision, stopRevision: member.stopRevision,
+                confirmed: false, superseded: false, rejected: false, releaseStarted: false, released: false };
+            });
+            const acknowledgedStopRevisions = [0, 0, 0, 0, 0].map((_, index) =>
+              receiptStatus.members!.find(member => member.trackId === index + 1)?.stopRevision ?? 0);
+            if (acknowledgedStopRevisions.some((revision, index) => (receipt.trackMask & (1 << index)) !== 0 &&
+                (!Number.isSafeInteger(revision) || revision <= 0)))
+              throw new NativeTransportBatchOutcomeUnknownError(receipt, acknowledged, new Error('Batch STOP revisions are incomplete.'));
+            this.retainBatchTempoHandoff({ ...receipt, tempoHandoff: handoff, acknowledgedStopRevisions });
+          }
+        } else this.setPendingNativeTransportBatch(null);
+        return { ...acknowledged, nativeTransportBatchAcknowledgement: {
+          batchId: receipt.batchId, action: receipt.action, trackMask: receipt.trackMask, intentId: receipt.intentId,
+          appliedAbsoluteFrame: receipt.absoluteFrame, revisions: [...receipt.revisions],
+          stopRevisions: [0, 0, 0, 0, 0].map((_, index) =>
+            receiptStatus.members!.find(member => member.trackId === index + 1)?.stopRevision ?? 0),
+          recordingTempoTokens: receipt.recordingTempoTokens.map(token => token ? { ...token } : null),
+        } };
+      }
+      if (receiptStatus.state === 6 || receiptStatus.state === 4) {
+        this.setPendingNativeTransportBatch(null);
+        throw new Error(`Native ALL ${receipt.action.toUpperCase()} batch reached terminal state ${receiptStatus.state}; inspect every track before another command.`);
+      }
+      if (Date.now() >= deadline) throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus,
+        new Error('Timed out waiting for every member callback acknowledgement; do not replay the batch.'));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      currentStatus = await this.getStatus();
+    }
   }
 
   public getOneShot(trackId: number): boolean | null {
@@ -1288,26 +1715,161 @@ export class NativeBridgeClient {
   public async confirmTrackTempoProvenance(trackId: number, expectedContentRevision: number,
       tempo: NativeRecordTempoToken, expectedStopRevision?: number): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC tempo confirmation track.');
-    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0) throw new RangeError('Invalid Native REC tempo content revision.');
-    if (expectedStopRevision !== undefined && (!Number.isSafeInteger(expectedStopRevision) || expectedStopRevision <= 0)) {
-      throw new RangeError('Invalid Native STOP commit revision for tempo confirmation.');
+    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0 ||
+        !Number.isFinite(tempo.bpm) || tempo.bpm < 40 || tempo.bpm > 300 || !Number.isSafeInteger(tempo.revision) || tempo.revision < 0 ||
+        (expectedStopRevision !== undefined && (!Number.isSafeInteger(expectedStopRevision) || expectedStopRevision <= 0))) {
+      throw new RangeError('Invalid Native REC tempo confirmation identity.');
     }
-    let status = await this.request<NativeStatus>('/v1/transport/record-tempo/confirm', {
-      method: 'POST', body: JSON.stringify({ trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision,
-        ...(expectedStopRevision === undefined ? {} : { stopRevision: expectedStopRevision }) }),
-    });
-    const revision = status.nativeRecordTempoProvenance?.acceptedRequestRevision;
-    if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC tempo confirmation acknowledgement is unavailable; provenance remains unknown.');
+    const key = `rc505.native.tempo-confirmation.${trackId}`;
+    const expected = { trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision,
+      ...(expectedStopRevision === undefined ? {} : { stopRevision: expectedStopRevision }) };
+    let identity: Record<string, unknown>;
+    const saved = globalThis.sessionStorage?.getItem(key);
+    if (saved) {
+      identity = JSON.parse(saved) as Record<string, unknown>;
+      if (Object.entries(expected).some(([field, value]) => identity[field] !== value) ||
+          (expectedStopRevision === undefined && identity.stopRevision !== undefined) ||
+          !Number.isSafeInteger(identity.expectedConfirmationRevision) || (identity.expectedConfirmationRevision as number) < 0 ||
+          !isNativeHostIncarnationId(identity.hostIncarnationId) || typeof identity.operationId !== 'string' ||
+          !/^[0-9a-f]{32}$/.test(identity.operationId)) {
+        throw new Error('A different Native tempo confirmation is unresolved; its exact receipt must be reconciled first.');
+      }
+    } else {
+      const before = await this.getStatus();
+      if (!isNativeHostIncarnationId(before.hostIncarnationId)) throw new Error('Native tempo confirmation requires a host incarnation; no request was submitted.');
+      // Another caller may have installed an identity while status was in flight.
+      if (globalThis.sessionStorage.getItem(key)) return this.confirmTrackTempoProvenance(trackId, expectedContentRevision, tempo, expectedStopRevision);
+      const generation = before.nativeRecordTempoProvenance?.requestedRevision?.[trackId - 1];
+      if (!Number.isSafeInteger(generation) || generation! < 0) throw new Error('Native tempo confirmation generation is unavailable; no request was submitted.');
+      identity = { ...expected, expectedConfirmationRevision: generation, hostIncarnationId: before.hostIncarnationId, operationId: createNativeRhythmIntentId() };
+      const encoded = JSON.stringify(identity);
+      try {
+        globalThis.sessionStorage.setItem(key, encoded);
+        if (globalThis.sessionStorage.getItem(key) !== encoded) throw new Error('storage verification failed');
+      } catch { throw new Error('Native tempo confirmation identity could not be retained; no request was submitted.'); }
+      try {
+        await this.request('/v1/transport/record-tempo/confirm', { method: 'POST', body: encoded });
+      } catch (error) {
+        // 410/422/429 are the protocol's explicit pre-enqueue rejections.
+        if (error instanceof NativeBridgeHttpError && (error.status === 410 || error.status === 422 || error.status === 429)) {
+          if (globalThis.sessionStorage.getItem(key) === encoded) globalThis.sessionStorage.removeItem(key);
+          throw error;
+        }
+        // The POST may already have committed. Query only; never repeat it.
+      }
+    }
+    if (globalThis.sessionStorage.getItem(`${key}.releasePending`) === identity.operationId) {
+      throw new Error('Native tempo confirmation release is pending; complete release instead of reconfirming.');
+    }
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
-      const provenance = status.nativeRecordTempoProvenance;
-      if (provenance && provenance.appliedRevision?.[trackId - 1] === revision) {
-        if (provenance.acceptedRevision?.[trackId - 1] !== revision) throw new Error('Native REC tempo confirmation was rejected; provenance remains unknown.');
+      let receipt: { identity?: Record<string, unknown>; revision?: number; state?: number } | undefined;
+      try {
+        const inventory = await this.request<{ ok: boolean; hostIncarnationId?: string;
+          receipts?: Array<{ identity?: Record<string, unknown>; revision?: number; state?: number }> }>(
+          '/v1/transport/record-tempo/receipts', { headers: { 'X-Native-Host-Incarnation': identity.hostIncarnationId as string } });
+        if (inventory.hostIncarnationId !== identity.hostIncarnationId || !Array.isArray(inventory.receipts)) throw new Error('host mismatch');
+        const matches = inventory.receipts.filter(item => isObject(item) && isObject(item.identity) && item.identity.operationId === identity.operationId);
+        if (matches.length !== 1) throw new Error('exact receipt is unavailable');
+        receipt = matches[0];
+      } catch { throw new Error('Native tempo confirmation outcome is unknown; retain its exact receipt and query it again, never resend.'); }
+      if (!receipt || !isObject(receipt.identity) || Object.keys(receipt.identity).length !== Object.keys(identity).length ||
+          Object.entries(identity).some(([field, value]) => receipt.identity![field] !== value) ||
+          !Number.isSafeInteger(receipt.revision) || receipt.revision! <= 0 || ![0, 1, 2].includes(receipt.state!)) {
+        throw new Error('Native tempo confirmation receipt does not match its exact identity; outcome remains unknown.');
+      }
+      if (receipt.state === 2) {
+        globalThis.sessionStorage.setItem(`${key}.rejected`, identity.operationId as string);
+        throw new Error('Native REC tempo confirmation was rejected; provenance remains unknown.');
+      }
+      if (receipt.state === 1) {
+        const status = await this.getStatus();
+        if (status.hostIncarnationId !== identity.hostIncarnationId) throw new Error('Native host changed after tempo confirmation; outcome remains unknown.');
+        globalThis.sessionStorage.setItem(`${key}.confirmed`, identity.operationId as string);
         return status;
       }
-      if (Date.now() >= deadline) throw new Error('Native REC tempo confirmation callback acknowledgement timed out; provenance remains unknown.');
-      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+      if (Date.now() >= deadline) throw new Error('Native tempo confirmation remains pending; query its exact receipt again, never resend.');
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
+  }
+
+  public getRetainedTrackTempoConfirmations(): Array<{ trackId: number; releasePending: boolean; rejected: boolean }> {
+    const retained: Array<{ trackId: number; releasePending: boolean; rejected: boolean }> = [];
+    for (let trackId = 1; trackId <= 5; trackId += 1) {
+      const key = `rc505.native.tempo-confirmation.${trackId}`;
+      const saved = globalThis.sessionStorage?.getItem(key);
+      if (!saved) continue;
+      let operationId: unknown;
+      try { operationId = (JSON.parse(saved) as Record<string, unknown>).operationId; } catch { /* fail closed below */ }
+      retained.push({ trackId,
+        releasePending: typeof operationId === 'string' && globalThis.sessionStorage.getItem(`${key}.releasePending`) === operationId,
+        rejected: typeof operationId === 'string' && globalThis.sessionStorage.getItem(`${key}.rejected`) === operationId });
+    }
+    return retained;
+  }
+
+  /** Read host-owned receipts, including those orphaned by a lost browser tab. */
+  public async listUnreleasedTempoConfirmations(): Promise<Array<{ identity: Record<string, unknown>; revision: number; state: number }>> {
+    const status = await this.getStatus();
+    if (!isNativeHostIncarnationId(status.hostIncarnationId)) throw new Error('Native host incarnation is unavailable.');
+    const result = await this.request<{ ok: boolean; hostIncarnationId?: string; receipts?: Array<{ identity: Record<string, unknown>; revision: number; state: number }> }>(
+      '/v1/transport/record-tempo/receipts', { headers: { 'X-Native-Host-Incarnation': status.hostIncarnationId } });
+    if (result.hostIncarnationId !== status.hostIncarnationId || !Array.isArray(result.receipts) ||
+        result.receipts.some(item => !isObject(item) || !isObject(item.identity) || item.identity.hostIncarnationId !== status.hostIncarnationId ||
+          !Number.isSafeInteger(item.revision) || item.revision <= 0 || ![0, 1, 2].includes(item.state))) {
+      throw new Error('Native tempo receipt list is invalid or belongs to another host.');
+    }
+    return result.receipts;
+  }
+
+  public async reconcileTrackTempoConfirmation(trackId: number): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native tempo confirmation track.');
+    const saved = globalThis.sessionStorage.getItem(`rc505.native.tempo-confirmation.${trackId}`);
+    if (!saved) throw new Error('No retained Native tempo confirmation can be reconciled.');
+    const identity = JSON.parse(saved) as Record<string, unknown>;
+    if (identity.trackId !== trackId || typeof identity.expectedContentRevision !== 'number' ||
+        typeof identity.tempoBpm !== 'number' || typeof identity.tempoRevision !== 'number' ||
+        (identity.stopRevision !== undefined && typeof identity.stopRevision !== 'number')) {
+      throw new Error('Retained Native tempo confirmation identity is invalid.');
+    }
+    return this.confirmTrackTempoProvenance(trackId, identity.expectedContentRevision,
+      { bpm: identity.tempoBpm, revision: identity.tempoRevision }, identity.stopRevision as number | undefined);
+  }
+
+  /** Release only after the caller has durably completed its own handoff. */
+  public async releaseTrackTempoConfirmation(trackId: number): Promise<void> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native tempo confirmation track.');
+    const key = `rc505.native.tempo-confirmation.${trackId}`;
+    const saved = globalThis.sessionStorage.getItem(key);
+    if (!saved) throw new Error('No retained Native tempo confirmation is available for release.');
+    const identity = JSON.parse(saved) as Record<string, unknown>;
+    const operationId = identity.operationId;
+    if (typeof operationId !== 'string' ||
+        (globalThis.sessionStorage.getItem(`${key}.confirmed`) !== operationId &&
+         globalThis.sessionStorage.getItem(`${key}.rejected`) !== operationId)) {
+      throw new Error('Cannot release an unresolved Native tempo confirmation.');
+    }
+    const releaseWasPending = globalThis.sessionStorage.getItem(`${key}.releasePending`) === operationId;
+    globalThis.sessionStorage.setItem(`${key}.releasePending`, operationId);
+    try {
+      const result = await this.request<{ ok: boolean; identity?: Record<string, unknown> }>('/v1/transport/record-tempo/release',
+        { method: 'POST', body: saved });
+      if (!isObject(result.identity) || Object.keys(result.identity).length !== Object.keys(identity).length ||
+          Object.entries(identity).some(([field, value]) => result.identity![field] !== value)) {
+        throw new Error('Native tempo confirmation release did not match the retained identity.');
+      }
+    } catch (error) {
+      // Only a previously sent release can explain a missing receipt. Never treat
+      // a host restart or the first 410 as proof of release.
+      if (!(releaseWasPending && error instanceof NativeBridgeHttpError && error.status === 410)) throw error;
+      const status = await this.getStatus();
+      if (status.hostIncarnationId !== identity.hostIncarnationId) throw new Error('Native host changed while releasing the tempo receipt.');
+    }
+    if (globalThis.sessionStorage.getItem(key) !== saved) throw new Error('Native tempo confirmation changed during release.');
+    globalThis.sessionStorage.removeItem(key);
+    globalThis.sessionStorage.removeItem(`${key}.confirmed`);
+    globalThis.sessionStorage.removeItem(`${key}.rejected`);
+    globalThis.sessionStorage.removeItem(`${key}.releasePending`);
   }
 
   public async setMixerLevel(channel: number, percent: number): Promise<NativeStatus> {
@@ -2014,7 +2576,47 @@ export class NativeBridgeClient {
     });
   }
 
-  public async reconcilePendingRhythmTempo(expectedBpm?: number, expectedHost?: string, expectedOwner?: string): Promise<NativeStatus | null> {
+  /** Exact retained identity, including an explicit invalid sentinel for corrupt storage. */
+  public getPendingRhythmTempoIdentity(): { host: string; intent: string; baseline: number; receiptIntent?: string; owner?: string | null; bpm?: number } | null {
+    let raw: string | null | undefined;
+    try { raw = globalThis.sessionStorage?.getItem('rc505.native.rhythm-tempo-request'); }
+    catch { return { host: '', intent: '', baseline: -1 }; }
+    if (!raw) return null;
+    try {
+      const value: unknown = JSON.parse(raw);
+      if (isObject(value) && isNativeHostIncarnationId(value.host) && isNativeHostIncarnationId(value.intent) &&
+          !/^0+$/.test(value.intent) && Number.isSafeInteger(value.baseline) && (value.baseline as number) >= 0) {
+        const config = value.config as NativeRhythmConfig | undefined;
+        const receiptIntent = isObject(config) && config.bpm === value.baselineBpm &&
+          isNativeHostIncarnationId(value.baselineTempoIntent) ? value.baselineTempoIntent : value.intent;
+        return { host: value.host, intent: value.intent, baseline: value.baseline as number, receiptIntent,
+          owner: value.owner === null || typeof value.owner === 'string' ? value.owner : undefined,
+          bpm: isObject(config) && Number.isFinite(config.bpm) ? config.bpm : undefined };
+      }
+    } catch { /* Invalid storage must not authorize adoption. */ }
+    return { host: '', intent: '', baseline: -1 };
+  }
+
+  /** Retire only an ordinary request proven superseded by a later confirmed host generation. */
+  public releaseSupersededRhythmTempoIdentity(host: string, revision: number, intent: string): boolean {
+    const key = 'rc505.native.rhythm-tempo-request';
+    try {
+      const storage = globalThis.sessionStorage;
+      const raw = storage.getItem(key);
+      if (!raw) return true;
+      const value: unknown = JSON.parse(raw);
+      if (!isObject(value) || value.owner !== null || value.host !== host || !isNativeHostIncarnationId(value.intent) ||
+          value.intent === intent || !Number.isSafeInteger(value.baseline) || (value.baseline as number) < 0 ||
+          !Number.isFinite(value.baselineBpm) || !isObject(value.config) ||
+          !isNativeRhythmConfig(value.config as unknown as NativeRhythmConfig)) return false;
+      const expected = (value.baseline as number) + (value.baselineBpm === (value.config as unknown as NativeRhythmConfig).bpm ? 0 : 1);
+      if (!Number.isSafeInteger(revision) || revision <= expected) return false;
+      storage.removeItem(key);
+      return storage.getItem(key) === null;
+    } catch { return false; }
+  }
+
+  public async reconcilePendingRhythmTempo(expectedBpm?: number, expectedHost?: string, expectedOwner?: string | null): Promise<NativeStatus | null> {
     const saved = globalThis.sessionStorage?.getItem('rc505.native.rhythm-tempo-request');
     if (!saved) return null;
     const pending = JSON.parse(saved) as { host: string; owner: string | null; config: NativeRhythmConfig };
@@ -2112,7 +2714,10 @@ export class NativeBridgeClient {
             'X-Native-Rhythm-Revision': String(pending.baselineConfig) }, body: JSON.stringify(config) });
         if (status.nativeRhythm?.acceptedTempoRevision !== pending.baseline + (pending.baselineBpm === config.bpm ? 0 : 1)) throw new Error('Native rhythm acceptance did not identify this tempo revision.');
       } catch (error) {
-        if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+        // This endpoint's explicit 409 paths return before setNativeRhythmConfig
+        // succeeds. Its generic 400 exception handler also wraps response
+        // serialization after the mutation, so a 400 is not proof of rejection.
+        if (error instanceof NativeBridgeHttpError && error.status === 409) {
           globalThis.sessionStorage.removeItem(key); throw error;
         }
         status = await this.getStatus();

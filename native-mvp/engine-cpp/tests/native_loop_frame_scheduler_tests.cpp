@@ -199,6 +199,179 @@ void appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition() {
     assert(state.fault == NativeScheduledLoopFault::ApplyRejected);
 }
 
+void batchPublishesAndDispatchesEveryTrackAtOneExactFrame() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (auto& item : requests) {
+        item.batchId = 77U;
+        item.batchMask = 0x03U;
+    }
+    requests[1].trackIndex = 1U;
+    assert(scheduler.requestBatch(requests, 2U));
+
+    const auto first = scheduler.status(0U);
+    const auto second = scheduler.status(1U);
+    assert(first.requestedRevision == 1U && second.requestedRevision == 1U);
+    assert(first.batchId == 77U && second.batchId == 77U);
+    assert(first.batchMask == 0x03U && second.batchMask == 0x03U);
+    assert(!scheduler.cancel(0U, 1U)); // Per-track cancellation could split a batch.
+
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 2U);
+    assert(events[0].request.batchId == events[1].request.batchId);
+    assert(events[0].frameOffset == 5U && events[1].frameOffset == 5U);
+    scheduler.acknowledgeApplied(0U, 1U, 105U, true);
+    auto premature = request(2U, 205U, 7U, 11U, 0U, NativeScheduledLoopAction::Record);
+    assert(!scheduler.request(premature)); // No member may replace a partially acknowledged batch.
+    scheduler.acknowledgeApplied(1U, 1U, 105U, true);
+    assert(scheduler.status(0U).appliedAbsoluteFrame == 105U);
+    assert(scheduler.status(1U).appliedAbsoluteFrame == 105U);
+}
+
+void terminalBatchReceiptSurvivesLaterPerTrackRequest() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 107U;
+        requests[i].batchMask = 0x03U;
+        requests[i].intentIdHigh = 0xB47CU;
+        requests[i].intentIdLow = 0x19A5U;
+    }
+    assert(scheduler.requestBatch(requests, 2U));
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 2U);
+    scheduler.acknowledgeApplied(0U, 1U, 105U, true);
+    scheduler.acknowledgeApplied(1U, 1U, 105U, true);
+
+    auto newer = request(2U, 205U, 7U, 11U, 0U, NativeScheduledLoopAction::Record);
+    assert(scheduler.request(newer)); // Archives the terminal batch before replacing Track 1's live slot.
+    std::array<std::uint64_t, kNativeScheduledLoopTrackCount> revisions{};
+    revisions[0] = 1U;
+    revisions[1] = 1U;
+    NativeScheduledLoopBatchReceipt receipt{};
+    assert(scheduler.readBatchReceipt(107U, 0x03U, 0xB47CU, 0x19A5U, revisions, receipt));
+    assert(receipt.state == NativeScheduledLoopBatchState::Applied);
+    assert(receipt.members[0].appliedRevision == 1U && receipt.members[0].appliedAbsoluteFrame == 105U);
+    assert(receipt.members[1].appliedRevision == 1U && receipt.members[1].appliedAbsoluteFrame == 105U);
+    assert(scheduler.request(request(2U, 206U, 7U, 11U, 1U, NativeScheduledLoopAction::Record)));
+    assert(scheduler.readBatchReceipt(107U, 0x03U, 0xB47CU, 0x19A5U, revisions, receipt));
+    assert(!scheduler.readBatchReceipt(107U, 0x03U, 0xB47CU, 0xFFFFU, revisions, receipt));
+}
+
+void batchPreflightFailureRejectsEveryMemberBeforeDispatch() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Stop);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Stop);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 88U;
+        requests[i].batchMask = 0x03U;
+        requests[i].stopRevision = i + 1U;
+    }
+    assert(scheduler.requestBatch(requests, 2U));
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 8U, 11U, events) == 0U);
+    for (std::size_t track = 0U; track < 2U; ++track) {
+        const auto state = scheduler.status(track);
+        assert(state.appliedRevision == 0U);
+        assert(state.faultRevision == 1U);
+        assert(state.fault == NativeScheduledLoopFault::StalePhaseEpoch);
+    }
+}
+
+void batchCancellationLinearizesAllMembersBeforeOrAfterDispatch() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(3U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(8U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 101U;
+        requests[i].batchMask = 0x03U;
+        requests[i].intentIdHigh = 0x1234U;
+        requests[i].intentIdLow = 0x5678U;
+    }
+    assert(scheduler.requestBatch(requests, 2U));
+    std::array<std::uint64_t, kNativeScheduledLoopTrackCount> revisions{};
+    revisions[0] = 3U;
+    revisions[1] = 8U;
+    assert(!scheduler.cancelBatch(101U, 0x03U, 0x9999U, 0x5678U, revisions));
+    assert(scheduler.cancelBatch(101U, 0x03U, 0x1234U, 0x5678U, revisions));
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events) == 0U);
+    assert(scheduler.status(0U).cancelledRevision == 3U);
+    assert(scheduler.status(1U).cancelledRevision == 8U);
+    assert(!scheduler.cancelBatch(101U, 0x03U, 0x1234U, 0x5678U, revisions));
+
+    NativeLoopFrameScheduler dispatchedScheduler;
+    requests[0].revision = 1U;
+    requests[1].revision = 1U;
+    requests[0].batchId = 102U;
+    requests[1].batchId = 102U;
+    revisions[0] = revisions[1] = 1U;
+    assert(dispatchedScheduler.requestBatch(requests, 2U));
+    assert(dispatchedScheduler.collectDue(100U, 10U, 7U, 11U, events) == 2U);
+    assert(!dispatchedScheduler.cancelBatch(102U, 0x03U, 0x1234U, 0x5678U, revisions));
+}
+
+void blockedBatchWaitsAsAGroupAndThenFaultsEveryMember() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Stop);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Stop);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 103U;
+        requests[i].batchMask = 0x03U;
+        requests[i].stopRevision = i + 1U;
+    }
+    assert(scheduler.requestBatch(requests, 2U));
+    std::array<NativeScheduledLoopEvent, kNativeScheduledLoopTrackCount> events{};
+    assert(scheduler.collectDue(100U, 10U, 7U, 11U, events, 0x02U) == 0U);
+    assert(scheduler.status(0U).faultRevision == 0U && scheduler.status(1U).faultRevision == 0U);
+    assert(scheduler.collectDue(110U, 10U, 7U, 11U, events) == 0U);
+    for (std::size_t track = 0U; track < 2U; ++track) {
+        const auto state = scheduler.status(track);
+        assert(state.appliedRevision == 0U);
+        assert(state.faultRevision == 1U);
+        assert(state.fault == NativeScheduledLoopFault::MissedFrame);
+    }
+}
+
+void batchRejectsRecordAndMixedActionsWithoutPublishing() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Record);
+    requests[1] = request(1U, 105U, 7U, 11U, 1U, NativeScheduledLoopAction::Record);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 104U;
+        requests[i].batchMask = 0x03U;
+    }
+    assert(!scheduler.requestBatch(requests, 2U));
+    assert(scheduler.status(0U).requestedRevision == 0U && scheduler.status(1U).requestedRevision == 0U);
+    requests[0].action = NativeScheduledLoopAction::Play;
+    requests[1].action = NativeScheduledLoopAction::Stop;
+    requests[1].stopRevision = 1U;
+    assert(!scheduler.requestBatch(requests, 2U));
+    assert(scheduler.status(0U).requestedRevision == 0U && scheduler.status(1U).requestedRevision == 0U);
+}
+
+void invalidBatchIsRejectedWithoutPublishingAnyMember() {
+    NativeLoopFrameScheduler scheduler;
+    std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount> requests{};
+    requests[0] = request(1U, 105U, 7U, 11U, 0U, NativeScheduledLoopAction::Play);
+    requests[1] = request(1U, 106U, 7U, 11U, 1U, NativeScheduledLoopAction::Play);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        requests[i].batchId = 99U;
+        requests[i].batchMask = 0x03U;
+    }
+    assert(!scheduler.requestBatch(requests, 2U));
+    assert(scheduler.status(0U).requestedRevision == 0U);
+    assert(scheduler.status(1U).requestedRevision == 0U);
+}
+
 void concurrentControlProducersAreSerializedAndPublishWholeRequestTuples() {
     NativeLoopFrameScheduler scheduler;
     auto first = request(1U, 1234U, 21U, 31U, 0U, NativeScheduledLoopAction::Record);
@@ -293,6 +466,13 @@ int main() {
     lateFramesAndInvalidRequestsDoNotRun();
     looperStartsAndStopsOnTheExactScheduledSample();
     appliedAckRejectsAFrameThatDoesNotMatchTheScheduledTransition();
+    batchPublishesAndDispatchesEveryTrackAtOneExactFrame();
+    terminalBatchReceiptSurvivesLaterPerTrackRequest();
+    batchPreflightFailureRejectsEveryMemberBeforeDispatch();
+    batchCancellationLinearizesAllMembersBeforeOrAfterDispatch();
+    blockedBatchWaitsAsAGroupAndThenFaultsEveryMember();
+    batchRejectsRecordAndMixedActionsWithoutPublishing();
+    invalidBatchIsRejectedWithoutPublishingAnyMember();
     concurrentControlProducersAreSerializedAndPublishWholeRequestTuples();
     callbackObservesMeasureReceiptOnlyWithItsPublishedRequest();
     return 0;

@@ -38,6 +38,7 @@ function fixture(archiveBpm = 120) {
   let cached = status;
   let edits = 0;
   const bridge = {
+    getPendingNativeTransportBatch: vi.fn(() => null),
     getStatus: vi.fn(async () => status),
     beginProjectArchiveImport: vi.fn(async (_archive: unknown, _revision: number, _host: string, operationId: string) => ({ generation: 19, hostIncarnationId, operationId })),
     getProjectArchiveImportStatusByOperationId: vi.fn(async (operationId: string) => ({ ok: true, generation: 12,

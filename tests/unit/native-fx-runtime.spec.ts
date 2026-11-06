@@ -61,6 +61,8 @@ function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
   const status = (running = false) => nativeStatus(running, byPath.track, byPath.input);
   const fakeBridge = {
     getPendingRhythmSchedule: vi.fn(() => null),
+    getPendingNativeTransportBatch: vi.fn(() => null),
+    getRetainedTrackTempoConfirmations: vi.fn(() => []),
     health: vi.fn(async () => ({ ok: true, version: 'test', engineRunning: false, backends: ['WASAPI'], lastError: '' })),
     getDevices: vi.fn(async () => ({
       ok: true, backends: ['WASAPI'],
@@ -436,7 +438,7 @@ describe('Native catalog FX runtime and UI adapter', () => {
   it('does not claim live type replacement; retains the selected setting for restart and exposes the rejection state', async () => {
     const engine = NativeAudioEngine.getInstance();
     const previous = nativeStatus(true, slots.map((slot, index) => ({ slot, effectId: index === 0 ? 'fractional_delay' : '', bypassed: false })));
-    const fakeBridge = { setCatalogSlot: vi.fn(async () => previous) };
+    const fakeBridge = { getPendingNativeTransportBatch: vi.fn(() => null), setCatalogSlot: vi.fn(async () => previous) };
     const internals = engine as unknown as {
       bridge: NativeBridgeClient; bridgeAvailable: boolean; engineRunning: boolean; latestStatus: NativeStatus;
     };

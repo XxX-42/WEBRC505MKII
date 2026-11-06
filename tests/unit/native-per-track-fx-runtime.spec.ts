@@ -69,7 +69,8 @@ function install(engine: NativeAudioEngine) {
   });
   const queueCatalogMidiEvent = vi.fn(async (_event: NativeCatalogMidiEvent) => status());
   const queueOscVocMidiEvent = vi.fn(async () => status());
-  internals.bridge = { setCatalogSlot, queueCatalogMidiEvent, queueOscVocMidiEvent } as unknown as NativeBridgeClient;
+  internals.bridge = { setCatalogSlot, queueCatalogMidiEvent, queueOscVocMidiEvent,
+    getPendingNativeTransportBatch: vi.fn(() => null) } as unknown as NativeBridgeClient;
   internals.applyStatus(status());
   internals.hydrateNativeCatalogFromStatus(status());
   // Configure desired state without scheduling background work; tests flush explicitly.

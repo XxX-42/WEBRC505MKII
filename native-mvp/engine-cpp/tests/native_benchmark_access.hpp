@@ -13,6 +13,7 @@ struct NativeAudioCoreTestAccess {
  }
  static bool command(NativeAudioCore& c,CommandType t,unsigned track) {return c.commandQueue_.push({t,false,static_cast<std::uint8_t>(track)});}
  static int run(NativeAudioCore& c,const float* in,float* out,unsigned n){return NativeAudioCore::audioCallback(out,const_cast<float*>(in),n,0,0,&c);}
+ static void setRunning(NativeAudioCore& c,bool value){c.engineRunning_.store(value,std::memory_order_release);}
  static bool extraRoutesHealthy(const NativeAudioCore& c) {
   for(const auto* bank:{&c.nativeInputFxBank_,&c.outputStage_->trackFxBank()})for(unsigned s=0;s<4;++s){auto* p=bank->processor(static_cast<NativeEffectSlot>(s));if(!p||p->isBypassed()||p->processingFaulted())return false;}
   return c.nativeRhythmEngine_.enabled();

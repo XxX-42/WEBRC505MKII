@@ -21,6 +21,8 @@ std::atomic<NativeAudioCore::CallbackEntryTestHook> NativeAudioCore::callbackEnt
 std::atomic<void*> NativeAudioCore::callbackEntryTestContext_{nullptr};
 std::atomic<NativeAudioCore::CallbackBeforeEnterTestHook> NativeAudioCore::callbackBeforeEnterTestHook_{nullptr};
 std::atomic<void*> NativeAudioCore::callbackBeforeEnterTestContext_{nullptr};
+std::atomic<NativeAudioCore::CallbackEntryTestHook> NativeAudioCore::callbackBeforeBatchPublishTestHook_{nullptr};
+std::atomic<void*> NativeAudioCore::callbackBeforeBatchPublishTestContext_{nullptr};
 #endif
 
 namespace {
@@ -346,6 +348,10 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRecordStopApplied[i] = recordStopApplied_[i].load(std::memory_order_acquire);
         status.nativeRecordStopCommittedRevision[i] = recordStopCommittedRevision_[i].load(std::memory_order_acquire);
         status.nativeRecordStopCancelled[i] = recordStopCancelledRevision_[i].load(std::memory_order_acquire);
+        status.nativeRecordingTempoTokenValid[i] = nativeRecordingTempoTokenValid_[i].load(std::memory_order_acquire);
+        const auto tokenBpmBits = nativeRecordingTempoTokenBpmBits_[i].load(std::memory_order_acquire);
+        std::memcpy(&status.nativeRecordingTempoTokenBpm[i], &tokenBpmBits, sizeof(tokenBpmBits));
+        status.nativeRecordingTempoTokenRevision[i] = nativeRecordingTempoTokenRevision_[i].load(std::memory_order_acquire);
         status.nativeScheduledLoop[i] = nativeLoopFrameScheduler_.status(i);
     }
     for (std::size_t i = 0U; i < mixerLevels_.size(); ++i) status.mixerLevels[i] = mixerLevels_[i].load(std::memory_order_acquire);
@@ -1413,6 +1419,187 @@ bool NativeAudioCore::cancelNativeScheduledLoop(std::size_t trackIndex, std::uin
     return true;
 }
 
+bool NativeAudioCore::scheduleNativeTrackTransportBatch(
+    std::uint8_t trackMask, NativeScheduledLoopAction action, std::uint64_t expectedSampleFrame,
+    std::uint64_t absoluteFrame, const std::array<LooperState, kNativeTrackCount>& expectedStates,
+    const std::array<std::uint64_t, kNativeTrackCount>& expectedScheduleRevisions,
+    const std::array<std::uint64_t, kNativeTrackCount>& expectedStopRevisions,
+    const std::array<double, kNativeTrackCount>& provenanceBpm,
+    const std::array<std::uint64_t, kNativeTrackCount>& provenanceRevisions,
+    std::uint8_t provenanceMask, std::uint64_t intentIdHigh, std::uint64_t intentIdLow,
+    std::string& error, std::uint64_t* batchId,
+    std::array<std::uint64_t, kNativeTrackCount>* acceptedRevisions) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (batchId != nullptr) *batchId = 0U;
+    if (acceptedRevisions != nullptr) acceptedRevisions->fill(0U);
+    constexpr auto allTracksMask = static_cast<std::uint8_t>((1U << kNativeTrackCount) - 1U);
+    if ((trackMask & static_cast<std::uint8_t>(~allTracksMask)) != 0U ||
+        (provenanceMask & static_cast<std::uint8_t>(~allTracksMask)) != 0U ||
+        (action != NativeScheduledLoopAction::Play && action != NativeScheduledLoopAction::Stop) ||
+        intentIdHigh == 0U && intentIdLow == 0U || absoluteFrame <= expectedSampleFrame ||
+        absoluteFrame == std::numeric_limits<std::uint64_t>::max()) {
+        error = "Native transport batch requires a valid PLAY/STOP action, frame, host intent, and five-track mask.";
+        return false;
+    }
+    const auto currentSampleFrame = publishedCallbackFrameCursor_.load(std::memory_order_acquire);
+    if (!engineRunning_.load(std::memory_order_acquire) ||
+        projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
+        commandQueue_.size() != 0U || historyPinRequestGeneration_.load(std::memory_order_acquire) != 0U ||
+        loopSnapshotRequested_.load(std::memory_order_acquire) ||
+        expectedSampleFrame > currentSampleFrame || absoluteFrame <= currentSampleFrame) {
+        error = "Native transport batch frame/status baseline is stale or a track/history boundary is pending; refresh status before retrying.";
+        return false;
+    }
+
+    std::uint8_t derivedMask = 0U;
+    std::array<std::uint64_t, kNativeTrackCount> oldScheduleRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> newStopRevisions{};
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (nativeScheduledLoopPending_[track].load(std::memory_order_acquire) ||
+            pendingTrackStateCommands_[track].load(std::memory_order_acquire) != 0U ||
+            nativeLoopTransportPendingCommands_[track].load(std::memory_order_acquire) != 0U) {
+            error = "Native transport batch requires all five tracks to have no pending state or transport command.";
+            return false;
+        }
+        const auto state = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
+        if (state != expectedStates[track]) {
+            error = "Native transport batch all-track state baseline changed; no track was scheduled.";
+            return false;
+        }
+        const auto loopFrames = nativeTrackLoopLengthSamples_[track].load(std::memory_order_acquire);
+        const bool selected = action == NativeScheduledLoopAction::Play
+            ? state == LooperState::Stopped && loopFrames > 0U
+            : state == LooperState::Recording || state == LooperState::Playing || state == LooperState::Overdubbing;
+        if (selected) derivedMask = static_cast<std::uint8_t>(derivedMask | (1U << track));
+    }
+    if (derivedMask != trackMask) {
+        error = "Native transport batch selection does not match the current state of all five tracks; no track was scheduled.";
+        return false;
+    }
+    unsigned int selectedCount = 0U;
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track)
+        selectedCount += (trackMask & static_cast<std::uint8_t>(1U << track)) != 0U ? 1U : 0U;
+    if (selectedCount < 2U) {
+        error = "Native transport batch requires at least two eligible tracks.";
+        return false;
+    }
+
+    const auto phaseEpoch = nativeRhythmEngine_.phaseEpoch();
+    const auto settingsRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+    const auto newBatchId = nativeScheduledBatchNextId_.fetch_add(1U, std::memory_order_acq_rel);
+    if (newBatchId == 0U || newBatchId >= kMaximumSafeProjectContentRevision) {
+        error = "Native transport batch identity exhausted.";
+        return false;
+    }
+    std::array<NativeScheduledLoopRequest, kNativeTrackCount> requests{};
+    std::array<std::uint64_t, kNativeTrackCount> oldStopRevisions{};
+    std::array<std::size_t, kNativeTrackCount> selectedTracks{};
+    std::size_t requestCount = 0U;
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if ((trackMask & static_cast<std::uint8_t>(1U << track)) == 0U) continue;
+        if (nativeLoopSync_[track].load(std::memory_order_acquire)) {
+            error = "Native batch transport does not support LOOP SYNC tracks; the batch was not scheduled.";
+            return false;
+        }
+        const auto current = nativeLoopFrameScheduler_.status(track);
+        if (current.requestedRevision != expectedScheduleRevisions[track] ||
+            current.requestedRevision >= kMaximumSafeProjectContentRevision) {
+            error = "Native transport batch schedule revision changed or is exhausted; refresh status before retrying.";
+            return false;
+        }
+        oldScheduleRevisions[track] = current.requestedRevision;
+        auto& request = requests[requestCount];
+        request.revision = current.requestedRevision + 1U;
+        request.absoluteFrame = absoluteFrame;
+        request.phaseEpoch = phaseEpoch;
+        request.settingsRevision = settingsRevision;
+        request.trackIndex = static_cast<std::uint8_t>(track);
+        request.action = action;
+        request.intentIdHigh = intentIdHigh;
+        request.intentIdLow = intentIdLow;
+        request.batchId = newBatchId;
+        request.batchMask = trackMask;
+        for (std::size_t fencedTrack = 0U; fencedTrack < kNativeTrackCount; ++fencedTrack)
+            request.batchExpectedStates[fencedTrack] = static_cast<std::uint8_t>(expectedStates[fencedTrack]);
+        if (action == NativeScheduledLoopAction::Stop) {
+            if (recordStopRequested_[track] != expectedStopRevisions[track] ||
+                recordStopRequested_[track] >= kMaximumSafeProjectContentRevision) {
+                error = "Native STOP revision changed or is exhausted; refresh status before retrying.";
+                return false;
+            }
+            oldStopRevisions[track] = recordStopRequested_[track];
+            newStopRevisions[track] = recordStopRequested_[track] + 1U;
+            request.stopRevision = newStopRevisions[track];
+            if (expectedStates[track] == LooperState::Recording) {
+                const auto bit = static_cast<std::uint8_t>(1U << track);
+                if ((provenanceMask & bit) == 0U || !std::isfinite(provenanceBpm[track]) ||
+                    provenanceBpm[track] < 40.0 || provenanceBpm[track] > 300.0 ||
+                    provenanceRevisions[track] > kMaximumSafeProjectContentRevision) {
+                    error = "Native ALL STOP includes a recording track without a valid per-track tempo token; no track was scheduled.";
+                    return false;
+                }
+                request.provenanceValid = true;
+                request.provenanceBpm = provenanceBpm[track];
+                request.provenanceRevision = provenanceRevisions[track];
+            }
+        }
+        selectedTracks[requestCount] = track;
+        ++requestCount;
+    }
+
+    for (std::size_t i = 0U; i < requestCount; ++i) {
+        const auto track = selectedTracks[i];
+        nativeScheduledLoopRevision_[track].store(requests[i].revision, std::memory_order_release);
+        nativeScheduledLoopPending_[track].store(true, std::memory_order_release);
+        pendingTrackStateCommands_[track].fetch_add(1U, std::memory_order_acq_rel);
+        if (action == NativeScheduledLoopAction::Stop) recordStopRequested_[track] = newStopRevisions[track];
+    }
+    if (!nativeLoopFrameScheduler_.requestBatch(requests, requestCount)) {
+        for (std::size_t i = 0U; i < requestCount; ++i) {
+            const auto track = selectedTracks[i];
+            nativeScheduledLoopRevision_[track].store(oldScheduleRevisions[track], std::memory_order_release);
+            nativeScheduledLoopPending_[track].store(false, std::memory_order_release);
+            pendingTrackStateCommands_[track].fetch_sub(1U, std::memory_order_acq_rel);
+            if (action == NativeScheduledLoopAction::Stop) recordStopRequested_[track] = oldStopRevisions[track];
+        }
+        error = "Native transport batch was rejected before any member was published.";
+        return false;
+    }
+    if (batchId != nullptr) *batchId = newBatchId;
+    if (acceptedRevisions != nullptr) {
+        for (std::size_t i = 0U; i < requestCount; ++i)
+            (*acceptedRevisions)[selectedTracks[i]] = requests[i].revision;
+    }
+    advanceProjectRevision(projectContentRevision_);
+    error.clear();
+    return true;
+}
+
+bool NativeAudioCore::cancelNativeScheduledTrackTransportBatch(
+    std::uint64_t batchId, std::uint8_t trackMask, std::uint64_t intentIdHigh,
+    std::uint64_t intentIdLow, const std::array<std::uint64_t, kNativeTrackCount>& revisions,
+    std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
+        !nativeLoopFrameScheduler_.cancelBatch(batchId, trackMask, intentIdHigh, intentIdLow, revisions)) {
+        error = "Native transport batch is no longer atomically cancellable.";
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool NativeAudioCore::getNativeScheduledTrackTransportBatchReceipt(
+    std::uint64_t batchId, std::uint8_t trackMask, std::uint64_t intentIdHigh,
+    std::uint64_t intentIdLow,
+    const std::array<std::uint64_t, kNativeTrackCount>& revisions,
+    NativeScheduledLoopBatchReceipt& receipt) const noexcept {
+    return nativeLoopFrameScheduler_.readBatchReceipt(
+        batchId, trackMask, intentIdHigh, intentIdLow, revisions, receipt);
+}
+
 bool NativeAudioCore::confirmTrackTempoProvenance(std::size_t trackIndex, std::uint64_t expectedContentRevision,
                                                    double bpm, std::uint64_t tempoRevision, std::string& error,
                                                    std::uint64_t* requestedRevision,
@@ -1950,6 +2137,10 @@ void NativeAudioCore::applyScheduledTrackCommand(void* context) noexcept {
     auto* const scheduled = static_cast<ScheduledTrackCommandContext*>(context);
     if (scheduled != nullptr && scheduled->core != nullptr) {
         scheduled->core->applyTrackCommandAtCallback(scheduled->command);
+        const auto state = scheduled->core->looperForTrack(scheduled->command.trackIndex).state();
+        scheduled->applied = scheduled->command.type == CommandType::Record ? state == LooperState::Recording :
+            scheduled->command.type == CommandType::StopRecordOrPlayback ?
+                (state == LooperState::Stopped || state == LooperState::Empty) : state == LooperState::Playing;
     }
 }
 
@@ -1999,8 +2190,6 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             originalTempoBpmBits_[index].store(recordingTempoCandidateBpmBits_[index], std::memory_order_release);
             recordingTempoCandidateValid_[index] = false;
         }
-        recordTempoConfirmAccepted_[index].store(tempoProvenanceConfirmed ? command.revision : 0U, std::memory_order_release);
-        recordTempoConfirmApplied_[index].store(command.revision, std::memory_order_release);
     }
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) {
         originalTempoBpmBits_[index].store(0U, std::memory_order_release);
@@ -2169,6 +2358,12 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
         markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
+    }
+    // Publish only after provenance, content revision, phase and history have
+    // been updated. Status readers acquire applied before reading these fields.
+    if (command.type == CommandType::ConfirmRecordTempoProvenance) {
+        recordTempoConfirmAccepted_[index].store(tempoProvenanceConfirmed ? command.revision : 0U, std::memory_order_release);
+        recordTempoConfirmApplied_[index].store(command.revision, std::memory_order_release);
     }
 }
 
@@ -5219,11 +5414,9 @@ const LooperCore& NativeAudioCore::looperForTrack(std::size_t trackIndex) const 
 
 ProcessStats NativeAudioCore::processNativeTracksForCallback(
     const float* rawInputInterleaved,
-    const float* processedInputInterleaved,
     float* outputInterleaved,
     unsigned int frames,
     unsigned int rawInputChannels,
-    unsigned int processedInputChannels,
     NativePitchRouteDecision* pitchRouteDecision
 ) noexcept {
     ProcessStats stats{};
@@ -5241,7 +5434,6 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             nativeRhythmEngine_.phaseEpoch(),
             nativeTempoAppliedRevision_.load(std::memory_order_acquire), scheduledEvents, blockedTrackMask)
         : 0U;
-
     for (auto& bank : nativePerTrackFxBanks_) {
         synchronizeOscVocSlotClocks(bank, callbackFrameCursor_);
         synchronizeHrmAutoSlotClocks(bank, callbackFrameCursor_);
@@ -5254,30 +5446,9 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         ? nativePolyPitchProcessor_.get() : nullptr;
     const bool processorPrepared = monoProcessor != nullptr ? monoProcessor->prepared() : polyProcessor->prepared();
     const unsigned int pitchLatency = monoProcessor != nullptr ? monoProcessor->latencySamples() : polyProcessor->latencySamples();
-    bool pitchPlaybackRequested = false;
-    std::uint64_t shortestPlayingLoop = std::numeric_limits<std::uint64_t>::max();
-    for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
-        if (historyPinSuppressesPlayback(trackIndex)) continue;
-        if (nativePitchRuntimeTrackId_ != 0U && trackIndex + 1U != nativePitchRuntimeTrackId_) continue;
-        const auto& track = looperForTrack(trackIndex);
-        const auto state = track.state();
-        if (state == LooperState::Playing || state == LooperState::Overdubbing) {
-            pitchPlaybackRequested = true;
-            shortestPlayingLoop = std::min(shortestPlayingLoop, track.loopLengthSamples());
-        }
-    }
-    pitchPlaybackRequested = pitchPlaybackRequested && nativePitchRuntimeEnabled_;
-    if (shortestPlayingLoop == std::numeric_limits<std::uint64_t>::max()) shortestPlayingLoop = 0U;
-    NativePitchRouteDecision pitchRoute = decideNativePitchRoute(
-        pitchPlaybackRequested, processorPrepared, nativePitchRuntimeReverse_, outputChannels_,
-        shortestPlayingLoop, pitchLatency
-    );
+    NativePitchRouteDecision pitchRoute{};
     float* const playbackBus = outputStage_->playbackOnlyScratch();
     const bool playbackBufferAvailable = playbackBus != nullptr && frames <= NativeOutputStage::kMaxProcessFrames;
-    if (pitchRoute.useProcessor && !playbackBufferAvailable) {
-        pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-    }
-    if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
 
     std::array<float, 7> mixerGain{};
     for (std::size_t i = 0U; i < mixerGain.size(); ++i) mixerGain[i] = mixerLevels_[i].load(std::memory_order_acquire) / 100.0f;
@@ -5291,15 +5462,261 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         nativeBounceAppliedSnapshot_.store(requestedBounceSnapshot, std::memory_order_release);
     }
     const bool bouncePrepared = playbackBufferAvailable && nativeBounceRuntime_.bounceSw;
-    if (bouncePrepared) {
-        for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
-            auto& scratch = nativeBounceSourceScratch_[source];
-            std::fill_n(scratch.data(), sampleCount, 0.0f);
-            if (nativeBounceRuntime_.bounceTrack[source] && !historyPinSuppressesPlayback(source)) {
-                (void)looperForTrack(source).previewPlayback(scratch.data(), frames, outputChannels_, kMaxCallbackFrames);
+    // Advance the complete audio graph over shared event intervals; control
+    // settings are captured once at the enclosing callback boundary.
+    std::array<ProcessStats, kNativeTrackCount> segmentedStats{};
+    std::array<float, kNativeTrackCount> segmentTrackPeaks{};
+    std::array<double, kNativeTrackCount> segmentTrackSquares{};
+    std::array<bool, kNativeTrackCount> eventDone{};
+    std::array<bool, kNativeTrackCount> eventApplied{};
+    std::array<std::uint64_t, kNativeTrackCount> eventContentRevision{};
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        std::fill_n(nativeSegmentBuffers_->mix[track].data(), sampleCount, 0.0f);
+        std::fill_n(nativeSegmentBuffers_->playback[track].data(), sampleCount, 0.0f);
+    }
+    unsigned int segmentStart = 0U;
+    while (segmentStart < frames) {
+        unsigned int boundary = frames;
+        for (std::size_t i = 0U; i < scheduledEventCount; ++i)
+            if (!eventDone[i]) boundary = std::min(boundary, scheduledEvents[i].frameOffset);
+        const unsigned int segmentFrames = boundary - segmentStart;
+        if (segmentFrames > 0U) {
+            // Carrier readiness and every input/track effect advance on this
+            // exact interval, after prior boundary commands have committed.
+            prepareVocoderCarriers(segmentFrames);
+            const float* segmentRaw = rawInputInterleaved != nullptr
+                ? rawInputInterleaved + static_cast<std::size_t>(segmentStart) * rawInputChannels : nullptr;
+            unsigned int segmentProcessedChannels = rawInputChannels;
+            const float* segmentProcessed = processInputFxForCallback(segmentRaw, segmentFrames, &segmentProcessedChannels);
+            bool pitchRequested = false;
+            std::uint64_t shortest = std::numeric_limits<std::uint64_t>::max();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (historyPinSuppressesPlayback(track) ||
+                    (nativePitchRuntimeTrackId_ != 0U && nativePitchRuntimeTrackId_ != track + 1U)) continue;
+                const auto& looper = looperForTrack(track);
+                const auto state = looper.state();
+                if (state == LooperState::Playing || state == LooperState::Overdubbing) {
+                    pitchRequested = true;
+                    shortest = std::min(shortest, looper.loopLengthSamples());
+                }
+            }
+            if (shortest == std::numeric_limits<std::uint64_t>::max()) shortest = 0U;
+            auto route = decideNativePitchRoute(pitchRequested && nativePitchRuntimeEnabled_, processorPrepared,
+                nativePitchRuntimeReverse_, outputChannels_, shortest, pitchLatency);
+            if (route.useProcessor && !playbackBufferAvailable)
+                route = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
+            pitchRoute = route;
+            if (bouncePrepared) for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+                auto* scratch = nativeBounceSourceScratch_[source].data() + static_cast<std::size_t>(segmentStart) * outputChannels_;
+                std::fill_n(scratch, static_cast<std::size_t>(segmentFrames) * outputChannels_, 0.0f);
+                if (nativeBounceRuntime_.bounceTrack[source] && !historyPinSuppressesPlayback(source))
+                    (void)looperForTrack(source).previewPlayback(scratch, segmentFrames, outputChannels_, kMaxCallbackFrames);
+            }
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (historyPinSuppressesPlayback(track)) continue;
+                const bool fxApply = nativeTrackFxApplyRuntime_[track];
+                const float* input = fxApply ? segmentProcessed : segmentRaw;
+                unsigned int channels = fxApply ? segmentProcessedChannels : rawInputChannels;
+                std::uint8_t bounceMask = 0U;
+                const auto state = looperForTrack(track).state();
+                if (bouncePrepared && nativeBounceRuntime_.bounceIn[track] &&
+                    (state == LooperState::Recording || state == LooperState::Overdubbing)) {
+                    for (std::size_t source = 0U; source < kNativeTrackCount; ++source)
+                        if (source != track && nativeBounceRuntime_.bounceTrack[source])
+                            bounceMask |= static_cast<std::uint8_t>(1U << source);
+                }
+                if (bounceMask != 0U && input != nullptr && outputChannels_ == 2U) {
+                    for (unsigned int frame = 0U; frame < segmentFrames; ++frame) {
+                        const auto inputOffset = static_cast<std::size_t>(frame) * channels;
+                        const auto outputOffset = static_cast<std::size_t>(frame) * 2U;
+                        nativeBounceRecordScratch_[outputOffset] = input[inputOffset];
+                        nativeBounceRecordScratch_[outputOffset + 1U] = channels == 1U ? input[inputOffset] : input[inputOffset + 1U];
+                    }
+                    for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+                        if ((bounceMask & (1U << source)) == 0U) continue;
+                        const auto* sourceSamples = nativeBounceSourceScratch_[source].data() + static_cast<std::size_t>(segmentStart) * 2U;
+                        for (std::size_t sample = 0U; sample < static_cast<std::size_t>(segmentFrames) * 2U; ++sample)
+                            nativeBounceRecordScratch_[sample] += sourceSamples[sample];
+                    }
+                    input = nativeBounceRecordScratch_.data();
+                    channels = 2U;
+                }
+                const auto offset = static_cast<std::size_t>(segmentStart) * outputChannels_;
+                const float* monitor = segmentProcessed;
+                const auto part = looperForTrack(track).process(input, nativeSegmentBuffers_->mix[track].data() + offset,
+                    segmentFrames, channels, outputChannels_, playbackBufferAvailable ?
+                        nativeSegmentBuffers_->playback[track].data() + offset : nullptr,
+                    false, monitor, segmentProcessedChannels);
+                const float peak = std::max(segmentedStats[track].inputPeak, part.inputPeak);
+                segmentedStats[track] = part;
+                segmentedStats[track].inputPeak = peak;
+            }
+            const auto segmentSamples = static_cast<std::size_t>(segmentFrames) * outputChannels_;
+            const auto segmentOffset = static_cast<std::size_t>(segmentStart) * outputChannels_;
+            float* const segmentOutput = outputInterleaved + segmentOffset;
+            if (playbackBufferAvailable) {
+                std::fill_n(playbackBus, segmentSamples, 0.0f);
+                std::fill_n(nativeTrackDryPlaybackScratch_.data(), segmentSamples, 0.0f);
+            }
+            const auto processPitch = [&](float* buffer) noexcept {
+                if (!nativePitchRuntimeEnabled_ || !processorPrepared || nativePitchRuntimeReverse_) return;
+                float* processing = buffer;
+                if (!route.useProcessor) {
+                    std::copy_n(buffer, segmentSamples, nativePitchTargetProcessedScratch_.data());
+                    processing = nativePitchTargetProcessedScratch_.data();
+                } else {
+                    std::copy_n(buffer, segmentSamples, nativePitchTargetDryScratch_.data());
+                }
+                const bool processed = monoProcessor != nullptr
+                    ? monoProcessor->processInterleaved(processing, segmentFrames, outputChannels_)
+                    : polyProcessor->processInterleaved(processing, segmentFrames, outputChannels_);
+                if (!processed && route.useProcessor) {
+                    std::copy_n(nativePitchTargetDryScratch_.data(), segmentSamples, buffer);
+                    pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
+                }
+            };
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (historyPinSuppressesPlayback(track)) continue;
+                const auto* mix = nativeSegmentBuffers_->mix[track].data() + segmentOffset;
+                auto* playback = nativeSegmentBuffers_->playback[track].data() + segmentOffset;
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    segmentOutput[sample] += mix[sample] - (playbackBufferAvailable ? playback[sample] : 0.0f);
+                if (playbackBufferAvailable && nativePitchRuntimeTrackId_ == track + 1U) processPitch(playback);
+                auto& bank = nativePerTrackFxBanks_[track];
+                if (playbackBufferAvailable && bank.hasEffects())
+                    bank.processInPlaceNoPeak(playback, segmentFrames, outputChannels_);
+                if (playbackBufferAvailable) {
+                    float* destination = nativeTrackFxApplyRuntime_[track] ? playbackBus : nativeTrackDryPlaybackScratch_.data();
+                    for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
+                        const float value = playback[sample] * mixerGain[track + 2U];
+                        segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(value));
+                        segmentTrackSquares[track] += static_cast<double>(value) * value;
+                        destination[sample] += value;
+                    }
+                }
+            }
+            if (playbackBufferAvailable) {
+                if (trackFxActive) trackFx->processInPlaceNoPeak(playbackBus, segmentFrames, outputChannels_);
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    playbackBus[sample] += nativeTrackDryPlaybackScratch_[sample];
+                if (nativePitchRuntimeTrackId_ == 0U) processPitch(playbackBus);
+                for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                    segmentOutput[sample] += playbackBus[sample] * mixerGain[0U];
+            }
+            std::fill_n(nativeTrackMixScratch_.data(), segmentSamples, 0.0f);
+            nativeRhythmEngine_.processAdditive(nativeTrackMixScratch_.data(), segmentFrames, outputChannels_,
+                callbackFrameCursor_ + segmentStart);
+            for (std::size_t sample = 0U; sample < segmentSamples; ++sample)
+                segmentOutput[sample] = std::max(-1.0f, std::min(1.0f,
+                    segmentOutput[sample] + nativeTrackMixScratch_[sample] * mixerGain[0U]));
+            (void)outputStage_->processInPlace(segmentOutput, segmentFrames, outputChannels_);
+            for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
+                segmentOutput[sample] *= mixerGain[1U];
+                stats.outputPeak = std::max(stats.outputPeak, std::fabs(segmentOutput[sample]));
             }
         }
+        if (boundary == frames) break;
+        std::array<bool, kNativeTrackCount> rejected{};
+        for (std::size_t i = 0U; i < scheduledEventCount; ++i) {
+            const auto& event = scheduledEvents[i];
+            if (eventDone[i] || event.frameOffset != boundary || event.request.batchId == 0U) continue;
+            // The all-track fence must not read an exclusively pinned looper,
+            // even when that track is outside the batch mask.
+            bool valid = blockedTrackMask == 0U;
+            std::uint8_t eligibleMask = 0U;
+            for (std::size_t track = 0U; valid && track < kNativeTrackCount; ++track) {
+                const auto& looper = looperForTrack(track);
+                const auto state = looper.state();
+                valid = valid && static_cast<std::uint8_t>(state) == event.request.batchExpectedStates[track];
+                const bool eligible = event.request.action == NativeScheduledLoopAction::Play
+                    ? state == LooperState::Stopped && looper.loopLengthSamples() > 0U
+                    : state == LooperState::Recording || state == LooperState::Playing || state == LooperState::Overdubbing;
+                if (eligible) eligibleMask |= static_cast<std::uint8_t>(1U << track);
+            }
+            valid = valid && eligibleMask == event.request.batchMask;
+            if (!valid) for (std::size_t j = 0U; j < scheduledEventCount; ++j)
+                if (scheduledEvents[j].request.batchId == event.request.batchId) rejected[j] = true;
+        }
+        for (std::size_t i = 0U; i < scheduledEventCount; ++i) {
+            const auto& event = scheduledEvents[i];
+            if (eventDone[i] || event.frameOffset != boundary) continue;
+            ScheduledTrackCommandContext context{};
+            context.core = this;
+            context.command = {event.request.action == NativeScheduledLoopAction::Record ? CommandType::Record :
+                event.request.action == NativeScheduledLoopAction::Stop ? CommandType::StopRecordOrPlayback : CommandType::Play,
+                false, event.request.trackIndex, event.request.stopRevision, event.request.provenanceBpm,
+                event.request.provenanceRevision, event.request.provenanceValid};
+            if (!rejected[i]) applyScheduledTrackCommand(&context);
+            // Rhythm-grid provenance is captured at the actual command frame,
+            // before later intervals can advance or change the track again.
+            if (context.applied && event.request.batchId == 0U) {
+                const auto trackIndex = static_cast<std::size_t>(event.request.trackIndex);
+                auto& track = looperForTrack(trackIndex);
+                const auto appliedFrame = callbackFrameCursor_ + boundary;
+                if (event.request.action == NativeScheduledLoopAction::Record && track.state() == LooperState::Recording) {
+                    scheduledRecordStartFrame_[trackIndex] = appliedFrame;
+                    scheduledRecordFirstMeasureFrames_[trackIndex] = event.request.firstMeasureFrames;
+                    scheduledRecordStartMeasureOrdinal_[trackIndex] = event.request.measureOrdinal;
+                    scheduledRecordRhythmEpoch_[trackIndex] = event.request.phaseEpoch;
+                    writeTrackPhaseProvenance(trackIndex, {});
+                    historyRecords_[trackIndex].valid = false;
+                    historyCanUndo_[trackIndex].store(false, std::memory_order_release);
+                    historyCanRedo_[trackIndex].store(false, std::memory_order_release);
+                } else if (event.request.action == NativeScheduledLoopAction::Stop && track.state() == LooperState::Stopped) {
+                    const auto recordedFrames = track.loopLengthSamples();
+                    const auto start = scheduledRecordStartFrame_[trackIndex];
+                    const auto firstMeasureFrames = scheduledRecordFirstMeasureFrames_[trackIndex];
+                    const auto startOrdinal = scheduledRecordStartMeasureOrdinal_[trackIndex];
+                    const auto stopOrdinal = event.request.measureOrdinal;
+                    const auto measureCount = stopOrdinal > startOrdinal ? stopOrdinal - startOrdinal : 0U;
+                    const bool proven = start != 0U && appliedFrame > start && appliedFrame - start == recordedFrames &&
+                        firstMeasureFrames != 0U && measureCount > 0U &&
+                        scheduledRecordRhythmEpoch_[trackIndex] == event.request.phaseEpoch;
+                    advanceProjectRevision(trackContentRevision_[trackIndex]);
+                    advanceProjectRevision(projectContentRevision_);
+                    writeTrackPhaseProvenance(trackIndex, proven
+                        ? NativeTrackPhaseProvenance{true, firstMeasureFrames, start, appliedFrame,
+                            scheduledRecordRhythmEpoch_[trackIndex], currentConfig_->sampleRate,
+                            trackContentRevision_[trackIndex].load(std::memory_order_acquire), recordedFrames,
+                            startOrdinal, stopOrdinal, measureCount} : NativeTrackPhaseProvenance{});
+                    auto& history = historyRecords_[trackIndex];
+                    history.before = LoopMetadata{LooperState::Empty, 0U, 0U, 0U};
+                    history.after = track.metadata();
+                    history.beforeOriginalTempoBits = 0U;
+                    history.afterOriginalTempoBits = originalTempoBpmBits_[trackIndex].load(std::memory_order_acquire);
+                    history.beforePhaseProvenance = {};
+                    history.afterPhaseProvenance = readTrackPhaseProvenance(trackIndex);
+                    history.kind = HistoryKind::Metadata;
+                    history.valid = true;
+                    history.applied = false;
+                    history.pcmFrames = 0U;
+                    historyPcmActive_[trackIndex].store(false, std::memory_order_release);
+                    historyCanUndo_[trackIndex].store(true, std::memory_order_release);
+                    historyCanRedo_[trackIndex].store(false, std::memory_order_release);
+                    historyFailure_[trackIndex].store(NativeHistoryFailure::None, std::memory_order_release);
+                    scheduledRecordStartFrame_[trackIndex] = 0U;
+                    scheduledRecordFirstMeasureFrames_[trackIndex] = 0U;
+                    scheduledRecordRhythmEpoch_[trackIndex] = 0U;
+                    scheduledRecordStartMeasureOrdinal_[trackIndex] = 0U;
+                } else if (event.request.action == NativeScheduledLoopAction::Play) {
+                    advanceProjectRevision(projectContentRevision_);
+                }
+            }
+            eventApplied[i] = !rejected[i] && context.applied;
+            if (eventApplied[i] && event.request.action == NativeScheduledLoopAction::Stop &&
+                event.request.stopRevision != 0U &&
+                recordStopCommittedRuntimeRevision_[event.request.trackIndex] == event.request.stopRevision)
+                eventContentRevision[i] = trackContentRevision_[event.request.trackIndex].load(std::memory_order_acquire);
+            eventDone[i] = true;
+        }
+        segmentStart = boundary;
     }
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+    if (scheduledEventCount > 0U) {
+        const auto hook = callbackBeforeBatchPublishTestHook_.load(std::memory_order_acquire);
+        if (hook != nullptr) hook(callbackBeforeBatchPublishTestContext_.load(std::memory_order_acquire));
+    }
+#endif
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
         if (historyPinSuppressesPlayback(trackIndex)) {
             std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
@@ -5309,130 +5726,18 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             continue;
         }
         auto& track = looperForTrack(trackIndex);
-        const bool trackFxApply = nativeTrackFxApplyRuntime_[trackIndex];
-        const float* const baseRecordInput = trackFxApply ? processedInputInterleaved : rawInputInterleaved;
-        const unsigned int baseRecordChannels = trackFxApply ? processedInputChannels : rawInputChannels;
-        const auto stateBeforeProcess = track.state();
-        std::uint8_t bounceSourceMask = 0U;
-        if (bouncePrepared && nativeBounceRuntime_.bounceIn[trackIndex] &&
-            (stateBeforeProcess == LooperState::Recording || stateBeforeProcess == LooperState::Overdubbing)) {
-            for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
-                if (source != trackIndex && nativeBounceRuntime_.bounceTrack[source]) bounceSourceMask |= static_cast<std::uint8_t>(1U << source);
-            }
-        }
-        const float* recordInput = baseRecordInput;
-        unsigned int recordChannels = baseRecordChannels;
-        if (bounceSourceMask != 0U && baseRecordInput != nullptr && outputChannels_ == 2U) {
-            for (unsigned int frame = 0U; frame < frames; ++frame) {
-                const std::size_t stereo = static_cast<std::size_t>(frame) * 2U;
-                const std::size_t base = static_cast<std::size_t>(frame) * baseRecordChannels;
-                const float left = baseRecordChannels == 1U ? baseRecordInput[base] : baseRecordInput[base];
-                const float right = baseRecordChannels == 1U ? left : baseRecordInput[base + 1U];
-                nativeBounceRecordScratch_[stereo] = left;
-                nativeBounceRecordScratch_[stereo + 1U] = right;
-            }
-            for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
-                if ((bounceSourceMask & (1U << source)) == 0U) continue;
-                for (std::size_t sample = 0U; sample < sampleCount; ++sample) nativeBounceRecordScratch_[sample] += nativeBounceSourceScratch_[source][sample];
-            }
-            recordInput = nativeBounceRecordScratch_.data();
-            recordChannels = 2U;
-        }
-        const NativeScheduledLoopEvent* scheduledEvent = nullptr;
-        for (std::size_t eventIndex = 0U; eventIndex < scheduledEventCount; ++eventIndex) {
-            if (scheduledEvents[eventIndex].request.trackIndex == trackIndex) {
-                scheduledEvent = &scheduledEvents[eventIndex];
-                break;
-            }
-        }
-        ScheduledTrackCommandContext scheduledContext{};
-        if (scheduledEvent != nullptr) {
-            scheduledContext.core = this;
-            scheduledContext.command = {
-                scheduledEvent->request.action == NativeScheduledLoopAction::Record ? CommandType::Record :
-                    scheduledEvent->request.action == NativeScheduledLoopAction::Stop ? CommandType::StopRecordOrPlayback : CommandType::Play,
-                false,
-                static_cast<std::uint8_t>(trackIndex),
-            };
-        }
-        const auto trackStats = track.process(
-            recordInput,
-            nativeTrackMixScratch_.data(),
-            frames,
-            recordChannels,
-            outputChannels_,
-            playbackBufferAvailable ? nativeTrackPlaybackScratch_.data() : nullptr,
-            false,
-            processedInputInterleaved,
-            processedInputChannels,
-            scheduledEvent != nullptr ? &NativeAudioCore::applyScheduledTrackCommand : nullptr,
-            scheduledEvent != nullptr ? &scheduledContext : nullptr,
-            scheduledEvent != nullptr ? scheduledEvent->frameOffset : 0U
-        );
+        const auto& trackStats = segmentedStats[trackIndex];
         nativeTrackLoopLengthSamples_[trackIndex].store(track.loopLengthSamples(), std::memory_order_release);
-        trackStates_[trackIndex].store(static_cast<int>(trackStats.state), std::memory_order_release);
-        if (scheduledEvent != nullptr) {
-            const auto expectedState = scheduledEvent->request.action == NativeScheduledLoopAction::Record ? LooperState::Recording :
-                scheduledEvent->request.action == NativeScheduledLoopAction::Stop ? LooperState::Stopped : LooperState::Playing;
-            nativeLoopFrameScheduler_.acknowledgeApplied(trackIndex, scheduledEvent->request.revision,
-                callbackFrameCursor_ + scheduledEvent->frameOffset,
-                trackStats.state == expectedState ||
-                    (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Empty));
-            nativeScheduledLoopPending_[trackIndex].store(false, std::memory_order_release);
-            pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
-            const auto appliedFrame = callbackFrameCursor_ + scheduledEvent->frameOffset;
-            if (scheduledEvent->request.action == NativeScheduledLoopAction::Record && trackStats.state == LooperState::Recording) {
-                scheduledRecordStartFrame_[trackIndex] = appliedFrame;
-                scheduledRecordFirstMeasureFrames_[trackIndex] = scheduledEvent->request.firstMeasureFrames;
-                scheduledRecordStartMeasureOrdinal_[trackIndex] = scheduledEvent->request.measureOrdinal;
-                scheduledRecordRhythmEpoch_[trackIndex] = scheduledEvent->request.phaseEpoch;
-                writeTrackPhaseProvenance(trackIndex, {});
-                historyRecords_[trackIndex].valid = false;
-                historyCanUndo_[trackIndex].store(false, std::memory_order_release);
-                historyCanRedo_[trackIndex].store(false, std::memory_order_release);
-            } else if (scheduledEvent->request.action == NativeScheduledLoopAction::Stop && trackStats.state == LooperState::Stopped) {
-                const auto recordedFrames = track.loopLengthSamples();
-                const auto start = scheduledRecordStartFrame_[trackIndex];
-                const auto firstMeasureFrames = scheduledRecordFirstMeasureFrames_[trackIndex];
-                const auto startOrdinal = scheduledRecordStartMeasureOrdinal_[trackIndex];
-                const auto stopOrdinal = scheduledEvent->request.measureOrdinal;
-                const auto measureCount = stopOrdinal > startOrdinal ? stopOrdinal - startOrdinal : 0U;
-                const bool proven = start != 0U && appliedFrame > start && appliedFrame - start == recordedFrames &&
-                    firstMeasureFrames != 0U && measureCount > 0U &&
-                    scheduledRecordRhythmEpoch_[trackIndex] == scheduledEvent->request.phaseEpoch;
-                advanceProjectRevision(trackContentRevision_[trackIndex]);
-                advanceProjectRevision(projectContentRevision_);
-                writeTrackPhaseProvenance(trackIndex, proven
-                    ? NativeTrackPhaseProvenance{true, firstMeasureFrames, start, appliedFrame,
-                        scheduledRecordRhythmEpoch_[trackIndex], currentConfig_->sampleRate,
-                        trackContentRevision_[trackIndex].load(std::memory_order_acquire), recordedFrames,
-                        startOrdinal, stopOrdinal, measureCount}
-                    : NativeTrackPhaseProvenance{});
-                auto& history = historyRecords_[trackIndex];
-                history.before = LoopMetadata{LooperState::Empty, 0U, 0U, 0U};
-                history.after = track.metadata();
-                history.beforeOriginalTempoBits = 0U;
-                history.afterOriginalTempoBits = originalTempoBpmBits_[trackIndex].load(std::memory_order_acquire);
-                history.beforePhaseProvenance = {};
-                history.afterPhaseProvenance = readTrackPhaseProvenance(trackIndex);
-                history.kind = HistoryKind::Metadata;
-                history.valid = true;
-                history.applied = false;
-                history.pcmFrames = 0U;
-                historyPcmActive_[trackIndex].store(false, std::memory_order_release);
-                historyCanUndo_[trackIndex].store(true, std::memory_order_release);
-                historyCanRedo_[trackIndex].store(false, std::memory_order_release);
-                historyFailure_[trackIndex].store(NativeHistoryFailure::None, std::memory_order_release);
-                scheduledRecordStartFrame_[trackIndex] = 0U;
-                scheduledRecordFirstMeasureFrames_[trackIndex] = 0U;
-                scheduledRecordRhythmEpoch_[trackIndex] = 0U;
-                scheduledRecordStartMeasureOrdinal_[trackIndex] = 0U;
-            } else if (scheduledEvent->request.action == NativeScheduledLoopAction::Play) {
-                advanceProjectRevision(projectContentRevision_);
-            }
-        } else if (nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
+        bool dispatchedThisBlock = false;
+        for (std::size_t i = 0U; i < scheduledEventCount; ++i)
+            dispatchedThisBlock = dispatchedThisBlock || (eventDone[i] && scheduledEvents[i].request.trackIndex == trackIndex);
+        if (!dispatchedThisBlock && nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
             const auto revision = nativeScheduledLoopRevision_[trackIndex].load(std::memory_order_acquire);
             if (nativeLoopFrameScheduler_.hasCancelledOrFaulted(trackIndex, revision)) {
+                const auto requestStatus = nativeLoopFrameScheduler_.status(trackIndex);
+                if (requestStatus.requestedRevision == revision && requestStatus.cancelledRevision == revision &&
+                    requestStatus.stopRevision != 0U)
+                    recordStopCancelledRevision_[trackIndex].store(requestStatus.stopRevision, std::memory_order_release);
                 recordStartPending_[trackIndex].store(false, std::memory_order_release);
                 nativeScheduledLoopPending_[trackIndex].store(false, std::memory_order_release);
                 pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
@@ -5440,90 +5745,35 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         }
         stats.inputPeak = std::max(stats.inputPeak, trackStats.inputPeak);
         trackStates_[trackIndex].store(static_cast<int>(trackStats.state), std::memory_order_release);
+        const bool recordingTempoTokenValid = trackStats.state == LooperState::Recording &&
+            recordingTempoStartValid_[trackIndex];
+        nativeRecordingTempoTokenValid_[trackIndex].store(recordingTempoTokenValid, std::memory_order_release);
+        nativeRecordingTempoTokenBpmBits_[trackIndex].store(recordingTempoTokenValid
+            ? recordingTempoStartBpmBits_[trackIndex] : 0U, std::memory_order_release);
+        nativeRecordingTempoTokenRevision_[trackIndex].store(recordingTempoTokenValid
+            ? recordingTempoStartRevision_[trackIndex] : 0U, std::memory_order_release);
         if (!nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
             recordStartPending_[trackIndex].store(false, std::memory_order_release);
         }
         trackProgress_[trackIndex].store(trackStats.loopProgress, std::memory_order_release);
         trackLoopTransportStatus_[trackIndex].store(nativeOfficialSourcePitchConflict_[trackIndex]
             ? LoopTransportStatus::UnsupportedPitchProcessing : trackStats.loopTransportStatus, std::memory_order_release);
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-            outputInterleaved[sample] += nativeTrackMixScratch_[sample] -
-                (playbackBufferAvailable ? nativeTrackPlaybackScratch_[sample] : 0.0f);
-        }
-        const bool isPitchTargetTrack = nativePitchRuntimeTrackId_ != 0U &&
-            trackIndex + 1U == nativePitchRuntimeTrackId_;
-        if (playbackBufferAvailable && isPitchTargetTrack && pitchRoute.useProcessor) {
-            std::copy_n(nativeTrackPlaybackScratch_.data(), sampleCount, nativePitchTargetDryScratch_.data());
-            const bool processed = monoProcessor != nullptr
-                ? monoProcessor->processInterleaved(nativeTrackPlaybackScratch_.data(), frames, outputChannels_)
-                : polyProcessor->processInterleaved(nativeTrackPlaybackScratch_.data(), frames, outputChannels_);
-            if (!processed) {
-                std::copy_n(nativePitchTargetDryScratch_.data(), sampleCount, nativeTrackPlaybackScratch_.data());
-                pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-            }
-        }
-        auto& localBank = nativePerTrackFxBanks_[trackIndex];
-        if (playbackBufferAvailable && localBank.hasEffects()) {
-            localBank.processInPlaceNoPeak(nativeTrackPlaybackScratch_.data(), frames, outputChannels_);
-        }
-        if (playbackBufferAvailable) {
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) nativeTrackPlaybackScratch_[sample] *= mixerGain[trackIndex + 2U];
-        }
-        float trackPeak = 0.0f;
-        double trackSquareSum = 0.0;
-        if (playbackBufferAvailable) {
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-                const float value = nativeTrackPlaybackScratch_[sample];
-                trackPeak = std::max(trackPeak, std::fabs(value));
-                trackSquareSum += static_cast<double>(value) * static_cast<double>(value);
-            }
-        }
-        nativeTrackFxApplyPeak_[trackIndex].store(trackPeak, std::memory_order_release);
+        nativeTrackFxApplyPeak_[trackIndex].store(segmentTrackPeaks[trackIndex], std::memory_order_release);
         nativeTrackFxApplyRms_[trackIndex].store(sampleCount > 0U
-            ? static_cast<float>(std::sqrt(trackSquareSum / static_cast<double>(sampleCount))) : 0.0f,
+            ? static_cast<float>(std::sqrt(segmentTrackSquares[trackIndex] / static_cast<double>(sampleCount))) : 0.0f,
             std::memory_order_release);
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
-            const auto* processor = localBank.processor(static_cast<NativeEffectSlot>(slot));
+            const auto* processor = nativePerTrackFxBanks_[trackIndex].processor(static_cast<NativeEffectSlot>(slot));
             const bool faulted = processor != nullptr &&
                 (!playbackBufferAvailable || processor->sampleRate() == 0U || processor->processingFaulted());
             nativePerTrackFxPublished_[trackIndex][slot].processingFaulted.store(faulted, std::memory_order_release);
-        }
-        if (playbackBufferAvailable) {
-            float* const destination = trackFxApply ? playbackBus : nativeTrackDryPlaybackScratch_.data();
-            for (std::size_t sample = 0U; sample < sampleCount; ++sample) destination[sample] += nativeTrackPlaybackScratch_[sample];
         }
     }
 
     stats.state = static_cast<LooperState>(trackStates_[0U].load(std::memory_order_acquire));
     stats.loopProgress = trackProgress_[0U].load(std::memory_order_relaxed);
-    if (playbackBufferAvailable) {
-        if (trackFxActive) trackFx->processInPlaceNoPeak(playbackBus, frames, outputChannels_);
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-            playbackBus[sample] += nativeTrackDryPlaybackScratch_[sample];
-        }
-        if (pitchRoute.useProcessor && nativePitchRuntimeTrackId_ == 0U) {
-            const bool processed = monoProcessor != nullptr
-                ? monoProcessor->processInterleaved(playbackBus, frames, outputChannels_)
-                : polyProcessor->processInterleaved(playbackBus, frames, outputChannels_);
-            if (!processed) pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
-        }
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += playbackBus[sample] * mixerGain[0U];
-    }
     publishSharedCatalogProcessingFaults(1U, playbackBufferAvailable);
     if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
-
-    std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
-    nativeRhythmEngine_.processAdditive(nativeTrackMixScratch_.data(), frames, outputChannels_, callbackFrameCursor_);
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += nativeTrackMixScratch_[sample] * mixerGain[0U];
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-        outputInterleaved[sample] = std::max(-1.0f, std::min(1.0f, outputInterleaved[sample]));
-    }
-    stats.outputPeak = outputStage_->processInPlace(outputInterleaved, frames, outputChannels_);
-    stats.outputPeak = 0.0f;
-    for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
-        outputInterleaved[sample] *= mixerGain[1U];
-        stats.outputPeak = std::max(stats.outputPeak, std::fabs(outputInterleaved[sample]));
-    }
 
     // Publish only after this block has rendered both record selection and
     // playback routing. Queue acceptance alone must never light a gate LED.
@@ -5539,6 +5789,22 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             nativeTrackFxApplyApplied_[track].store(nativeTrackFxApplyRuntime_[track], std::memory_order_release);
             nativeTrackFxApplyAppliedRevision_[track].store(nativeTrackFxApplyRuntimeRevision_[track], std::memory_order_release);
         }
+    }
+
+    // ACK is visible only after all track and recording commit snapshots.
+    // Retain every fence until the complete group has been acknowledged.
+    for (std::size_t i = 0U; i < scheduledEventCount; ++i) {
+        if (!eventDone[i]) continue;
+        const auto& event = scheduledEvents[i];
+        nativeLoopFrameScheduler_.acknowledgeApplied(event.request.trackIndex, event.request.revision,
+            callbackFrameCursor_ + event.frameOffset, eventApplied[i], eventContentRevision[i]);
+    }
+    for (std::size_t i = 0U; i < scheduledEventCount; ++i) {
+        if (!eventDone[i]) continue;
+        const auto track = static_cast<std::size_t>(scheduledEvents[i].request.trackIndex);
+        recordStartPending_[track].store(false, std::memory_order_release);
+        nativeScheduledLoopPending_[track].store(false, std::memory_order_release);
+        pendingTrackStateCommands_[track].fetch_sub(1U, std::memory_order_acq_rel);
     }
 
     return stats;
@@ -5959,21 +6225,11 @@ int NativeAudioCore::handleAudioCallback(
     synchronizeHrmAutoSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     NativePitchRouteDecision pitchRoute{};
-    prepareVocoderCarriers(nBufferFrames);
-    unsigned int processedInputChannels = inputChannels_;
-    const float* processedInput = processInputFxForCallback(
-        static_cast<const float*>(inputBuffer),
-        nBufferFrames,
-        &processedInputChannels
-    );
-
     auto stats = processNativeTracksForCallback(
         static_cast<const float*>(inputBuffer),
-        processedInput,
         static_cast<float*>(outputBuffer),
         nBufferFrames,
         inputChannels_,
-        processedInputChannels,
         &pitchRoute
     );
     settlePoppedTrackCommands();
@@ -6056,6 +6312,8 @@ int NativeAudioCore::handleInputAudioCallback(
     synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     bool pitchPlaybackRequested = false;
+    synchronizeHrmAutoSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
+    synchronizeHrmAutoSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
         if (historyPinSuppressesPlayback(trackIndex)) continue;
         const auto state = looperForTrack(trackIndex).state();
@@ -6081,21 +6339,11 @@ int NativeAudioCore::handleInputAudioCallback(
 
     AudioBlock block{};
     block.frames = nBufferFrames;
-    prepareVocoderCarriers(nBufferFrames);
-    unsigned int processedInputChannels = inputChannels_;
-    const float* processedInput = processInputFxForCallback(
-        static_cast<const float*>(inputBuffer),
-        nBufferFrames,
-        &processedInputChannels
-    );
-
     auto stats = processNativeTracksForCallback(
         static_cast<const float*>(inputBuffer),
-        processedInput,
         block.samples.data(),
         nBufferFrames,
         inputChannels_,
-        processedInputChannels,
         &pitchRoute
     );
     settlePoppedTrackCommands();

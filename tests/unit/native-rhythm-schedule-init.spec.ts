@@ -20,6 +20,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
   it('rejects ALL START and ALL STOP before dispatch while a LOOP SYNC track is enabled', () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
     engine.latestStatus = { nativeMemory: { loopSync: [false, true, false, false, false] } };
+    engine.bridge = { getPendingNativeTransportBatch: vi.fn(() => null) };
     engine.tracks = [{ trackId: 1 }, { trackId: 2 }];
     engine.lastError = '';
     engine.emitAll = vi.fn();
@@ -42,7 +43,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     engine.latestStatus = { nativeMemory: { loopSync: [true, false, false, false, false] },
       nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
       nativeRhythm: { phase: { available: false, snapshotStable: true } } };
-    engine.bridge = { stopTrack, emergencyStopTrack };
+    engine.bridge = { stopTrack, emergencyStopTrack, getPendingNativeTransportBatch: vi.fn(() => null) };
     engine.applyStatus = vi.fn((status: unknown) => { engine.latestStatus = status; });
     engine.emitAll = vi.fn();
     engine.lastError = '';
@@ -59,7 +60,8 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
       nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }],
       nativeRhythm: { phase: { available: false, snapshotStable: true } } };
     engine.latestStatus = before;
-    engine.bridge = { emergencyStopTrack: vi.fn(async () => { throw new NativeBridgeHttpError('measure phase is available', 409); }) };
+    engine.bridge = { getPendingNativeTransportBatch: vi.fn(() => null),
+      emergencyStopTrack: vi.fn(async () => { throw new NativeBridgeHttpError('measure phase is available', 409); }) };
     engine.applyStatus = vi.fn();
     engine.emitAll = vi.fn();
     engine.lastError = '';
@@ -77,7 +79,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
       hostIncarnationId: '1'.repeat(32) } as unknown as NativeStatus;
     const engine = Object.create(NativeAudioEngine.prototype) as any;
     engine.latestStatus = before;
-    engine.bridge = { scheduleRhythmRecordOrStop: vi.fn(async () => {
+    engine.bridge = { getPendingNativeTransportBatch: vi.fn(() => null), scheduleRhythmRecordOrStop: vi.fn(async () => {
       throw new NativeBridgeHttpError('measure phase changed before STOP was accepted', 409);
     }) };
     engine.applyStatus = vi.fn();
@@ -95,7 +97,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
       nativeTracks: [{ trackId: 1, state: 'Recording', contentRevision: 1 }] };
     engine.stopTrack = vi.fn(async () => undefined);
     const finishRecordingTrack = vi.fn();
-    engine.bridge = { finishRecordingTrack };
+    engine.bridge = { finishRecordingTrack, getPendingNativeTransportBatch: vi.fn(() => null) };
     await engine.finishRecordingTrack(1);
     expect(engine.stopTrack).toHaveBeenCalledOnce();
     expect(engine.stopTrack).toHaveBeenCalledWith(1);
@@ -217,6 +219,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     engine.bridge = {
       health: vi.fn(async () => ({})), getStatus: vi.fn(async () => status),
       getDevices: vi.fn(async () => ({})), getPendingRhythmSchedule: vi.fn(() => null),
+      getPendingNativeTransportBatch: vi.fn(() => null), getRetainedTrackTempoConfirmations: vi.fn(() => []),
       reconcilePendingRhythmSchedule: vi.fn(async () => { throw unknown; }),
     };
     engine.refreshCatalog = vi.fn(async () => {});
