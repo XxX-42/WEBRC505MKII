@@ -485,6 +485,11 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.nativePitchFallbackReason = nativePitchFallbackReason_.load(std::memory_order_acquire);
     status.nativeRhythmBpm = nativeRhythmConfig_.bpm;
     status.nativeTempoRequestedRevision = nativeTempoRequestedRevision_;
+    status.nativeTempoIntentHigh = nativeTempoIntentHigh_;
+    status.nativeTempoIntentLow = nativeTempoIntentLow_;
+    status.nativeRhythmConfigIntentHigh = nativeRhythmConfigIntentHigh_;
+    status.nativeRhythmConfigIntentLow = nativeRhythmConfigIntentLow_;
+    status.nativeRhythmConfigRevision = nativeRhythmConfigRevision_;
     status.nativeTempoAppliedRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
     status.nativeTempoAppliedValid = nativeTempoAppliedValid_.load(std::memory_order_acquire);
     status.nativeRhythmKitIndex = nativeRhythmConfig_.kitIndex;
@@ -3390,9 +3395,17 @@ bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool ena
     return true;
 }
 
-bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error) {
+bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error,
+    std::optional<std::uint64_t> expectedTempoRevision, std::optional<std::uint64_t> expectedConfigRevision, std::uint64_t intentHigh,
+    std::uint64_t intentLow, std::uint64_t* acceptedTempoRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (acceptedTempoRevision) *acceptedTempoRevision = 0U;
+    if (nativeRhythmConfigRevision_ >= kMaximumSafeProjectContentRevision ||
+        (expectedTempoRevision && (!expectedConfigRevision || *expectedConfigRevision != nativeRhythmConfigRevision_ ||
+          *expectedTempoRevision != nativeTempoRequestedRevision_ || (intentHigh == 0U && intentLow == 0U)))) {
+        error = "Native rhythm tempo request generation changed or intent is invalid; no request was submitted."; return false;
+    }
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "Wait for pending Memory/project transaction before editing settings."; return false;
     }
@@ -3492,6 +3505,14 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
         }
     }
     nativeTempoRequestedRevision_ = tempoRevision;
+    ++nativeRhythmConfigRevision_;
+    nativeRhythmConfigIntentHigh_ = expectedTempoRevision ? intentHigh : 0U;
+    nativeRhythmConfigIntentLow_ = expectedTempoRevision ? intentLow : 0U;
+    if (tempoChanged) {
+        nativeTempoIntentHigh_ = expectedTempoRevision ? intentHigh : 0U;
+        nativeTempoIntentLow_ = expectedTempoRevision ? intentLow : 0U;
+    }
+    if (acceptedTempoRevision) *acceptedTempoRevision = tempoRevision;
     nativeRhythmConfig_ = config;
     if (!engineRunning_.load(std::memory_order_acquire)) {
         nativeTempoAppliedBpmBits_.store(originalTempoBits(config.bpm), std::memory_order_release);
@@ -4219,6 +4240,13 @@ void NativeAudioCore::finalizeProjectImportLocked() {
             }
             if (memory.rhythm.bpm != nativeRhythmConfig_.bpm &&
                 nativeTempoRequestedRevision_ < kMaximumSafeProjectContentRevision) ++nativeTempoRequestedRevision_;
+            if (memory.rhythm.bpm != nativeRhythmConfig_.bpm) {
+                nativeTempoIntentHigh_ = 0U;
+                nativeTempoIntentLow_ = 0U;
+            }
+            if (nativeRhythmConfigRevision_ < kMaximumSafeProjectContentRevision) ++nativeRhythmConfigRevision_;
+            nativeRhythmConfigIntentHigh_ = 0U;
+            nativeRhythmConfigIntentLow_ = 0U;
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {

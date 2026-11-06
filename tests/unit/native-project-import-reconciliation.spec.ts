@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+afterEach(() => sessionStorage.clear());
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 import { Transport } from '../../src/core/Transport';
 
@@ -11,7 +12,7 @@ function hostStatus(projectContentRevision: number, rhythmBpm: number) {
     nativeTracks: Array.from({ length: 5 }, (_, index) => ({
       trackId: index + 1, state: 'Stopped', contentRevision: index === 0 ? 9 : 0,
     })),
-    nativeRhythm: { available: true, bpm: rhythmBpm, tempoRequestedRevision: 2, tempoAppliedRevision: 2, tempoAppliedValid: true },
+    nativeRhythm: { available: true, bpm: rhythmBpm, tempoRequestReceiptVersion: 1, tempoRequestIntentId: 'f'.repeat(32), tempoRequestedRevision: 2, tempoAppliedRevision: 2, tempoAppliedValid: true },
   } as any;
 }
 
@@ -29,8 +30,9 @@ describe('Native project import reconciliation after transport sync failure', ()
     let reads = 0;
     const newHost = { ...hostStatus(2, 120), hostIncarnationId: 'c'.repeat(32) };
     const instance = Object.create(NativeAudioEngine.prototype) as any;
-    instance.bridge = { getStatus: vi.fn(async () => ++reads === 1 ? hostStatus(2, 120) : newHost) };
-    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => true) };
+    instance.bridge = { reconcilePendingRhythmTempo: vi.fn(async () => null),
+      waitForRhythmTempoBarrier: vi.fn(async (_bpm: number, _host: string, status: any) => status), getStatus: vi.fn(async () => ++reads === 1 ? hostStatus(2, 120) : newHost) };
+    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, tempoAcknowledgement: { host: 'a'.repeat(32), revision: 2, intent: 'f'.repeat(32), bpm: 110 }, setBpm: vi.fn(async () => true) };
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[58, {
       hostIncarnationId: 'a'.repeat(32),
@@ -65,8 +67,9 @@ describe('Native project import reconciliation after transport sync failure', ()
     };
     const operationStartTransportRevision = transport.projectMutationRevision;
     const instance = Object.create(NativeAudioEngine.prototype) as any;
-    instance.bridge = { getStatus: vi.fn(async () => hostStatus(2, 120)) };
-    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => {
+    instance.bridge = { reconcilePendingRhythmTempo: vi.fn(async () => null),
+      waitForRhythmTempoBarrier: vi.fn(async (_bpm: number, _host: string, status: any) => status), getStatus: vi.fn(async () => hostStatus(2, 120)) };
+    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, tempoAcknowledgement: { host: 'a'.repeat(32), revision: 2, intent: 'f'.repeat(32), bpm: 110 }, setBpm: vi.fn(async () => {
       transport.setBpm(133);
       return true;
     }) };
@@ -105,12 +108,14 @@ describe('Native project import reconciliation after transport sync failure', ()
     const instance = Object.create(NativeAudioEngine.prototype) as any;
     const applyStatus = vi.fn();
     instance.bridge = {
+      reconcilePendingRhythmTempo: vi.fn(async () => null),
+      waitForRhythmTempoBarrier: vi.fn(async (_bpm: number, _host: string, status: any) => status),
       getStatus: vi.fn(async () => hostStatus(2, 120)),
       getProjectArchiveImportStatus: vi.fn(async (generation: number) => ({
         ok: true, generation, state: 'committed', hostIncarnationId: 'a'.repeat(32), projectContentRevision: 2,
       })),
     };
-    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => true) };
+    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, tempoAcknowledgement: { host: 'a'.repeat(32), revision: 2, intent: 'f'.repeat(32), bpm: 110 }, setBpm: vi.fn(async () => true) };
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[56, {
       hostIncarnationId: 'a'.repeat(32),
@@ -150,6 +155,8 @@ describe('Native project import reconciliation after transport sync failure', ()
     if (changed === 'track') currentHostStatus.nativeTracks[0].contentRevision = 10;
     const instance = Object.create(NativeAudioEngine.prototype) as any;
     instance.bridge = {
+      reconcilePendingRhythmTempo: vi.fn(async () => null),
+      waitForRhythmTempoBarrier: vi.fn(async (_bpm: number, _host: string, status: any) => status),
       getStatus: vi.fn(async () => currentHostStatus),
       getProjectArchiveImportStatus: vi.fn(async (generation: number) => ({
         ok: true, generation, state: 'committed', hostIncarnationId: 'a'.repeat(32), projectContentRevision: 2,
@@ -180,7 +187,46 @@ describe('Native project import reconciliation after transport sync failure', ()
     expect(instance.pendingProjectImportSync.has(57)).toBe(false);
   });
 
-  it('retries BPM ACK/readback from the recorded loop revisions instead of requiring the old callback epoch', async () => {
+  it('after reload reports committed audio without adopting a retained BPM receipt', async () => {
+    const host = 'a'.repeat(32);
+    sessionStorage.setItem('rc505.native.import-tempo.67', JSON.stringify({ host, revision: 2, intent: 'f'.repeat(32), bpm: 110 }));
+    const instance = Object.create(NativeAudioEngine.prototype) as any;
+    instance.bridge = { getProjectArchiveImportStatus: vi.fn(async () => ({ ok: true, generation: 67,
+      state: 'committed', hostIncarnationId: host, projectContentRevision: 2 })), reconcilePendingRhythmTempo: vi.fn() };
+    instance.pendingProjectImportSync = new Map();
+    instance.rhythmEngine = { setBpm: vi.fn() };
+    await expect(instance.getProjectArchiveImportStatus(67, host)).resolves.toMatchObject({ state: 'committed', recoveryUnavailable: true });
+    expect(instance.bridge.reconcilePendingRhythmTempo).not.toHaveBeenCalled();
+    expect(instance.rhythmEngine.setBpm).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('rc505.native.import-tempo.67')).not.toBeNull();
+  });
+
+  it('rejects a retained import receipt after same-BPM ABA without resending', async () => {
+    const transport = Transport.getInstance();
+    transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
+    transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(120);
+    const operationStartTransport = { bpm: 120, state: transport.state, masterTrackId: transport.masterTrackId,
+      measureLengthSeconds: 0, masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 };
+    sessionStorage.setItem('rc505.native.import-tempo.66', JSON.stringify({ host: 'a'.repeat(32), revision: 2, intent: 'f'.repeat(32), bpm: 110 }));
+    const newer = hostStatus(3, 110); newer.nativeRhythm.tempoRequestedRevision = 4; newer.nativeRhythm.tempoAppliedRevision = 4;
+    newer.nativeRhythm.tempoRequestIntentId = 'c'.repeat(32);
+    const instance = Object.create(NativeAudioEngine.prototype) as any;
+    instance.bridge = { getStatus: vi.fn(async () => newer), reconcilePendingRhythmTempo: vi.fn(), waitForRhythmTempoBarrier: vi.fn() };
+    instance.rhythmEngine = { available: true, settings: { bpm: 110 }, setBpm: vi.fn() };
+    instance.syncingNativeRhythmBpm = false;
+    instance.pendingProjectImportSync = new Map([[66, { hostIncarnationId: 'a'.repeat(32), bpm: 110,
+      transport: { masterTrackId: null, measureLengthSeconds: 0, masterLoopLengthSamples: 0,
+        timeSignatureNumerator: 4, timeSignatureDenominator: 4 }, operationStartTransport,
+      operationStartTransportRevision: transport.projectMutationRevision, synchronizationStarted: true,
+      callbackTrackSnapshot: hostStatus(2, 110).nativeTracks }]]);
+    instance.applyStatus = vi.fn();
+    await expect(instance.synchronizeCommittedProjectArchive(66, 2)).rejects.toMatchObject({ recoveryUnavailable: true });
+    expect(instance.rhythmEngine.setBpm).not.toHaveBeenCalled();
+    expect(instance.bridge.reconcilePendingRhythmTempo).not.toHaveBeenCalled();
+    expect(transport.bpm).toBe(120);
+  });
+
+  it('reconciles the original BPM request without resending after a lost acknowledgement', async () => {
     const transport = Transport.getInstance();
     transport.stop();
     transport.resetMasterTrack();
@@ -196,13 +242,11 @@ describe('Native project import reconciliation after transport sync failure', ()
     const operationStartTransportRevision = transport.projectMutationRevision;
     let readbackBpm = 120;
     let hostReads = 0;
-    const setBpm = vi.fn(async () => {
-      if (setBpm.mock.calls.length === 1) return false;
-      readbackBpm = 110;
-      return true;
-    });
+    const setBpm = vi.fn(async () => false);
     const instance = Object.create(NativeAudioEngine.prototype) as any;
     instance.bridge = {
+      reconcilePendingRhythmTempo: vi.fn(async () => null),
+      waitForRhythmTempoBarrier: vi.fn(async (_bpm: number, _host: string, status: any) => status),
       getStatus: vi.fn(async () => {
         hostReads += 1;
         if (hostReads === 1) return hostStatus(2, 120);
@@ -215,6 +259,10 @@ describe('Native project import reconciliation after transport sync failure', ()
       })),
     };
     instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm };
+    instance.bridge.reconcilePendingRhythmTempo.mockImplementationOnce(async () => null).mockImplementationOnce(async () => {
+      readbackBpm = 110;
+      return hostStatus(3, 110);
+    });
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[55, {
       hostIncarnationId: 'a'.repeat(32),
@@ -225,7 +273,7 @@ describe('Native project import reconciliation after transport sync failure', ()
       operationStartTransportRevision,
       synchronizationStarted: false,
     }]]);
-    instance.applyStatus = vi.fn();
+    instance.applyStatus = vi.fn((status: any) => { instance.rhythmEngine.settings.bpm = status.nativeRhythm.bpm; });
 
     await expect(instance.synchronizeCommittedProjectArchive(55, 2)).rejects.toMatchObject({
       archiveCommitted: true, generation: 55, recoveryUnavailable: false,
@@ -236,7 +284,7 @@ describe('Native project import reconciliation after transport sync failure', ()
     expect(reconciled).toMatchObject({ state: 'committed', generation: 55,
       committedProjectContentRevision: 2, projectContentRevision: 3,
       projectTransportMutationRevision: transport.projectMutationRevision });
-    expect(setBpm).toHaveBeenCalledTimes(2);
+    expect(setBpm).toHaveBeenCalledTimes(1);
     expect(instance.pendingProjectImportSync.has(55)).toBe(false);
   });
 });

@@ -37,7 +37,7 @@ describe('Native rhythm runtime adapter', () => {
     const { rhythm, setRhythm } = createRuntime();
     for (const [legacy, patternIndex] of [['ROCK', 106], ['TECHNO', 198], ['METRONOME', 210]] as const) {
       await expect(rhythm.setPattern(legacy)).resolves.toBe(true);
-      expect(setRhythm).toHaveBeenLastCalledWith(expect.objectContaining({ patternIndex }));
+      expect(setRhythm.mock.calls.at(-1)?.[0]).toMatchObject({ patternIndex });
       expect(rhythm.patternMetadata.globalIndex).toBe(patternIndex);
     }
     await rhythm.setSettings({ patternIndex: 240, kitIndex: 16, variation: 'D', section: 'fill', swingPercent: 75, quantizeGrid: '1/4' });
@@ -52,7 +52,7 @@ describe('Native rhythm runtime adapter', () => {
     expect(rhythm.settings).toMatchObject({ kitIndex: 1, variation: 'B', section: 'intro', swingPercent: 67, quantizeGrid: '1/8' });
     await rhythm.start();
     expect(rhythm.isRunning).toBe(true);
-    expect(setRhythm).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true, bpm: Transport.getInstance().bpm }));
+    expect(setRhythm.mock.calls.at(-1)?.[0]).toMatchObject({ enabled: true, bpm: Transport.getInstance().bpm });
     await rhythm.stop();
     expect(rhythm.isRunning).toBe(false);
   });
@@ -97,7 +97,7 @@ describe('Native rhythm runtime adapter', () => {
     await expect(start).resolves.toBe(true);
     await expect(select).resolves.toBe(true);
     await expect(volume).resolves.toBe(true);
-    expect(runtime.setRhythm).toHaveBeenNthCalledWith(3, expect.objectContaining({ enabled: true, patternIndex: 240, volume: 100 }));
+    expect(runtime.setRhythm.mock.calls[2]?.[0]).toMatchObject({ enabled: true, patternIndex: 240, volume: 100 });
     expect(runtime.rhythm.isRunning).toBe(true);
   });
 
@@ -133,7 +133,7 @@ describe('Native rhythm runtime adapter', () => {
     Transport.getInstance().setBpm(137);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(setRhythm).toHaveBeenCalledOnce();
-    expect(setRhythm).toHaveBeenCalledWith(expect.objectContaining({ bpm: 137 }));
+    expect(setRhythm.mock.calls.some(([config]) => config.bpm === 137)).toBe(true);
     setRhythm.mockRejectedValueOnce(new Error('Native rhythm BPM change rejected'));
     Transport.getInstance().setBpm(149);
     await new Promise((resolve) => setTimeout(resolve, 0));

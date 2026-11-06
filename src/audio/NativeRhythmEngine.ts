@@ -18,6 +18,7 @@ interface NativeRhythmHost {
 export class NativeRhythmEngine {
   private commandTail: Promise<void> = Promise.resolve();
   private lastError = '';
+  private lastTempoReceipt: { host: string; revision: number; intent: string; bpm: number } | null = null;
 
   private readonly host: NativeRhythmHost;
 
@@ -45,6 +46,9 @@ export class NativeRhythmEngine {
   }
 
   get error(): string { return this.lastError; }
+  get tempoAcknowledgement(): { host: string; revision: number; intent: string; bpm: number } | null {
+    return this.lastTempoReceipt ? { ...this.lastTempoReceipt } : null;
+  }
   get settings(): NativeRhythmConfig | null {
     const rhythm = this.host.status()?.nativeRhythm;
     if (!rhythm || !isNativeRhythmConfig(rhythm)) return null;
@@ -76,10 +80,10 @@ export class NativeRhythmEngine {
   setSwingPercent(swingPercent: number): Promise<boolean> { return this.configure({ swingPercent }); }
   setQuantizeGrid(quantizeGrid: RhythmQuantizeGrid): Promise<boolean> { return this.configure({ quantizeGrid }); }
   setVolume(volume: number): Promise<boolean> { return this.configure({ volume }); }
-  setBpm(bpm: number, hostIncarnationId?: string): Promise<boolean> { return this.configure({ bpm }, hostIncarnationId); }
+  setBpm(bpm: number, hostIncarnationId?: string, receiptOwner?: string): Promise<boolean> { return this.configure({ bpm }, hostIncarnationId, receiptOwner); }
   setSettings(settings: RhythmPlaybackSettings): Promise<boolean> { return this.configure(settings); }
 
-  private configure(patch: Partial<NativeRhythmConfig>, hostIncarnationId?: string): Promise<boolean> {
+  private configure(patch: Partial<NativeRhythmConfig>, hostIncarnationId?: string, receiptOwner?: string): Promise<boolean> {
     // Serialize partial edits against the last ACK. Rapid volume/pattern/start/stop
     // changes cannot race and overwrite a newer selection with an older response.
     const command = this.commandTail.then(async (): Promise<boolean> => {
@@ -90,17 +94,21 @@ export class NativeRhythmEngine {
       if (!isNativeRhythmConfig(config)) return this.reject('Unsupported Native rhythm settings. Check BPM, pattern, kit, variation, section, swing, quantize, and volume.');
       this.lastError = '';
       try {
-        const status = hostIncarnationId === undefined
-          ? await this.host.bridge().setRhythm(config)
-          : await this.host.bridge().setRhythm(config, hostIncarnationId);
+        const status = await this.host.bridge().setRhythm(config, hostIncarnationId, receiptOwner, patch);
         if (hostIncarnationId !== undefined &&
             (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== hostIncarnationId)) {
           throw new Error('Native host incarnation changed during rhythm BPM synchronization; stale status was not applied.');
         }
+        if (patch.bpm !== undefined && isNativeHostIncarnationId(status.hostIncarnationId) &&
+            Number.isSafeInteger(status.nativeRhythm?.tempoRequestedRevision) &&
+            isNativeHostIncarnationId(status.nativeRhythm?.tempoRequestIntentId)) {
+          this.lastTempoReceipt = { host: status.hostIncarnationId, revision: status.nativeRhythm!.tempoRequestedRevision!,
+            intent: status.nativeRhythm!.tempoRequestIntentId!, bpm: status.nativeRhythm!.bpm };
+        } else if (patch.bpm !== undefined) this.lastTempoReceipt = null;
         this.host.applyStatus(status, hostIncarnationId === undefined);
         if (!this.available) return this.reject(this.unavailableReason);
         const acknowledged = this.settings;
-        if (!acknowledged || (Object.keys(config) as Array<keyof NativeRhythmConfig>).some((key) => acknowledged[key] !== config[key])) {
+        if (!acknowledged || (Object.keys(patch) as Array<keyof NativeRhythmConfig>).some((key) => acknowledged[key] !== config[key])) {
           return this.reject('Native rhythm returned different settings; the requested change was not acknowledged.');
         }
         return true;

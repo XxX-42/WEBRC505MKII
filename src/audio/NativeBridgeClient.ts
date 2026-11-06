@@ -325,6 +325,11 @@ export interface NativeStatus {
     meterNumerator: number;
     meterDenominator: number;
     eventsCleanRoomProcedural: boolean;
+    tempoRequestReceiptVersion?: number;
+    tempoRequestIntentId?: string;
+    configRequestIntentId?: string;
+    configRequestedRevision?: number;
+    acceptedTempoRevision?: number;
     tempoRequestedRevision?: number;
     tempoAppliedRevision?: number;
     tempoAppliedValid?: boolean;
@@ -2009,18 +2014,135 @@ export class NativeBridgeClient {
     });
   }
 
-  public async setRhythm(config: NativeRhythmConfig, expectedHostIncarnationId?: string): Promise<NativeStatus> {
-    if (!isNativeRhythmConfig(config)) {
-      throw new RangeError('Native rhythm settings require BPM 40–300, pattern 1–240, kit 1–16, variation A–D, a supported section, swing 50–75, quantize 1/16|1/8|1/4, and volume 0–100.');
+  public async reconcilePendingRhythmTempo(expectedBpm?: number, expectedHost?: string, expectedOwner?: string): Promise<NativeStatus | null> {
+    const saved = globalThis.sessionStorage?.getItem('rc505.native.rhythm-tempo-request');
+    if (!saved) return null;
+    const pending = JSON.parse(saved) as { host: string; owner: string | null; config: NativeRhythmConfig };
+    if ((expectedHost !== undefined && pending.host !== expectedHost) ||
+        (expectedBpm !== undefined && pending.config?.bpm !== expectedBpm) ||
+        (expectedOwner !== undefined && pending.owner !== expectedOwner)) {
+      throw new Error('A different Native rhythm request is unresolved; it cannot be adopted for this project.');
     }
-    if (expectedHostIncarnationId !== undefined && !isNativeHostIncarnationId(expectedHostIncarnationId)) {
-      throw new RangeError('Native rhythm synchronization requires a valid host incarnation ID.');
+    return this.setRhythm(pending.config, pending.host, pending.owner ?? undefined);
+  }
+
+  /** Await one exact host-authored tempo generation without issuing a write. */
+  public async waitForRhythmTempoBarrier(bpm: number, hostIncarnationId: string, initialStatus?: NativeStatus,
+      expected?: { host: string; revision: number; intent: string; bpm: number }): Promise<NativeStatus> {
+    const initial = initialStatus ?? await this.getStatus();
+    const rhythm = initial.nativeRhythm;
+    if (initial.hostIncarnationId !== hostIncarnationId || rhythm?.tempoRequestReceiptVersion !== 1 ||
+        rhythm.bpm !== bpm || !Number.isSafeInteger(rhythm.tempoRequestedRevision) || !Number.isSafeInteger(rhythm.tempoAppliedRevision)) {
+      throw new Error('Native rhythm tempo receipt is unavailable or belongs to another host; no BPM request was submitted.');
     }
-    return this.request<NativeStatus>('/v1/native-rhythm/config', {
-      method: 'POST',
-      ...(expectedHostIncarnationId ? { headers: { 'X-Native-Host-Incarnation': expectedHostIncarnationId } } : {}),
-      body: JSON.stringify(config),
-    });
+    const revision = rhythm.tempoRequestedRevision!;
+    const intent = rhythm.tempoRequestIntentId;
+    if (expected && (expected.host !== hostIncarnationId || expected.bpm !== bpm ||
+        expected.revision !== revision || expected.intent !== intent)) {
+      throw new Error('Native rhythm tempo was superseded after the exact callback acknowledgement; recovery remains unpublished.');
+    }
+    if (!isNativeHostIncarnationId(intent) || (revision !== rhythm.tempoAppliedRevision && /^0+$/.test(intent))) {
+      throw new Error('Pending Native rhythm BPM lacks an exact request identity; outcome remains unknown.');
+    }
+    return this.waitForRhythmTempoReceipt(hostIncarnationId, revision, bpm, intent, initial);
+  }
+
+  private async waitForRhythmTempoReceipt(host: string, revision: number, bpm: number, intent: string | undefined,
+      initial: NativeStatus): Promise<NativeStatus> {
+    let status = initial;
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      const rhythm = status.nativeRhythm;
+      if (status.hostIncarnationId !== host || rhythm?.tempoRequestReceiptVersion !== 1 ||
+          rhythm.tempoRequestedRevision !== revision || rhythm.bpm !== bpm ||
+          (intent !== undefined && rhythm.tempoRequestIntentId !== intent)) {
+        throw new Error('Native rhythm tempo request was superseded or its host changed; outcome remains unknown.');
+      }
+      if (rhythm.tempoAppliedValid === true && rhythm.tempoAppliedRevision === revision) return status;
+      if (Date.now() >= deadline) throw new Error('Native rhythm tempo callback acknowledgement is pending; do not resend the request.');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      status = await this.getStatus();
+    }
+  }
+
+  public async setRhythm(config: NativeRhythmConfig, expectedHostIncarnationId?: string, receiptOwner?: string, patch?: Partial<NativeRhythmConfig>): Promise<NativeStatus> {
+    if (!isNativeRhythmConfig(config)) throw new RangeError('Native rhythm settings require BPM 40–300, pattern 1–240, kit 1–16, variation A–D, a supported section, swing 50–75, quantize 1/16|1/8|1/4, and volume 0–100.');
+    if (expectedHostIncarnationId !== undefined && !isNativeHostIncarnationId(expectedHostIncarnationId)) throw new RangeError('Native rhythm synchronization requires a valid host incarnation ID.');
+    const key = 'rc505.native.rhythm-tempo-request';
+    let pending: { host: string; intent: string; baseline: number; baselineConfig: number; baselineBpm: number; baselineTempoIntent: string; owner: string | null; config: NativeRhythmConfig };
+    const saved = globalThis.sessionStorage?.getItem(key);
+    let status: NativeStatus;
+    if (saved) {
+      pending = JSON.parse(saved) as typeof pending;
+      if (!isNativeHostIncarnationId(pending.host) || !isNativeHostIncarnationId(pending.intent) || /^0+$/.test(pending.intent) ||
+          !Number.isSafeInteger(pending.baseline) || pending.baseline < 0 || !Number.isSafeInteger(pending.baselineConfig) || pending.baselineConfig < 0 || !Number.isFinite(pending.baselineBpm) ||
+          !isNativeHostIncarnationId(pending.baselineTempoIntent) || (pending.owner !== null && typeof pending.owner !== 'string') || !isNativeRhythmConfig(pending.config) ||
+          JSON.stringify(pending.config) !== JSON.stringify(config) || pending.owner !== (receiptOwner ?? null) || (expectedHostIncarnationId && pending.host !== expectedHostIncarnationId)) {
+        throw new Error('An earlier Native rhythm tempo request is unresolved; reconcile its exact receipt before changing settings.');
+      }
+      status = await this.getStatus();
+    } else {
+      status = await this.getStatus();
+      if (patch && status.nativeRhythm && isNativeRhythmConfig(status.nativeRhythm)) {
+        const current = status.nativeRhythm;
+        const refreshed: NativeRhythmConfig = { enabled: current.enabled, bpm: current.bpm, kitIndex: current.kitIndex,
+          patternIndex: current.patternIndex, variation: current.variation, section: current.section,
+          swingPercent: current.swingPercent, quantizeGrid: current.quantizeGrid, volume: current.volume, ...patch };
+        if (!isNativeRhythmConfig(refreshed)) throw new Error('Native rhythm patch is invalid for the current host settings.');
+        config = refreshed;
+      }
+      if (!isNativeHostIncarnationId(status.hostIncarnationId) || (expectedHostIncarnationId && status.hostIncarnationId !== expectedHostIncarnationId) ||
+          status.nativeRhythm?.tempoRequestReceiptVersion !== 1 || !Number.isSafeInteger(status.nativeRhythm.configRequestedRevision) || !Number.isSafeInteger(status.nativeRhythm.tempoRequestedRevision) ||
+          !Number.isSafeInteger(status.nativeRhythm.tempoAppliedRevision) || status.nativeRhythm.tempoAppliedValid !== true ||
+          (status.nativeRhythm.tempoAppliedRevision !== status.nativeRhythm.tempoRequestedRevision &&
+            (config.bpm !== status.nativeRhythm.bpm || !isNativeHostIncarnationId(status.nativeRhythm.tempoRequestIntentId) ||
+              /^0+$/.test(status.nativeRhythm.tempoRequestIntentId))) ||
+          !isNativeHostIncarnationId(status.nativeRhythm.tempoRequestIntentId)) {
+        throw new Error('Native rhythm cannot bind a new tempo request to a settled host revision; no request was submitted.');
+      }
+      if (globalThis.sessionStorage?.getItem(key)) return this.setRhythm(config, expectedHostIncarnationId, receiptOwner, patch);
+      pending = { host: status.hostIncarnationId, intent: createNativeRhythmIntentId(), baseline: status.nativeRhythm.tempoRequestedRevision!, baselineConfig: status.nativeRhythm.configRequestedRevision!, baselineBpm: status.nativeRhythm.bpm, baselineTempoIntent: status.nativeRhythm.tempoRequestIntentId, owner: receiptOwner ?? null, config };
+      const encoded = JSON.stringify(pending);
+      try { globalThis.sessionStorage.setItem(key, encoded); if (globalThis.sessionStorage.getItem(key) !== encoded) throw new Error('storage verification failed'); }
+      catch { throw new Error('Native rhythm request identity could not be retained; no request was submitted.'); }
+      try {
+        status = await this.request<NativeStatus>('/v1/native-rhythm/config', { method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Native-Host-Incarnation': pending.host,
+            'X-Native-Operation-Id': pending.intent, 'X-Native-Tempo-Revision': String(pending.baseline),
+            'X-Native-Rhythm-Revision': String(pending.baselineConfig) }, body: JSON.stringify(config) });
+        if (status.nativeRhythm?.acceptedTempoRevision !== pending.baseline + (pending.baselineBpm === config.bpm ? 0 : 1)) throw new Error('Native rhythm acceptance did not identify this tempo revision.');
+      } catch (error) {
+        if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+          globalThis.sessionStorage.removeItem(key); throw error;
+        }
+        status = await this.getStatus();
+      }
+    }
+    const changesBpm = pending.baselineBpm !== pending.config.bpm;
+    if (!changesBpm && status.nativeRhythm?.configRequestIntentId !== pending.intent) {
+      throw new Error('Native rhythm configuration acceptance is unavailable or superseded; outcome remains unknown.');
+    }
+    const acknowledged = await this.waitForRhythmTempoReceipt(pending.host, pending.baseline + (changesBpm ? 1 : 0), pending.config.bpm,
+      changesBpm ? pending.intent : pending.baselineTempoIntent, status);
+    if (!changesBpm && (Object.keys(config) as Array<keyof NativeRhythmConfig>).some(field => acknowledged.nativeRhythm?.[field] !== config[field])) {
+      throw new Error('Native rhythm settings changed after acceptance; outcome remains unknown.');
+    }
+    if (pending.owner === null) globalThis.sessionStorage.removeItem(key);
+    return acknowledged;
+  }
+
+  public releaseRetainedRhythmTempoReceipt(expected: { host: string; revision: number; intent: string; bpm: number }, owner: string): void {
+    const key = 'rc505.native.rhythm-tempo-request';
+    const saved = globalThis.sessionStorage?.getItem(key);
+    if (!saved) return;
+    const pending = JSON.parse(saved) as { host: string; intent: string; baseline: number; baselineBpm: number; owner: string | null; config: NativeRhythmConfig };
+    const changesBpm = pending.baselineBpm !== pending.config?.bpm;
+    const tempoIntent = changesBpm ? pending.intent : (JSON.parse(saved) as { baselineTempoIntent: string }).baselineTempoIntent;
+    if (pending.owner !== owner || pending.host !== expected.host || pending.config?.bpm !== expected.bpm ||
+        pending.baseline + (changesBpm ? 1 : 0) !== expected.revision || tempoIntent !== expected.intent) {
+      throw new Error('Retained Native rhythm request does not match the imported tempo receipt.');
+    }
+    globalThis.sessionStorage.removeItem(key);
   }
 
   public async setPitch(config: NativePitchConfig): Promise<NativeStatus> {

@@ -1,12 +1,12 @@
 """Rhythm-frame REC/STOP HTTP contract against the no-hardware host."""
 import os
-os.environ['WEBRC_NATIVE_BRIDGE_PORT'] = '17763'
+os.environ.setdefault('WEBRC_NATIVE_BRIDGE_PORT', '17763')
 import math
 import subprocess
 import sys
 import time
 import uuid
-from native_bridge_http_simulation_test import (build_project_archive, request, request_project_archive, require)
+from native_bridge_http_simulation_test import (build_project_archive, request, request_with_headers, request_project_archive, require)
 
 
 def until(predicate, timeout=8):
@@ -98,6 +98,40 @@ def main():
         running = until(phase_has_headroom)
         require(running['nativeRecordPlay']['quantizeAvailable'] is True and
             running['nativeLoopFrameScheduling']['available'] is True, running)
+        cors_code, _, _ = request_with_headers('/v1/native-rhythm/config', 'OPTIONS', headers={
+            'Origin': 'http://localhost:5173', 'Access-Control-Request-Method': 'POST',
+            'Access-Control-Request-Headers': 'content-type,x-native-host-incarnation,x-native-operation-id,x-native-tempo-revision,x-native-rhythm-revision'})
+        require(cors_code == 204, ('exact rhythm receipt browser preflight was rejected', cors_code))
+        # A real callback is parked: the exact BPM request remains pending
+        # while a second client edits only volume without replacing its intent.
+        set_callback_gate(True)
+        baseline = request('/v1/status')[1]
+        prior_tempo = baseline['nativeRhythm']['tempoRequestedRevision']
+        first_intent = uuid.uuid4().hex
+        first_headers = {'X-Native-Host-Incarnation': baseline['hostIncarnationId'],
+            'X-Native-Operation-Id': first_intent, 'X-Native-Tempo-Revision': str(prior_tempo),
+            'X-Native-Rhythm-Revision': str(baseline['nativeRhythm']['configRequestedRevision'])}
+        code, first = request('/v1/native-rhythm/config', 'POST', {'bpm': 100}, headers=first_headers)
+        require(code == 200 and first['nativeRhythm']['acceptedTempoRevision'] == prior_tempo + 1 and
+            first['nativeRhythm']['tempoAppliedRevision'] == prior_tempo, ('tempo prematurely acknowledged', first))
+        volume_intent = uuid.uuid4().hex
+        volume_headers = {'X-Native-Host-Incarnation': baseline['hostIncarnationId'],
+            'X-Native-Operation-Id': volume_intent, 'X-Native-Tempo-Revision': str(prior_tempo + 1),
+            'X-Native-Rhythm-Revision': str(baseline['nativeRhythm']['configRequestedRevision'] + 1)}
+        code, volume = request('/v1/native-rhythm/config', 'POST', {'volume': 40}, headers=volume_headers)
+        require(code == 200 and volume['nativeRhythm']['tempoRequestedRevision'] == prior_tempo + 1 and
+            volume['nativeRhythm']['tempoRequestIntentId'] == first_intent and
+            volume['nativeRhythm']['configRequestIntentId'] == volume_intent,
+            ('volume changed BPM receipt or tempo token revision', volume))
+        require(request('/v1/native-rhythm/config', 'POST', {'bpm': 101}, headers=first_headers)[0] == 409,
+            'stale BPM generation was accepted')
+        set_callback_gate(False)
+        applied = until(lambda status: status['nativeRhythm']['tempoAppliedRevision'] == prior_tempo + 1)
+        require(applied['nativeRhythm']['tempoRequestIntentId'] == first_intent and applied['nativeRhythm']['bpm'] == 100,
+            ('exact BPM callback receipt was lost', applied))
+        require(request('/v1/native-rhythm/config', 'POST', {'bpm': 99})[0] == 200, 'restore rhythm BPM failed')
+        running = until(lambda status: phase_has_headroom(status) and status['nativeRhythm']['bpm'] == 99 and
+            status['nativeRhythm']['tempoRequestedRevision'] == status['nativeRhythm']['tempoAppliedRevision'])
         code, quantize_status = request('/v1/record/settings', 'POST', {'quantize': 'MEASURE'})
         require(code == 200 and quantize_status['nativeRecordPlay']['quantize'] == 'MEASURE', quantize_status)
         code, sync_status = request('/v1/record/loop-sync', 'POST', {'trackId': 2, 'enabled': True})

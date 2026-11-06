@@ -190,6 +190,7 @@ export class ProjectMemory {
         committedProjectContentRevision: status.committedProjectContentRevision ?? status.projectContentRevision,
         projectTransportMutationRevision: status.projectTransportMutationRevision,
       });
+      this.engine.releaseNativeProjectImportTempoReceipt?.(status.generation, status.hostIncarnationId!);
       return { state: status.state, recoveryAvailable: true, generation: status.generation };
     });
   }
@@ -277,6 +278,7 @@ export class ProjectMemory {
     // successful commit this becomes the next recovery point (undo/redo toggle).
     const staged = await this.stageNativeRecoveryCandidate(operationToken);
     if (!staged) throw new Error('Native recovery candidate was not staged; the project was not restored.');
+    let handedOff: NativeProjectImportCommitReceipt | null = null;
     try {
       if (!operationToken.native) throw new Error('Native recovery restore lost its operation-start host token.');
       await this.store.bindNativeImportRequest(staged.operationId, operationToken.native.projectContentRevision,
@@ -284,10 +286,12 @@ export class ProjectMemory {
       const receipt = await this.engine.restoreProjectArchive(project, saved.archive, operationToken, staged.operationId);
       if (!receipt) throw new Error('Native recovery did not return a committed host receipt.');
       await this.publishCommittedCandidate(staged, receipt);
+      handedOff = receipt;
     } catch (error) {
       await this.handleUncommittedStage(staged, error);
       throw error;
     }
+    if (handedOff) this.engine.releaseNativeProjectImportTempoReceipt?.(handedOff.generation, handedOff.hostIncarnationId);
     return { name: project.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length, archiveVersion: project.version };
   }
 
@@ -333,6 +337,7 @@ export class ProjectMemory {
       await this.engine.restoreProjectArchive(project, archive, operationToken);
       return;
     }
+    let handedOff: NativeProjectImportCommitReceipt | null = null;
     try {
       if (operationToken.mode !== 'native' || !operationToken.native) throw new Error('Native recovery candidate lost its operation-start host token.');
       await this.store.bindNativeImportRequest(staged.operationId, operationToken.native.projectContentRevision,
@@ -340,10 +345,12 @@ export class ProjectMemory {
       const receipt = await this.engine.restoreProjectArchive(project, archive, operationToken, staged.operationId);
       if (!receipt) throw new Error('Native archive import did not return a committed host receipt.');
       await this.publishCommittedCandidate(staged, receipt);
+      handedOff = receipt;
     } catch (error) {
       await this.handleUncommittedStage(staged, error);
       throw error;
     }
+    if (handedOff) this.engine.releaseNativeProjectImportTempoReceipt?.(handedOff.generation, handedOff.hostIncarnationId);
   }
 
   private async stageNativeRecoveryCandidate(operationToken: ProjectRestoreOperationToken,
