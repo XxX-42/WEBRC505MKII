@@ -315,6 +315,11 @@ struct EngineStatus {
     NativePitchFallbackReason nativePitchFallbackReason = NativePitchFallbackReason::NotRequested;
     double nativeRhythmBpm = 120.0;
     std::uint64_t nativeTempoRequestedRevision = 0U;
+    std::uint64_t nativeTempoIntentHigh = 0U;
+    std::uint64_t nativeTempoIntentLow = 0U;
+    std::uint64_t nativeRhythmConfigIntentHigh = 0U;
+    std::uint64_t nativeRhythmConfigIntentLow = 0U;
+    std::uint64_t nativeRhythmConfigRevision = 0U;
     std::uint64_t nativeTempoAppliedRevision = 0U;
     bool nativeTempoAppliedValid = false;
     unsigned int nativeRhythmKitIndex = 1;
@@ -699,7 +704,11 @@ public:
         std::string& error,
         std::uint8_t trackId = 0U
     );
-    bool setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error);
+    bool setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error,
+        std::optional<std::uint64_t> expectedTempoRevision = std::nullopt,
+        std::optional<std::uint64_t> expectedConfigRevision = std::nullopt,
+        std::uint64_t intentHigh = 0U, std::uint64_t intentLow = 0U,
+        std::uint64_t* acceptedTempoRevision = nullptr);
 
     // Takes an exact copy of the finalized mono loop without reading mutable
     // LooperCore storage until the audio callback has pinned loop mutations.
@@ -1192,6 +1201,11 @@ private:
     std::array<std::atomic<unsigned int>, 7> mixerLevels_{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
     NativeRhythmConfig nativeRhythmConfig_{};
     std::uint64_t nativeTempoRequestedRevision_ = 0U;
+    std::uint64_t nativeTempoIntentHigh_ = 0U;
+    std::uint64_t nativeTempoIntentLow_ = 0U;
+    std::uint64_t nativeRhythmConfigIntentHigh_ = 0U;
+    std::uint64_t nativeRhythmConfigIntentLow_ = 0U;
+    std::uint64_t nativeRhythmConfigRevision_ = 0U;
     std::atomic<std::uint64_t> nativeTempoAppliedRevision_{0U};
     std::atomic<std::uint64_t> nativeTempoAppliedBpmBits_{0U};
     std::atomic<bool> nativeTempoAppliedValid_{false};

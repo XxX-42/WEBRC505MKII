@@ -1325,6 +1325,19 @@ export class NativeAudioEngine {
       if (callbackCommitStatus.hostIncarnationId !== savedProject.hostIncarnationId) {
         throw new NativeProjectHostIncarnationMismatchError('Native host incarnation changed before committed import reconciliation.');
       }
+      const tempoStorageKey = `rc505.native.import-tempo.${generation}`;
+      let retainedImportTempo: { host: string; revision: number; intent: string; bpm: number } | undefined;
+      const retainedTempoJson = globalThis.sessionStorage?.getItem(tempoStorageKey);
+      if (retainedTempoJson) {
+        const value = JSON.parse(retainedTempoJson) as { host: string; revision: number; intent: string; bpm: number };
+        if (!isNativeHostIncarnationId(value.host) || !isNativeHostIncarnationId(value.intent) ||
+            !Number.isSafeInteger(value.revision) || value.revision < 0 || value.bpm !== bpm || value.host !== savedProject.hostIncarnationId ||
+            callbackCommitStatus.nativeRhythm?.tempoRequestedRevision !== value.revision ||
+            callbackCommitStatus.nativeRhythm?.tempoRequestIntentId !== value.intent || callbackCommitStatus.nativeRhythm?.bpm !== value.bpm) {
+          throw new CommittedImportRecoveryUnavailableError('Native imported BPM receipt was superseded; later tempo values were preserved.');
+        }
+        retainedImportTempo = value;
+      }
       const callbackTrackSnapshot = nativeProjectTrackSnapshot(callbackCommitStatus.nativeTracks);
       const transport = Transport.getInstance();
       if (callbackCommitStatus.projectContentRevisionSnapshotStable !== true) {
@@ -1360,16 +1373,42 @@ export class NativeAudioEngine {
         if (!savedProject.callbackTrackSnapshot) {
           throw new Error('Native loop revision receipt is unavailable while reconciling the committed generation.');
         }
-        if (!this.matchesImportedProjectTransportValues(transport, savedProject, bpm)) {
-          throw new Error('Transport values do not match the last synchronization receipt, but its revision is unchanged; recovery remains pending until the state can be verified.');
+        if (savedProject.synchronizedTransportRevision !== undefined) {
+          if (!this.matchesImportedProjectTransportValues(transport, savedProject, bpm)) {
+            throw new Error('Transport values do not match the last synchronization receipt, but its revision is unchanged; recovery remains pending until the state can be verified.');
+          }
+        } else if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
+          throw new CommittedImportRecoveryUnavailableError('Transport changed before the imported BPM was acknowledged; newer values were preserved.');
         }
       }
       this.pendingProjectImportSync.set(generation, savedProject);
       const syncFailures: string[] = [];
       this.syncingNativeRhythmBpm = true;
+      const pendingTempo = await this.bridge.reconcilePendingRhythmTempo(bpm, savedProject.hostIncarnationId, `import:${generation}`);
+      let exactTempoReceipt: { host: string; revision: number; intent: string; bpm: number } | undefined = retainedImportTempo;
+      if (pendingTempo) {
+        if (!Number.isSafeInteger(pendingTempo.nativeRhythm?.tempoRequestedRevision) ||
+            !isNativeHostIncarnationId(pendingTempo.nativeRhythm?.tempoRequestIntentId)) {
+          throw new Error('Native rhythm returned no exact pending BPM receipt; recovery remains unpublished.');
+        }
+        const pendingReceipt = { host: savedProject.hostIncarnationId, revision: pendingTempo.nativeRhythm!.tempoRequestedRevision!,
+          intent: pendingTempo.nativeRhythm!.tempoRequestIntentId!, bpm };
+        if (exactTempoReceipt && JSON.stringify(exactTempoReceipt) !== JSON.stringify(pendingReceipt)) {
+          throw new CommittedImportRecoveryUnavailableError('Native imported BPM receipt no longer matches the retained intent.');
+        }
+        exactTempoReceipt = pendingReceipt;
+        if (pendingTempo.hostIncarnationId !== savedProject.hostIncarnationId || pendingTempo.nativeRhythm?.bpm !== bpm) {
+          throw new Error('An earlier Native rhythm request belongs to a different host or tempo; import recovery remains pending.');
+        }
+        this.applyStatus(pendingTempo, false);
+      }
       if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
-        if (!await this.rhythmEngine.setBpm(bpm, savedProject.hostIncarnationId)) {
-          syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
+        if (!await this.rhythmEngine.setBpm(bpm, savedProject.hostIncarnationId, `import:${generation}`)) {
+          throw new Error(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
+        }
+        exactTempoReceipt = this.rhythmEngine.tempoAcknowledgement ?? undefined;
+        if (!exactTempoReceipt || exactTempoReceipt.host !== savedProject.hostIncarnationId || exactTempoReceipt.bpm !== bpm) {
+          throw new Error('Native rhythm did not return the exact imported BPM receipt; recovery remains unpublished.');
         }
       }
       // The remote BPM request is asynchronous and may cross a host restart.
@@ -1387,6 +1426,22 @@ export class NativeAudioEngine {
         throw error;
       }
       if (!synchronizedStatus) throw new Error('Native status readback is unavailable after BPM synchronization.');
+      if (synchronizedStatus.nativeRhythm?.available) {
+        synchronizedStatus = await this.bridge.waitForRhythmTempoBarrier(bpm, savedProject.hostIncarnationId, synchronizedStatus, exactTempoReceipt);
+        const rhythm = synchronizedStatus.nativeRhythm!;
+        if (!Number.isSafeInteger(rhythm.tempoRequestedRevision) || !isNativeHostIncarnationId(rhythm.tempoRequestIntentId)) {
+          throw new Error('Native imported BPM lacks an exact callback receipt.');
+        }
+        exactTempoReceipt = { host: savedProject.hostIncarnationId, revision: rhythm.tempoRequestedRevision!, intent: rhythm.tempoRequestIntentId, bpm };
+        const encodedTempo = JSON.stringify(exactTempoReceipt);
+        try {
+          globalThis.sessionStorage.setItem(tempoStorageKey, encodedTempo);
+          if (globalThis.sessionStorage.getItem(tempoStorageKey) !== encodedTempo) throw new Error('storage verification failed');
+        } catch { throw new Error('Native imported BPM receipt could not be retained; recovery remains unpublished.'); }
+        // Recheck after persisting the identity, before touching app transport.
+        synchronizedStatus = await this.bridge.waitForRhythmTempoBarrier(
+          bpm, savedProject.hostIncarnationId, await this.bridge.getStatus(), exactTempoReceipt);
+      }
       if (savedProject.synchronizedTransportRevision === undefined) {
         if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
           this.pendingProjectImportSync.delete(generation);
@@ -1463,10 +1518,22 @@ export class NativeAudioEngine {
       }
       const recoveryUnavailable = error instanceof CommittedImportRecoveryUnavailableError;
       if (recoveryUnavailable) this.pendingProjectImportSync.delete(generation);
-      const preserveUserTransport = !this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision);
-      try { this.applyStatus(await this.bridge.getStatus(), !preserveUserTransport); } catch { /* The committed-generation error remains primary. */ }
+      // Failed or indeterminate BPM requests never drive the app-owned Transport.
+      try { this.applyStatus(await this.bridge.getStatus(), false); } catch { /* The committed-generation error remains primary. */ }
       throw new NativeProjectArchiveCommittedError(generation, committedContentRevision, error, recoveryUnavailable);
     }
+  }
+
+  public releaseProjectImportTempoReceipt(generation: number, host: string): void {
+    const key = `rc505.native.import-tempo.${generation}`;
+    const saved = globalThis.sessionStorage?.getItem(key);
+    if (!saved) return;
+    const receipt = JSON.parse(saved) as { host: string; revision: number; intent: string; bpm: number };
+    if (receipt.host !== host || !isNativeHostIncarnationId(receipt.intent) || !Number.isSafeInteger(receipt.revision)) {
+      throw new Error('Native project handoff does not match its retained tempo receipt.');
+    }
+    this.bridge.releaseRetainedRhythmTempoReceipt(receipt, `import:${generation}`);
+    globalThis.sessionStorage.removeItem(key);
   }
 
   private matchesProjectRestoreTransport(

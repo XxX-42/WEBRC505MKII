@@ -1177,6 +1177,10 @@ json statusToJson(const EngineStatus& status) {
             {"meterDenominator", status.nativeRhythmMeterDenominator},
             {"eventsCleanRoomProcedural", status.nativeRhythmEventsCleanRoomProcedural},
             {"bpm", status.nativeRhythmBpm},
+            {"tempoRequestReceiptVersion", 1},
+            {"tempoRequestIntentId", formatRhythmIntentId(status.nativeTempoIntentHigh, status.nativeTempoIntentLow)},
+            {"configRequestIntentId", formatRhythmIntentId(status.nativeRhythmConfigIntentHigh, status.nativeRhythmConfigIntentLow)},
+            {"configRequestedRevision", status.nativeRhythmConfigRevision},
             {"tempoRequestedRevision", status.nativeTempoRequestedRevision},
             {"tempoAppliedRevision", status.nativeTempoAppliedRevision},
             {"tempoAppliedValid", status.nativeTempoAppliedValid},
@@ -1516,6 +1520,8 @@ void enableLoopbackCors(httplib::Server& server) {
                 bool sawContentType = false;
                 bool sawHostIncarnation = false;
                 bool sawOperationId = false;
+                bool sawTempoRevision = false;
+                bool sawRhythmRevision = false;
                 std::istringstream headerStream(requestedHeaders);
                 std::string token;
                 bool validHeaders = true;
@@ -1533,6 +1539,8 @@ void enableLoopbackCors(httplib::Server& server) {
                     if (token == "content-type" && !sawContentType) sawContentType = true;
                     else if (token == "x-native-host-incarnation" && !sawHostIncarnation) sawHostIncarnation = true;
                     else if (token == "x-native-operation-id" && !sawOperationId) sawOperationId = true;
+                    else if (token == "x-native-tempo-revision" && !sawTempoRevision) sawTempoRevision = true;
+                    else if (token == "x-native-rhythm-revision" && !sawRhythmRevision) sawRhythmRevision = true;
                     else {
                         validHeaders = false;
                         break;
@@ -1540,14 +1548,14 @@ void enableLoopbackCors(httplib::Server& server) {
                 }
                 if (!validHeaders) {
                     response.status = 400;
-                    writeError(response, "Native bridge CORS only allows Content-Type, X-Native-Host-Incarnation, and X-Native-Operation-Id request headers.");
+                    writeError(response, "Native bridge CORS request headers are unsupported or duplicated.");
                     return httplib::Server::HandlerResponse::Handled;
                 }
             }
 
             response.status = 204;
             response.set_header("Access-Control-Allow-Methods", "GET, POST");
-            response.set_header("Access-Control-Allow-Headers", "Content-Type, X-Native-Host-Incarnation, X-Native-Operation-Id");
+            response.set_header("Access-Control-Allow-Headers", "Content-Type, X-Native-Host-Incarnation, X-Native-Operation-Id, X-Native-Tempo-Revision, X-Native-Rhythm-Revision");
             response.set_header("Access-Control-Max-Age", "600");
             return httplib::Server::HandlerResponse::Handled;
         }
@@ -4388,13 +4396,36 @@ int main() {
                 config.volume = static_cast<unsigned int>(volume);
             }
 
+            std::optional<std::uint64_t> expectedTempoRevision, expectedConfigRevision;
+            std::uint64_t intentHigh = 0U, intentLow = 0U, acceptedTempoRevision = 0U;
+            const bool identified = request.has_header("X-Native-Operation-Id") || request.has_header("X-Native-Tempo-Revision") ||
+                request.has_header("X-Native-Rhythm-Revision");
+            if (identified) {
+                const auto intent = request.get_header_value("X-Native-Operation-Id");
+                const auto value = request.get_header_value("X-Native-Tempo-Revision");
+                std::uint64_t revision = 0U, configRevision = 0U;
+                const auto parsed = std::from_chars(value.data(), value.data() + value.size(), revision);
+                const auto configValue = request.get_header_value("X-Native-Rhythm-Revision");
+                const auto parsedConfig = std::from_chars(configValue.data(), configValue.data() + configValue.size(), configRevision);
+                if (!requestMatchesHostIncarnation(request) || request.get_header_value_count("X-Native-Operation-Id") != 1U ||
+                    request.get_header_value_count("X-Native-Tempo-Revision") != 1U || request.get_header_value_count("X-Native-Rhythm-Revision") != 1U ||
+                    !parseRhythmIntentId(intent, intentHigh, intentLow) ||
+                    value.empty() || parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() || revision > kMaximumSafeTempoRevision ||
+                    configValue.empty() || parsedConfig.ec != std::errc{} || parsedConfig.ptr != configValue.data() + configValue.size() || configRevision > kMaximumSafeTempoRevision) {
+                    response.status = 400; writeError(response, "Native rhythm request receipt identity is invalid."); return;
+                }
+                expectedTempoRevision = revision;
+                expectedConfigRevision = configRevision;
+            }
             std::string error;
-            if (!engine.setNativeRhythmConfig(config, error)) {
+            if (!engine.setNativeRhythmConfig(config, error, expectedTempoRevision, expectedConfigRevision, intentHigh, intentLow, &acceptedTempoRevision)) {
                 response.status = 409;
                 writeError(response, error);
                 return;
             }
-            writeJson(response, statusToJson(engine.getStatus()));
+            auto result = statusToJson(engine.getStatus());
+            if (identified) result["nativeRhythm"]["acceptedTempoRevision"] = acceptedTempoRevision;
+            writeJson(response, result);
         } catch (const std::exception& error) {
             response.status = 400;
             writeError(response, error.what());

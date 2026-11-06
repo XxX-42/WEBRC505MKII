@@ -1122,6 +1122,10 @@ export class AudioEngine {
       && current.timeSignatureDenominator === expected.timeSignatureDenominator;
   }
 
+  public releaseNativeProjectImportTempoReceipt(generation: number, host: string): void {
+    this.nativeEngine.releaseProjectImportTempoReceipt(generation, host);
+  }
+
   /** Check a Native import generation without uploading or changing the PCM bank again. */
   public async getNativeProjectArchiveImportStatus(generation: number, expectedHostIncarnationId?: string): Promise<NativeProjectImportStatus> {
     if (this.currentMode !== 'native') throw new Error('Native project-import status is only available in Native audio mode.');
