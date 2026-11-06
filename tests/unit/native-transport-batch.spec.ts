@@ -134,6 +134,44 @@ describe('Native ALL atomic transport batches', () => {
     await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/receipt is invalid/);
     await expect(client.reconcilePendingNativeTransportBatch()).rejects.toThrow(/receipt is invalid/);
   });
+  it.each(['throw', 'silent'] as const)('does not send a batch if receipt persistence %s fails', async (mode) => {
+    const { posts } = mockBatch('play');
+    const client = new NativeBridgeClient('http://native.test');
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      if (mode === 'throw') throw new Error('storage unavailable');
+    });
+    try {
+      await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/identity could not be persisted/);
+      expect(posts).toHaveLength(0);
+    } finally { write.mockRestore(); }
+  });
+
+  it('blocks transport while a host batch owned by another tab is pending', () => {
+    const engine = new (NativeAudioEngine as any)();
+    const remote = status('play');
+    Object.assign(remote.nativeLoopFrameScheduling!.requests![0]!, { batchMask: 3, requestedRevision: 1 });
+    engine.latestStatus = remote;
+    engine.bridgeAvailable = true;
+    engine.engineRunning = true;
+    expect(engine.getUiStatus()).toMatchObject({ ready: false, message: 'NATIVE HOST BATCH PENDING' });
+    expect(engine.assertNoUnresolvedNativeTransportBatch('play')).toBe(false);
+    remote.nativeLoopFrameScheduling!.requests![0]!.appliedRevision = 1;
+    expect(engine.isNativeReady()).toBe(true);
+  });
+
+  it('does not synchronize host tempo while batch handoff is unresolved', async () => {
+    const ack = { nativeTransportBatchAcknowledgement: { action: 'stop', trackMask: 3,
+      revisions: [1, 1, 0, 0, 0], appliedAbsoluteFrame: 100 } };
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = { scheduleNativeTransportBatch: vi.fn(async () => ack) };
+    engine.applyStatus = vi.fn();
+    engine.emitAll = vi.fn();
+    engine.completeNativeBatchTempoHandoff = vi.fn(async () => { throw new Error('handoff unavailable'); });
+    await engine.scheduleNativeAllTransport('stop');
+    expect(engine.applyStatus).toHaveBeenCalledWith(ack, false);
+    expect(engine.lastError).toContain('handoff unavailable');
+  });
+
   it('posts a shared PLAY frame and waits for exact all-member ACKs', async () => {
     mockBatch('play');
     const client = new NativeBridgeClient('http://native.test');

@@ -51,6 +51,72 @@ describe('Native tempo recovery through init and retry', () => {
     await expect(recovery).resolves.toBe('');
     expect(bridge.getPendingNativeTransportBatch).toHaveBeenCalledOnce();
   });
+  it('shares one receipt recovery when init and automatic reconciliation overlap', async () => {
+    const { engine, bridge, current } = setup();
+    let unblock!: () => void;
+    let entered!: () => void;
+    const enteredSingle = new Promise<void>(resolve => { entered = resolve; });
+    const blockedSingle = new Promise<void>(resolve => { unblock = resolve; });
+    bridge.reconcileTrackTempoConfirmation.mockImplementation(async () => {
+      entered();
+      await blockedSingle;
+      return current;
+    });
+    const init = engine.init();
+    await enteredSingle;
+    const automatic = engine.reconcileNativeTransportBatch();
+    unblock();
+    await Promise.all([init, automatic]);
+    expect(bridge.reconcileTrackTempoConfirmation).toHaveBeenCalledOnce();
+    expect(bridge.releaseTrackTempoConfirmation).toHaveBeenCalledOnce();
+    expect(bridge.confirmTrackTempoProvenance).not.toHaveBeenCalled();
+    expect(engine.isNativeReady()).toBe(true);
+  });
+
+  it('waits for an active single-track confirmation before recovery reads retained receipts', async () => {
+    const { engine, bridge } = setup();
+    let unblock!: () => void;
+    engine.nativeTrackTempoConfirmationInFlight = new Promise<void>(resolve => { unblock = resolve; });
+    const recovery = engine.recoverNativeReceipts();
+    await Promise.resolve();
+    expect(bridge.getRetainedTrackTempoConfirmations).not.toHaveBeenCalled();
+    unblock();
+    await recovery;
+    expect(bridge.releaseTrackTempoConfirmation).toHaveBeenCalledOnce();
+  });
+
+  it('keeps ready blocked until the post-recovery rhythm check finishes', async () => {
+    const { engine } = setup();
+    let entered!: () => void;
+    let unblock!: () => void;
+    const checking = new Promise<void>(resolve => { entered = resolve; });
+    const gate = new Promise<void>(resolve => { unblock = resolve; });
+    engine.reconcileRhythmScheduleForInit = vi.fn(async (status: any) => {
+      entered(); await gate; return { status };
+    });
+    const init = engine.init();
+    await checking;
+    expect(engine.isNativeReady()).toBe(false);
+    expect(engine.getUiStatus().ready).toBe(false);
+    unblock();
+    await init;
+    expect(engine.isNativeReady()).toBe(true);
+  });
+
+  it('blocks automatic batch recovery before any confirmation if project metadata mismatches', async () => {
+    const { engine, bridge } = setup();
+    bridge.getPendingNativeTransportBatch.mockReturnValue({ batchId: 9 } as never);
+    engine.cleanupPublishedProjectTempoReceipt = vi.fn(async () => {
+      engine.nativeProjectTempoCleanupError = 'project metadata mismatch';
+      throw new Error(engine.nativeProjectTempoCleanupError);
+    });
+    engine.completeNativeBatchTempoHandoff = vi.fn();
+    await engine.reconcileNativeTransportBatch();
+    expect(engine.completeNativeBatchTempoHandoff).not.toHaveBeenCalled();
+    expect(bridge.confirmTrackTempoProvenance).not.toHaveBeenCalled();
+    expect(engine.isNativeReady()).toBe(false);
+  });
+
   it('reconciles the exact receipt and hands off fresh current status before release', async () => {
     const { engine, bridge, old, current, applied } = setup();
     bridge.reconcileTrackTempoConfirmation.mockResolvedValueOnce(current);

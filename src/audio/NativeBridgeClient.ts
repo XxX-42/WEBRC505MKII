@@ -1002,7 +1002,19 @@ export class NativeBridgeClient {
     const intentId = createNativeRhythmIntentId();
     const unknownReceipt: NativeTransportBatchReceipt = { batchId: null, trackMask, action, intentId,
       hostIncarnationId, absoluteFrame, revisions: [0, 0, 0, 0, 0], recordingTempoTokens };
-    this.setPendingNativeTransportBatch(unknownReceipt);
+    // A lost response must remain recoverable across reload before any POST.
+    const serializedReceipt = JSON.stringify(unknownReceipt);
+    try {
+      const storage = globalThis.sessionStorage;
+      if (!storage) throw new Error('sessionStorage is unavailable');
+      storage.setItem(NativeBridgeClient.pendingBatchStorageKey, serializedReceipt);
+      if (storage.getItem(NativeBridgeClient.pendingBatchStorageKey) !== serializedReceipt) {
+        throw new Error('sessionStorage did not retain the exact identity');
+      }
+    } catch (error) {
+      throw new Error(`Native ALL identity could not be persisted; no batch was sent. ${error instanceof Error ? error.message : String(error)}`);
+    }
+    this.pendingNativeTransportBatch = unknownReceipt;
     let accepted: NativeStatus;
     try {
       accepted = await this.request<NativeStatus>('/v1/transport/batch-schedule', { method: 'POST',

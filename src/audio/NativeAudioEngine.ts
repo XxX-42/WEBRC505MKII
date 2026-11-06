@@ -206,6 +206,8 @@ export class NativeAudioEngine {
   private nativeRhythmScheduleRecoveryBlocked = false;
   private nativeTransportBatchPending = false;
   private nativeTransportBatchSettled: Promise<void> | null = null;
+  private nativeReceiptRecoveryInFlight: Promise<string> | null = null;
+  private nativeTrackTempoConfirmationInFlight: Promise<void> | null = null;
   private nativeTransportBatchRecoveryRetryAfter = 0;
   private nativeTempoRecoveryError = '';
   private nativeProjectTempoCleanupError = '';
@@ -299,6 +301,7 @@ export class NativeAudioEngine {
       await this.initInFlight;
     } finally {
       this.initInFlight = null;
+      this.emitAll();
     }
   }
 
@@ -313,6 +316,7 @@ export class NativeAudioEngine {
       await restart;
     } finally {
       if (this.restartInFlight === restart) this.restartInFlight = null;
+      this.emitAll();
     }
   }
 
@@ -322,9 +326,7 @@ export class NativeAudioEngine {
     let batchNotice = '';
     try {
       if (this.bridgeAvailable) {
-        batchNotice = await this.recoverNativeBatchBeforeTempo();
-        await this.reconcileRetainedTempoConfirmations();
-        await this.cleanupPublishedProjectTempoReceipt();
+        batchNotice = await this.recoverNativeReceipts();
       }
       if (!this.bridgeAvailable) {
         failureHandled = true;
@@ -653,6 +655,13 @@ export class NativeAudioEngine {
     };
   }
 
+  private hasUnresolvedHostBatch(): boolean {
+    return (this.latestStatus?.nativeLoopFrameScheduling?.requests ?? []).some(item =>
+      !!item && (item.batchMask ?? 0) !== 0 && item.requestedRevision > 0 &&
+      item.appliedRevision !== item.requestedRevision && item.cancelledRevision !== item.requestedRevision &&
+      item.faultRevision !== item.requestedRevision);
+  }
+
   public getUiStatus(): NativeUiStatus {
     if (!this.bridgeAvailable) {
       return {
@@ -708,6 +717,16 @@ export class NativeAudioEngine {
       };
     }
 
+    if (this.hasUnresolvedHostBatch()) {
+      return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
+        message: 'NATIVE HOST BATCH PENDING', lastError: 'Another Native ALL batch is pending; waiting for host status.' };
+    }
+
+    if (this.initInFlight || this.restartInFlight || this.nativeReceiptRecoveryInFlight) {
+      return { bridgeAvailable: true, engineRunning: this.engineRunning, ready: false,
+        message: 'NATIVE AUDIO RECOVERING', lastError: this.lastError };
+    }
+
     if (!this.engineRunning) {
       return {
         bridgeAvailable: true,
@@ -728,7 +747,7 @@ export class NativeAudioEngine {
   }
 
   public isNativeReady() {
-    return this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked && !this.nativeTempoRecoveryError && !this.nativeProjectTempoCleanupError &&
+    return !this.hasUnresolvedHostBatch() && !this.initInFlight && !this.restartInFlight && !this.nativeReceiptRecoveryInFlight && this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked && !this.nativeTempoRecoveryError && !this.nativeProjectTempoCleanupError &&
       !this.nativeTransportBatchPending && !this.bridge.getPendingNativeTransportBatch();
   }
 
@@ -1690,6 +1709,18 @@ export class NativeAudioEngine {
 
   private async confirmCommittedTakeTempo(trackId: number, finishToken: NativeRecordTempoToken,
       expectedContentRevision: number, expectedStopRevision?: number): Promise<void> {
+    while (this.nativeReceiptRecoveryInFlight || this.nativeTrackTempoConfirmationInFlight) {
+      if (this.nativeReceiptRecoveryInFlight) await this.nativeReceiptRecoveryInFlight;
+      else if (this.nativeTrackTempoConfirmationInFlight) await this.nativeTrackTempoConfirmationInFlight;
+    }
+    const confirmation = this.performCommittedTakeTempoConfirmation(trackId, finishToken, expectedContentRevision, expectedStopRevision);
+    this.nativeTrackTempoConfirmationInFlight = confirmation;
+    try { await confirmation; }
+    finally { if (this.nativeTrackTempoConfirmationInFlight === confirmation) this.nativeTrackTempoConfirmationInFlight = null; }
+  }
+
+  private async performCommittedTakeTempoConfirmation(trackId: number, finishToken: NativeRecordTempoToken,
+      expectedContentRevision: number, expectedStopRevision?: number): Promise<void> {
     const transport = Transport.getInstance();
     const releaseTempoBarrier = transport.beginTempoCommitBarrier();
     let tempoConfirmed = false;
@@ -1992,7 +2023,12 @@ export class NativeAudioEngine {
 
   private assertNoUnresolvedNativeTransportBatch(action: string): boolean {
     const receipt = this.bridge.getPendingNativeTransportBatch();
-    if (!receipt) return true;
+    if (!receipt && !this.hasUnresolvedHostBatch()) return true;
+    if (!receipt) {
+      this.lastError = `Cannot ${action} while another Native ALL batch is pending on the host.`;
+      this.emitAll();
+      return false;
+    }
     this.lastError = `Cannot ${action} while Native ALL batch ${receipt.batchId ?? receipt.intentId} has an unresolved outcome. Reconcile or cancel that exact batch first.`;
     this.emitAll();
     return false;
@@ -2012,7 +2048,7 @@ export class NativeAudioEngine {
     this.emitAll();
     try {
       const status = await this.bridge.scheduleNativeTransportBatch(action);
-      this.applyStatus(status);
+      this.applyStatus(status, false);
       const acknowledgement = status.nativeTransportBatchAcknowledgement;
       if (!acknowledgement || acknowledgement.action !== action || acknowledgement.trackMask === 0 ||
           acknowledgement.revisions.length !== 5 || acknowledgement.appliedAbsoluteFrame <= 0) {
@@ -2115,14 +2151,27 @@ export class NativeAudioEngine {
     }
   }
 
+  /** Share one recovery owner across automatic reconciliation, init and retry. */
+  private async recoverNativeReceipts(): Promise<string> {
+    if (this.nativeReceiptRecoveryInFlight) return this.nativeReceiptRecoveryInFlight;
+    const recovery = (async () => {
+      if (this.nativeTrackTempoConfirmationInFlight) await this.nativeTrackTempoConfirmationInFlight;
+      await this.cleanupPublishedProjectTempoReceipt();
+      const batchNotice = await this.recoverNativeBatchBeforeTempo();
+      const tempoNotice = await this.reconcileRetainedTempoConfirmations();
+      return [batchNotice, tempoNotice].filter(Boolean).join(' ');
+    })();
+    this.nativeReceiptRecoveryInFlight = recovery;
+    try { return await recovery; }
+    finally { if (this.nativeReceiptRecoveryInFlight === recovery) this.nativeReceiptRecoveryInFlight = null; }
+  }
+
   public async reconcileNativeTransportBatch(): Promise<void> {
     if (this.nativeTransportBatchPending) return;
     this.lastError = 'Checking the exact Native ALL batch receipt; no transport command will be replayed.';
     this.emitAll();
     try {
-      const batchNotice = await this.recoverNativeBatchBeforeTempo();
-      const tempoNotice = await this.reconcileRetainedTempoConfirmations();
-      this.lastError = [batchNotice, tempoNotice].filter(Boolean).join(' ');
+      this.lastError = await this.recoverNativeReceipts();
     } catch (error) {
       this.lastError = `Native ALL batch recovery is not complete: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
@@ -2552,15 +2601,13 @@ export class NativeAudioEngine {
     try {
       await this.bridge.health();
       this.bridgeAvailable = true;
-      await this.cleanupPublishedProjectTempoReceipt();
       await this.refreshCatalog();
       let status = await this.bridge.getStatus();
       if (this.bridge.getRetainedTrackTempoConfirmations().length) {
         this.nativeTempoRecoveryError = 'Native tempo receipt recovery is in progress; transport remains disabled.';
       }
       this.applyStatus(status, false);
-      const batchRecoveryNotice = await this.recoverNativeBatchBeforeTempo();
-      const tempoRecoveryNotice = await this.reconcileRetainedTempoConfirmations();
+      const receiptRecoveryNotice = await this.recoverNativeReceipts();
       // The receipt is historical; obtain current state after reconciliation.
       status = await this.bridge.getStatus();
       const scheduleRecovery = await this.reconcileRhythmScheduleForInit(status);
@@ -2578,7 +2625,7 @@ export class NativeAudioEngine {
         await this.applyAndStart();
       }
       await this.refreshStatus();
-      if (batchRecoveryNotice || tempoRecoveryNotice) this.lastError = [batchRecoveryNotice, tempoRecoveryNotice].filter(Boolean).join(' ');
+      if (receiptRecoveryNotice) this.lastError = receiptRecoveryNotice;
       this.startPolling();
       this.emitAll();
     } catch (error) {
