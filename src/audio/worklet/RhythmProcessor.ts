@@ -41,7 +41,8 @@ interface RhythmMessagePort {
 }
 
 type WorkletMessage =
-  | { readonly type: "start"; readonly requestId: number; readonly configuration: RhythmWorkletConfiguration }
+  | { readonly type: "start"; readonly requestId: number; readonly configuration: RhythmWorkletConfiguration;
+    readonly originMode?: "worklet"; readonly startLeadFrames?: number }
   | { readonly type: "stop"; readonly requestId: number };
 
 type RhythmPhaseMessage = RhythmMeasurePhaseSnapshot | {
@@ -49,6 +50,7 @@ type RhythmPhaseMessage = RhythmMeasurePhaseSnapshot | {
   readonly available: false;
   readonly requestId: number;
   readonly epoch: number;
+  readonly reasonCode?: number;
 };
 
 type RhythmTimelineMessage =
@@ -277,7 +279,17 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       const message = event.data as WorkletMessage | null;
       if (message?.type === "start") {
         this.setSharedPhaseEpoch(0, 5, workletGlobals.currentFrame ?? 0);
-        this.core.configure(message.configuration, message.requestId);
+        // Exact-origin messages retain their fail-closed missed-origin behavior.
+        let configuration = message.configuration;
+        if (message.originMode === "worklet") {
+          const lead = message.startLeadFrames;
+          if (!Number.isSafeInteger(lead) || lead! < 1) throw new RangeError("Rhythm start lead must be a positive safe integer");
+          const current = workletGlobals.currentFrame ?? 0;
+          const origin = Math.max(current, this.core.expectedNextFrame ?? current) + lead!;
+          if (!Number.isSafeInteger(origin)) throw new RangeError("Rhythm start origin exceeds the safe frame range");
+          configuration = { ...configuration, startFrame: origin };
+        }
+        this.core.configure(configuration, message.requestId);
         this.phaseRequestId = message.requestId;
         this.phaseAcknowledged = false;
         this.phaseInvalidated = false;
@@ -368,6 +380,7 @@ export class RhythmWorkletProcessor extends WorkletProcessorBase {
       available: false,
       requestId: this.phaseRequestId,
       epoch: this.core.currentPhaseEpoch,
+      reasonCode,
     } satisfies RhythmPhaseMessage);
   }
 
