@@ -211,6 +211,7 @@ export class NativeAudioEngine {
   private nativeTransportBatchRecoveryRetryAfter = 0;
   private nativeTempoRecoveryError = '';
   private nativeProjectTempoCleanupError = '';
+  private suppressRecoveryTempoSync = false;
   private initInFlight: Promise<void> | null = null;
   private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
@@ -296,10 +297,14 @@ export class NativeAudioEngine {
       return this.initInFlight;
     }
 
+    const tempoRevision = Transport.getInstance().tempoMutationRevision;
+    this.suppressRecoveryTempoSync = true;
     this.initInFlight = this.initializeNative();
     try {
       await this.initInFlight;
+      if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
     } finally {
+      this.suppressRecoveryTempoSync = false;
       this.initInFlight = null;
       this.emitAll();
     }
@@ -310,11 +315,15 @@ export class NativeAudioEngine {
     if (this.initInFlight) await this.initInFlight;
     if (this.restartInFlight) return this.restartInFlight;
 
+    const tempoRevision = Transport.getInstance().tempoMutationRevision;
+    this.suppressRecoveryTempoSync = true;
     const restart = this.performRestartAudio();
     this.restartInFlight = restart;
     try {
       await restart;
+      if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
     } finally {
+      this.suppressRecoveryTempoSync = false;
       if (this.restartInFlight === restart) this.restartInFlight = null;
       this.emitAll();
     }
@@ -3327,7 +3336,7 @@ export class NativeAudioEngine {
     this.selectedBufferFrames = status.bufferFrames || this.selectedBufferFrames;
     this.nativeLooperStorageBudgetBytes = status.nativeLooperStorageBudgetBytes || this.nativeLooperStorageBudgetBytes;
     this.lastError = status.lastError || '';
-    if (synchronizeRhythmBpm) this.syncNativeRhythmBpm();
+    if (synchronizeRhythmBpm && !this.suppressRecoveryTempoSync) this.syncNativeRhythmBpm();
     for (const runtime of this.nativeCatalogFxRuntime.values()) {
       if (runtime.pendingApply || runtime.acknowledged || runtime.outcomeUnknown) this.reconcileNativeCatalogRuntime(runtime);
       else this.updateNativeCatalogTelemetry(runtime);

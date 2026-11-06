@@ -73,6 +73,18 @@ describe('Native tempo recovery through init and retry', () => {
     expect(engine.isNativeReady()).toBe(true);
   });
 
+  it('does not synchronize host tempo if initialization fails after status application', async () => {
+    const { engine } = setup();
+    const sync = vi.spyOn(engine, 'syncNativeRhythmBpm');
+    engine.initializeNative = vi.fn(async () => {
+      expect(engine.suppressRecoveryTempoSync).toBe(true);
+      throw new Error('FX start failed');
+    });
+    await expect(engine.init()).rejects.toThrow('FX start failed');
+    expect(sync).not.toHaveBeenCalled();
+    expect(engine.suppressRecoveryTempoSync).toBe(false);
+  });
+
   it('blocks ready and ALL while the first single-track confirmation is pending', () => {
     const { engine, current } = setup();
     engine.bridgeAvailable = true;
