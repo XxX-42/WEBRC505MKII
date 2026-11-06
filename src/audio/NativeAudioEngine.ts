@@ -1553,16 +1553,41 @@ export class NativeAudioEngine {
   private async cleanupPublishedProjectTempoReceipt(): Promise<void> {
     try {
       const storage = globalThis.sessionStorage;
-      let hasReceipt = false;
+      const prefix = 'rc505.native.import-tempo.';
+      const keys: string[] = [];
       for (let index = 0; index < storage.length; index += 1) {
-        if (storage.key(index)?.startsWith('rc505.native.import-tempo.')) { hasReceipt = true; break; }
+        const key = storage.key(index);
+        if (key?.startsWith(prefix)) keys.push(key);
       }
-      if (!hasReceipt) { this.nativeProjectTempoCleanupError = ''; return; }
+      const pending = storage.getItem('rc505.native.rhythm-tempo-request');
+      let pendingOwner: unknown = null;
+      if (pending) {
+        const parsed: unknown = JSON.parse(pending);
+        if (!parsed || typeof parsed !== 'object' || !('owner' in parsed)) {
+          throw new Error('The retained Native rhythm request has no verifiable owner.');
+        }
+        pendingOwner = (parsed as { owner: unknown }).owner;
+        if (pendingOwner !== null && typeof pendingOwner !== 'string') {
+          throw new Error('The retained Native rhythm request owner is invalid.');
+        }
+        if (typeof pendingOwner === 'string' && !/^import:[1-9][0-9]*$/.test(pendingOwner)) {
+          throw new Error('The retained Native rhythm request owner is unsupported; inspect project recovery before retrying.');
+        }
+        if (typeof pendingOwner === 'string' && pendingOwner.startsWith('import:') &&
+            !keys.includes(`${prefix}${pendingOwner.slice('import:'.length)}`)) {
+          throw new Error('The imported rhythm request has no matching retained project receipt; inspect project recovery before retrying.');
+        }
+      }
+      if (!keys.length) { this.nativeProjectTempoCleanupError = ''; return; }
       const metadata = await new ProjectMemoryStore().readNativeImportRecoveryMetadata();
-      if (metadata?.state === 'active' && Number.isSafeInteger(metadata.generation) && metadata.generation! > 0 &&
-          isNativeHostIncarnationId(metadata.availableAtHostIncarnationId)) {
-        this.releaseProjectImportTempoReceipt(metadata.generation!, metadata.availableAtHostIncarnationId);
+      if (metadata?.state !== 'active' || !Number.isSafeInteger(metadata.generation) || metadata.generation! <= 0 ||
+          !isNativeHostIncarnationId(metadata.availableAtHostIncarnationId) || keys.length !== 1 ||
+          keys[0] !== `${prefix}${metadata.generation}` ||
+          (typeof pendingOwner === 'string' && pendingOwner.startsWith('import:') && pendingOwner !== `import:${metadata.generation}`)) {
+        throw new Error('Retained Native project tempo receipt lacks matching published recovery metadata; inspect project recovery before retrying.');
       }
+      this.releaseProjectImportTempoReceipt(metadata.generation!, metadata.availableAtHostIncarnationId);
+      if (storage.getItem(keys[0]!) !== null) throw new Error('Native project tempo receipt was not released.');
       this.nativeProjectTempoCleanupError = '';
     } catch (error) {
       this.nativeProjectTempoCleanupError = `Native published project receipt cleanup failed. Retry audio; no import will be repeated. ${error instanceof Error ? error.message : String(error)}`;

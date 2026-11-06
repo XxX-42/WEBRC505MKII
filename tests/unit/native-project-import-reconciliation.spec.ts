@@ -189,6 +189,84 @@ describe('Native project import reconciliation after transport sync failure', ()
     expect(instance.pendingProjectImportSync.has(57)).toBe(false);
   });
 
+  it.each(['missing', 'staged', 'generation', 'host', 'extra'] as const)(
+    'blocks a retained import receipt when published metadata is %s', async (mismatch) => {
+      const host = 'a'.repeat(32); const generation = 71; const intent = 'b'.repeat(32);
+      const importKey = `rc505.native.import-tempo.${generation}`;
+      const rhythmKey = 'rc505.native.rhythm-tempo-request';
+      sessionStorage.setItem(importKey, JSON.stringify({ host, revision: 4, intent, bpm: 110 }));
+      sessionStorage.setItem(rhythmKey, JSON.stringify({ host, intent, baseline: 3, baselineBpm: 120,
+        baselineConfig: 2, baselineTempoIntent: '0'.repeat(32), owner: `import:${generation}`, config: { bpm: 110 } }));
+      if (mismatch === 'extra') sessionStorage.setItem('rc505.native.import-tempo.72', JSON.stringify({ host, revision: 5, intent, bpm: 110 }));
+      const record = mismatch === 'missing' ? null : { state: mismatch === 'staged' ? 'staged' : 'active',
+        generation: mismatch === 'generation' ? 72 : generation,
+        availableAtHostIncarnationId: mismatch === 'host' ? 'c'.repeat(32) : host };
+      const metadata = vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportRecoveryMetadata').mockResolvedValue(record as any);
+      const engine = Object.create(NativeAudioEngine.prototype) as any;
+      engine.bridge = new NativeBridgeClient(); engine.emitAll = vi.fn(); engine.bridgeAvailable = true; engine.engineRunning = true;
+      await expect(engine.cleanupPublishedProjectTempoReceipt()).rejects.toThrow(/cleanup failed/);
+      expect(engine.isNativeReady()).toBe(false);
+      expect(engine.getUiStatus()).toMatchObject({ ready: false, message: 'NATIVE PROJECT RECEIPT NEEDS REVIEW' });
+      expect(sessionStorage.getItem(importKey)).not.toBeNull();
+      expect(sessionStorage.getItem(rhythmKey)).not.toBeNull();
+      metadata.mockRestore();
+    });
+
+  it('blocks on reload if the import-owned rhythm key has lost its project receipt', async () => {
+    const rhythmKey = 'rc505.native.rhythm-tempo-request';
+    const saved = JSON.stringify({ owner: 'import:71', host: 'a'.repeat(32) });
+    sessionStorage.setItem(rhythmKey, saved);
+    const metadata = vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportRecoveryMetadata');
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = new NativeBridgeClient(); engine.emitAll = vi.fn(); engine.bridgeAvailable = true; engine.engineRunning = true;
+    await expect(engine.cleanupPublishedProjectTempoReceipt()).rejects.toThrow(/no matching retained project receipt/);
+    expect(engine.isNativeReady()).toBe(false);
+    expect(sessionStorage.getItem(rhythmKey)).toBe(saved);
+    expect(metadata).not.toHaveBeenCalled();
+    metadata.mockRestore();
+  });
+
+  it('keeps Native init blocked across reload until matching published metadata exists', async () => {
+    const host = 'a'.repeat(32); const generation = 71;
+    const key = `rc505.native.import-tempo.${generation}`;
+    sessionStorage.setItem(key, JSON.stringify({ host, revision: 4, intent: 'b'.repeat(32), bpm: 110 }));
+    const metadata = vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportRecoveryMetadata').mockResolvedValue(null);
+    const bridge = { health: vi.fn(async () => ({ ok: true })), getStatus: vi.fn(),
+      releaseRetainedRhythmTempoReceipt: vi.fn() };
+    const makeEngine = () => {
+      const engine = Object.create(NativeAudioEngine.prototype) as any;
+      engine.bridge = bridge; engine.emitAll = vi.fn(); engine.initInFlight = null;
+      engine.bridgeAvailable = false; engine.engineRunning = false;
+      return engine;
+    };
+    const first = makeEngine();
+    await expect(first.init()).rejects.toThrow(/matching published recovery metadata/);
+    expect(first.getUiStatus()).toMatchObject({ ready: false, message: 'NATIVE PROJECT RECEIPT NEEDS REVIEW' });
+    const reloaded = makeEngine();
+    await expect(reloaded.init()).rejects.toThrow(/matching published recovery metadata/);
+    expect(reloaded.isNativeReady()).toBe(false);
+    expect(bridge.getStatus).not.toHaveBeenCalled();
+    expect(bridge.releaseRetainedRhythmTempoReceipt).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(key)).not.toBeNull();
+    metadata.mockRestore();
+  });
+
+  it('cleans the published project key without deleting an unrelated ordinary rhythm request', async () => {
+    const host = 'a'.repeat(32); const generation = 71;
+    sessionStorage.setItem(`rc505.native.import-tempo.${generation}`, JSON.stringify({ host, revision: 4, intent: 'b'.repeat(32), bpm: 110 }));
+    const ordinary = JSON.stringify({ owner: null, host, intent: 'c'.repeat(32) });
+    sessionStorage.setItem('rc505.native.rhythm-tempo-request', ordinary);
+    const metadata = vi.spyOn(ProjectMemoryStore.prototype, 'readNativeImportRecoveryMetadata').mockResolvedValue({
+      state: 'active', generation, availableAtHostIncarnationId: host,
+    } as any);
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = new NativeBridgeClient(); engine.emitAll = vi.fn();
+    await engine.cleanupPublishedProjectTempoReceipt();
+    expect(sessionStorage.getItem(`rc505.native.import-tempo.${generation}`)).toBeNull();
+    expect(sessionStorage.getItem('rc505.native.rhythm-tempo-request')).toBe(ordinary);
+    metadata.mockRestore();
+  });
+
   it.each(['rhythm', 'import'] as const)('retries published receipt cleanup after %s key deletion fails', async (failure) => {
     const host = 'a'.repeat(32); const intent = 'b'.repeat(32); const generation = 71;
     const importKey = `rc505.native.import-tempo.${generation}`;

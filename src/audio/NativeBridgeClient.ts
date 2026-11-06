@@ -2688,6 +2688,7 @@ export class NativeBridgeClient {
     const pending = JSON.parse(saved) as { host: string; intent: string; baseline: number; baselineBpm: number; owner: string | null; config: NativeRhythmConfig };
     const changesBpm = pending.baselineBpm !== pending.config?.bpm;
     const tempoIntent = changesBpm ? pending.intent : (JSON.parse(saved) as { baselineTempoIntent: string }).baselineTempoIntent;
+    if (pending.owner === null) return; // An unrelated ordinary Rhythm request is not part of this handoff.
     if (pending.owner !== owner || pending.host !== expected.host || pending.config?.bpm !== expected.bpm ||
         pending.baseline + (changesBpm ? 1 : 0) !== expected.revision || tempoIntent !== expected.intent) {
       throw new Error('Retained Native rhythm request does not match the imported tempo receipt.');
