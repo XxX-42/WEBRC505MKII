@@ -115,7 +115,7 @@ test(`Native browser bridge exports a stereo tone through ${rendererName} HQ_REN
     await expect(selectedOption, `Native ${rendererName} must be available`).toHaveCount(1);
     await expect(selectedOption).toBeEnabled();
     await renderer.selectOption(await selectedOption.getAttribute('value') ?? '');
-    await expect(selectedOption).toBeChecked();
+    await expect(renderer.locator('option:checked')).toContainText(rendererName);
     await setEnhancedNumber(page, 'wav-pitch', 7);
     await setEnhancedNumber(page, 'wav-rate', 1);
     await selectEnhancedEnum(page, 'wav-format', 'PCM 16-BIT');
@@ -123,7 +123,14 @@ test(`Native browser bridge exports a stereo tone through ${rendererName} HQ_REN
     await expect(exportAction).toBeEnabled();
 
     const downloadPromise = page.waitForEvent('download');
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes('/v1/export/hq-render?trackId=1') && response.request().method() === 'POST');
     await activateEnhancedAction(page, 'wav-export');
+    const response = await responsePromise;
+    const submitted = JSON.parse(response.request().postData() ?? '{}') as { engine?: string; semitones?: number; playbackRate?: number };
+    expect(submitted).toMatchObject({ engine: rendererName, semitones: 7, playbackRate: 1 });
+    expect(response.status()).toBe(200);
+    expect(await response.headerValue('x-native-hq-engine')).toBe(rendererName);
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
     const downloadPath = await download.path();
@@ -140,8 +147,9 @@ test(`Native browser bridge exports a stereo tone through ${rendererName} HQ_REN
     expect(wav.length).toBe(44 + metadata.frameCount * metadata.channels * 2);
 
     // Ignore the first and last fifth to exclude render boundaries. Hann-window
-    // DFT bins are spaced sampleRate / windowFrames; a two-bin tolerance allows
-    // the peak to land between bins without accepting the unshifted 440 Hz tone.
+    // Use interpolated positive zero crossings for mean frequency: a two-cycle
+    // counting bound is 2 * sampleRate / windowFrames. The Hann spectrum is
+    // retained separately because R2 can produce modulation sidebands.
     const start = Math.floor(metadata.frameCount / 5);
     const windowFrames = metadata.frameCount - 2 * start;
     const binHz = metadata.sampleRate / windowFrames;
@@ -170,19 +178,30 @@ test(`Native browser bridge exports a stereo tone through ${rendererName} HQ_REN
         const magnitude = magnitudes(signal, bin * binHz);
         if (magnitude > peakMagnitude) { peakBin = bin; peakMagnitude = magnitude; }
       }
-      return { rms, frequencyHz: peakBin * binHz, peakMagnitude, sourceMagnitude: magnitudes(signal, 440) };
+      const crossings: number[] = [];
+      for (let frame = 1; frame < signal.length; frame += 1) {
+        const previous = signal[frame - 1]!; const current = signal[frame]!;
+        if (previous <= 0 && current > 0) crossings.push(frame - 1 - previous / (current - previous));
+      }
+      const frequencyHz = crossings.length >= 2
+        ? (crossings.length - 1) * metadata.sampleRate / (crossings[crossings.length - 1]! - crossings[0]!) : 0;
+      return { rms, frequencyHz, crossingCount: crossings.length, spectralPeakHz: peakBin * binHz,
+        peakMagnitude, targetMagnitude: magnitudes(signal, targetHz), sourceMagnitude: magnitudes(signal, 440) };
     });
+    await testInfo.attach(`${rendererName}-tone-analysis.json`, {
+      body: JSON.stringify({ rendererName, request: submitted, responseEngine: await response.headerValue('x-native-hq-engine'),
+        sampleRate: metadata.sampleRate, windowFrames, binHz, targetHz, metrics,
+        channelDifferenceRms: Math.sqrt(differenceEnergy / windowFrames) }, null, 2), contentType: 'application/json',
+    });
+    await testInfo.attach(`${rendererName}-render.wav`, { body: wav, contentType: 'audio/wav' });
     expect(windowFrames).toBeGreaterThan(10_000);
     expect(Math.sqrt(differenceEnergy / windowFrames)).toBeGreaterThan(0.005);
     for (const channel of metrics) {
       expect(channel.rms).toBeGreaterThan(0.005);
+      expect(channel.crossingCount).toBeGreaterThan(100);
       expect(Math.abs(channel.frequencyHz - targetHz)).toBeLessThanOrEqual(2 * binHz);
-      expect(channel.peakMagnitude).toBeGreaterThan(channel.sourceMagnitude * 2);
+      expect(channel.targetMagnitude).toBeGreaterThan(channel.sourceMagnitude * 2);
     }
-    await testInfo.attach(`${rendererName}-tone-analysis.json`, {
-      body: JSON.stringify({ rendererName, sampleRate: metadata.sampleRate, windowFrames, binHz, targetHz, metrics,
-        channelDifferenceRms: Math.sqrt(differenceEnergy / windowFrames) }, null, 2), contentType: 'application/json',
-    });
     await expect(trackScreen).toBeVisible();
   } finally {
     if (host && host.exitCode === null) {
