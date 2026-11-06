@@ -1781,7 +1781,7 @@ export class NativeAudioEngine {
   }
 
   public stopAllTracks() {
-    this.assertTempoRecoveryClear();
+    if (this.nativeTempoRecoveryError) { this.lastError = this.nativeTempoRecoveryError; this.emitAll(); return; }
     if (!this.assertNoUnresolvedNativeTransportBatch('stop all tracks')) return;
     if (this.shouldUseNativeBatchTransport('stop')) {
       void this.scheduleNativeAllTransport('stop');
@@ -1808,7 +1808,7 @@ export class NativeAudioEngine {
   }
 
   public playAllTracks() {
-    this.assertTempoRecoveryClear();
+    if (this.nativeTempoRecoveryError) { this.lastError = this.nativeTempoRecoveryError; this.emitAll(); return; }
     if (!this.assertNoUnresolvedNativeTransportBatch('start all tracks')) return;
     if (this.shouldUseNativeBatchTransport('play')) {
       void this.scheduleNativeAllTransport('play');

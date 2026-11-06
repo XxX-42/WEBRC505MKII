@@ -32,6 +32,13 @@ function setup() {
 }
 
 describe('Native tempo recovery through init and retry', () => {
+  it('reports a recovery block from synchronous ALL controls without throwing', () => {
+    const { engine } = setup();
+    engine.nativeTempoRecoveryError = 'Native tempo receipt recovery is unresolved.';
+    expect(() => engine.stopAllTracks()).not.toThrow();
+    expect(() => engine.playAllTracks()).not.toThrow();
+    expect(engine.lastError).toContain('recovery is unresolved');
+  });
   it('waits for the active batch owner before checking for its durable receipt', async () => {
     const { engine, bridge } = setup();
     let settle!: () => void;

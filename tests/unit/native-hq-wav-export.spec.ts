@@ -8,7 +8,7 @@ const CAPABILITY = { available: true, engines: ['R2', 'R3'] as NativeHqEngine[] 
 function nativeEngine(bridge: Record<string, unknown>, status: Partial<NativeStatus> = {}) {
   const engine = Object.create(NativeAudioEngine.prototype) as NativeAudioEngine;
   Object.assign(engine, {
-    bridge,
+    bridge: { getPendingNativeTransportBatch: vi.fn(() => null), ...bridge },
     bridgeAvailable: true,
     engineRunning: true,
     latestStatus: {
