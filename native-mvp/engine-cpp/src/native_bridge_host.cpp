@@ -58,6 +58,26 @@ namespace {
 
 constexpr std::uint64_t kMaximumSafeTempoRevision = 9007199254740991ULL;
 
+struct TempoConfirmationReceipt {
+    json identity;
+    std::uint64_t revision = 0U;
+    unsigned int track = 0U;
+    int state = 0; // 0 pending, 1 accepted, 2 rejected
+};
+std::mutex tempoReceiptMutex;
+std::array<TempoConfirmationReceipt, 64U> tempoReceipts{};
+
+void refreshTempoReceipts(const EngineStatus& status) {
+    for (auto& receipt : tempoReceipts) {
+        if (receipt.revision == 0U || receipt.state != 0) continue;
+        const auto index = receipt.track - 1U;
+        if (status.nativeRecordTempoConfirmApplied[index] == receipt.revision) {
+            receipt.state = status.nativeRecordTempoConfirmAccepted[index] == receipt.revision ? 1 : 2;
+        }
+    }
+}
+
+
 std::string createHostIncarnationId() {
     std::array<unsigned char, 16U> bytes{};
 #if defined(_WIN32)
@@ -2709,24 +2729,113 @@ int main() {
             const auto body = json::parse(request.body);
             std::uint64_t trackId = 0U, expectedContentRevision = 0U, tempoRevision = 0U, expectedStopRevision = 0U;
             std::optional<double> tempoBpm;
-            if (!body.is_object() || (body.size() != 4U && body.size() != 5U) ||
+            const bool identified = body.contains("operationId") || body.contains("hostIncarnationId");
+            if (identified && (!body.contains("operationId") || !body.at("operationId").is_string() ||
+                !isOperationId(body.at("operationId").get<std::string>()) || !body.contains("hostIncarnationId") ||
+                !body.at("hostIncarnationId").is_string() || body.at("hostIncarnationId").get<std::string>() != hostIncarnationId())) {
+                response.status = 409; writeError(response, "Tempo confirmation identity or host incarnation is invalid."); return;
+            }
+            const auto expectedSize = identified ? (body.contains("stopRevision") ? 8U : 7U) : (body.contains("stopRevision") ? 5U : 4U);
+            if (!body.is_object() || body.size() != expectedSize ||
                 !readUnsignedJsonInteger(body.value("trackId", json()), kNativeTrackCount, trackId) || trackId < 1U ||
                 !readUnsignedJsonInteger(body.value("expectedContentRevision", json()), kMaximumSafeTempoRevision, expectedContentRevision) ||
                 (body.contains("stopRevision") &&
                     (!readUnsignedJsonInteger(body.at("stopRevision"), kMaximumSafeTempoRevision, expectedStopRevision) || expectedStopRevision == 0U)) ||
-                (body.size() == 5U) != body.contains("stopRevision") ||
                 !readRecordTempoToken(body, tempoBpm, tempoRevision) || !tempoBpm.has_value()) {
                 response.status = 400; writeError(response, "REC tempo confirmation requires trackId, expectedContentRevision, tempoBpm, tempoRevision, and optional stopRevision."); return;
             }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            // Until the control thread has captured the callback result, no
+            // subsequent identified or legacy confirmation may overwrite this
+            // track's single applied/accepted revision slots.
+            for (const auto& item : tempoReceipts) {
+                if (item.revision != 0U && item.track == trackId && item.state == 0) {
+                    response.status = identified ? 422 : 409;
+                    writeError(response, "Prior tempo confirmation is still awaiting its callback receipt; no confirmation was submitted."); return;
+                }
+            }
+            TempoConfirmationReceipt* slot = nullptr;
+            if (identified) {
+                std::uint64_t expectedConfirmationRevision = 0U;
+                if (!readUnsignedJsonInteger(body.value("expectedConfirmationRevision", json()), kMaximumSafeTempoRevision,
+                        expectedConfirmationRevision)) {
+                    response.status = 400; writeError(response, "Tempo confirmation generation is invalid."); return;
+                }
+                for (auto& item : tempoReceipts) {
+                    if (item.revision != 0U && item.identity.at("operationId") == body.at("operationId")) {
+                        response.status = 409; writeError(response, "Tempo confirmation operation already exists; query its receipt instead of resending."); return;
+                    }
+                    if (item.revision == 0U && slot == nullptr) slot = &item;
+                }
+                if (engine.getStatus().nativeRecordTempoConfirmRequested[trackId - 1U] != expectedConfirmationRevision) {
+                    response.status = 410; writeError(response, "Tempo confirmation generation is stale; no confirmation was submitted."); return;
+                }
+                if (!slot) { response.status = 429; writeError(response, "Tempo confirmation receipt capacity exhausted; no confirmation was submitted."); return; }
+            }
+            if (slot) { slot->identity = body; slot->track = static_cast<unsigned int>(trackId); slot->state = 0; }
             std::string error;
             std::uint64_t requestedRevision = 0U;
             if (!engine.confirmTrackTempoProvenance(trackId - 1U, expectedContentRevision, *tempoBpm,
                     tempoRevision, error, &requestedRevision, expectedStopRevision)) {
-                response.status = 409; writeError(response, error); return;
+                // 422 is a definite pre-enqueue rejection for identified operations.
+                response.status = identified ? 422 : 409; writeError(response, error); return;
             }
+            if (slot) slot->revision = requestedRevision;
             auto status = statusToJson(engine.getStatus());
             status["nativeRecordTempoProvenance"]["acceptedRequestRevision"] = requestedRevision;
             writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Get("/v1/transport/record-tempo/receipts", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409; writeError(response, "Tempo receipt list requires the current host incarnation."); return;
+        }
+        std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+        refreshTempoReceipts(engine.getStatus());
+        auto receipts = json::array();
+        for (const auto& item : tempoReceipts) {
+            if (item.revision != 0U) receipts.push_back(json{{"identity", item.identity}, {"revision", item.revision}, {"state", item.state}});
+        }
+        writeJson(response, json{{"ok", true}, {"hostIncarnationId", hostIncarnationId()}, {"receipts", receipts}});
+    });
+    server.Post("/v1/transport/record-tempo/receipt", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                body.at("hostIncarnationId").get<std::string>() != hostIncarnationId() || !body.contains("operationId") ||
+                !body.at("operationId").is_string() || !isOperationId(body.at("operationId").get<std::string>())) {
+                response.status = 409; writeError(response, "Tempo receipt identity or host incarnation is invalid."); return;
+            }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            for (const auto& item : tempoReceipts) {
+                if (item.revision == 0U || item.identity.at("operationId") != body.at("operationId")) continue;
+                if (item.identity != body) { response.status = 409; writeError(response, "Tempo receipt identity conflicts."); return; }
+                writeJson(response, json{{"ok", true}, {"identity", item.identity}, {"revision", item.revision}, {"state", item.state}}); return;
+            }
+            response.status = 410; writeError(response, "Tempo receipt unavailable or released; outcome remains unknown.");
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/transport/record-tempo/release", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                body.at("hostIncarnationId").get<std::string>() != hostIncarnationId() || !body.contains("operationId") ||
+                !body.at("operationId").is_string() || !isOperationId(body.at("operationId").get<std::string>())) {
+                response.status = 409; writeError(response, "Tempo release identity or host incarnation is invalid."); return;
+            }
+            std::lock_guard<std::mutex> receiptLock(tempoReceiptMutex);
+            refreshTempoReceipts(engine.getStatus());
+            for (auto& item : tempoReceipts) {
+                if (item.revision == 0U || item.identity.at("operationId") != body.at("operationId")) continue;
+                if (item.identity != body || item.state == 0) {
+                    response.status = 409; writeError(response, "Tempo receipt conflicts or has not reached a terminal state."); return;
+                }
+                item = TempoConfirmationReceipt{};
+                writeJson(response, json{{"ok", true}, {"identity", body}}); return;
+            }
+            response.status = 410; writeError(response, "Tempo receipt unavailable or already released.");
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
     server.Post("/v1/transport/stop", [&engine](const httplib::Request& request, httplib::Response& response) {

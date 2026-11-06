@@ -2185,8 +2185,6 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             originalTempoBpmBits_[index].store(recordingTempoCandidateBpmBits_[index], std::memory_order_release);
             recordingTempoCandidateValid_[index] = false;
         }
-        recordTempoConfirmAccepted_[index].store(tempoProvenanceConfirmed ? command.revision : 0U, std::memory_order_release);
-        recordTempoConfirmApplied_[index].store(command.revision, std::memory_order_release);
     }
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) {
         originalTempoBpmBits_[index].store(0U, std::memory_order_release);
@@ -2355,6 +2353,12 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
             ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
         markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
+    }
+    // Publish only after provenance, content revision, phase and history have
+    // been updated. Status readers acquire applied before reading these fields.
+    if (command.type == CommandType::ConfirmRecordTempoProvenance) {
+        recordTempoConfirmAccepted_[index].store(tempoProvenanceConfirmed ? command.revision : 0U, std::memory_order_release);
+        recordTempoConfirmApplied_[index].store(command.revision, std::memory_order_release);
     }
 }
 

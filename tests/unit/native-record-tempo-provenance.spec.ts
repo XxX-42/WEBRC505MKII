@@ -6,12 +6,13 @@ import {
   type NativeStatus,
 } from '../../src/audio/NativeBridgeClient';
 import { Transport } from '../../src/core/Transport';
+import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 
 function jsonResponse(payload: unknown): Response {
   return { ok: true, status: 200, json: async () => payload } as Response;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); });
 
 describe('Native REC tempo provenance tokens', () => {
   it('keeps old/unknown hosts and invalid revisions unknown', () => {
@@ -30,7 +31,7 @@ describe('Native REC tempo provenance tokens', () => {
     const transportRevision = transport.projectMutationRevision;
     const requestBodies: Array<{ url: string; body?: string }> = [];
     const status = {
-      ok: true, bridgeHealthy: true, engineRunning: true, backend: 'WASAPI',
+      ok: true, hostIncarnationId: 'a'.repeat(32), bridgeHealthy: true, engineRunning: true, backend: 'WASAPI',
       inputDeviceId: '', outputDeviceId: '', inputDeviceName: '', outputDeviceName: '',
       sampleRate: 48000, bufferFrames: 128, monitoringEnabled: false, state: 'Playing',
       inputLatencyMs: 0, outputLatencyMs: 0, roundTripEstimateMs: 0, inputPeak: 0, outputPeak: 0,
@@ -45,6 +46,7 @@ describe('Native REC tempo provenance tokens', () => {
     };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       requestBodies.push({ url: String(input), body: typeof init?.body === 'string' ? init.body : undefined });
+      if (String(input).endsWith('/record-tempo/receipt')) return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 1, state: 1 });
       return jsonResponse(status);
     }));
     const client = new NativeBridgeClient('http://127.0.0.1:17755');
@@ -63,9 +65,127 @@ describe('Native REC tempo provenance tokens', () => {
     expect(JSON.parse(requestBodies[1]?.body ?? '{}')).toMatchObject({
       trackId: 1, tempoBpm: startingBpm, tempoRevision: changedBackRevision,
     });
-    expect(JSON.parse(requestBodies[2]?.body ?? '{}')).toMatchObject({
+    expect(JSON.parse(requestBodies.find(item => item.url.endsWith('/record-tempo/confirm'))?.body ?? '{}')).toMatchObject({
       trackId: 1, expectedContentRevision: 3, tempoBpm: startingBpm, tempoRevision: changedBackRevision,
     });
+  });
+
+  it('queries the persisted exact receipt after a lost POST response without resending', async () => {
+    const status = { ok: true, hostIncarnationId: 'a'.repeat(32), nativeRecordTempoProvenance: { requestedRevision: [0, 0, 0, 0, 0] } };
+    let confirmCalls = 0;
+    let receiptCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/record-tempo/confirm')) { confirmCalls += 1; throw new Error('response lost'); }
+      if (url.endsWith('/record-tempo/receipt')) {
+        receiptCalls += 1;
+        if (receiptCalls === 1) throw new Error('offline');
+        return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 9, state: 1 });
+      }
+      return jsonResponse(status);
+    }));
+    const first = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(first.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/outcome is unknown/);
+    const second = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(second.confirmTrackTempoProvenance(1, 9, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/different Native tempo/);
+    await second.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7);
+    expect(confirmCalls).toBe(1);
+    expect(receiptCalls).toBe(2);
+    await second.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7);
+    expect(confirmCalls).toBe(1);
+    expect(receiptCalls).toBe(3);
+  });
+
+  it('retries only release after its response is lost and verifies the same host', async () => {
+    const key = 'rc505.native.tempo-confirmation.1';
+    const identity = { trackId: 1, expectedContentRevision: 8, tempoBpm: 120, tempoRevision: 3,
+      stopRevision: 7, expectedConfirmationRevision: 0, hostIncarnationId: 'a'.repeat(32), operationId: 'b'.repeat(32) };
+    sessionStorage.setItem(key, JSON.stringify(identity));
+    sessionStorage.setItem(`${key}.confirmed`, identity.operationId);
+    let releases = 0;
+    const paths: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input); paths.push(url);
+      if (url.endsWith('/release')) {
+        if (++releases === 1) throw new Error('response lost');
+        return { ok: false, status: 410, json: async () => ({ ok: false, error: 'released' }) } as Response;
+      }
+      return jsonResponse({ ok: true, hostIncarnationId: identity.hostIncarnationId });
+    }));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.releaseTrackTempoConfirmation(1)).rejects.toThrow();
+    expect(sessionStorage.getItem(`${key}.releasePending`)).toBe(identity.operationId);
+    await expect(client.reconcileTrackTempoConfirmation(1)).rejects.toThrow(/release is pending/);
+    await client.releaseTrackTempoConfirmation(1);
+    expect(sessionStorage.getItem(key)).toBeNull();
+    expect(paths.filter(path => path.endsWith('/release'))).toHaveLength(2);
+    expect(paths.some(path => path.endsWith('/confirm'))).toBe(false);
+  });
+
+  it('clears only a definite capacity rejection and refuses unknown receipt identities', async () => {
+    let capacity = true;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/confirm')) {
+        if (capacity) return { ok: false, status: 429, json: async () => ({ ok: false, error: 'full; no submission' }) } as Response;
+        throw new Error('response lost');
+      }
+      if (url.endsWith('/receipt')) return jsonResponse({ ok: true, identity: { ...JSON.parse(init!.body as string), stopRevision: 999 }, revision: 1, state: 1 });
+      return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), nativeRecordTempoProvenance: { requestedRevision: [0, 0, 0, 0, 0] } });
+    }));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/full/);
+    expect(sessionStorage.getItem('rc505.native.tempo-confirmation.1')).toBeNull();
+    capacity = false;
+    await expect(client.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/exact identity/);
+    expect(sessionStorage.getItem('rc505.native.tempo-confirmation.1')).not.toBeNull();
+  });
+
+  it('rejects an old host before writing a confirmation identity or submitting', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/host incarnation/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem('rc505.native.tempo-confirmation.1')).toBeNull();
+  });
+
+  it('retains a rejected callback receipt without resubmitting it', async () => {
+    let confirms = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/confirm')) { confirms += 1; return jsonResponse({ ok: true }); }
+      if (url.endsWith('/receipt')) return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 2, state: 2 });
+      return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), nativeRecordTempoProvenance: { requestedRevision: [1, 0, 0, 0, 0] } });
+    }));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.confirmTrackTempoProvenance(1, 8, { bpm: 120, revision: 3 }, 7)).rejects.toThrow(/rejected/);
+    await expect(client.reconcileTrackTempoConfirmation(1)).rejects.toThrow(/rejected/);
+    expect(confirms).toBe(1);
+    expect(sessionStorage.getItem('rc505.native.tempo-confirmation.1')).not.toBeNull();
+  });
+
+  it('hands off and releases each single-track confirmation in sequence', async () => {
+    const transport = Transport.getInstance();
+    const token = { bpm: transport.bpm, revision: transport.tempoMutationRevision };
+    const order: string[] = [];
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.latestStatus = { nativeTempoRecordProvenanceVersion: 1 };
+    engine.bridge = {
+      confirmTrackTempoProvenance: vi.fn(async () => { order.push('confirm'); return { ok: true }; }),
+      releaseTrackTempoConfirmation: vi.fn(async () => { order.push('release'); }),
+    };
+    engine.dispatchStatusRequest = async (request: () => Promise<unknown>) => {
+      const result = await request(); order.push('apply'); return result;
+    };
+    engine.emitAll = vi.fn();
+    await engine.confirmCommittedTakeTempo(1, token, 8, 7);
+    await engine.confirmCommittedTakeTempo(1, token, 12, 9);
+    expect(order).toEqual(['confirm', 'apply', 'release', 'confirm', 'apply', 'release']);
+    engine.bridge.releaseTrackTempoConfirmation.mockRejectedValueOnce(new Error('offline'));
+    await engine.confirmCommittedTakeTempo(1, token, 16, 11);
+    expect(engine.lastError).toContain('tempo was confirmed');
+    expect(engine.lastError).toContain('receipt release remains unresolved');
   });
 
   it('keeps legacy requests unchanged when no token is available', async () => {

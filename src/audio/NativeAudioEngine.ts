@@ -1543,15 +1543,21 @@ export class NativeAudioEngine {
       expectedContentRevision: number, expectedStopRevision?: number): Promise<void> {
     const transport = Transport.getInstance();
     const releaseTempoBarrier = transport.beginTempoCommitBarrier();
+    let tempoConfirmed = false;
     try {
       const currentToken = nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
       if (!nativeRecordTempoTokenMatches(finishToken, currentToken)) return;
       await this.dispatchStatusRequest(() => this.bridge.confirmTrackTempoProvenance(
         trackId, expectedContentRevision, finishToken, expectedStopRevision));
+      tempoConfirmed = true;
+      // Status has been applied locally; only then may the terminal receipt be released.
+      await this.bridge.releaseTrackTempoConfirmation(trackId);
     } catch (error) {
       // PCM was committed by the prior ACK. A failed second phase leaves its
       // provenance null and must not make that completed take look verified.
-      this.lastError = `Native REC completed with unknown tempo provenance: ${error instanceof Error ? error.message : String(error)}`;
+      this.lastError = tempoConfirmed
+        ? `Native REC tempo was confirmed, but its receipt release remains unresolved: ${error instanceof Error ? error.message : String(error)}`
+        : `Native REC completed with unknown tempo provenance: ${error instanceof Error ? error.message : String(error)}`;
       this.emitAll();
     } finally {
       releaseTempoBarrier();

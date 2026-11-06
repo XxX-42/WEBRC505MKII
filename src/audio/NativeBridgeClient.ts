@@ -1608,26 +1608,140 @@ export class NativeBridgeClient {
   public async confirmTrackTempoProvenance(trackId: number, expectedContentRevision: number,
       tempo: NativeRecordTempoToken, expectedStopRevision?: number): Promise<NativeStatus> {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC tempo confirmation track.');
-    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0) throw new RangeError('Invalid Native REC tempo content revision.');
-    if (expectedStopRevision !== undefined && (!Number.isSafeInteger(expectedStopRevision) || expectedStopRevision <= 0)) {
-      throw new RangeError('Invalid Native STOP commit revision for tempo confirmation.');
+    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0 ||
+        !Number.isFinite(tempo.bpm) || tempo.bpm < 40 || tempo.bpm > 300 || !Number.isSafeInteger(tempo.revision) || tempo.revision < 0 ||
+        (expectedStopRevision !== undefined && (!Number.isSafeInteger(expectedStopRevision) || expectedStopRevision <= 0))) {
+      throw new RangeError('Invalid Native REC tempo confirmation identity.');
     }
-    let status = await this.request<NativeStatus>('/v1/transport/record-tempo/confirm', {
-      method: 'POST', body: JSON.stringify({ trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision,
-        ...(expectedStopRevision === undefined ? {} : { stopRevision: expectedStopRevision }) }),
-    });
-    const revision = status.nativeRecordTempoProvenance?.acceptedRequestRevision;
-    if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC tempo confirmation acknowledgement is unavailable; provenance remains unknown.');
+    const key = `rc505.native.tempo-confirmation.${trackId}`;
+    const expected = { trackId, expectedContentRevision, tempoBpm: tempo.bpm, tempoRevision: tempo.revision,
+      ...(expectedStopRevision === undefined ? {} : { stopRevision: expectedStopRevision }) };
+    let identity: Record<string, unknown>;
+    const saved = globalThis.sessionStorage?.getItem(key);
+    if (saved) {
+      identity = JSON.parse(saved) as Record<string, unknown>;
+      if (Object.entries(expected).some(([field, value]) => identity[field] !== value) ||
+          (expectedStopRevision === undefined && identity.stopRevision !== undefined) ||
+          !Number.isSafeInteger(identity.expectedConfirmationRevision) || (identity.expectedConfirmationRevision as number) < 0 ||
+          !isNativeHostIncarnationId(identity.hostIncarnationId) || typeof identity.operationId !== 'string' ||
+          !/^[0-9a-f]{32}$/.test(identity.operationId)) {
+        throw new Error('A different Native tempo confirmation is unresolved; its exact receipt must be reconciled first.');
+      }
+    } else {
+      const before = await this.getStatus();
+      if (!isNativeHostIncarnationId(before.hostIncarnationId)) throw new Error('Native tempo confirmation requires a host incarnation; no request was submitted.');
+      // Another caller may have installed an identity while status was in flight.
+      if (globalThis.sessionStorage.getItem(key)) return this.confirmTrackTempoProvenance(trackId, expectedContentRevision, tempo, expectedStopRevision);
+      const generation = before.nativeRecordTempoProvenance?.requestedRevision?.[trackId - 1];
+      if (!Number.isSafeInteger(generation) || generation! < 0) throw new Error('Native tempo confirmation generation is unavailable; no request was submitted.');
+      identity = { ...expected, expectedConfirmationRevision: generation, hostIncarnationId: before.hostIncarnationId, operationId: createNativeRhythmIntentId() };
+      const encoded = JSON.stringify(identity);
+      try {
+        globalThis.sessionStorage.setItem(key, encoded);
+        if (globalThis.sessionStorage.getItem(key) !== encoded) throw new Error('storage verification failed');
+      } catch { throw new Error('Native tempo confirmation identity could not be retained; no request was submitted.'); }
+      try {
+        await this.request('/v1/transport/record-tempo/confirm', { method: 'POST', body: encoded });
+      } catch (error) {
+        // 410/422/429 are the protocol's explicit pre-enqueue rejections.
+        if (error instanceof NativeBridgeHttpError && (error.status === 410 || error.status === 422 || error.status === 429)) {
+          if (globalThis.sessionStorage.getItem(key) === encoded) globalThis.sessionStorage.removeItem(key);
+          throw error;
+        }
+        // The POST may already have committed. Query only; never repeat it.
+      }
+    }
+    if (globalThis.sessionStorage.getItem(`${key}.releasePending`) === identity.operationId) {
+      throw new Error('Native tempo confirmation release is pending; complete release instead of reconfirming.');
+    }
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
-      const provenance = status.nativeRecordTempoProvenance;
-      if (provenance && provenance.appliedRevision?.[trackId - 1] === revision) {
-        if (provenance.acceptedRevision?.[trackId - 1] !== revision) throw new Error('Native REC tempo confirmation was rejected; provenance remains unknown.');
+      let receipt: { ok: boolean; identity?: Record<string, unknown>; revision?: number; state?: number };
+      try {
+        receipt = await this.request('/v1/transport/record-tempo/receipt', { method: 'POST', body: JSON.stringify(identity) });
+      } catch { throw new Error('Native tempo confirmation outcome is unknown; retain its exact receipt and query it again, never resend.'); }
+      if (!isObject(receipt.identity) || Object.keys(receipt.identity).length !== Object.keys(identity).length ||
+          Object.entries(identity).some(([field, value]) => receipt.identity![field] !== value) ||
+          !Number.isSafeInteger(receipt.revision) || receipt.revision! <= 0 || ![0, 1, 2].includes(receipt.state!)) {
+        throw new Error('Native tempo confirmation receipt does not match its exact identity; outcome remains unknown.');
+      }
+      if (receipt.state === 2) {
+        globalThis.sessionStorage.setItem(`${key}.rejected`, identity.operationId as string);
+        throw new Error('Native REC tempo confirmation was rejected; provenance remains unknown.');
+      }
+      if (receipt.state === 1) {
+        const status = await this.getStatus();
+        if (status.hostIncarnationId !== identity.hostIncarnationId) throw new Error('Native host changed after tempo confirmation; outcome remains unknown.');
+        globalThis.sessionStorage.setItem(`${key}.confirmed`, identity.operationId as string);
         return status;
       }
-      if (Date.now() >= deadline) throw new Error('Native REC tempo confirmation callback acknowledgement timed out; provenance remains unknown.');
-      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+      if (Date.now() >= deadline) throw new Error('Native tempo confirmation remains pending; query its exact receipt again, never resend.');
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
+  }
+
+  /** Read host-owned receipts, including those orphaned by a lost browser tab. */
+  public async listUnreleasedTempoConfirmations(): Promise<Array<{ identity: Record<string, unknown>; revision: number; state: number }>> {
+    const status = await this.getStatus();
+    if (!isNativeHostIncarnationId(status.hostIncarnationId)) throw new Error('Native host incarnation is unavailable.');
+    const result = await this.request<{ ok: boolean; hostIncarnationId?: string; receipts?: Array<{ identity: Record<string, unknown>; revision: number; state: number }> }>(
+      '/v1/transport/record-tempo/receipts', { headers: { 'X-Native-Host-Incarnation': status.hostIncarnationId } });
+    if (result.hostIncarnationId !== status.hostIncarnationId || !Array.isArray(result.receipts) ||
+        result.receipts.some(item => !isObject(item) || !isObject(item.identity) || item.identity.hostIncarnationId !== status.hostIncarnationId ||
+          !Number.isSafeInteger(item.revision) || item.revision <= 0 || ![0, 1, 2].includes(item.state))) {
+      throw new Error('Native tempo receipt list is invalid or belongs to another host.');
+    }
+    return result.receipts;
+  }
+
+  public async reconcileTrackTempoConfirmation(trackId: number): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native tempo confirmation track.');
+    const saved = globalThis.sessionStorage.getItem(`rc505.native.tempo-confirmation.${trackId}`);
+    if (!saved) throw new Error('No retained Native tempo confirmation can be reconciled.');
+    const identity = JSON.parse(saved) as Record<string, unknown>;
+    if (identity.trackId !== trackId || typeof identity.expectedContentRevision !== 'number' ||
+        typeof identity.tempoBpm !== 'number' || typeof identity.tempoRevision !== 'number' ||
+        (identity.stopRevision !== undefined && typeof identity.stopRevision !== 'number')) {
+      throw new Error('Retained Native tempo confirmation identity is invalid.');
+    }
+    return this.confirmTrackTempoProvenance(trackId, identity.expectedContentRevision,
+      { bpm: identity.tempoBpm, revision: identity.tempoRevision }, identity.stopRevision as number | undefined);
+  }
+
+  /** Release only after the caller has durably completed its own handoff. */
+  public async releaseTrackTempoConfirmation(trackId: number): Promise<void> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native tempo confirmation track.');
+    const key = `rc505.native.tempo-confirmation.${trackId}`;
+    const saved = globalThis.sessionStorage.getItem(key);
+    if (!saved) throw new Error('No retained Native tempo confirmation is available for release.');
+    const identity = JSON.parse(saved) as Record<string, unknown>;
+    const operationId = identity.operationId;
+    if (typeof operationId !== 'string' ||
+        (globalThis.sessionStorage.getItem(`${key}.confirmed`) !== operationId &&
+         globalThis.sessionStorage.getItem(`${key}.rejected`) !== operationId)) {
+      throw new Error('Cannot release an unresolved Native tempo confirmation.');
+    }
+    const releaseWasPending = globalThis.sessionStorage.getItem(`${key}.releasePending`) === operationId;
+    globalThis.sessionStorage.setItem(`${key}.releasePending`, operationId);
+    try {
+      const result = await this.request<{ ok: boolean; identity?: Record<string, unknown> }>('/v1/transport/record-tempo/release',
+        { method: 'POST', body: saved });
+      if (!isObject(result.identity) || Object.keys(result.identity).length !== Object.keys(identity).length ||
+          Object.entries(identity).some(([field, value]) => result.identity![field] !== value)) {
+        throw new Error('Native tempo confirmation release did not match the retained identity.');
+      }
+    } catch (error) {
+      // Only a previously sent release can explain a missing receipt. Never treat
+      // a host restart or the first 410 as proof of release.
+      if (!(releaseWasPending && error instanceof NativeBridgeHttpError && error.status === 410)) throw error;
+      const status = await this.getStatus();
+      if (status.hostIncarnationId !== identity.hostIncarnationId) throw new Error('Native host changed while releasing the tempo receipt.');
+    }
+    if (globalThis.sessionStorage.getItem(key) !== saved) throw new Error('Native tempo confirmation changed during release.');
+    globalThis.sessionStorage.removeItem(key);
+    globalThis.sessionStorage.removeItem(`${key}.confirmed`);
+    globalThis.sessionStorage.removeItem(`${key}.rejected`);
+    globalThis.sessionStorage.removeItem(`${key}.releasePending`);
   }
 
   public async setMixerLevel(channel: number, percent: number): Promise<NativeStatus> {
