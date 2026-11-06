@@ -148,6 +148,34 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
   });
 
   it.each([
+    [48_000, 87_273, 960_000],
+    [44_100, 80_182, 882_000],
+  ])('accepts rounded fractional measure boundaries at %i Hz without accepting an extra PCM frame', (sampleRate, firstMeasureFrames, pcmFrames) => {
+    // Exact 99 BPM / 6/8 boundaries: round(ordinal * sampleRate * 180 / 99).
+    // Eleven measures have an integral total, although the first boundary is fractional before rounding.
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    const originFrame = 4_096;
+    const startFrame = originFrame + firstMeasureFrames;
+    const proof = { verified: true, firstMeasureFrames, startFrame, stopFrame: startFrame + pcmFrames,
+      rhythmEpoch: 2, sampleRate, contentRevision: 7, pcmFrames,
+      startMeasureOrdinal: 1, stopMeasureOrdinal: 12, measureCount: 11 };
+    const track = { trackId: 1, state: 'Stopped', contentRevision: 7, loopLengthSamples: pcmFrames, phaseProvenance: proof };
+    engine.latestStatus = { engineRunning: true, sampleRate,
+      nativeMemory: { loopSync: [true, false, false, false, false] }, nativeTracks: [track],
+      nativeRhythm: { enabled: true, bpm: 99, phase: { available: true, snapshotStable: true,
+        frameSchedulingAvailable: true, originFrame, measureOrdinal: 0, nextMeasureFrame: startFrame,
+        meterNumerator: 6, meterDenominator: 8 } } };
+    expect(engine.getRhythmSyncPlayAvailability(1)).toEqual({ available: true, reason: '' });
+    for (const delta of [-1, 1]) {
+      track.loopLengthSamples = pcmFrames + delta;
+      proof.pcmFrames = pcmFrames + delta;
+      proof.stopFrame = startFrame + pcmFrames + delta;
+      expect(engine.getRhythmSyncPlayAvailability(1)).toMatchObject({ available: false,
+        reason: expect.stringContaining('current Native Rhythm measure boundaries') });
+    }
+  });
+
+  it.each([
     ['cancelled', { appliedRevision: 0, cancelledRevision: 9, faultRevision: 0 }],
     ['fault', { appliedRevision: 0, cancelledRevision: 0, faultRevision: 9, fault: 2 }],
   ] as const)('preserves known owner %s outcome and reports it as terminal, not unknown', async (outcome, terminalFields) => {

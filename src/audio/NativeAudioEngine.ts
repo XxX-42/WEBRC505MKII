@@ -1676,8 +1676,10 @@ export class NativeAudioEngine {
     const boundary = (ordinal: number): number | null => {
       const stepOrdinal = ordinal * stepsNumerator / phase.meterDenominator;
       const offset = stepOrdinal * status.sampleRate * 15 / bpm;
-      const frame = phase.originFrame + Math.floor(offset + 0.5);
-      return Number.isSafeInteger(stepOrdinal) && Number.isSafeInteger(offset) && Number.isSafeInteger(frame) ? frame : null;
+      // Native schedules rounded cumulative boundaries, including fractional frames per measure.
+      const roundedOffset = Math.floor(offset + 0.5);
+      const frame = phase.originFrame + roundedOffset;
+      return Number.isSafeInteger(stepOrdinal) && offset >= 0 && Number.isSafeInteger(roundedOffset) && Number.isSafeInteger(frame) ? frame : null;
     };
     const startFrame = boundary(startOrdinal);
     const endFrame = boundary(endOrdinal);
