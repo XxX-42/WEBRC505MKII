@@ -216,6 +216,7 @@ export class NativeAudioEngine {
   private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
   private lastError = '';
+  private nativeAllRejectedNotice = '';
   private readonly nativeCatalogFxStates: Record<NativeFxPath, NativeCatalogFxState[]> = {
     input: NATIVE_FX_SLOT_IDS.map(() => ({ type: '', value: 0, active: false, parameters: {} })),
     track: NATIVE_FX_SLOT_IDS.map(() => ({ type: '', value: 0, active: false, parameters: {} })),
@@ -317,6 +318,7 @@ export class NativeAudioEngine {
       return this.initInFlight;
     }
 
+    this.nativeAllRejectedNotice = '';
     this.restoreRetainedLocalTempoIntent();
     const tempoRevision = Transport.getInstance().tempoMutationRevision;
     this.recoveryTempoAdoptionBlocked = true;
@@ -342,6 +344,7 @@ export class NativeAudioEngine {
   public async restartAudio(): Promise<void> {
     if (this.initInFlight) await this.initInFlight;
     if (this.restartInFlight) return this.restartInFlight;
+    this.nativeAllRejectedNotice = '';
 
     const tempoRevision = Transport.getInstance().tempoMutationRevision;
     this.recoveryTempoAdoptionBlocked = true;
@@ -2021,74 +2024,19 @@ export class NativeAudioEngine {
   }
 
   public stopAllTracks() {
+    this.nativeAllRejectedNotice = '';
     if (this.nativeProjectTempoCleanupError) { this.lastError = this.nativeProjectTempoCleanupError; this.emitAll(); return; }
     if (this.nativeTempoRecoveryError) { this.lastError = this.nativeTempoRecoveryError; this.emitAll(); return; }
     if (!this.assertNoUnresolvedNativeTransportBatch('stop all tracks')) return;
-    if (this.shouldUseNativeBatchTransport('stop')) {
-      void this.scheduleNativeAllTransport('stop');
-      return;
-    }
-    if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
-      this.lastError = 'ALL STOP is unavailable while Native LOOP SYNC is enabled; stop synchronized tracks individually.';
-      this.emitAll();
-      return;
-    }
-    const pending: Promise<unknown>[] = [];
-    for (const track of this.tracks) {
-      if (this.isNativeTrackAvailable(track.trackId) && this.nativeTrackState(track.trackId) !== 'Empty') {
-        pending.push(this.stopTrack(track.trackId));
-      }
-    }
-    void Promise.allSettled(pending).then(results => {
-      const failures = results.filter(result => result.status === 'rejected');
-      if (failures.length) {
-        this.lastError = `ALL STOP partially failed (${failures.length}/${results.length} tracks): ${String((failures[0] as PromiseRejectedResult).reason)}`;
-        this.emitAll();
-      }
-    });
+    void this.scheduleNativeAllTransport('stop');
   }
 
   public playAllTracks() {
+    this.nativeAllRejectedNotice = '';
     if (this.nativeProjectTempoCleanupError) { this.lastError = this.nativeProjectTempoCleanupError; this.emitAll(); return; }
     if (this.nativeTempoRecoveryError) { this.lastError = this.nativeTempoRecoveryError; this.emitAll(); return; }
     if (!this.assertNoUnresolvedNativeTransportBatch('start all tracks')) return;
-    if (this.shouldUseNativeBatchTransport('play')) {
-      void this.scheduleNativeAllTransport('play');
-      return;
-    }
-    if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
-      this.lastError = 'ALL START is unavailable while Native LOOP SYNC is enabled; synchronized PLAY is not phase-proven.';
-      this.emitAll();
-      return;
-    }
-    const pending = this.tracks.filter(track => this.isNativeTrackAvailable(track.trackId))
-      .map(track => this.playTrack(track.trackId));
-    void Promise.allSettled(pending).then(results => {
-      const failures = results.filter(result => result.status === 'rejected');
-      if (failures.length) {
-        this.lastError = `ALL START partially failed (${failures.length}/${results.length} tracks): ${String((failures[0] as PromiseRejectedResult).reason)}`;
-        this.emitAll();
-      }
-    });
-  }
-
-  private shouldUseNativeBatchTransport(action: 'play' | 'stop'): boolean {
-    const status = this.latestStatus;
-    if (status?.nativeLoopFrameScheduling?.batchTransportAvailable !== true ||
-        !Array.isArray(status.nativeTracks) || status.nativeTracks.length !== 5 ||
-        !Array.isArray(status.nativeMemory?.loopSync) || status.nativeMemory.loopSync.length !== 5) return false;
-    const eligible = status.nativeTracks.filter((track) => action === 'play'
-      ? track.state === 'Stopped' && Number.isSafeInteger(track.loopLengthSamples) && track.loopLengthSamples! > 0
-      : track.state === 'Recording' || track.state === 'Playing' || track.state === 'Overdubbing');
-    if (eligible.length < 2 || eligible.some((track) => status.nativeMemory?.loopSync?.[track.trackId - 1])) return false;
-    if (action === 'stop') {
-      for (const track of eligible) {
-        if (track.state !== 'Recording') continue;
-        const token = status.nativeRecordingTempoTokens?.[track.trackId - 1];
-        if (token?.valid !== true || !Number.isFinite(token.bpm) || !Number.isSafeInteger(token.revision)) return false;
-      }
-    }
-    return true;
+    void this.scheduleNativeAllTransport('play');
   }
 
   private assertNoUnresolvedNativeTransportBatch(action: string): boolean {
@@ -2130,6 +2078,7 @@ export class NativeAudioEngine {
   }
 
   private async scheduleNativeAllTransport(action: 'play' | 'stop'): Promise<void> {
+    this.nativeAllRejectedNotice = '';
     if (this.nativeTransportBatchPending) {
       this.lastError = `Native ALL ${action.toUpperCase()} is waiting for the previous exact batch receipt; no second action was sent.`;
       this.emitAll();
@@ -2155,6 +2104,7 @@ export class NativeAudioEngine {
         this.lastError = `Native ALL ${action.toUpperCase()} outcome is unknown. Reconcile batch ${error.receipt.batchId ?? error.receipt.intentId} before any new transport action; no replay was sent.`;
       } else {
         this.lastError = `Native ALL ${action.toUpperCase()} failed: ${error instanceof Error ? error.message : String(error)}`;
+        if (!this.bridge.getPendingNativeTransportBatch()) this.nativeAllRejectedNotice = this.lastError;
       }
     } finally {
       this.nativeTransportBatchPending = false;
@@ -3559,7 +3509,7 @@ export class NativeAudioEngine {
     this.selectedSampleRate = status.sampleRate || this.selectedSampleRate;
     this.selectedBufferFrames = status.bufferFrames || this.selectedBufferFrames;
     this.nativeLooperStorageBudgetBytes = status.nativeLooperStorageBudgetBytes || this.nativeLooperStorageBudgetBytes;
-    this.lastError = status.lastError || '';
+    this.lastError = status.lastError || this.nativeAllRejectedNotice || '';
     if (synchronizeRhythmBpm && !this.suppressRecoveryTempoSync) this.syncNativeRhythmBpm();
     for (const runtime of this.nativeCatalogFxRuntime.values()) {
       if (runtime.pendingApply || runtime.acknowledged || runtime.outcomeUnknown) this.reconcileNativeCatalogRuntime(runtime);

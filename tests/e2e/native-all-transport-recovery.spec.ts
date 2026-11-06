@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 
 const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
@@ -11,6 +12,8 @@ test('Classic ALL controls recover one exact five-track batch without replay', a
   let startError: Error | undefined;
   const requests: string[] = [];
   try {
+    const occupied = await fetch(`${bridge}/health`).then(() => true).catch(() => false);
+    expect(occupied, 'Port 18755 must be free before starting the simulation host.').toBe(false);
     host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' },
       stdio: ['ignore', 'ignore', 'pipe'] });
     host.once('error', error => { startError = error; });
@@ -63,9 +66,44 @@ test('Classic ALL controls recover one exact five-track batch without replay', a
       return status.nativeTracks.map((track: { state: string; loopLengthSamples: number }) => [track.state, track.loopLengthSamples]);
     }).toEqual(imported.map(frameCount => ['Stopped', frameCount]));
 
+    // Read from the real simulation host in Node, outside the browser's altered status response.
+    const capture = async () => {
+      const status = await fetch(`${bridge}/v1/status`).then(response => response.json());
+      const pcm = await Promise.all(imported.map(async (_, index) => {
+        const response = await fetch(`${bridge}/v1/export/loop-snapshot?trackId=${index + 1}`);
+        expect(response.ok).toBe(true);
+        return createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+      }));
+      return { pcm, memory: status.nativeMemory, tracks: status.nativeTracks.map((track: any) =>
+        ({ state: track.state, loopLengthSamples: track.loopLengthSamples })) };
+    };
+    const writes: string[] = [];
     page.on('request', request => {
+      if (request.method() === 'POST' && request.url().startsWith(`${bridge}/v1/`)) writes.push(request.url());
       if (request.method() === 'POST' && request.url().includes('/v1/transport/batch-schedule')) requests.push(request.postData() ?? '');
     });
+    let statusFault: 'capability' | 'incomplete' | null = null;
+    await page.route('**/v1/status', async route => {
+      const response = await route.fetch();
+      const status = await response.json();
+      if (statusFault) status.nativeLoopFrameScheduling.batchTransportReason = `Test ${statusFault} baseline rejected`;
+      if (statusFault === 'capability') status.nativeLoopFrameScheduling.batchTransportAvailable = false;
+      if (statusFault === 'incomplete') status.nativeMemory.loopSync = status.nativeMemory.loopSync.slice(0, 4);
+      await route.fulfill({ response, json: status });
+    });
+    const expectRejectedAll = async (action: 'Start' | 'Stop', fault: 'capability' | 'incomplete') => {
+      const before = await capture();
+      const beforeWrites = writes.length;
+      statusFault = fault;
+      await page.getByRole('button', { name: `${action} all tracks` }).click();
+      await expect(page.getByText(new RegExp(`Native ALL ${action === 'Start' ? 'PLAY' : 'STOP'} failed:.*Test ${fault} baseline rejected`))).toBeVisible();
+      expect(writes.slice(beforeWrites), 'Rejected ALL must not issue any bridge write').toEqual([]);
+      expect(await capture()).toEqual(before);
+      statusFault = null;
+    };
+    const initialContents = await capture();
+    await expectRejectedAll('Start', 'capability');
+    await expectRejectedAll('Start', 'incomplete');
     let blockReceipt = true;
     let blockedReceiptQueries = 0;
     let resumedReceiptQueries = 0;
@@ -99,6 +137,8 @@ test('Classic ALL controls recover one exact five-track batch without replay', a
     }).toEqual(Array(5).fill('Playing'));
     expect(requests).toHaveLength(1);
     await expect(page.getByRole('button', { name: 'Stop all tracks' })).toBeEnabled();
+    await expectRejectedAll('Stop', 'capability');
+    await expectRejectedAll('Stop', 'incomplete');
     await page.getByRole('button', { name: 'Stop all tracks' }).click();
     await expect.poll(() => requests.length).toBe(2);
     await expect.poll(async () => {
@@ -115,7 +155,10 @@ test('Classic ALL controls recover one exact five-track batch without replay', a
     expect(members.every((member: { requestedRevision: number; appliedRevision: number; requestedAction: string }) =>
       member.requestedAction === 'stop' && member.appliedRevision === member.requestedRevision)).toBe(true);
     expect(requests.map(value => JSON.parse(value).trackMask)).toEqual([31, 31]);
+    expect(await capture(), 'Successful ALL START/STOP must preserve PCM and parameters').toEqual(initialContents);
   } finally {
+    await page.unrouteAll({ behavior: 'wait' });
+    await page.close();
     if (host && host.exitCode === null) host.kill();
   }
 });

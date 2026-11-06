@@ -964,7 +964,12 @@ export class NativeBridgeClient {
     for (let index = 0; index < 5; index += 1) {
       const track = before.nativeTracks[index]!;
       const request = scheduling.requests[index]!;
-      if (track.trackId !== index + 1 || !Number.isInteger(track.stateCode) || track.stateCode! < 0 || track.stateCode! > 4 ||
+      if (!track || !request || track.trackId !== index + 1 ||
+          !Number.isInteger(track.stateCode) || track.stateCode! < 0 || track.stateCode! > 4 ||
+          ['Empty', 'Recording', 'Stopped', 'Playing', 'Overdubbing'][track.stateCode!] !== track.state ||
+          typeof before.nativeMemory.loopSync[index] !== 'boolean' ||
+          (action === 'play' && track.state === 'Stopped' &&
+            (!Number.isSafeInteger(track.loopLengthSamples) || track.loopLengthSamples! < 0)) ||
           request.trackIndex !== index || !Number.isSafeInteger(request.requestedRevision) || request.requestedRevision < 0 ||
           !Number.isSafeInteger(expectedStopRevisions[index]) || expectedStopRevisions[index]! < 0) {
         throw new Error(`Native status has an incomplete ALL transport baseline at Track ${index + 1}; no request was submitted.`);

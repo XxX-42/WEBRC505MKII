@@ -17,21 +17,21 @@ function createEngine(ownerReceipt: NativeRhythmScheduleReceipt | null, reconcil
 }
 
 describe('Native Rhythm schedule initialization reconciliation', () => {
-  it('rejects ALL START and ALL STOP before dispatch while a LOOP SYNC track is enabled', () => {
+  it('delegates ALL requests to the fresh-status batch validator', async () => {
     const engine = Object.create(NativeAudioEngine.prototype) as any;
-    engine.latestStatus = { nativeMemory: { loopSync: [false, true, false, false, false] } };
-    engine.bridge = { getPendingNativeTransportBatch: vi.fn(() => null) };
-    engine.tracks = [{ trackId: 1 }, { trackId: 2 }];
-    engine.lastError = '';
+    engine.bridge = { getPendingNativeTransportBatch: vi.fn(() => null),
+      scheduleNativeTransportBatch: vi.fn(async () => { throw new Error('LOOP SYNC enabled'); }) };
     engine.emitAll = vi.fn();
     engine.playTrack = vi.fn();
     engine.stopTrack = vi.fn();
     engine.playAllTracks();
+    await engine.nativeTransportBatchSettled;
     engine.stopAllTracks();
+    await engine.nativeTransportBatchSettled;
+    expect(engine.bridge.scheduleNativeTransportBatch).toHaveBeenCalledTimes(2);
     expect(engine.playTrack).not.toHaveBeenCalled();
     expect(engine.stopTrack).not.toHaveBeenCalled();
-    expect(engine.lastError).toMatch(/ALL STOP is unavailable/);
-    expect(engine.emitAll).toHaveBeenCalledTimes(2);
+    expect(engine.lastError).toMatch(/LOOP SYNC enabled/);
   });
 
   it('uses the acknowledged PCM-preserving emergency STOP when LOOP SYNC loses its phase', async () => {

@@ -129,6 +129,61 @@ afterEach(() => {
 });
 
 describe('Native ALL atomic transport batches', () => {
+  it.each(['play', 'stop'] as const)('ALL %s never falls back to individual requests on unsafe status', async (action) => {
+    const cases = [
+      { name: 'missing batch capability', change: (value: NativeStatus) => { value.nativeLoopFrameScheduling!.batchTransportAvailable = false; } },
+      { name: 'incomplete track status', change: (value: NativeStatus) => { value.nativeTracks!.pop(); } },
+      { name: 'single eligible track', change: (value: NativeStatus) => { value.nativeTracks![1] = { ...value.nativeTracks![1]!, state: 'Empty', stateCode: 0 }; } },
+      { name: 'enabled loop sync', change: (value: NativeStatus) => { value.nativeMemory!.loopSync[0] = true; } },
+      { name: 'unknown loop sync', change: (value: NativeStatus) => { (value.nativeMemory!.loopSync as unknown[])[0] = undefined; } },
+      { name: 'missing state and code', change: (value: NativeStatus) => { delete (value.nativeTracks![0] as any).state; delete (value.nativeTracks![0] as any).stateCode; } },
+      { name: 'inconsistent state', change: (value: NativeStatus) => { value.nativeTracks![0]!.stateCode = 0; } },
+      ...(action === 'stop' ? [{ name: 'missing recording token', change: (value: NativeStatus) => { value.nativeRecordingTempoTokens![0]!.valid = false; } }] : []),
+    ];
+    for (const scenario of cases) {
+      const current = status(action, action === 'play' ? ['Stopped', 'Stopped', 'Empty', 'Empty', 'Empty']
+        : ['Recording', 'Recording', 'Empty', 'Empty', 'Empty']);
+      scenario.change(current);
+      const posts: string[] = [];
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if ((init?.method ?? 'GET').toUpperCase() !== 'GET') posts.push(new URL(String(input)).pathname);
+        return response(current);
+      }));
+      const engine = Object.create(NativeAudioEngine.prototype) as any;
+      engine.bridge = new NativeBridgeClient('http://native.test');
+      engine.emitAll = vi.fn();
+      engine.assertNoUnresolvedNativeTransportBatch = vi.fn(() => true);
+      engine[action === 'play' ? 'playAllTracks' : 'stopAllTracks']();
+      await engine.nativeTransportBatchSettled;
+      expect(posts, scenario.name).toEqual([]);
+      expect(engine.lastError, scenario.name).toMatch(/Native ALL (PLAY|STOP) failed:/);
+    }
+  });
+
+  it('retains a rejected ALL notice across status polls and clears it on the next ALL attempt', async () => {
+    const current = status('play');
+    current.nativeLoopFrameScheduling!.batchTransportAvailable = false;
+    vi.stubGlobal('fetch', vi.fn(async () => response(current)));
+    const engine = new (NativeAudioEngine as any)();
+    engine.bridge = new NativeBridgeClient('http://native.test');
+    engine.assertNoUnresolvedNativeTransportBatch = vi.fn(() => true);
+    engine.emitAll = vi.fn();
+    engine.playAllTracks();
+    await engine.nativeTransportBatchSettled;
+    const notice = engine.lastError;
+    expect(notice).toMatch(/Native ALL PLAY failed/);
+    engine.applyStatus(current, false);
+    expect(engine.lastError).toBe(notice);
+    engine.bridge.scheduleNativeTransportBatch = vi.fn(async () => ({ nativeTransportBatchAcknowledgement: {
+      action: 'play', trackMask: 3, revisions: [1, 1, 0, 0, 0], appliedAbsoluteFrame: 2000 } }));
+    engine.applyStatus = vi.fn();
+    engine.completeNativeBatchTempoHandoff = vi.fn(async () => '');
+    engine.playAllTracks();
+    await engine.nativeTransportBatchSettled;
+    expect(engine.lastError).toBe('');
+    expect(engine.nativeAllRejectedNotice).toBe('');
+  });
+
   it('fails closed when a persisted batch receipt is malformed', async () => {
     sessionStorage.setItem('webrc.nativeTransportBatchReceipt.v1', '{invalid');
     const client = new NativeBridgeClient('http://native.test');
@@ -181,7 +236,7 @@ describe('Native ALL atomic transport batches', () => {
     const ack = { nativeTransportBatchAcknowledgement: { action: 'stop', trackMask: 3,
       revisions: [1, 1, 0, 0, 0], appliedAbsoluteFrame: 100 } };
     const engine = Object.create(NativeAudioEngine.prototype) as any;
-    engine.bridge = { scheduleNativeTransportBatch: vi.fn(async () => ack) };
+    engine.bridge = { scheduleNativeTransportBatch: vi.fn(async () => ack), getPendingNativeTransportBatch: vi.fn(() => null) };
     engine.applyStatus = vi.fn();
     engine.emitAll = vi.fn();
     engine.completeNativeBatchTempoHandoff = vi.fn(async () => { throw new Error('handoff unavailable'); });
