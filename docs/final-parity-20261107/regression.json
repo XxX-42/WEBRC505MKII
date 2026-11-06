@@ -91,6 +91,8 @@
     "productionUiPort": 4196
   },
   "nativeHqBuild": {
+    "sourceCommit": "7bc042267e6c4e3b2b9627a0548e16b461126788",
+    "scope": "Historical complete run; later R2/R3 checks are recorded in subsequentHqStereo",
     "freshBuild": true,
     "compiler": "MSVC 19.29 / VS2019 x64 Release /MD",
     "rubberBandVersion": "4.0.0 (local recorded source identity)",
@@ -102,8 +104,8 @@
     "independentStatusQuery": "NOT_RUN: automatic approval rejected standalone process launch with blocked by policy"
   },
   "remainingFailures": {
-    "closedContext": "Composite case separated into three independently initialized scenarios with original assertions and 30s budget; scoped 3/3 passed, final complete integrated run still required",
-    "nativeArchiveRoundTrip": "Real BPM callback ACK race: requested revision 1/applied 0 accepted before later status reached 1/1; exact receipt fix in isolated branch"
+    "closedContext": "Former composite failure resolved in scoped integrated run: three independently initialized scenarios passed with original assertions and 30s budgets; final complete integrated run still required",
+    "nativeArchiveRoundTrip": "Former requested/applied BPM race resolved in scoped integrated f4e9f99 run with exact callback receipts and durable handoff; final complete integrated run still required"
   },
   "subsequentScopedChecks": {
     "completeUnit": {
@@ -172,6 +174,38 @@
     "nativeTrackedTree": "6360a7ebab7123cb49173c4bfd28c70c0a7d16d1",
     "nativeBuildScope": "Rhythm worktree fresh HQ build; tracked native tree equals integrated source, not an independently rebuilt root executable"
   },
+  "subsequentHqStereo": {
+    "executedCommit": "aa2a17f8bf533a4f9b7c2899c0ef92b8a18fa796",
+    "integrationCommit": "8886f97",
+    "sharedRuntimeSrcTree": "ccfe7489040dfab3b96f821d9ef2572dc3ccbfc5",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "retries": 0,
+    "testTimeoutMs": 30000,
+    "reportFile": "rc505-hq-r2r3-20261107-final.json",
+    "reportSha256": "7a88c2b773bc021427bd8969575841b7eb8c0d32fccef6b0938df86425d2b5c8",
+    "targetHz": 659.2551138257398,
+    "analysisDurationSeconds": 0.6,
+    "meanFrequencyToleranceHz": 3.3333333333333335,
+    "r2MeanHz": [657.421036, 657.421248],
+    "r3MeanHz": [659.255746, 659.255184],
+    "r2SpectralPeakHz": 665,
+    "r3SpectralPeakHz": 660,
+    "r2InitialPeakOnlyCheck": "FAILED; retained as diagnostic, not erased by subsequent mean-frequency check",
+    "scope": "Software asymmetric stereo import/export and fixed pitch conversion; not audibility, modulation quality or Roland parity"
+  },
+  "unmergedNativeBatch": {
+    "sourceCommit": "8b79d2d",
+    "unitFiles": 229,
+    "unitPassed": 2868,
+    "unitFailed": 1,
+    "unitSkipped": 0,
+    "reportFile": "rc505-native-unit-8b79d2d-20261107.json",
+    "reportSha256": "f22771cf37329f690c8474003b2cc8371452626103b4dd5ffc8a9238a100761e",
+    "failure": "Init reached incomplete status read before required mismatched-metadata rejection; subsequent order fix requires new complete integrated gates",
+    "scope": "Isolated branch only; not current main acceptance"
+  },
   "hardware": {
     "checkedAt": "2026-11-07T06:32:38.6887454+08:00",
     "rc505SoundDeviceDetected": false,
@@ -181,6 +215,6 @@
   "limits": [
     "Not a complete E2E green result.",
     "No hardware sound parity, latency, XRUN or LED photometry acceptance.",
-    "Native batch/tempo protocol WIP branches are not included in this tested source."
+    "Native ALL/track-tempo receipt WIP branches are not included in the integrated tested source; common Rhythm BPM callback receipts are integrated."
   ]
 }

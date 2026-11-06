@@ -14,6 +14,7 @@ Exact prior complete-E2E counts and artifact hashes are in [regression.json](reg
 | Rhythm callback ACK | Exact host/revision/intent, callback wait, non-BPM patch CAS and durable import handoff are integrated; targeted HTTP/UI tests passed on the executing branch |
 | Context recovery | Three independent full-fixture scenarios replace the over-budget composite; original assertions and 30-second limit retained |
 | Passive panel geometry | FX housings and track-deck perimeter changed; before/after control rectangles and scales match at 1920/1366. No hardware photometry claim |
+| R2/R3 offline WAV path | Scoped **2/2**, zero retries, original 30-second budget; actual renderer requests/responses, imported asymmetric stereo, mean frequency and target/source energy. R2's earlier dominant-bin failure remains recorded; modulation and sound quality are not accepted |
 | Native atomic ALL | Separate WIP branch; software-only UI and callback tests do not yet constitute final integrated acceptance |
 | Current local UI | Port 4196 process belongs to this integration worktree; independent Browser captures did not start audio or touch the user's tab |
 | RC-505 discovery | At 2026-11-07 06:32 +08:00, Windows SoundDevice and present-PnP name checks found no RC-505/BOSS/Roland matches |
@@ -52,3 +53,13 @@ a separate fresh build in the integration worktree or physical WASAPI testing.
 R2/R3 waveform checks and passive LED rendering checks must state their exact
 scope; synthetic/imported PCM or component props do not prove Roland sound,
 physical capture, real Bank routing or LED photometry.
+
+The [HQ stereo report](../dsp/NATIVE_HQ_STEREO_E2E_2026-11-07.md) links the
+final and failed measurements with file hashes. Its executing source is
+`aa2a17f`, integrated as `8886f97`; the `src` Git tree is identical to the
+validated `f4e9f99` runtime. Native batch development at `8b79d2d` separately
+ran 2868/2869 units in 229 files, with one metadata-order failure; that is
+not an integrated pass. Later targeted fixes do not erase the failed full run.
+
+Official recording versus synchronization semantics and remaining provider
+restrictions are distinguished in the [transport evidence](../ui-parity/transport-evidence-20261107.md).
