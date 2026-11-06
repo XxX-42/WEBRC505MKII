@@ -247,7 +247,8 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   const frameMapping = page.getByTestId('midi-clock-frame-map');
   const startFrameMapping = page.getByTestId('midi-clock-start-frame-map');
   await expect(relativePhase).toHaveText('Relative pulse phase: select one input');
-  await expect(page.locator('.midi-clock-phase-note')).toContainText('FA frame projection remains diagnostic only');
+  await expect(page.locator('.midi-clock-phase-note')).toContainText('MIDI clock phase and loop sample phase are not aligned.');
+  await expect(page.locator('.midi-clock-phase-note')).toContainText('LIVE_POLY follow is off by default');
   const source = page.getByTestId('midi-clock-input-select');
   await expect(source.locator('option')).toHaveText(['Select MIDI input', 'Controller Alpha', 'Controller Beta']);
   await source.selectOption({ label: 'Controller Alpha' });

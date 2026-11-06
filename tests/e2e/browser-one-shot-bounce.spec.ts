@@ -30,7 +30,8 @@ test('Browser Bounce captures a finite stereo one-shot while the destination rec
     };
 
     try {
-      await browser.replaceInputStream(silenceDestination.stream);
+      const { installVirtualInput } = await import('/tests/e2e/browserInputFixture.ts');
+      await installVirtualInput(browser, silenceDestination.stream);
       await audio.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'OFF' });
       source.track.loopSyncSw = 'OFF';
       destination.track.loopSyncSw = 'OFF';

@@ -201,7 +201,8 @@ test('Browser engine records connected stereo input through its shared tap', asy
     merger.connect(destination);
     left.start();
     right.start();
-    await browser.replaceInputStream(destination.stream);
+    const { installVirtualInput } = await import('/tests/e2e/browserInputFixture.ts');
+    await installVirtualInput(browser, destination.stream);
     const track = audio.tracks[0] as any;
     await track.startRecording();
     if (!track.recordingCaptureSession) throw new Error('Track did not use the shared Browser capture session');
@@ -358,7 +359,8 @@ test('Browser Bounce records a selected source track into the destination loop',
     const mute = context.createGain(); mute.gain.value = 0;
     const silence = new OscillatorNode(context, { frequency: 80 });
     silence.connect(mute).connect(silentInput); silence.start();
-    await browser.replaceInputStream(silentInput.stream);
+    const { installVirtualInput } = await import('/tests/e2e/browserInputFixture.ts');
+    await installVirtualInput(browser, silentInput.stream);
 
     const sourceTrack = audio.tracks[1] as any;
     const destinationTrack = audio.tracks[0] as any;
@@ -408,7 +410,8 @@ test('Classic LCD Bounce controls route another playing track into the destinati
     const mute = context.createGain(); mute.gain.value = 0;
     const silence = new OscillatorNode(context, { frequency: 80 });
     silence.connect(mute).connect(silentInput); silence.start();
-    await browser.replaceInputStream(silentInput.stream);
+    const { installVirtualInput } = await import('/tests/e2e/browserInputFixture.ts');
+    await installVirtualInput(browser, silentInput.stream);
     await audio.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'OFF' });
     const buffer = context.createBuffer(2, 4096, context.sampleRate);
     buffer.getChannelData(0).fill(0.2); buffer.getChannelData(1).fill(-0.3);
@@ -477,7 +480,8 @@ test('Browser Auto Rec arms the shared worklet and records only after the input 
     const destination = context.createMediaStreamDestination();
     oscillator.connect(gain).connect(destination);
     oscillator.start();
-    await browser.replaceInputStream(destination.stream);
+    const { installVirtualInput } = await import('/tests/e2e/browserInputFixture.ts');
+    await installVirtualInput(browser, destination.stream);
     audio.setBrowserAutoRecSettings({ enabled: true, sensitivity: 1 });
     const track = audio.tracks[0] as any;
     await track.startRecording();

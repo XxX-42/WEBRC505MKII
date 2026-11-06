@@ -483,6 +483,7 @@ test('Browser project loads reject PCM, history, or transport edits completed du
       // newly captured baseline.
       const slotRead = makeDeferred();
       const delayedStore = {
+        getUnresolvedNativeImportRecovery: () => backingStore.getUnresolvedNativeImportRecovery(),
         readSlot: async (requestedSlot: number) => {
           await slotRead.wait();
           return backingStore.readSlot(requestedSlot);
