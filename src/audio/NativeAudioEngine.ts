@@ -302,6 +302,7 @@ export class NativeAudioEngine {
     this.initInFlight = this.initializeNative();
     try {
       await this.initInFlight;
+      this.suppressRecoveryTempoSync = false;
       if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
     } finally {
       this.suppressRecoveryTempoSync = false;
@@ -321,6 +322,7 @@ export class NativeAudioEngine {
     this.restartInFlight = restart;
     try {
       await restart;
+      this.suppressRecoveryTempoSync = false;
       if (Transport.getInstance().tempoMutationRevision === tempoRevision) this.syncNativeRhythmBpm();
     } finally {
       this.suppressRecoveryTempoSync = false;
@@ -3313,6 +3315,7 @@ export class NativeAudioEngine {
   }
 
   private syncNativeRhythmBpm() {
+    if (this.suppressRecoveryTempoSync) return;
     if (this.nativeMemoryTransportSyncSuppressions > 0) return;
     if (this.syncingNativeRhythmBpm) return;
     const rhythm = this.rhythmEngine.settings;

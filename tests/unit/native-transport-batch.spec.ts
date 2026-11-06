@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NativeBridgeClient, NativeTransportBatchOutcomeUnknownError, type NativeStatus } from '../../src/audio/NativeBridgeClient';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
+import { Transport } from '../../src/core/Transport';
+import { nativeRhythmStatus } from '../helpers/nativeRhythmStatus';
 
 const host = 'a'.repeat(32);
 const intentPlaceholder = '0'.repeat(32);
@@ -144,6 +146,22 @@ describe('Native ALL atomic transport batches', () => {
       await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/identity could not be persisted/);
       expect(posts).toHaveLength(0);
     } finally { write.mockRestore(); }
+  });
+
+  it('preserves the user BPM when host status differs and FX initialization fails', async () => {
+    const engine = new (NativeAudioEngine as any)();
+    const transport = Transport.getInstance();
+    const originalBpm = transport.bpm;
+    transport.bpm = 97;
+    engine.emitAll = vi.fn();
+    engine.initializeNative = vi.fn(async () => {
+      engine.applyStatus(nativeRhythmStatus({ bpm: 143 }));
+      throw new Error('FX initialization failed');
+    });
+    try {
+      await expect(engine.init()).rejects.toThrow('FX initialization failed');
+      expect(transport.bpm).toBe(97);
+    } finally { transport.bpm = originalBpm; }
   });
 
   it('blocks transport while a host batch owned by another tab is pending', () => {
