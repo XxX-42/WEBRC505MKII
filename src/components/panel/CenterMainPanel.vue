@@ -443,12 +443,18 @@ const scopedControlError = computed(() => {
   return controls.errorFor(view.kind === 'play' ? 'play'
     : view.kind === 'editor' && (view.target === 'input-fx' || view.target === 'track-fx') ? view.target : 'other');
 });
-const statusDetail = computed(() => (scopedControlError.value ? controls.state.errorDetail || scopedControlError.value : '') || classicState.value.notice || (isClassicEditor.value ? screenEditor.status.value : '')
+// Runtime failures and a running engine's unresolved state take precedence
+// over stale page notices or earlier per-control success/error messages.
+// An unstarted engine without an error still permits offline editor feedback.
+const runtimeStatusPriority = computed(() => uiStatus.value.lastError ||
+  (!uiStatus.value.ready && uiStatus.value.engineRunning ? uiStatus.value.message || 'AUDIO NOT READY' : ''));
+const statusDetail = computed(() => runtimeStatusPriority.value ||
+  (scopedControlError.value ? controls.state.errorDetail || scopedControlError.value : '') || classicState.value.notice || (isClassicEditor.value ? screenEditor.status.value : '')
   || memory.state.error || (memory.state.busy ? 'MEMORY TRANSACTION PENDING' : '')
   || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value || (undoLayerActive.value ? 'UNDO/REDO CONTROLS ACTIVE' : '')
   || (rhythmPending.value ? 'RHYTHM COMMAND PENDING' : !audioReady.value ? uiStatus.value.message || 'AUDIO NOT READY'
     : rhythmMessage.value || (isPlaying.value ? 'TRANSPORT RUNNING' : 'READY')));
-const statusHint = computed(() => conciseStatus(scopedControlError.value || statusDetail.value));
+const statusHint = computed(() => conciseStatus(runtimeStatusPriority.value || scopedControlError.value || statusDetail.value));
 
 type ScreenField = {
   key: string;
