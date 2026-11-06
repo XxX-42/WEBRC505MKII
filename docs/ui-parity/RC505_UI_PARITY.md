@@ -1,6 +1,6 @@
 # RC-505mkII Classic UI parity
 
-> This page began as a 2026-10-22 UI-only milestone. The baseline SHAs and validation records below are historical. Capability notes have been reconciled with the integrated source at `7eeca3c` (2026-10-29); they are not a test receipt for that exact commit. The dated [2026-10-28 integration progress](../rc505-progress-20261028.md) records the latest reported build, unit, simulation, and browser results and their source SHAs. Neither software tests nor simulation certify physical RC-505 behavior.
+> This page began as a 2026-10-22 UI-only milestone. The baseline SHAs and validation records below are historical. Capability notes have been reconciled with the integrated source at `7eeca3c` (2026-10-29); they are not a test receipt for that exact commit. Current dated results and remaining gates are in [2026-11-07 progress](../rc505-progress-20261107.md) and its [regression receipt](../final-parity-20261107/regression.json). The [2026-10-28 integration progress](../rc505-progress-20261028.md) remains a historical record. Neither software tests nor simulation certify physical RC-505 behavior.
 
 Overall: **PARTIAL**. A shared display/control layer now drives Browser and Native. This does not certify complete hardware emulation, physical audio loopback, or measured LED color.
 
