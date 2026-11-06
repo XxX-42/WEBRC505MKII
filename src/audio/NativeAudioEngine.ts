@@ -203,6 +203,7 @@ export class NativeAudioEngine {
   private bridgeAvailable = false;
   private engineRunning = false;
   private nativeRhythmScheduleRecoveryBlocked = false;
+  private nativeProjectTempoCleanupError = '';
   private initInFlight: Promise<void> | null = null;
   private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
@@ -314,6 +315,7 @@ export class NativeAudioEngine {
     this.stopPolling();
     let failureHandled = false;
     try {
+      if (this.bridgeAvailable) await this.cleanupPublishedProjectTempoReceipt();
       if (!this.bridgeAvailable) {
         failureHandled = true;
         await this.init();
@@ -651,6 +653,11 @@ export class NativeAudioEngine {
       };
     }
 
+    if (this.nativeProjectTempoCleanupError) {
+      return { bridgeAvailable: this.bridgeAvailable, engineRunning: this.engineRunning, ready: false,
+        message: 'NATIVE PROJECT RECEIPT NEEDS REVIEW', lastError: this.nativeProjectTempoCleanupError };
+    }
+
     if (this.nativeRhythmScheduleRecoveryBlocked) {
       return {
         bridgeAvailable: true,
@@ -681,7 +688,7 @@ export class NativeAudioEngine {
   }
 
   public isNativeReady() {
-    return this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked;
+    return this.bridgeAvailable && this.engineRunning && !this.nativeRhythmScheduleRecoveryBlocked && !this.nativeProjectTempoCleanupError;
   }
 
   public isBridgeAvailable() {
@@ -1486,12 +1493,40 @@ export class NativeAudioEngine {
     const key = `rc505.native.import-tempo.${generation}`;
     const saved = globalThis.sessionStorage?.getItem(key);
     if (!saved) return;
-    const receipt = JSON.parse(saved) as { host: string; revision: number; intent: string; bpm: number };
-    if (receipt.host !== host || !isNativeHostIncarnationId(receipt.intent) || !Number.isSafeInteger(receipt.revision)) {
-      throw new Error('Native project handoff does not match its retained tempo receipt.');
+    try {
+      const receipt = JSON.parse(saved) as { host: string; revision: number; intent: string; bpm: number };
+      if (receipt.host !== host || !isNativeHostIncarnationId(receipt.intent) || !Number.isSafeInteger(receipt.revision)) {
+        throw new Error('Native project handoff does not match its retained tempo receipt.');
+      }
+      this.bridge.releaseRetainedRhythmTempoReceipt(receipt, `import:${generation}`);
+      globalThis.sessionStorage.removeItem(key);
+      if (globalThis.sessionStorage.getItem(key) !== null) throw new Error('Native project tempo receipt could not be released.');
+      this.nativeProjectTempoCleanupError = '';
+    } catch (error) {
+      this.nativeProjectTempoCleanupError = `Native published project receipt cleanup failed. Retry audio; no import will be repeated. ${error instanceof Error ? error.message : String(error)}`;
+      this.emitAll();
+      throw new Error(this.nativeProjectTempoCleanupError);
     }
-    this.bridge.releaseRetainedRhythmTempoReceipt(receipt, `import:${generation}`);
-    globalThis.sessionStorage.removeItem(key);
+  }
+
+  private async cleanupPublishedProjectTempoReceipt(): Promise<void> {
+    try {
+      const storage = globalThis.sessionStorage;
+      let hasReceipt = false;
+      for (let index = 0; index < storage.length; index += 1) {
+        if (storage.key(index)?.startsWith('rc505.native.import-tempo.')) { hasReceipt = true; break; }
+      }
+      if (!hasReceipt) { this.nativeProjectTempoCleanupError = ''; return; }
+      const metadata = await new ProjectMemoryStore().readNativeImportRecoveryMetadata();
+      if (metadata?.state === 'active' && Number.isSafeInteger(metadata.generation) && metadata.generation! > 0 &&
+          isNativeHostIncarnationId(metadata.availableAtHostIncarnationId)) {
+        this.releaseProjectImportTempoReceipt(metadata.generation!, metadata.availableAtHostIncarnationId);
+      }
+      this.nativeProjectTempoCleanupError = '';
+    } catch (error) {
+      this.nativeProjectTempoCleanupError = `Native published project receipt cleanup failed. Retry audio; no import will be repeated. ${error instanceof Error ? error.message : String(error)}`;
+      throw new Error(this.nativeProjectTempoCleanupError);
+    }
   }
 
   private matchesProjectRestoreTransport(
@@ -1563,7 +1598,12 @@ export class NativeAudioEngine {
     const track = this.tracks.find((candidate) => candidate.trackId === trackId);
     if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
+  private assertPublishedProjectTempoCleanup(): void {
+    if (this.nativeProjectTempoCleanupError) throw new Error(this.nativeProjectTempoCleanupError);
+  }
+
   public async finishRecordingTrack(trackId: number): Promise<void> {
+    this.assertPublishedProjectTempoCleanup();
     if (this.getTrackLoopSync(trackId)) {
       await this.stopTrack(trackId);
       return;
@@ -1603,6 +1643,7 @@ export class NativeAudioEngine {
   }
 
   public async recordTrack(trackId = 1) {
+    this.assertPublishedProjectTempoCleanup();
     if (this.getTrackLoopSync(trackId) && this.getRecordPlaySettings().quantize === 'MEASURE') {
       await this.scheduleNativeRhythmAction(trackId, 'record');
       return;
@@ -1611,6 +1652,7 @@ export class NativeAudioEngine {
   }
 
   public async stopTrack(trackId = 1) {
+    this.assertPublishedProjectTempoCleanup();
     const beforeTrack = this.latestStatus?.nativeTracks?.find(track => track.trackId === trackId);
     const wasRecording = beforeTrack?.state === 'Recording';
     const beforeContentRevision = beforeTrack?.contentRevision;
@@ -1697,6 +1739,7 @@ export class NativeAudioEngine {
   }
 
   public async playTrack(trackId = 1) {
+    this.assertPublishedProjectTempoCleanup();
     if (this.getTrackLoopSync(trackId)) {
       const availability = this.getRhythmSyncPlayAvailability(trackId);
       if (!availability.available) throw new Error(availability.reason);
@@ -1763,11 +1806,13 @@ export class NativeAudioEngine {
   }
 
   public async toggleOverdub(trackId = 1) {
+    this.assertPublishedProjectTempoCleanup();
     if (this.getTrackLoopSync(trackId)) throw new Error('Native LOOP SYNC overdub is unsupported in this slice.');
     await this.dispatchStatusRequest(() => this.bridge.toggleTrackOverdub(trackId));
   }
 
   public async clearTrack(trackId = 1) {
+    this.assertPublishedProjectTempoCleanup();
     await this.dispatchStatusRequest(() => this.bridge.clearTrack(trackId));
   }
 
@@ -1780,6 +1825,7 @@ export class NativeAudioEngine {
   }
 
   public stopAllTracks() {
+    this.assertPublishedProjectTempoCleanup();
     if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
       this.lastError = 'ALL STOP is unavailable while Native LOOP SYNC is enabled; stop synchronized tracks individually.';
       this.emitAll();
@@ -1801,6 +1847,7 @@ export class NativeAudioEngine {
   }
 
   public playAllTracks() {
+    this.assertPublishedProjectTempoCleanup();
     if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
       this.lastError = 'ALL START is unavailable while Native LOOP SYNC is enabled; synchronized PLAY is not phase-proven.';
       this.emitAll();
@@ -2239,6 +2286,7 @@ export class NativeAudioEngine {
     try {
       await this.bridge.health();
       this.bridgeAvailable = true;
+      await this.cleanupPublishedProjectTempoReceipt();
       await this.refreshCatalog();
       let status = await this.bridge.getStatus();
       const scheduleRecovery = await this.reconcileRhythmScheduleForInit(status);
@@ -2259,6 +2307,7 @@ export class NativeAudioEngine {
       this.startPolling();
       this.emitAll();
     } catch (error) {
+      if (this.nativeProjectTempoCleanupError) { this.emitAll(); throw error; }
       const lastStatus = error instanceof NativeRhythmScheduleOutcomeUnknownError ||
         error instanceof NativeRhythmScheduleRecoveryBlockedError ? error.lastStatus : null;
       if (lastStatus) {

@@ -178,6 +178,22 @@ describe('Native project import recovery', () => {
     expect((await api.readNativeImportRecovery())!.archive).toEqual(arrayBuffer(incumbent));
   });
 
+  it('keeps the durable published candidate if receipt cleanup fails after handoff', async () => {
+    installWebLock();
+    const incumbent = await archive('Incumbent', 0.25);
+    const incoming = await archive('Incoming', 0.5);
+    const { engine } = makeEngine(incumbent);
+    (engine as any).releaseNativeProjectImportTempoReceipt = vi.fn(() => { throw new Error('receipt cleanup failed'); });
+    const { store, api } = makeStore();
+    const memory = new ProjectMemory(engine as any, store);
+    const bytes = arrayBuffer(incoming);
+    await expect(memory.importFile({ size: bytes.byteLength, arrayBuffer: async () => bytes } as File)).rejects.toThrow('receipt cleanup failed');
+    expect(api.publishNativeImportRecovery).toHaveBeenCalledOnce();
+    expect(api.discardNativeImportRecoveryStage).not.toHaveBeenCalled();
+    expect((await api.readNativeImportRecovery())?.metadata.state).toBe('active');
+    expect((await api.readNativeImportRecovery())?.archive).toEqual(arrayBuffer(incumbent));
+  });
+
   it('does not publish a cancelled or failed import candidate', async () => {
     installWebLock();
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e61');
