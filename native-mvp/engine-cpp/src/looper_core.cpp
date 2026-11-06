@@ -401,12 +401,14 @@ ProcessStats LooperCore::process(
     ProcessStats stats;
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
-    const bool playbackWasActive = state_ == LooperState::Playing;
-
     auto cursor = playbackCursor();
+    bool cursorAdvanced = false;
     for (unsigned int frame = 0; frame < frames; ++frame) {
         if (frameCommand != nullptr && frame == frameCommandOffset) {
+            if (cursorAdvanced) commitPlaybackCursor(cursor);
             frameCommand(frameCommandContext);
+            cursor = playbackCursor();
+            cursorAdvanced = false;
         }
         const std::size_t inputOffset = static_cast<std::size_t>(frame) * inputChannels;
         const float inputLeft = inputInterleaved != nullptr && inputChannels > 0U
@@ -430,6 +432,7 @@ ProcessStats LooperCore::process(
         float playbackRight = 0.0f;
         if (state_ == LooperState::Playing) {
             readPlayingFrame(cursor, playbackLeft, playbackRight);
+            cursorAdvanced = true;
         } else if (state_ == LooperState::Overdubbing && finalizedFrames_ > 0U && playhead_ < finalizedFrames_) {
             const auto loopOffset = playhead_ * channels_;
             playbackLeft = loopBuffer_[loopOffset];
@@ -515,7 +518,7 @@ ProcessStats LooperCore::process(
         }
     }
 
-    if (playbackWasActive) commitPlaybackCursor(cursor);
+    if (cursorAdvanced) commitPlaybackCursor(cursor);
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
     if (finalizedFrames_ > 0 && (state_ == LooperState::Playing || state_ == LooperState::Overdubbing)) {

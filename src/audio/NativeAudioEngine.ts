@@ -19,6 +19,7 @@ import { NativeTrackProxy } from './NativeTrackProxy';
 import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
 import { NativeRhythmScheduleOutcomeUnknownError, NativeRhythmScheduleRecoveryBlockedError, NativeRhythmScheduleTerminalError } from './NativeBridgeClient';
+import { NativeTransportBatchOutcomeUnknownError } from './NativeBridgeClient';
 import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
 import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectImportCommitReceipt, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
@@ -203,6 +204,8 @@ export class NativeAudioEngine {
   private bridgeAvailable = false;
   private engineRunning = false;
   private nativeRhythmScheduleRecoveryBlocked = false;
+  private nativeTransportBatchPending = false;
+  private nativeTransportBatchRecoveryRetryAfter = 0;
   private initInFlight: Promise<void> | null = null;
   private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
@@ -658,6 +661,31 @@ export class NativeAudioEngine {
         ready: false,
         message: 'NATIVE RHYTHM SCHEDULE NEEDS REVIEW',
         lastError: this.lastError || 'A scheduled Native REC/STOP has no local owner receipt; inspect the host status before continuing.',
+      };
+    }
+
+    if (this.nativeTransportBatchPending) {
+      return {
+        bridgeAvailable: true,
+        engineRunning: this.engineRunning,
+        ready: false,
+        message: 'NATIVE ALL TRANSPORT WAITING FOR CALLBACK ACK',
+        lastError: this.lastError || 'Native is applying the ALL request at one shared audio frame.',
+      };
+    }
+
+    const pendingBatchReceipt = this.bridge.getPendingNativeTransportBatch();
+    if (pendingBatchReceipt) {
+      if (!this.nativeTransportBatchPending && Date.now() >= this.nativeTransportBatchRecoveryRetryAfter) {
+        this.nativeTransportBatchRecoveryRetryAfter = Date.now() + 2000;
+        queueMicrotask(() => { void this.reconcileNativeTransportBatch(); });
+      }
+      return {
+        bridgeAvailable: true,
+        engineRunning: this.engineRunning,
+        ready: false,
+        message: this.nativeTransportBatchPending ? 'NATIVE ALL TRANSPORT WAITING FOR ACK' : 'NATIVE ALL TRANSPORT RECEIPT RECOVERY',
+        lastError: this.lastError || `Checking exact batch ${pendingBatchReceipt.batchId ?? pendingBatchReceipt.intentId}; no transport command will be replayed.`,
       };
     }
 
@@ -1485,6 +1513,7 @@ export class NativeAudioEngine {
 
   public getTrackLoopSync(trackId: number): boolean { return this.latestStatus?.nativeMemory?.loopSync?.[trackId - 1] === true; }
   public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<void> {
+    if (!this.assertNoUnresolvedNativeTransportBatch('change LOOP SYNC')) throw new Error(this.lastError);
     if (enabled && this.getRecordPlaySettings().quantize !== 'MEASURE') {
       throw new Error('Set Native REC QUANTIZE to MEASURE before enabling LOOP SYNC.');
     }
@@ -1497,6 +1526,7 @@ export class NativeAudioEngine {
     if (track) track.track.loopSyncSw = enabled ? 'ON' : 'OFF';
   }
   public async finishRecordingTrack(trackId: number): Promise<void> {
+    if (!this.assertNoUnresolvedNativeTransportBatch('finish recording')) throw new Error(this.lastError);
     if (this.getTrackLoopSync(trackId)) {
       await this.stopTrack(trackId);
       return;
@@ -1536,6 +1566,7 @@ export class NativeAudioEngine {
   }
 
   public async recordTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('record')) throw new Error(this.lastError);
     if (this.getTrackLoopSync(trackId) && this.getRecordPlaySettings().quantize === 'MEASURE') {
       await this.scheduleNativeRhythmAction(trackId, 'record');
       return;
@@ -1544,6 +1575,7 @@ export class NativeAudioEngine {
   }
 
   public async stopTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('stop a track')) throw new Error(this.lastError);
     const beforeTrack = this.latestStatus?.nativeTracks?.find(track => track.trackId === trackId);
     const wasRecording = beforeTrack?.state === 'Recording';
     const beforeContentRevision = beforeTrack?.contentRevision;
@@ -1630,6 +1662,7 @@ export class NativeAudioEngine {
   }
 
   public async playTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('start a track')) throw new Error(this.lastError);
     if (this.getTrackLoopSync(trackId)) {
       const availability = this.getRhythmSyncPlayAvailability(trackId);
       if (!availability.available) throw new Error(availability.reason);
@@ -1656,23 +1689,32 @@ export class NativeAudioEngine {
   }
 
   public async toggleOverdub(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('toggle overdub')) throw new Error(this.lastError);
     if (this.getTrackLoopSync(trackId)) throw new Error('Native LOOP SYNC overdub is unsupported in this slice.');
     await this.dispatchStatusRequest(() => this.bridge.toggleTrackOverdub(trackId));
   }
 
   public async clearTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('clear a track')) throw new Error(this.lastError);
     await this.dispatchStatusRequest(() => this.bridge.clearTrack(trackId));
   }
 
   public async undoTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('undo a track')) throw new Error(this.lastError);
     await this.dispatchHistoryStatusRequest(() => this.bridge.undoTrack(trackId));
   }
 
   public async redoTrack(trackId = 1) {
+    if (!this.assertNoUnresolvedNativeTransportBatch('redo a track')) throw new Error(this.lastError);
     await this.dispatchHistoryStatusRequest(() => this.bridge.redoTrack(trackId));
   }
 
   public stopAllTracks() {
+    if (!this.assertNoUnresolvedNativeTransportBatch('stop all tracks')) return;
+    if (this.shouldUseNativeBatchTransport('stop')) {
+      void this.scheduleNativeAllTransport('stop');
+      return;
+    }
     if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
       this.lastError = 'ALL STOP is unavailable while Native LOOP SYNC is enabled; stop synchronized tracks individually.';
       this.emitAll();
@@ -1694,6 +1736,11 @@ export class NativeAudioEngine {
   }
 
   public playAllTracks() {
+    if (!this.assertNoUnresolvedNativeTransportBatch('start all tracks')) return;
+    if (this.shouldUseNativeBatchTransport('play')) {
+      void this.scheduleNativeAllTransport('play');
+      return;
+    }
     if (this.latestStatus?.nativeMemory?.loopSync?.some(Boolean)) {
       this.lastError = 'ALL START is unavailable while Native LOOP SYNC is enabled; synchronized PLAY is not phase-proven.';
       this.emitAll();
@@ -1708,6 +1755,113 @@ export class NativeAudioEngine {
         this.emitAll();
       }
     });
+  }
+
+  private shouldUseNativeBatchTransport(action: 'play' | 'stop'): boolean {
+    const status = this.latestStatus;
+    if (status?.nativeLoopFrameScheduling?.batchTransportAvailable !== true ||
+        !Array.isArray(status.nativeTracks) || status.nativeTracks.length !== 5 ||
+        !Array.isArray(status.nativeMemory?.loopSync) || status.nativeMemory.loopSync.length !== 5) return false;
+    const eligible = status.nativeTracks.filter((track) => action === 'play'
+      ? track.state === 'Stopped' && Number.isSafeInteger(track.loopLengthSamples) && track.loopLengthSamples! > 0
+      : track.state === 'Recording' || track.state === 'Playing' || track.state === 'Overdubbing');
+    if (eligible.length < 2 || eligible.some((track) => status.nativeMemory?.loopSync?.[track.trackId - 1])) return false;
+    if (action === 'stop') {
+      for (const track of eligible) {
+        if (track.state !== 'Recording') continue;
+        const token = status.nativeRecordingTempoTokens?.[track.trackId - 1];
+        if (token?.valid !== true || !Number.isFinite(token.bpm) || !Number.isSafeInteger(token.revision)) return false;
+      }
+    }
+    return true;
+  }
+
+  private assertNoUnresolvedNativeTransportBatch(action: string): boolean {
+    const receipt = this.bridge.getPendingNativeTransportBatch();
+    if (!receipt) return true;
+    this.lastError = `Cannot ${action} while Native ALL batch ${receipt.batchId ?? receipt.intentId} has an unresolved outcome. Reconcile or cancel that exact batch first.`;
+    this.emitAll();
+    return false;
+  }
+
+  private async scheduleNativeAllTransport(action: 'play' | 'stop'): Promise<void> {
+    if (this.nativeTransportBatchPending) {
+      this.lastError = `Native ALL ${action.toUpperCase()} is waiting for the previous exact batch receipt; no second action was sent.`;
+      this.emitAll();
+      return;
+    }
+    this.nativeTransportBatchPending = true;
+    this.nativeTransportBatchRecoveryRetryAfter = 0;
+    this.lastError = `Native ALL ${action.toUpperCase()} is waiting for one shared audio-frame callback acknowledgement.`;
+    this.emitAll();
+    try {
+      const status = await this.bridge.scheduleNativeTransportBatch(action);
+      this.applyStatus(status);
+      const acknowledgement = status.nativeTransportBatchAcknowledgement;
+      if (!acknowledgement || acknowledgement.action !== action || acknowledgement.trackMask === 0 ||
+          acknowledgement.revisions.length !== 5 || acknowledgement.appliedAbsoluteFrame <= 0) {
+        throw new Error(`Native ALL ${action.toUpperCase()} returned no exact host-bound batch acknowledgement.`);
+      }
+      if (action === 'stop') {
+        for (let index = 0; index < 5; index += 1) {
+          const token = acknowledgement.recordingTempoTokens[index];
+          if (!token) continue;
+          const track = status.nativeTracks?.find((item) => item.trackId === index + 1);
+          const stopRevision = acknowledgement.stopRevisions[index];
+          if (!track || !Number.isSafeInteger(track.contentRevision) || typeof stopRevision !== 'number' ||
+              !Number.isSafeInteger(stopRevision) || stopRevision <= 0) {
+            throw new Error(`Native ALL STOP committed Track ${index + 1} but omitted its take-tempo confirmation token.`);
+          }
+          this.lastError = `Native ALL STOP applied; confirming Track ${index + 1} recording tempo provenance.`;
+          this.emitAll();
+          const confirmed = await this.dispatchStatusRequest(() => this.bridge.confirmTrackTempoProvenance(
+            index + 1, track.contentRevision!, token, stopRevision,
+          ));
+          this.applyStatus(confirmed);
+        }
+      }
+      this.lastError = '';
+    } catch (error) {
+      if (error instanceof NativeTransportBatchOutcomeUnknownError) {
+        this.lastError = `Native ALL ${action.toUpperCase()} outcome is unknown. Reconcile batch ${error.receipt.batchId ?? error.receipt.intentId} before any new transport action; no replay was sent.`;
+      } else {
+        this.lastError = `Native ALL ${action.toUpperCase()} failed: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    } finally {
+      this.nativeTransportBatchPending = false;
+      this.emitAll();
+    }
+  }
+
+  public async reconcileNativeTransportBatch(): Promise<void> {
+    if (this.nativeTransportBatchPending) return;
+    this.nativeTransportBatchPending = true;
+    this.lastError = 'Checking the exact Native ALL batch receipt; no transport command will be replayed.';
+    this.emitAll();
+    try {
+      const status = await this.bridge.reconcilePendingNativeTransportBatch();
+      this.applyStatus(status);
+      const acknowledgement = status.nativeTransportBatchAcknowledgement;
+      if (acknowledgement?.action === 'stop') {
+        for (let index = 0; index < 5; index += 1) {
+          const token = acknowledgement.recordingTempoTokens[index];
+          const stopRevision = acknowledgement.stopRevisions[index];
+          if (!token || typeof stopRevision !== 'number' || !Number.isSafeInteger(stopRevision) || stopRevision <= 0) continue;
+          const track = status.nativeTracks?.find((item) => item.trackId === index + 1);
+          if (!track || !Number.isSafeInteger(track.contentRevision)) continue;
+          const confirmed = await this.dispatchStatusRequest(() => this.bridge.confirmTrackTempoProvenance(
+            index + 1, track.contentRevision!, token, stopRevision,
+          ));
+          this.applyStatus(confirmed);
+        }
+      }
+      this.lastError = '';
+    } catch (error) {
+      this.lastError = `Native ALL batch recovery is not complete: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      this.nativeTransportBatchPending = false;
+      this.emitAll();
+    }
   }
 
   public setFxType(location: NativeFxPath, slotIndex: number, type: string, trackId = 0) {

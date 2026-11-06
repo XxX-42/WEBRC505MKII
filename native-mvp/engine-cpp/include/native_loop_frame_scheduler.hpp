@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 
 namespace webrc::native {
 
@@ -40,6 +41,13 @@ struct NativeScheduledLoopRequest {
     // and batchMask. A group is dispatched only when every member is ready.
     std::uint64_t batchId = 0U;
     std::uint8_t batchMask = 0U;
+    std::uint64_t stopRevision = 0U;
+    bool provenanceValid = false;
+    double provenanceBpm = 0.0;
+    std::uint64_t provenanceRevision = 0U;
+    // Snapshot of every track at admission. The callback revalidates this
+    // complete fence after applying queued control commands at the due block.
+    std::array<std::uint8_t, kNativeScheduledLoopTrackCount> batchExpectedStates{};
 };
 
 struct NativeScheduledLoopEvent {
@@ -57,11 +65,35 @@ struct NativeScheduledLoopStatus {
     std::uint64_t intentIdLow = 0U;
     std::uint64_t batchId = 0U;
     std::uint8_t batchMask = 0U;
+    std::uint64_t stopRevision = 0U;
+    bool provenanceValid = false;
+    double provenanceBpm = 0.0;
+    std::uint64_t provenanceRevision = 0U;
     std::uint64_t appliedRevision = 0U;
     std::uint64_t appliedAbsoluteFrame = 0U;
     std::uint64_t cancelledRevision = 0U;
     std::uint64_t faultRevision = 0U;
     NativeScheduledLoopFault fault = NativeScheduledLoopFault::None;
+};
+
+enum class NativeScheduledLoopBatchState : std::uint8_t {
+    Unknown = 0U,
+    Pending,
+    CancellationRequested,
+    Dispatched,
+    Cancelled,
+    Applied,
+    Faulted,
+};
+
+struct NativeScheduledLoopBatchReceipt {
+    NativeScheduledLoopBatchState state = NativeScheduledLoopBatchState::Unknown;
+    std::uint64_t batchId = 0U;
+    std::uint8_t batchMask = 0U;
+    std::uint64_t intentIdHigh = 0U;
+    std::uint64_t intentIdLow = 0U;
+    std::array<std::uint64_t, kNativeScheduledLoopTrackCount> revisions{};
+    std::array<NativeScheduledLoopStatus, kNativeScheduledLoopTrackCount> members{};
 };
 
 // Fixed-storage handoff for future REC/STOP events. Producers enqueue requests
@@ -77,6 +109,13 @@ public:
         const std::array<NativeScheduledLoopRequest, kNativeScheduledLoopTrackCount>& requests,
         std::size_t count
     ) noexcept;
+    [[nodiscard]] bool cancelBatch(std::uint64_t batchId, std::uint8_t batchMask,
+        std::uint64_t intentIdHigh, std::uint64_t intentIdLow,
+        const std::array<std::uint64_t, kNativeScheduledLoopTrackCount>& revisions) noexcept;
+    [[nodiscard]] bool readBatchReceipt(std::uint64_t batchId, std::uint8_t batchMask,
+        std::uint64_t intentIdHigh, std::uint64_t intentIdLow,
+        const std::array<std::uint64_t, kNativeScheduledLoopTrackCount>& revisions,
+        NativeScheduledLoopBatchReceipt& receipt) const noexcept;
     [[nodiscard]] bool cancel(std::size_t trackIndex, std::uint64_t revision) noexcept;
 
     // Returns at most one event per track. Events are due in [blockStart,
@@ -102,6 +141,8 @@ public:
 
 private:
     enum class RequestLifecycle : std::uint8_t { Idle = 0U, Pending, Cancelled, Dispatched, Faulted };
+    enum class BatchLifecycle : std::uint8_t { Idle = 0U, Pending, Cancelled, Dispatched, Faulted, Applied };
+    [[nodiscard]] bool batchReadyToArchive(std::size_t trackIndex) const noexcept;
     [[nodiscard]] static constexpr std::uint64_t encodeLifecycle(
         std::uint64_t revision, RequestLifecycle lifecycle) noexcept {
         return (revision << 3U) | static_cast<std::uint64_t>(lifecycle);
@@ -111,6 +152,13 @@ private:
         NativeScheduledLoopRequest request{};
         bool occupied = false; // Audio callback owned.
     };
+
+    static constexpr std::size_t kBatchReceiptHistoryCapacity = 64U;
+    void archiveTerminalBatchForTrack(std::size_t trackIndex) noexcept;
+    [[nodiscard]] bool readLiveBatchReceipt(std::uint64_t batchId, std::uint8_t batchMask,
+        std::uint64_t intentIdHigh, std::uint64_t intentIdLow,
+        const std::array<std::uint64_t, kNativeScheduledLoopTrackCount>& revisions,
+        NativeScheduledLoopBatchReceipt& receipt) const noexcept;
 
     [[nodiscard]] static constexpr std::size_t next(std::size_t index) noexcept {
         return (index + 1U) % kQueueCapacity;
@@ -134,6 +182,13 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedIntentIdLow_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedBatchId_{};
     std::array<std::atomic<std::uint8_t>, kNativeScheduledLoopTrackCount> requestedBatchMask_{};
+    std::array<std::atomic<std::uint8_t>, kNativeScheduledLoopTrackCount> requestedBatchLeader_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedStopRevision_{};
+    std::array<std::atomic<bool>, kNativeScheduledLoopTrackCount> requestedProvenanceValid_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedProvenanceBpmBits_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> requestedProvenanceRevision_{};
+    std::array<std::atomic<std::uint8_t>, kNativeScheduledLoopTrackCount> batchLifecycle_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> batchLifecycleId_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> applied_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedSnapshotSequence_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedAbsoluteFrame_{};
@@ -142,6 +197,12 @@ private:
     std::array<std::atomic<NativeScheduledLoopFault>, kNativeScheduledLoopTrackCount> fault_{};
     // CAS is the linearization point between cancellation and callback dispatch.
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> lifecycle_{};
+    // Fixed-size, control-thread-only history of the 64 newest terminal batches lets a reconnect reconcile a
+    // terminal batch after a later command supersedes its live per-track slots.
+    // The audio callback never reads or locks this history.
+    mutable std::mutex batchReceiptHistoryMutex_;
+    std::array<NativeScheduledLoopBatchReceipt, kBatchReceiptHistoryCapacity> batchReceiptHistory_{};
+    std::size_t batchReceiptHistoryNext_ = 0U;
 };
 
 } // namespace webrc::native

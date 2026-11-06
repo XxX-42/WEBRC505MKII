@@ -740,6 +740,7 @@ json statusToJson(const EngineStatus& status) {
         nativeTracks.push_back({
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
+            {"stateCode", static_cast<unsigned int>(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
             {"loopLengthSamples", status.nativeTrackLoopLengthSamples[track]},
             {"contentRevision", status.nativeTrackContentRevision[track]},
@@ -974,6 +975,10 @@ json statusToJson(const EngineStatus& status) {
             {"requestedAction", item.requestedAction == NativeScheduledLoopAction::Record ? "record" :
                 item.requestedAction == NativeScheduledLoopAction::Stop ? "stop" : "play"},
             {"requestedIntentId", formatRhythmIntentId(item.intentIdHigh, item.intentIdLow)},
+            {"batchId", item.batchId}, {"batchMask", item.batchMask}, {"stopRevision", item.stopRevision},
+            {"provenanceValid", item.provenanceValid},
+            {"provenanceBpm", item.provenanceValid ? json(item.provenanceBpm) : json(nullptr)},
+            {"provenanceRevision", item.provenanceRevision},
             {"appliedRevision", item.appliedRevision}, {"appliedAbsoluteFrame", item.appliedAbsoluteFrame},
             {"cancelledRevision", item.cancelledRevision},
             {"faultRevision", item.faultRevision}, {"fault", static_cast<unsigned int>(item.fault)},
@@ -994,9 +999,20 @@ json statusToJson(const EngineStatus& status) {
             {"requestedRevision", status.nativeRecordTempoConfirmRequested},
             {"appliedRevision", status.nativeRecordTempoConfirmApplied},
             {"acceptedRevision", status.nativeRecordTempoConfirmAccepted}}},
+        {"nativeRecordingTempoTokens", [&status]() {
+            json tokens = json::array();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                tokens.push_back({{"trackId", track + 1U},
+                    {"valid", status.nativeRecordingTempoTokenValid[track]},
+                    {"bpm", status.nativeRecordingTempoTokenValid[track]
+                        ? json(status.nativeRecordingTempoTokenBpm[track]) : json(nullptr)},
+                    {"revision", status.nativeRecordingTempoTokenRevision[track]}});
+            }
+            return tokens;
+        }()},
         {"nativeLoopFrameScheduling", {{"version", 1}, {"available", status.nativeRhythmFrameSchedulingAvailable},
-            {"batchTransportAvailable", false},
-            {"batchTransportReason", "Native multi-track transport remains unavailable until per-track STOP provenance, exact batch recovery/cancellation, and all-track state fencing are supported."},
+            {"batchTransportAvailable", true},
+            {"batchTransportReason", ""},
             {"requests", scheduledLoop}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
@@ -2384,9 +2400,150 @@ int main() {
     // caller supplies the phase token it observed; NativeAudioCore rechecks
     // the current callback-published phase and settings revision atomically
     // before enqueueing the future callback-frame transition.
-    server.Post("/v1/transport/batch-schedule", [](const httplib::Request&, httplib::Response& response) {
-        response.status = 409;
-        writeError(response, "Native multi-track transport is disabled: atomic batch provenance, reconciliation, cancellation, and all-track state fencing are not available.");
+    server.Post("/v1/transport/batch-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t expectedSampleFrame = 0U, absoluteFrame = 0U, trackMaskValue = 0U, provenanceMaskValue = 0U;
+            std::uint64_t intentIdHigh = 0U, intentIdLow = 0U;
+            if (!body.is_object() || body.size() != 12U ||
+                !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+                !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentIdHigh, intentIdLow) ||
+                !body.contains("action") || !body.at("action").is_string() ||
+                !readUnsignedJsonInteger(body.value("expectedSampleFrame", json()), kMaximumSafeTempoRevision, expectedSampleFrame) ||
+                !readUnsignedJsonInteger(body.value("absoluteFrame", json()), kMaximumSafeTempoRevision, absoluteFrame) ||
+                !readUnsignedJsonInteger(body.value("trackMask", json()), 0x1FU, trackMaskValue) ||
+                !readUnsignedJsonInteger(body.value("provenanceMask", json()), 0x1FU, provenanceMaskValue)) {
+                response.status = 400;
+                writeError(response, "Native batch transport requires exact host, intent, action, frame, mask, and provenance fields.");
+                return;
+            }
+            const auto hostId = body.at("hostIncarnationId").get<std::string>();
+            if (hostId != hostIncarnationId()) {
+                response.status = 409;
+                writeError(response, "Native host incarnation changed; batch was not submitted.");
+                return;
+            }
+            const auto actionText = body.at("action").get<std::string>();
+            if (actionText != "play" && actionText != "stop") {
+                response.status = 400;
+                writeError(response, "Native transport batch supports PLAY and STOP only.");
+                return;
+            }
+            const auto readArray = [&body](const char* name, auto& output, std::uint64_t maximum) {
+                if (!body.contains(name) || !body.at(name).is_array() || body.at(name).size() != kNativeTrackCount) return false;
+                for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
+                    std::uint64_t value = 0U;
+                    if (!readUnsignedJsonInteger(body.at(name)[index], maximum, value)) return false;
+                    output[index] = static_cast<std::remove_reference_t<decltype(output[index])>>(value);
+                }
+                return true;
+            };
+            std::array<LooperState, kNativeTrackCount> expectedStates{};
+            std::array<std::uint64_t, kNativeTrackCount> scheduleRevisions{};
+            std::array<std::uint64_t, kNativeTrackCount> stopRevisions{};
+            std::array<double, kNativeTrackCount> provenanceBpm{};
+            std::array<std::uint64_t, kNativeTrackCount> provenanceRevisions{};
+            if (!readArray("expectedStates", expectedStates, static_cast<std::uint64_t>(LooperState::Overdubbing)) ||
+                !readArray("expectedScheduleRevisions", scheduleRevisions, kMaximumSafeTempoRevision) ||
+                !readArray("expectedStopRevisions", stopRevisions, kMaximumSafeTempoRevision) ||
+                !readArray("provenanceRevisions", provenanceRevisions, kMaximumSafeTempoRevision) ||
+                !body.contains("provenanceBpm") || !body.at("provenanceBpm").is_array() ||
+                body.at("provenanceBpm").size() != kNativeTrackCount) {
+                response.status = 400;
+                writeError(response, "Native batch transport requires five safe integer state/revision entries and five tempo values.");
+                return;
+            }
+            for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
+                if (!body.at("provenanceBpm")[index].is_number()) {
+                    response.status = 400; writeError(response, "Native batch tempo values must be finite numbers."); return;
+                }
+                provenanceBpm[index] = body.at("provenanceBpm")[index].get<double>();
+            }
+            std::string error;
+            std::uint64_t batchId = 0U;
+            std::array<std::uint64_t, kNativeTrackCount> acceptedRevisions{};
+            const auto action = actionText == "play" ? NativeScheduledLoopAction::Play : NativeScheduledLoopAction::Stop;
+            if (!engine.scheduleNativeTrackTransportBatch(static_cast<std::uint8_t>(trackMaskValue), action,
+                    expectedSampleFrame, absoluteFrame, expectedStates, scheduleRevisions, stopRevisions,
+                    provenanceBpm, provenanceRevisions, static_cast<std::uint8_t>(provenanceMaskValue),
+                    intentIdHigh, intentIdLow, error, &batchId, &acceptedRevisions)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeLoopFrameScheduling"]["acceptedBatchId"] = batchId;
+            status["nativeLoopFrameScheduling"]["acceptedBatchMask"] = trackMaskValue;
+            status["nativeLoopFrameScheduling"]["acceptedBatchIntentId"] = body.at("intentId");
+            status["nativeLoopFrameScheduling"]["acceptedBatchRevisions"] = acceptedRevisions;
+            writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    const auto readBatchIdentity = [](const httplib::Request& request, std::uint64_t& batchId,
+        std::uint8_t& mask, std::uint64_t& intentHigh, std::uint64_t& intentLow,
+        std::array<std::uint64_t, kNativeTrackCount>& revisions, std::string& hostId) {
+        const auto body = json::parse(request.body);
+        std::uint64_t maskValue = 0U;
+        if (!body.is_object() || body.size() != 5U ||
+            !body.contains("hostIncarnationId") || !body.at("hostIncarnationId").is_string() ||
+            !body.contains("intentId") || !body.at("intentId").is_string() ||
+            !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentHigh, intentLow) ||
+            !readUnsignedJsonInteger(body.value("batchId", json()), kMaximumSafeTempoRevision, batchId) || batchId == 0U ||
+            !readUnsignedJsonInteger(body.value("trackMask", json()), 0x1FU, maskValue) ||
+            !body.contains("revisions") || !body.at("revisions").is_array() || body.at("revisions").size() != kNativeTrackCount) return false;
+        hostId = body.at("hostIncarnationId").get<std::string>();
+        mask = static_cast<std::uint8_t>(maskValue);
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            if (!readUnsignedJsonInteger(body.at("revisions")[track], kMaximumSafeTempoRevision, revisions[track])) return false;
+        }
+        return true;
+    };
+    const auto writeBatchReceiptResponse = [&engine, &readBatchIdentity](const httplib::Request& request, httplib::Response& response, bool cancel) {
+        try {
+            std::uint64_t batchId = 0U, intentHigh = 0U, intentLow = 0U;
+            std::uint8_t mask = 0U;
+            std::array<std::uint64_t, kNativeTrackCount> revisions{};
+            std::string hostId;
+            if (!readBatchIdentity(request, batchId, mask, intentHigh, intentLow, revisions, hostId)) {
+                response.status = 400; writeError(response, "Native batch receipt requires exact batch identity, member revisions, and host incarnation."); return;
+            }
+            if (hostId != hostIncarnationId()) {
+                response.status = 409; writeError(response, "Native host incarnation changed; refusing prior batch identity."); return;
+            }
+            if (cancel) {
+                std::string error;
+                if (!engine.cancelNativeScheduledTrackTransportBatch(batchId, mask, intentHigh, intentLow, revisions, error)) {
+                    response.status = 409; writeError(response, error); return;
+                }
+                writeJson(response, statusToJson(engine.getStatus()));
+                return;
+            }
+            NativeScheduledLoopBatchReceipt receipt{};
+            if (!engine.getNativeScheduledTrackTransportBatchReceipt(batchId, mask, intentHigh, intentLow, revisions, receipt)) {
+                response.status = 409; writeError(response, "Native status does not match the exact batch identity; no action was retried."); return;
+            }
+            json members = json::array();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if ((mask & static_cast<std::uint8_t>(1U << track)) == 0U) continue;
+                const auto& member = receipt.members[track];
+                members.push_back({{"trackId", track + 1U}, {"revision", revisions[track]},
+                    {"requestedAbsoluteFrame", member.requestedAbsoluteFrame},
+                    {"action", member.requestedAction == NativeScheduledLoopAction::Play ? "play" : "stop"},
+                    {"stopRevision", member.stopRevision}, {"appliedRevision", member.appliedRevision},
+                    {"appliedAbsoluteFrame", member.appliedAbsoluteFrame},
+                    {"cancelledRevision", member.cancelledRevision}, {"faultRevision", member.faultRevision},
+                    {"fault", static_cast<unsigned int>(member.fault)}});
+            }
+            writeJson(response, {{"ok", true}, {"hostIncarnationId", hostId}, {"batchId", batchId},
+                {"trackMask", mask}, {"intentId", formatRhythmIntentId(intentHigh, intentLow)},
+                {"state", static_cast<unsigned int>(receipt.state)}, {"members", members}});
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    };
+    server.Post("/v1/transport/batch-status", [&writeBatchReceiptResponse](const httplib::Request& request, httplib::Response& response) {
+        writeBatchReceiptResponse(request, response, false);
+    });
+    server.Post("/v1/transport/batch-cancel", [&writeBatchReceiptResponse](const httplib::Request& request, httplib::Response& response) {
+        writeBatchReceiptResponse(request, response, true);
     });
 
     server.Post("/v1/transport/rhythm-schedule", [&engine](const httplib::Request& request, httplib::Response& response) {

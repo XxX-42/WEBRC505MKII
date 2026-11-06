@@ -64,14 +64,17 @@ def main():
         # phase source and becomes false again when that source stops.
         require(initial['nativeRecordPlay']['quantizeAvailable'] is False, initial)
         require(initial['nativeLoopFrameScheduling']['available'] is False, initial)
-        require(initial['nativeLoopFrameScheduling']['batchTransportAvailable'] is False, initial)
+        # ALL batch transport is independent of the optional Rhythm phase
+        # source; it must not make the legacy non-synchronous ALL commands
+        # depend on Rhythm being active.
+        require(initial['nativeLoopFrameScheduling']['batchTransportAvailable'] is True, initial)
         batch_baseline = [item['requestedRevision'] for item in initial['nativeLoopFrameScheduling']['requests']]
         batch_code, batch_rejected = request('/v1/transport/batch-schedule', 'POST', {
-            'trackMask': 3, 'action': 'stop', 'absoluteFrame': 4096,
+            'trackMask': 3, 'action': 'record', 'absoluteFrame': 4096,
             'hostIncarnationId': initial['hostIncarnationId'], 'intentId': uuid.uuid4().hex,
             'expectedRevisions': batch_baseline})
-        require(batch_code == 409 and 'disabled' in batch_rejected.get('error', '').lower(),
-            ('unavailable multi-track batch was not fail-closed', batch_code, batch_rejected))
+        require(batch_code == 400,
+            ('unsupported or incomplete batch was not rejected', batch_code, batch_rejected))
         require([item['requestedRevision'] for item in request('/v1/status')[1]['nativeLoopFrameScheduling']['requests']] == batch_baseline,
             'rejected batch modified a track schedule revision')
 

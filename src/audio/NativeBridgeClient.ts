@@ -233,6 +233,10 @@ export interface NativeStatus {
   /** Cryptographically random process incarnation; missing means the host cannot be safely correlated across restarts. */
   hostIncarnationId?: string;
   nativeStopTrackAcknowledgement?: { trackId: number; requestedRevision: number; appliedRevision: number; committedRevision: number };
+  nativeTransportBatchAcknowledgement?: { batchId: number; action: 'play' | 'stop'; trackMask: number;
+    intentId: string; appliedAbsoluteFrame: number; revisions: number[];
+    stopRevisions: number[];
+    recordingTempoTokens: Array<NativeRecordTempoToken | null> };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
   nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
@@ -246,10 +250,16 @@ export interface NativeStatus {
     stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[]; stopCancelled?: number[];
     acceptedStopRequestRevision?: number };
   nativeLoopFrameScheduling?: { version: 1; available: boolean; acceptedTrackId?: number;
-    acceptedRevision?: number; requests?: Array<{ trackIndex: number; requestedRevision: number;
+    batchTransportAvailable?: boolean; batchTransportReason?: string;
+    acceptedRevision?: number; acceptedBatchId?: number; acceptedBatchMask?: number;
+    acceptedBatchIntentId?: string; acceptedBatchRevisions?: number[];
+    requests?: Array<{ trackIndex: number; requestedRevision: number;
       requestedAbsoluteFrame: number; requestedPhaseEpoch: number; requestedSettingsRevision: number;
       requestedAction: 'record' | 'stop' | 'play'; requestedIntentId: string; appliedRevision: number; appliedAbsoluteFrame: number;
+      batchId?: number; batchMask?: number; stopRevision?: number;
+      provenanceValid?: boolean; provenanceBpm?: number | null; provenanceRevision?: number;
       cancelledRevision: number; faultRevision: number; fault: number }> };
+  nativeRecordingTempoTokens?: Array<{ trackId: number; valid: boolean; bpm: number | null; revision: number }>;
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -289,6 +299,7 @@ export interface NativeStatus {
   nativeTracks?: Array<{
     trackId: number;
     state: NativeLooperState;
+    stateCode?: number;
     loopProgress: number;
     loopLengthSamples?: number;
     /** Monotonic loop-content revision; older hosts omit it. */
@@ -770,13 +781,66 @@ export class NativeRhythmScheduleRecoveryBlockedError extends Error {
   }
 }
 
+export interface NativeTransportBatchReceipt {
+  readonly batchId: number | null;
+  readonly trackMask: number;
+  readonly action: 'play' | 'stop';
+  readonly intentId: string;
+  readonly hostIncarnationId: string;
+  readonly absoluteFrame: number;
+  readonly revisions: readonly number[];
+  readonly recordingTempoTokens: readonly (NativeRecordTempoToken | null)[];
+}
+
+export class NativeTransportBatchOutcomeUnknownError extends Error {
+  public readonly receipt: NativeTransportBatchReceipt;
+  public readonly lastStatus: NativeStatus | null;
+  public constructor(receipt: NativeTransportBatchReceipt, lastStatus: NativeStatus | null, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Native ALL ${receipt.action.toUpperCase()} batch has an unknown outcome. Reconcile this exact host-bound batch; do not replay it. ${detail}`);
+    this.name = 'NativeTransportBatchOutcomeUnknownError';
+    this.receipt = receipt;
+    this.lastStatus = lastStatus;
+  }
+}
+
 export class NativeBridgeClient {
+  private static readonly pendingBatchStorageKey = 'webrc.nativeTransportBatchReceipt.v1';
   private readonly baseUrl: string;
   private latestStatus: NativeStatus | null = null;
   private pendingRhythmSchedule: NativeRhythmScheduleReceipt | null = null;
+  private pendingNativeTransportBatch: NativeTransportBatchReceipt | null = null;
 
   constructor(baseUrl = nativeBridgeEndpoint()) {
     this.baseUrl = baseUrl;
+    try {
+      const raw = globalThis.sessionStorage?.getItem(NativeBridgeClient.pendingBatchStorageKey);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        const mask = isObject(parsed) && Number.isInteger(parsed.trackMask) ? parsed.trackMask as number : 0;
+        const batchId = isObject(parsed) ? parsed.batchId : undefined;
+        const revisions = isObject(parsed) && Array.isArray(parsed.revisions) ? parsed.revisions : [];
+        const tokens = isObject(parsed) && Array.isArray(parsed.recordingTempoTokens) ? parsed.recordingTempoTokens : [];
+        const validTokens = tokens.length === 5 && tokens.every((token, index) => {
+          if (token === null) return true;
+          return isObject(parsed) && parsed.action === 'stop' && (mask & (1 << index)) !== 0 &&
+            isObject(token) && Number.isFinite(token.bpm) && (token.bpm as number) >= 40 &&
+            (token.bpm as number) <= 300 && Number.isSafeInteger(token.revision) && (token.revision as number) >= 0;
+        });
+        const validMask = mask > 0 && (mask & ~0x1f) === 0 && (mask & (mask - 1)) !== 0;
+        const validRevisions = revisions.length === 5 && revisions.every((value, index) =>
+          Number.isSafeInteger(value) && (value as number) >= 0 &&
+          ((mask & (1 << index)) !== 0 ? (batchId === null ? (value as number) === 0 : (value as number) > 0) : (value as number) === 0));
+        if (isObject(parsed) && (batchId === null || Number.isSafeInteger(batchId) && (batchId as number) > 0) &&
+            validMask && (parsed.action === 'play' || parsed.action === 'stop') &&
+            typeof parsed.intentId === 'string' && /^[0-9a-f]{32}$/.test(parsed.intentId) &&
+            isNativeHostIncarnationId(parsed.hostIncarnationId) &&
+            Number.isSafeInteger(parsed.absoluteFrame) && (parsed.absoluteFrame as number) > 0 &&
+            validRevisions && validTokens) {
+          this.pendingNativeTransportBatch = parsed as unknown as NativeTransportBatchReceipt;
+        }
+      }
+    } catch { /* Storage may be unavailable; the live receipt path remains fail-closed. */ }
   }
 
   public async health(): Promise<NativeHealth> {
@@ -795,6 +859,267 @@ export class NativeBridgeClient {
 
   public getPendingRhythmSchedule(): NativeRhythmScheduleReceipt | null {
     return this.pendingRhythmSchedule ? { ...this.pendingRhythmSchedule } : null;
+  }
+
+  public getPendingNativeTransportBatch(): NativeTransportBatchReceipt | null {
+    return this.pendingNativeTransportBatch ? { ...this.pendingNativeTransportBatch,
+      revisions: [...this.pendingNativeTransportBatch.revisions] } : null;
+  }
+
+  public async scheduleNativeTransportBatch(action: 'play' | 'stop'): Promise<NativeStatus> {
+    if (this.pendingNativeTransportBatch) throw new NativeTransportBatchOutcomeUnknownError(
+      this.pendingNativeTransportBatch, this.latestStatus,
+      new Error('An earlier ALL batch is unresolved; reconcile it before another transport action.'),
+    );
+    const before = await this.getStatus();
+    const scheduling = before.nativeLoopFrameScheduling;
+    const hostIncarnationId = before.hostIncarnationId;
+    const sampleFrame = before.nativeSampleFrame;
+    if (scheduling?.batchTransportAvailable !== true || !isNativeHostIncarnationId(hostIncarnationId) ||
+        !Number.isSafeInteger(sampleFrame) || !Array.isArray(scheduling.requests) || scheduling.requests.length !== 5 ||
+        !Array.isArray(before.nativeTracks) || before.nativeTracks.length !== 5 ||
+        !Array.isArray(before.nativeMemory?.loopSync) || before.nativeMemory.loopSync.length !== 5) {
+      throw new Error(scheduling?.batchTransportReason || 'Native host does not advertise safe ALL batch transport; no request was submitted.');
+    }
+    const expectedStates: number[] = [];
+    const expectedScheduleRevisions: number[] = [];
+    const expectedStopRevisions = before.nativeRecordPlay?.stopRequested;
+    if (!Array.isArray(expectedStopRevisions) || expectedStopRevisions.length !== 5) {
+      throw new Error('Native status lacks five per-track STOP revision baselines; ALL was not submitted.');
+    }
+    let trackMask = 0;
+    let provenanceMask = 0;
+    const provenanceBpm = [0, 0, 0, 0, 0];
+    const provenanceRevisions = [0, 0, 0, 0, 0];
+    const recordingTempoTokens: Array<NativeRecordTempoToken | null> = [null, null, null, null, null];
+    for (let index = 0; index < 5; index += 1) {
+      const track = before.nativeTracks[index]!;
+      const request = scheduling.requests[index]!;
+      if (track.trackId !== index + 1 || !Number.isInteger(track.stateCode) || track.stateCode! < 0 || track.stateCode! > 4 ||
+          request.trackIndex !== index || !Number.isSafeInteger(request.requestedRevision) || request.requestedRevision < 0 ||
+          !Number.isSafeInteger(expectedStopRevisions[index]) || expectedStopRevisions[index]! < 0) {
+        throw new Error(`Native status has an incomplete ALL transport baseline at Track ${index + 1}; no request was submitted.`);
+      }
+      expectedStates.push(track.stateCode!);
+      expectedScheduleRevisions.push(request.requestedRevision);
+      const eligible = action === 'play'
+        ? track.state === 'Stopped' && Number.isSafeInteger(track.loopLengthSamples) && track.loopLengthSamples! > 0
+        : ['Recording', 'Playing', 'Overdubbing'].includes(track.state);
+      if (eligible) {
+        if (before.nativeMemory.loopSync[index]) {
+          throw new Error(`ALL ${action.toUpperCase()} is not available while Track ${index + 1} has LOOP SYNC enabled.`);
+        }
+        trackMask |= 1 << index;
+        if (action === 'stop' && track.state === 'Recording') {
+          const token = before.nativeRecordingTempoTokens?.[index];
+          if (token?.trackId !== index + 1 || token.valid !== true || !Number.isFinite(token.bpm) ||
+              token.bpm! < 40 || token.bpm! > 300 || !Number.isSafeInteger(token.revision) || token.revision < 0) {
+            throw new Error(`ALL STOP cannot preserve Track ${index + 1} take tempo; its Native recording token is unavailable.`);
+          }
+          provenanceMask |= 1 << index;
+          provenanceBpm[index] = token.bpm!;
+          provenanceRevisions[index] = token.revision;
+          recordingTempoTokens[index] = { bpm: token.bpm!, revision: token.revision };
+        }
+      }
+    }
+    if ((trackMask & (trackMask - 1)) === 0) throw new Error(`ALL ${action.toUpperCase()} requires at least two eligible Native tracks.`);
+    if (!Number.isSafeInteger(before.sampleRate) || before.sampleRate <= 0 ||
+        !Number.isSafeInteger(before.bufferFrames) || before.bufferFrames <= 0) {
+      throw new Error('Native status lacks an audio frame clock; ALL was not submitted.');
+    }
+    const absoluteFrame = sampleFrame! + Math.max(before.bufferFrames * 4, Math.ceil(before.sampleRate / 2));
+    if (!Number.isSafeInteger(absoluteFrame) || absoluteFrame <= sampleFrame!) throw new Error('Native ALL target frame is outside the safe integer range.');
+    const intentId = createNativeRhythmIntentId();
+    const unknownReceipt: NativeTransportBatchReceipt = { batchId: null, trackMask, action, intentId,
+      hostIncarnationId, absoluteFrame, revisions: [0, 0, 0, 0, 0], recordingTempoTokens };
+    this.setPendingNativeTransportBatch(unknownReceipt);
+    let accepted: NativeStatus;
+    try {
+      accepted = await this.request<NativeStatus>('/v1/transport/batch-schedule', { method: 'POST',
+        body: JSON.stringify({ hostIncarnationId, intentId, action, expectedSampleFrame: sampleFrame,
+          absoluteFrame, trackMask, expectedStates, expectedScheduleRevisions, expectedStopRevisions,
+          provenanceBpm, provenanceRevisions, provenanceMask }) });
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status >= 400 && error.status < 500) {
+        this.setPendingNativeTransportBatch(null);
+        throw error;
+      }
+      const status = error instanceof NativeBridgeRequestTimeoutError ? error.reconciledStatus : await this.tryGetStatus();
+      const discovered = status ? this.discoverBatchReceipt(status, unknownReceipt, expectedScheduleRevisions) : null;
+      if (!discovered) {
+        this.setPendingNativeTransportBatch(unknownReceipt);
+        throw new NativeTransportBatchOutcomeUnknownError(unknownReceipt, status, error);
+      }
+      this.setPendingNativeTransportBatch(discovered);
+      return this.waitForNativeTransportBatch(discovered, status ?? this.latestStatus ?? before);
+    }
+    const discovered = this.discoverBatchReceipt(accepted, unknownReceipt, expectedScheduleRevisions);
+    if (!discovered || accepted.nativeLoopFrameScheduling?.acceptedBatchId !== discovered.batchId ||
+        accepted.nativeLoopFrameScheduling.acceptedBatchMask !== trackMask ||
+        accepted.nativeLoopFrameScheduling.acceptedBatchIntentId !== intentId) {
+      this.setPendingNativeTransportBatch(unknownReceipt);
+      throw new NativeTransportBatchOutcomeUnknownError(unknownReceipt, accepted,
+        new Error('Native host response did not bind the exact ALL batch identity and per-track revisions.'));
+    }
+    this.setPendingNativeTransportBatch(discovered);
+    return this.waitForNativeTransportBatch(discovered, accepted);
+  }
+
+  public async reconcilePendingNativeTransportBatch(): Promise<NativeStatus> {
+    let receipt = this.pendingNativeTransportBatch;
+    const status = await this.getStatus();
+    if (!receipt) {
+      if (!isNativeHostIncarnationId(status.hostIncarnationId)) throw new NativeTransportBatchOutcomeUnknownError(
+        { batchId: null, trackMask: 0, action: 'stop', intentId: '', hostIncarnationId: '', absoluteFrame: 0,
+          revisions: [], recordingTempoTokens: [] }, status,
+        new Error('Native status cannot bind a batch to a host incarnation.'),
+      );
+      const candidates = (status.nativeLoopFrameScheduling?.requests ?? []).filter(item =>
+        Number.isSafeInteger(item?.batchId) && item.batchId! > 0 && item.batchMask !== undefined && item.batchMask !== 0 &&
+        item.requestedRevision > 0 && item.appliedRevision !== item.requestedRevision &&
+        item.cancelledRevision !== item.requestedRevision && item.faultRevision !== item.requestedRevision);
+      const unique = [...new Set(candidates.map(item => item.batchId))];
+      if (unique.length !== 1) return status;
+      const first = candidates[0]!;
+      const action = first.requestedAction;
+      if (action !== 'play' && action !== 'stop') throw new Error('Native batch receipt has an unsupported action.');
+      const template: NativeTransportBatchReceipt = { batchId: first.batchId!, trackMask: first.batchMask!, action,
+        intentId: first.requestedIntentId, hostIncarnationId: status.hostIncarnationId, absoluteFrame: first.requestedAbsoluteFrame,
+        revisions: [0, 0, 0, 0, 0], recordingTempoTokens: [null, null, null, null, null] };
+      receipt = this.discoverBatchReceipt(status, template, [0, 0, 0, 0, 0]);
+      if (!receipt) throw new NativeTransportBatchOutcomeUnknownError(template, status,
+        new Error('Current Native status does not contain a complete, unique batch receipt; no action was retried.'));
+      this.setPendingNativeTransportBatch(receipt);
+    }
+    if (status.hostIncarnationId !== receipt.hostIncarnationId) {
+      throw new NativeTransportBatchOutcomeUnknownError(receipt, status,
+        new Error('Native host incarnation changed; the old batch cannot be replayed against this host.'));
+    }
+    if (receipt.batchId === null) {
+      const discovered = this.discoverBatchReceipt(status, receipt, [0, 0, 0, 0, 0]);
+      if (!discovered) throw new NativeTransportBatchOutcomeUnknownError(receipt, status,
+        new Error('No exact accepted intent is present in Native status; outcome remains unknown and no batch was replayed.'));
+      receipt = discovered;
+      this.setPendingNativeTransportBatch(receipt);
+    }
+    return this.waitForNativeTransportBatch(receipt, status);
+  }
+
+  public async cancelNativeTransportBatch(receipt = this.pendingNativeTransportBatch): Promise<NativeStatus> {
+    if (!receipt || receipt.batchId === null || !isNativeHostIncarnationId(receipt.hostIncarnationId)) {
+      throw new Error('Native ALL cancellation requires a complete host-bound batch receipt.');
+    }
+    const status = await this.request<NativeStatus>('/v1/transport/batch-cancel', { method: 'POST',
+      body: JSON.stringify({ hostIncarnationId: receipt.hostIncarnationId, batchId: receipt.batchId,
+        trackMask: receipt.trackMask, intentId: receipt.intentId, revisions: receipt.revisions }) });
+    return this.waitForNativeTransportBatch(receipt, status, true);
+  }
+
+  private async tryGetStatus(): Promise<NativeStatus | null> {
+    try { return await this.getStatus(); } catch { return null; }
+  }
+
+  private setPendingNativeTransportBatch(receipt: NativeTransportBatchReceipt | null): void {
+    this.pendingNativeTransportBatch = receipt;
+    try {
+      if (receipt) globalThis.sessionStorage?.setItem(NativeBridgeClient.pendingBatchStorageKey, JSON.stringify(receipt));
+      else globalThis.sessionStorage?.removeItem(NativeBridgeClient.pendingBatchStorageKey);
+    } catch { /* Storage failure never authorizes replay; keep the live receipt. */ }
+  }
+
+  private discoverBatchReceipt(status: NativeStatus, template: NativeTransportBatchReceipt,
+      baselineRevisions: readonly number[]): NativeTransportBatchReceipt | null {
+    if (status.hostIncarnationId !== template.hostIncarnationId) return null;
+    const requests = status.nativeLoopFrameScheduling?.requests;
+    if (!Array.isArray(requests) || requests.length !== 5) return null;
+    const revisions = [0, 0, 0, 0, 0];
+    let seenMask = 0;
+    let batchId = template.batchId;
+    const recordingTempoTokens = [...template.recordingTempoTokens];
+    for (let index = 0; index < 5; index += 1) {
+      if ((template.trackMask & (1 << index)) === 0) continue;
+      const item = requests[index];
+      if (!item || item.requestedIntentId !== template.intentId || item.requestedAction !== template.action ||
+          item.requestedAbsoluteFrame !== template.absoluteFrame || item.batchMask !== template.trackMask ||
+          !Number.isSafeInteger(item.batchId) || item.batchId! <= 0 ||
+          !Number.isSafeInteger(item.requestedRevision) || item.requestedRevision <= (baselineRevisions[index] ?? 0) ||
+          (batchId !== null && item.batchId !== batchId)) return null;
+      batchId = item.batchId!;
+      revisions[index] = item.requestedRevision;
+      if (!recordingTempoTokens[index] && item.provenanceValid === true && Number.isFinite(item.provenanceBpm) &&
+          Number.isSafeInteger(item.provenanceRevision)) {
+        recordingTempoTokens[index] = { bpm: item.provenanceBpm!, revision: item.provenanceRevision! };
+      }
+      seenMask |= 1 << index;
+    }
+    return seenMask === template.trackMask && batchId !== null
+      ? { ...template, batchId, revisions, recordingTempoTokens } : null;
+  }
+
+  private async waitForNativeTransportBatch(receipt: NativeTransportBatchReceipt, initialStatus: NativeStatus,
+      expectCancelled = false): Promise<NativeStatus> {
+    if (receipt.batchId === null || initialStatus.hostIncarnationId !== receipt.hostIncarnationId) {
+      throw new NativeTransportBatchOutcomeUnknownError(receipt, initialStatus,
+        new Error('Native batch receipt is not bound to the current host incarnation.'));
+    }
+    const body = JSON.stringify({ hostIncarnationId: receipt.hostIncarnationId, batchId: receipt.batchId,
+      trackMask: receipt.trackMask, intentId: receipt.intentId, revisions: receipt.revisions });
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    let currentStatus = initialStatus;
+    for (;;) {
+      let receiptStatus: { ok: boolean; state?: number; batchId?: number; trackMask?: number; intentId?: string;
+        hostIncarnationId?: string; members?: Array<{ trackId: number; revision: number; action: string;
+          requestedAbsoluteFrame: number; stopRevision: number; appliedRevision: number; appliedAbsoluteFrame: number;
+          cancelledRevision: number; faultRevision: number; fault: number }> };
+      try { receiptStatus = await this.request('/v1/transport/batch-status', { method: 'POST', body }); }
+      catch (error) {
+        const reconciled = await this.tryGetStatus();
+        throw new NativeTransportBatchOutcomeUnknownError(receipt, reconciled ?? currentStatus, error);
+      }
+      if (receiptStatus.batchId !== receipt.batchId || receiptStatus.trackMask !== receipt.trackMask ||
+          receiptStatus.intentId !== receipt.intentId || receiptStatus.hostIncarnationId !== receipt.hostIncarnationId ||
+          !Array.isArray(receiptStatus.members) || receiptStatus.members.length !== (receipt.trackMask.toString(2).replace(/0/g, '').length)) {
+        throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus,
+          new Error('Native batch status does not match every member of the accepted identity.'));
+      }
+      const memberIds = new Set(receiptStatus.members.map(member => member.trackId));
+      const allApplied = memberIds.size === receiptStatus.members.length && receiptStatus.members.every(member =>
+        Number.isInteger(member.trackId) && member.trackId >= 1 && member.trackId <= 5 &&
+        (receipt.trackMask & (1 << (member.trackId - 1))) !== 0 && member.action === receipt.action &&
+        member.requestedAbsoluteFrame === receipt.absoluteFrame && member.revision === receipt.revisions[member.trackId - 1] &&
+        member.appliedRevision === member.revision && member.appliedAbsoluteFrame === receipt.absoluteFrame &&
+        (!receipt.recordingTempoTokens[member.trackId - 1] || member.stopRevision > 0));
+      if (expectCancelled && receiptStatus.state === 4) {
+        this.setPendingNativeTransportBatch(null);
+        return currentStatus;
+      }
+      if (receiptStatus.state === 5 && allApplied) {
+        let acknowledged: NativeStatus;
+        try { acknowledged = await this.getStatus(); }
+        catch (error) { throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus, error); }
+        if (acknowledged.hostIncarnationId !== receipt.hostIncarnationId) {
+          throw new NativeTransportBatchOutcomeUnknownError(receipt, acknowledged,
+            new Error('Native host restarted after the batch ACK.'));
+        }
+        this.setPendingNativeTransportBatch(null);
+        return { ...acknowledged, nativeTransportBatchAcknowledgement: {
+          batchId: receipt.batchId, action: receipt.action, trackMask: receipt.trackMask, intentId: receipt.intentId,
+          appliedAbsoluteFrame: receipt.absoluteFrame, revisions: [...receipt.revisions],
+          stopRevisions: [0, 0, 0, 0, 0].map((_, index) =>
+            receiptStatus.members!.find(member => member.trackId === index + 1)?.stopRevision ?? 0),
+          recordingTempoTokens: receipt.recordingTempoTokens.map(token => token ? { ...token } : null),
+        } };
+      }
+      if (receiptStatus.state === 6 || receiptStatus.state === 4) {
+        this.setPendingNativeTransportBatch(null);
+        throw new Error(`Native ALL ${receipt.action.toUpperCase()} batch reached terminal state ${receiptStatus.state}; inspect every track before another command.`);
+      }
+      if (Date.now() >= deadline) throw new NativeTransportBatchOutcomeUnknownError(receipt, currentStatus,
+        new Error('Timed out waiting for every member callback acknowledgement; do not replay the batch.'));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      currentStatus = await this.getStatus();
+    }
   }
 
   public getOneShot(trackId: number): boolean | null {

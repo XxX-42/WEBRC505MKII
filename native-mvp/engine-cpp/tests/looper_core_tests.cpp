@@ -10,6 +10,24 @@ using namespace webrc::native;
 
 namespace {
 
+void testScheduledPlayAndStopPreserveCursorAcrossBlocks() {
+    LooperCore core(8000U, 1U, 1U);
+    const std::array<float, 8U> pcm{{0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f}};
+    core.applyCommand({CommandType::Record});
+    (void)core.process(pcm.data(), nullptr, 8U, 1U, 1U);
+    core.applyCommand({CommandType::StopRecordOrPlayback});
+    const auto play = [](void* context) noexcept { static_cast<LooperCore*>(context)->applyCommand({CommandType::Play}); };
+    const auto stop = [](void* context) noexcept { static_cast<LooperCore*>(context)->applyCommand({CommandType::StopRecordOrPlayback}); };
+    std::array<float, 4U> output{};
+    (void)core.process(nullptr, output.data(), 4U, 0U, 1U, nullptr, false, nullptr, 0U, play, &core, 2U);
+    assert((output == std::array<float, 4U>{{0.0f, 0.0f, 0.1f, 0.2f}}));
+    (void)core.process(nullptr, output.data(), 4U, 0U, 1U, nullptr, false, nullptr, 0U, stop, &core, 2U);
+    assert((output == std::array<float, 4U>{{0.3f, 0.4f, 0.0f, 0.0f}}));
+    core.applyCommand({CommandType::Play});
+    (void)core.process(nullptr, output.data(), 4U, 0U, 1U);
+    assert((output == std::array<float, 4U>{{0.1f, 0.2f, 0.3f, 0.4f}}));
+}
+
 void testReversePlaybackUsesCanonicalPcmAndForbidsOverdub() {
     LooperCore core(8000U, 1U, 2U);
     const std::array<float, 8U> phrase{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
@@ -259,6 +277,7 @@ void testReadOnlyPlaybackPreview() {
 } // namespace
 
 int main() {
+    testScheduledPlayAndStopPreserveCursorAcrossBlocks();
     testReversePlaybackUsesCanonicalPcmAndForbidsOverdub();
     testNativeDubModesReplacePcmAndKeepPlaybackTapSemantics();
     testReadOnlyPlaybackPreview();
