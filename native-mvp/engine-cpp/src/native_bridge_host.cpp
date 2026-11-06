@@ -2557,7 +2557,7 @@ int main() {
                     {"requestedAbsoluteFrame", member.requestedAbsoluteFrame},
                     {"action", member.requestedAction == NativeScheduledLoopAction::Play ? "play" : "stop"},
                     {"stopRevision", member.stopRevision}, {"appliedRevision", member.appliedRevision},
-                    {"appliedAbsoluteFrame", member.appliedAbsoluteFrame},
+                    {"appliedAbsoluteFrame", member.appliedAbsoluteFrame}, {"appliedContentRevision", member.appliedContentRevision},
                     {"cancelledRevision", member.cancelledRevision}, {"faultRevision", member.faultRevision},
                     {"fault", static_cast<unsigned int>(member.fault)}});
             }

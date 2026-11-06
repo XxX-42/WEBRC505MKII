@@ -5441,6 +5441,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     std::array<double, kNativeTrackCount> segmentTrackSquares{};
     std::array<bool, kNativeTrackCount> eventDone{};
     std::array<bool, kNativeTrackCount> eventApplied{};
+    std::array<std::uint64_t, kNativeTrackCount> eventContentRevision{};
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         std::fill_n(nativeSegmentBuffers_->mix[track].data(), sampleCount, 0.0f);
         std::fill_n(nativeSegmentBuffers_->playback[track].data(), sampleCount, 0.0f);
@@ -5674,6 +5675,10 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 }
             }
             eventApplied[i] = !rejected[i] && context.applied;
+            if (eventApplied[i] && event.request.action == NativeScheduledLoopAction::Stop &&
+                event.request.stopRevision != 0U &&
+                recordStopCommittedRuntimeRevision_[event.request.trackIndex] == event.request.stopRevision)
+                eventContentRevision[i] = trackContentRevision_[event.request.trackIndex].load(std::memory_order_acquire);
             eventDone[i] = true;
         }
         segmentStart = boundary;
@@ -5764,7 +5769,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         if (!eventDone[i]) continue;
         const auto& event = scheduledEvents[i];
         nativeLoopFrameScheduler_.acknowledgeApplied(event.request.trackIndex, event.request.revision,
-            callbackFrameCursor_ + event.frameOffset, eventApplied[i]);
+            callbackFrameCursor_ + event.frameOffset, eventApplied[i], eventContentRevision[i]);
     }
     for (std::size_t i = 0U; i < scheduledEventCount; ++i) {
         if (!eventDone[i]) continue;
@@ -6279,6 +6284,8 @@ int NativeAudioCore::handleInputAudioCallback(
     synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     bool pitchPlaybackRequested = false;
+    synchronizeHrmAutoSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
+    synchronizeHrmAutoSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
         if (historyPinSuppressesPlayback(trackIndex)) continue;
         const auto state = looperForTrack(trackIndex).state();

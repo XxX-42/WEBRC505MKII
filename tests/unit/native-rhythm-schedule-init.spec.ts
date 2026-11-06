@@ -219,6 +219,7 @@ describe('Native Rhythm schedule initialization reconciliation', () => {
     engine.bridge = {
       health: vi.fn(async () => ({})), getStatus: vi.fn(async () => status),
       getDevices: vi.fn(async () => ({})), getPendingRhythmSchedule: vi.fn(() => null),
+      getPendingNativeTransportBatch: vi.fn(() => null), getRetainedTrackTempoConfirmations: vi.fn(() => []),
       reconcilePendingRhythmSchedule: vi.fn(async () => { throw unknown; }),
     };
     engine.refreshCatalog = vi.fn(async () => {});

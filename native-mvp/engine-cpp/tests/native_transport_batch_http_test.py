@@ -134,6 +134,8 @@ def main():
         stopped = until(lambda value: all(value['nativeTracks'][index]['state'] == 'Stopped' and
             value['nativeRecordPlay']['stopCommittedRevision'][index] == value['nativeRecordPlay']['stopRequested'][index]
             for index in (0, 1)))
+        require(all(member['appliedContentRevision'] == stopped['nativeTracks'][member['trackId'] - 1]['contentRevision']
+            for member in stopped_receipt['members']), stopped_receipt)
         for index, token_revision in ((0, 71), (1, 93)):
             member = next(item for item in stopped_receipt['members'] if item['trackId'] == index + 1)
             code, confirmed = request('/v1/transport/record-tempo/confirm', 'POST', {
@@ -217,6 +219,10 @@ def main():
             time.sleep(.01)
         else:
             raise AssertionError(('short loop import did not commit', import_status))
+        retained_stop = receipt(stop_identity)
+        require([member['appliedContentRevision'] for member in retained_stop['members']] ==
+            [member['appliedContentRevision'] for member in stopped_receipt['members']],
+            ('historical take identity changed after newer PCM import', retained_stop))
         for track_id in (1, 2):
             current = request('/v1/status')[1]
             config = dict(current['nativeMemory']['loopTransports'][track_id - 1])

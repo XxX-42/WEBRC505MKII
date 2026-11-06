@@ -62,6 +62,7 @@ function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
   const fakeBridge = {
     getPendingRhythmSchedule: vi.fn(() => null),
     getPendingNativeTransportBatch: vi.fn(() => null),
+    getRetainedTrackTempoConfirmations: vi.fn(() => []),
     health: vi.fn(async () => ({ ok: true, version: 'test', engineRunning: false, backends: ['WASAPI'], lastError: '' })),
     getDevices: vi.fn(async () => ({
       ok: true, backends: ['WASAPI'],

@@ -588,13 +588,15 @@ std::size_t NativeLoopFrameScheduler::collectDue(
 }
 
 void NativeLoopFrameScheduler::acknowledgeApplied(
-    std::size_t trackIndex, std::uint64_t revision, std::uint64_t appliedAbsoluteFrame, bool didApply
+    std::size_t trackIndex, std::uint64_t revision, std::uint64_t appliedAbsoluteFrame, bool didApply,
+    std::uint64_t appliedContentRevision
 ) noexcept {
     if (trackIndex >= kNativeScheduledLoopTrackCount || revision == 0U ||
         requested_[trackIndex].load(std::memory_order_acquire) != revision) return;
     if (didApply && appliedAbsoluteFrame == requestedAbsoluteFrame_[trackIndex].load(std::memory_order_acquire)) {
         appliedSnapshotSequence_[trackIndex].fetch_add(1U, std::memory_order_seq_cst); // odd: ACK writer active
         appliedAbsoluteFrame_[trackIndex].store(appliedAbsoluteFrame, std::memory_order_seq_cst);
+        appliedContentRevision_[trackIndex].store(appliedContentRevision, std::memory_order_seq_cst);
         applied_[trackIndex].store(revision, std::memory_order_seq_cst);
         appliedSnapshotSequence_[trackIndex].fetch_add(1U, std::memory_order_seq_cst); // even: stable ACK
         fault_[trackIndex].store(NativeScheduledLoopFault::None, std::memory_order_release);
@@ -647,6 +649,7 @@ NativeScheduledLoopStatus NativeLoopFrameScheduler::status(std::size_t trackInde
         const auto sequenceBefore = appliedSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst);
         if ((sequenceBefore & 1U) != 0U) continue;
         result.appliedAbsoluteFrame = appliedAbsoluteFrame_[trackIndex].load(std::memory_order_seq_cst);
+        result.appliedContentRevision = appliedContentRevision_[trackIndex].load(std::memory_order_seq_cst);
         result.appliedRevision = applied_[trackIndex].load(std::memory_order_seq_cst);
         if (sequenceBefore == appliedSnapshotSequence_[trackIndex].load(std::memory_order_seq_cst)) break;
     }

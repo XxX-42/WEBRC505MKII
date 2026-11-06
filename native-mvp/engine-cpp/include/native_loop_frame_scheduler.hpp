@@ -75,6 +75,7 @@ struct NativeScheduledLoopStatus {
     std::uint64_t provenanceRevision = 0U;
     std::uint64_t appliedRevision = 0U;
     std::uint64_t appliedAbsoluteFrame = 0U;
+    std::uint64_t appliedContentRevision = 0U;
     std::uint64_t cancelledRevision = 0U;
     std::uint64_t faultRevision = 0U;
     NativeScheduledLoopFault fault = NativeScheduledLoopFault::None;
@@ -135,7 +136,7 @@ public:
     ) noexcept;
 
     void acknowledgeApplied(std::size_t trackIndex, std::uint64_t revision,
-        std::uint64_t appliedAbsoluteFrame, bool applied) noexcept;
+        std::uint64_t appliedAbsoluteFrame, bool applied, std::uint64_t appliedContentRevision = 0U) noexcept;
     [[nodiscard]] NativeScheduledLoopStatus status(std::size_t trackIndex) const noexcept;
     // Bounded, lock-free callback query. Never reads the request snapshot seqlock.
     [[nodiscard]] bool hasCancelledOrFaulted(std::size_t trackIndex, std::uint64_t revision) const noexcept;
@@ -196,6 +197,7 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> applied_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedSnapshotSequence_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedAbsoluteFrame_{};
+    std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> appliedContentRevision_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> cancelled_{};
     std::array<std::atomic<std::uint64_t>, kNativeScheduledLoopTrackCount> faulted_{};
     std::array<std::atomic<NativeScheduledLoopFault>, kNativeScheduledLoopTrackCount> fault_{};

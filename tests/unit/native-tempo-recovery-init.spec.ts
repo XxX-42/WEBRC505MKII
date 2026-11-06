@@ -10,6 +10,7 @@ function setup() {
   const bridge = {
     health: vi.fn(async () => ({ ok: true })),
     getStatus: vi.fn(async () => current),
+    getPendingNativeTransportBatch: vi.fn(() => null),
     getRetainedTrackTempoConfirmations: vi.fn(() => entries),
     reconcileTrackTempoConfirmation: vi.fn(async () => current),
     releaseTrackTempoConfirmation: vi.fn(async () => { entries = []; }),
@@ -31,6 +32,18 @@ function setup() {
 }
 
 describe('Native tempo recovery through init and retry', () => {
+  it('waits for the active batch owner before checking for its durable receipt', async () => {
+    const { engine, bridge } = setup();
+    let settle!: () => void;
+    engine.nativeTransportBatchPending = true;
+    engine.nativeTransportBatchSettled = new Promise<void>(resolve => { settle = resolve; });
+    const recovery = engine.recoverNativeBatchBeforeTempo();
+    expect(bridge.getPendingNativeTransportBatch).not.toHaveBeenCalled();
+    engine.nativeTransportBatchPending = false;
+    settle();
+    await expect(recovery).resolves.toBe('');
+    expect(bridge.getPendingNativeTransportBatch).toHaveBeenCalledOnce();
+  });
   it('reconciles the exact receipt and hands off fresh current status before release', async () => {
     const { engine, bridge, old, current, applied } = setup();
     bridge.reconcileTrackTempoConfirmation.mockResolvedValueOnce(current);
@@ -111,12 +124,17 @@ describe('Native tempo recovery through init and retry', () => {
     expect(engine.isNativeReady()).toBe(true);
   });
 
-  it('leaves batch-owned tempo identities to batch recovery', async () => {
-    const { engine, bridge } = setup();
-    (bridge as any).getPendingNativeTransportBatch = () => ({ batchId: 1 });
-    await expect(engine.init()).rejects.toThrow(/batch recovery owns/);
-    expect(bridge.reconcileTrackTempoConfirmation).not.toHaveBeenCalled();
-    expect(bridge.releaseTrackTempoConfirmation).not.toHaveBeenCalled();
-    expect(engine.isNativeReady()).toBe(false);
+  it('finishes batch recovery before reconciling other retained tempo identities', async () => {
+    const { engine, bridge, current } = setup();
+    let pending = true;
+    const order: string[] = [];
+    bridge.getPendingNativeTransportBatch.mockImplementation(() => pending ? { batchId: 1 } as never : null);
+    (bridge as any).reconcilePendingNativeTransportBatch = vi.fn(async () => { order.push('batch'); return current; });
+    engine.completeNativeBatchTempoHandoff = vi.fn(async () => { order.push('handoff'); pending = false; });
+    bridge.reconcileTrackTempoConfirmation.mockImplementation(async () => { order.push('single'); return current; });
+    await engine.init();
+    expect(order).toEqual(['batch', 'handoff', 'single']);
+    expect(bridge.releaseTrackTempoConfirmation).toHaveBeenCalledOnce();
+    expect(engine.isNativeReady()).toBe(true);
   });
 });

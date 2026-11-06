@@ -284,6 +284,9 @@ struct NativeAudioCoreTestAccess {
             &core
         );
     }
+    static int inputCallback(NativeAudioCore& core, const float* input, unsigned int frames) {
+        return NativeAudioCore::inputAudioCallback(nullptr, const_cast<float*>(input), frames, 0.0, 0U, &core);
+    }
 
     static void setRunningForQueueTest(NativeAudioCore& core, bool running) {
         core.engineRunning_.store(running, std::memory_order_release);
@@ -656,6 +659,37 @@ void testBatchAckWaitsForPublishedTrackSnapshots() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 #endif
+
+void testSplitInputHrmMidiClockMatchesDuplexAtSegmentBoundary() {
+    constexpr unsigned int frames = 64U;
+    auto duplex = std::make_unique<NativeAudioCore>();
+    auto split = std::make_unique<NativeAudioCore>();
+    std::array<float, frames> input{};
+    std::array<float, frames * 2U> output{};
+    NativeAudioCoreTestAccess::prepareWithoutDevice(*duplex);
+    NativeAudioCoreTestAccess::prepareWithoutDevice(*split);
+    assert(NativeAudioCoreTestAccess::callback(*duplex, input.data(), output.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::inputCallback(*split, input.data(), frames) == 0);
+    std::string error;
+    for (auto* core : {duplex.get(), split.get()}) {
+        assert(core->setNativeCatalogSlot(NativeEffectSlot::A, "hrm_auto_m", {}, false, error, NativeCatalogFxPath::Input));
+        NativeAudioCoreTestAccess::setRunningForQueueTest(*core, true);
+        const auto start = core->getStatus().nativeSampleFrame;
+        assert(core->queueNativeCatalogMidiEvent("hrm_auto_m", NativeCatalogFxPath::Input,
+            NativeEffectSlot::A, true, 1, 60, 100, start + 16U, error));
+        NativeAudioCoreTestAccess::scheduleRecordForSegmentTest(*core, 0U, start + 32U);
+    }
+    assert(NativeAudioCoreTestAccess::callback(*duplex, input.data(), output.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::inputCallback(*split, input.data(), frames) == 0);
+    const auto first = duplex->getStatus().nativeInputCatalogMidiSlots[0];
+    const auto second = split->getStatus().nativeInputCatalogMidiSlots[0];
+    assert(first.selected && second.selected);
+    assert(first.currentFrame == 128U && second.currentFrame == first.currentFrame);
+    assert(first.queuedEvents == 0U && second.queuedEvents == 0U);
+    assert(first.lateEventCount == 0U && second.lateEventCount == 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(*duplex, false);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(*split, false);
+}
 
 void testNativeBatchVocoderCarrierMatchesSplitCallbackReference() {
     constexpr unsigned int frames = 64U;
@@ -1067,6 +1101,8 @@ void testNativeTransportBatchStopPreservesEachRecordingTempoToken() {
     assert(receipt.state == NativeScheduledLoopBatchState::Applied);
     assert(stopped.nativeRecordStopCommittedRevision[0] == stopped.nativeRecordStopRequested[0]);
     assert(stopped.nativeRecordStopCommittedRevision[1] == stopped.nativeRecordStopRequested[1]);
+    assert(receipt.members[0].appliedContentRevision == stopped.nativeTrackContentRevision[0]);
+    assert(receipt.members[1].appliedContentRevision == stopped.nativeTrackContentRevision[1]);
     assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U).has_value());
     assert(!NativeAudioCoreTestAccess::originalTempo(core, 1U).has_value());
 
@@ -1082,6 +1118,14 @@ void testNativeTransportBatchStopPreservesEachRecordingTempoToken() {
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
     assert(NativeAudioCoreTestAccess::originalTempo(core, 0U).value_or(0.0) == 120.0);
     assert(NativeAudioCoreTestAccess::originalTempo(core, 1U).value_or(0.0) == 120.0);
+    const auto afterConfirmation = core.getStatus();
+    assert(afterConfirmation.nativeTrackContentRevision[0] > receipt.members[0].appliedContentRevision);
+    NativeScheduledLoopBatchReceipt retainedReceipt{};
+    assert(core.getNativeScheduledTrackTransportBatchReceipt(
+        batchId, 0x07U, 0xB47CU, 0x19A3U, acceptedRevisions, retainedReceipt));
+    assert(retainedReceipt.members[0].appliedContentRevision == stopped.nativeTrackContentRevision[0]);
+    const auto stoppedBatchId = batchId;
+    const auto stoppedBatchRevisions = acceptedRevisions;
 
     const auto beforeCancelledPlay = core.getStatus();
     expectedStates = beforeCancelledPlay.nativeTrackStates;
@@ -1105,6 +1149,17 @@ void testNativeTransportBatchStopPreservesEachRecordingTempoToken() {
     assert(core.getNativeScheduledTrackTransportBatchReceipt(
         batchId, 0x07U, 0xB47CU, 0x19A4U, acceptedRevisions, receipt));
     assert(receipt.state == NativeScheduledLoopBatchState::Cancelled);
+    assert(core.getNativeScheduledTrackTransportBatchReceipt(
+        stoppedBatchId, 0x07U, 0xB47CU, 0x19A3U, stoppedBatchRevisions, retainedReceipt));
+    assert(retainedReceipt.members[0].appliedContentRevision == stopped.nativeTrackContentRevision[0]);
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    const auto cleared = core.getStatus();
+    assert(cleared.nativeTrackStates[0] == LooperState::Empty);
+    assert(cleared.nativeTrackContentRevision[0] > stopped.nativeTrackContentRevision[0]);
+    assert(core.getNativeScheduledTrackTransportBatchReceipt(
+        stoppedBatchId, 0x07U, 0xB47CU, 0x19A3U, stoppedBatchRevisions, retainedReceipt));
+    assert(retainedReceipt.members[0].appliedContentRevision == stopped.nativeTrackContentRevision[0]);
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
@@ -4580,6 +4635,7 @@ int main() {
     testNativePerTrackFxLeavesRecordOverdubAndMonitoringCanonical();
     testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames();
     testNativePitchTargetsOnlySelectedTrackAndFallsBackOnItsLoopLength();
+    testSplitInputHrmMidiClockMatchesDuplexAtSegmentBoundary();
     testNativeBatchVocoderCarrierMatchesSplitCallbackReference();
     testNativeGlobalPitchRouteChangesAtBatchBoundary();
     testNativeScheduledBatchStartsPitchRouteInSameBlock();

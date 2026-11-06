@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NativeBridgeClient, NativeTransportBatchOutcomeUnknownError, type NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 
 const host = 'a'.repeat(32);
 const intentPlaceholder = '0'.repeat(32);
@@ -35,13 +36,14 @@ function response(value: unknown, statusCode = 200): Response {
 }
 
 function mockBatch(action: 'play' | 'stop', loseScheduleResponse = false, hostRestarts = false,
-    afterAck: 'mutate' | 'fail' | null = null) {
+    afterAck: 'mutate' | 'replace' | 'fail' | null = null) {
   let latest = status(action, action === 'play'
     ? ['Stopped', 'Stopped', 'Empty', 'Empty', 'Empty']
     : ['Recording', 'Recording', 'Empty', 'Empty', 'Empty']);
   const posts: Array<{ path: string; body: Record<string, unknown> }> = [];
   let cancelled = false;
   let ackRead = false;
+  const batchContentRevisions = [0, 0, 0, 0, 0];
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     const method = (init?.method ?? 'GET').toUpperCase();
@@ -50,6 +52,11 @@ function mockBatch(action: 'play' | 'stop', loseScheduleResponse = false, hostRe
       if (ackRead && afterAck === 'mutate') {
         latest.nativeTracks![0] = { ...latest.nativeTracks![0]!, state: 'Stopped', stateCode: 2 };
         latest.nativeLoopFrameScheduling!.requests![0]!.requestedRevision += 1;
+        afterAck = null;
+      }
+      if (ackRead && afterAck === 'replace') {
+        latest.nativeTracks![0] = { ...latest.nativeTracks![0]!, contentRevision: 999, state: 'Recording', stateCode: 1 };
+        latest.nativeRecordPlay!.stopCommittedRevision![0] = 999;
         afterAck = null;
       }
       if (hostRestarts && posts.length > 0) latest = { ...latest, hostIncarnationId: 'b'.repeat(32) };
@@ -79,6 +86,7 @@ function mockBatch(action: 'play' | 'stop', loseScheduleResponse = false, hostRe
           provenanceRevision: actionValue === 'stop' && index < 2 ? 70 + index : 0 };
         latest.nativeTracks![index] = { ...latest.nativeTracks![index]!, state: appliedState,
           stateCode: appliedState === 'Playing' ? 3 : 2 };
+        if (actionValue === 'stop' && index < 2) batchContentRevisions[index] = latest.nativeTracks![index]!.contentRevision!;
         if (actionValue === 'stop' && index < 2) {
           latest.nativeRecordPlay!.stopCommittedRevision[index] = stopRevisions[index]! + 1;
         }
@@ -96,6 +104,7 @@ function mockBatch(action: 'play' | 'stop', loseScheduleResponse = false, hostRe
         (mask & (1 << index)) === 0 ? [] : [{ trackId: index + 1, revision: item.requestedRevision,
           requestedAbsoluteFrame: item.requestedAbsoluteFrame, action: item.requestedAction,
           stopRevision: item.stopRevision ?? 0, appliedRevision: item.requestedRevision,
+          appliedContentRevision: batchContentRevisions[index],
           appliedAbsoluteFrame: item.requestedAbsoluteFrame, cancelledRevision: 0, faultRevision: 0, fault: 0 }]);
       return response({ ok: true, state: cancelled ? 4 : 5, hostIncarnationId: host, batchId: 77, trackMask: mask,
         intentId: body.intentId, members });
@@ -106,7 +115,10 @@ function mockBatch(action: 'play' | 'stop', loseScheduleResponse = false, hostRe
     }
     throw new Error(`Unexpected Native mock request: ${method} ${url.pathname}`);
   }));
-  return { posts };
+  return { posts, replaceCurrentTake: () => {
+    latest.nativeTracks![0] = { ...latest.nativeTracks![0]!, contentRevision: 999, state: 'Recording', stateCode: 1 };
+    latest.nativeRecordPlay!.stopCommittedRevision![0] = 999;
+  } };
 }
 
 afterEach(() => {
@@ -115,6 +127,13 @@ afterEach(() => {
 });
 
 describe('Native ALL atomic transport batches', () => {
+  it('fails closed when a persisted batch receipt is malformed', async () => {
+    sessionStorage.setItem('webrc.nativeTransportBatchReceipt.v1', '{invalid');
+    const client = new NativeBridgeClient('http://native.test');
+    expect(client.getPendingNativeTransportBatch()).not.toBeNull();
+    await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/receipt is invalid/);
+    await expect(client.reconcilePendingNativeTransportBatch()).rejects.toThrow(/receipt is invalid/);
+  });
   it('posts a shared PLAY frame and waits for exact all-member ACKs', async () => {
     mockBatch('play');
     const client = new NativeBridgeClient('http://native.test');
@@ -143,6 +162,111 @@ describe('Native ALL atomic transport batches', () => {
     const result = await restored.reconcilePendingNativeTransportBatch();
     expect(result.nativeTransportBatchAcknowledgement?.recordingTempoTokens[0]).toEqual({ bpm: 120, revision: 70 });
     expect(posts.filter(item => item.path === '/v1/transport/batch-schedule')).toHaveLength(1);
+  });
+
+  it('retains original take identities through confirm and release failures without replaying or touching a later take', async () => {
+    const { posts, replaceCurrentTake } = mockBatch('stop');
+    const client = new NativeBridgeClient('http://native.test');
+    await client.scheduleNativeTransportBatch('stop');
+    const original = client.getPendingNativeTransportBatch();
+    expect(original?.tempoHandoff?.[0]).toMatchObject({ contentRevision: 1, stopRevision: 1, confirmed: false });
+    const restored = new NativeBridgeClient('http://native.test');
+    const recovered = await restored.reconcilePendingNativeTransportBatch();
+    expect(restored.getPendingNativeTransportBatch()?.tempoHandoff?.[0]?.contentRevision).toBe(1);
+
+    let retained = false;
+    const confirmation = vi.spyOn(restored, 'confirmTrackTempoProvenance')
+      .mockImplementationOnce(async () => { retained = true; throw new Error('lost confirmation response'); })
+      .mockImplementation(async () => { retained = true; return recovered; });
+    vi.spyOn(restored, 'getRetainedTrackTempoConfirmations').mockImplementation(() => retained
+      ? [{ trackId: 1, releasePending: false, rejected: false }] : []);
+    const release = vi.spyOn(restored, 'releaseTrackTempoConfirmation')
+      .mockRejectedValueOnce(new Error('lost release response'))
+      .mockImplementation(async () => { retained = false; });
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = restored;
+    engine.applyStatus = vi.fn();
+    await expect(engine.completeNativeBatchTempoHandoff()).rejects.toThrow('lost confirmation response');
+    expect(restored.getPendingNativeTransportBatch()?.tempoHandoff?.[0]?.confirmed).toBe(false);
+    replaceCurrentTake();
+    await expect(engine.completeNativeBatchTempoHandoff()).rejects.toThrow('lost release response');
+    expect(restored.getPendingNativeTransportBatch()?.tempoHandoff?.[0]).toMatchObject({ confirmed: true, releaseStarted: true });
+    // Track 2 will also require confirmation; keep the fake identity available per track.
+    vi.mocked(restored.getRetainedTrackTempoConfirmations).mockImplementation(() => retained
+      ? [{ trackId: 1, releasePending: false, rejected: false }, { trackId: 2, releasePending: false, rejected: false }] : []);
+    await engine.completeNativeBatchTempoHandoff();
+    expect(confirmation.mock.calls.filter(call => call[0] === 1)).toHaveLength(2);
+    expect(confirmation.mock.calls[0]?.slice(0, 2)).toEqual([1, 1]);
+    expect(release.mock.calls.filter(call => call[0] === 1)).toHaveLength(2);
+    expect(restored.getPendingNativeTransportBatch()).toBeNull();
+    expect(posts.filter(item => item.path === '/v1/transport/batch-schedule')).toHaveLength(1);
+  });
+
+  it('finishes a superseded take without confirming its tempo onto later PCM', async () => {
+    mockBatch('stop', false, false, 'replace');
+    const client = new NativeBridgeClient('http://native.test');
+    await client.scheduleNativeTransportBatch('stop');
+    expect(client.getPendingNativeTransportBatch()?.tempoHandoff?.[0]?.contentRevision).toBe(1);
+    const restored = new NativeBridgeClient('http://native.test');
+    const recovered = await restored.reconcilePendingNativeTransportBatch();
+    let retained = false;
+    const confirm = vi.spyOn(restored, 'confirmTrackTempoProvenance').mockImplementation(async () => { retained = true; return recovered; });
+    vi.spyOn(restored, 'getRetainedTrackTempoConfirmations').mockImplementation(() => retained
+      ? [{ trackId: 2, releasePending: false, rejected: false }] : []);
+    vi.spyOn(restored, 'releaseTrackTempoConfirmation').mockImplementation(async () => { retained = false; });
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = restored;
+    engine.applyStatus = vi.fn();
+    const notice = await engine.completeNativeBatchTempoHandoff();
+    expect(notice).toMatch(/Track 1 was subsequently edited/);
+    expect(confirm.mock.calls.some(call => call[0] === 1)).toBe(false);
+    expect(confirm.mock.calls.some(call => call[0] === 2)).toBe(true);
+    expect(restored.getPendingNativeTransportBatch()).toBeNull();
+  });
+
+  it('releases a rejected exact receipt when the take changes during confirmation', async () => {
+    const { replaceCurrentTake } = mockBatch('stop');
+    const client = new NativeBridgeClient('http://native.test');
+    const current = await client.scheduleNativeTransportBatch('stop');
+    let retainedTrack = 0;
+    let rejected = false;
+    vi.spyOn(client, 'getRetainedTrackTempoConfirmations').mockImplementation(() => retainedTrack
+      ? [{ trackId: retainedTrack, releasePending: false, rejected }] : []);
+    const confirm = vi.spyOn(client, 'confirmTrackTempoProvenance').mockImplementation(async (trackId) => {
+      retainedTrack = trackId;
+      if (trackId === 1) { rejected = true; replaceCurrentTake(); throw new Error('rejected'); }
+      rejected = false;
+      return current;
+    });
+    const release = vi.spyOn(client, 'releaseTrackTempoConfirmation').mockImplementation(async () => { retainedTrack = 0; });
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = client;
+    engine.applyStatus = vi.fn();
+    expect(await engine.completeNativeBatchTempoHandoff()).toMatch(/Track 1 was subsequently edited/);
+    expect(confirm.mock.calls.filter(call => call[0] === 1)).toHaveLength(1);
+    expect(release.mock.calls.map(call => call[0])).toEqual([1, 2]);
+    expect(client.getPendingNativeTransportBatch()).toBeNull();
+  });
+
+  it('releases a rejected tempo receipt and preserves PCM with unknown provenance', async () => {
+    mockBatch('stop');
+    const client = new NativeBridgeClient('http://native.test');
+    const current = await client.scheduleNativeTransportBatch('stop');
+    let retainedTrack = 0;
+    vi.spyOn(client, 'getRetainedTrackTempoConfirmations').mockImplementation(() => retainedTrack
+      ? [{ trackId: retainedTrack, releasePending: false, rejected: retainedTrack === 1 }] : []);
+    vi.spyOn(client, 'confirmTrackTempoProvenance').mockImplementation(async (trackId) => {
+      retainedTrack = trackId;
+      if (trackId === 1) throw new Error('rejected');
+      return current;
+    });
+    const release = vi.spyOn(client, 'releaseTrackTempoConfirmation').mockImplementation(async () => { retainedTrack = 0; });
+    const engine = Object.create(NativeAudioEngine.prototype) as any;
+    engine.bridge = client;
+    engine.applyStatus = vi.fn();
+    expect(await engine.completeNativeBatchTempoHandoff()).toMatch(/Track 1.*rejected/);
+    expect(release.mock.calls.map(call => call[0])).toEqual([1, 2]);
+    expect(client.getPendingNativeTransportBatch()).toBeNull();
   });
 
   it('reconciles a lost schedule response by its one exact intent without replaying', async () => {
