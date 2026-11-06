@@ -1,8 +1,41 @@
 import fs from 'node:fs/promises';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { activateEnhancedAction, findEnhancedControl, openEnhancedTools, startBrowserAudio } from './uiHelpers';
 
-test('closed Browser AudioContext clears READY, preserves PCM/history and leaves project export available', async ({ page }) => {
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).__rc505TestOriginals = {
+      prompt: window.prompt,
+      AudioWorkletNode: window.AudioWorkletNode,
+      getUserMedia: navigator.mediaDevices.getUserMedia,
+    };
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  await page.evaluate(async () => {
+    const state = window as any;
+    const originals = state.__rc505TestOriginals;
+    if (originals) {
+      window.prompt = originals.prompt;
+      window.AudioWorkletNode = originals.AudioWorkletNode;
+      navigator.mediaDevices.getUserMedia = originals.getUserMedia;
+    }
+    const probe = state.__rc505RecoveryFailureProbe;
+    if (probe?.outputRetry?.restore) probe.outputRetry.restore();
+    try { await state.__rc505Candidate?.dispose(); } finally {
+      try { await state.__rc505CandidateRuntime?.dispose(); } finally {
+        const facade = probe?.facade;
+        const engine = facade?.tracks?.[0]?.engine ?? state.__rc505FixtureEngine;
+        if (engine?.currentMediaStream) engine.currentMediaStream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        if (engine?.context && engine.context.state !== 'closed') await engine.context.close();
+        if (engine?.context?.state === 'closed' && engine !== probe?.oldEngine) engine.retireAfterRecoveryAdoption();
+      }
+    }
+  });
+});
+
+async function prepareClosedContext(page: Page) {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
 
@@ -19,6 +52,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     engine.setOutputLevel(37);
     const tracks = engine.tracks as any[];
     const browserEngine = tracks[0]!.engine as any;
+    (window as any).__rc505FixtureEngine = browserEngine;
     const context = tracks[0]!.engine.context as AudioContext;
     browserEngine.mainGainNode.gain.value = 0.64;
     browserEngine.selectedOutputDeviceId = 'recovery-output-device';
@@ -128,6 +162,14 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
       };
     }));
     const beforePcm = await digestTracks();
+    const beforeHistoryPcm = await Promise.all(seedBuffers.map(async (buffer) => {
+      const interleaved = new Float32Array(buffer.length * buffer.numberOfChannels);
+      for (let frame = 0; frame < buffer.length; frame += 1)
+        for (let channel = 0; channel < buffer.numberOfChannels; channel += 1)
+          interleaved[frame * buffer.numberOfChannels + channel] = buffer.getChannelData(channel)[frame]!;
+      const digest = await crypto.subtle.digest('SHA-256', interleaved);
+      return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
+    }));
     const beforeHistory = tracks.map((track, index) => engine.getTrackHistoryStatus(index + 1));
     const beforeTransport = {
       bpm: (await loadModule('/src/core/Transport.ts')).Transport.getInstance().bpm,
@@ -222,6 +264,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
       resumeError,
       initError,
       beforePcm,
+      beforeHistoryPcm,
       afterPcm,
       recovery: {
         schemaVersion: recovery.schemaVersion,
@@ -245,6 +288,11 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     };
   });
 
+  return result;
+}
+
+test('closed Browser AudioContext retains PCM and permits project export', async ({ page }) => {
+  const result = await prepareClosedContext(page);
   expect(result.status).toMatchObject({ ready: false, engineRunning: false, inputReady: false });
   expect(result.status.message).toContain('AUDIO CONTEXT CLOSED');
   expect(result.status.lastError).toContain('export them from Memory before reloading');
@@ -271,6 +319,28 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(result.archiveTracks.map((track: { frameCount: number; channels: number } | null) => track && ({ frameCount: track.frameCount, channels: track.channels })))
     .toEqual(result.beforePcm.map(({ frameCount, channels }: { frameCount: number; channels: number }) => ({ frameCount, channels })));
 
+  // Enhanced project export remains available after context closure even though
+  // transport/import are unavailable. Reload is not the only recovery path.
+  const tools = await openEnhancedTools(page, 'PROJECT MEMORY');
+  const status = tools.getByRole('status');
+  await expect(await findEnhancedControl(page, 'memory-export-file')).toBeEnabled();
+  await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeDisabled();
+  await expect(await findEnhancedControl(page, 'memory-import-file')).toBeDisabled();
+  await page.evaluate(() => { window.prompt = () => 'closed-context-rescue'; });
+  const downloadPromise = page.waitForEvent('download');
+  await activateEnhancedAction(page, 'memory-export-file');
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(download.suggestedFilename()).toBe('closed-context-rescue.rc505proj');
+  expect(path).not.toBeNull();
+  expect((await fs.stat(path!)).size).toBeGreaterThan(0);
+  await expect(status).toHaveText('EXPORTED V1 closed-context-rescue · NATIVE-COMPATIBLE PCM/TEMPO');
+  await tools.getByRole('button', { name: 'CLOSE', exact: true }).click();
+  await expect(tools).toHaveCount(0);
+});
+
+test('closed Browser AudioContext candidate preserves PCM and rolls back failures', async ({ page }) => {
+  const result = await prepareClosedContext(page);
   // Candidate AudioContext creation is initiated by a real trusted UI click.
   // The candidate remains silent and uninstalled, while every track's current
   // and undo PCM is cloned and verified before the old engine can be replaced.
@@ -550,6 +620,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   const transferResult = await page.evaluate(async () => {
     const candidate = (window as any).__rc505Candidate;
     const runtime = candidate.takeRuntime();
+    (window as any).__rc505CandidateRuntime = runtime;
     let duplicateTransferError = '';
     try { candidate.takeRuntime(); } catch (error) { duplicateTransferError = error instanceof Error ? error.message : String(error); }
     await candidate.dispose();
@@ -665,26 +736,10 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(rollbackResult.retainedHistoryBytes).toBe(result.recovery.historyBufferBytes);
   expect(rollbackResult.fxUnchanged).toBe(true);
   expect(rollbackResult.transportUnchanged).toBe(true);
+});
 
-  // Enhanced project export remains available after context closure even though
-  // transport/import are unavailable. Reload is not the only recovery path.
-  const tools = await openEnhancedTools(page, 'PROJECT MEMORY');
-  const status = tools.getByRole('status');
-  await expect(await findEnhancedControl(page, 'memory-export-file')).toBeEnabled();
-  await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeDisabled();
-  await expect(await findEnhancedControl(page, 'memory-import-file')).toBeDisabled();
-  await page.evaluate(() => { window.prompt = () => 'closed-context-rescue'; });
-  const downloadPromise = page.waitForEvent('download');
-  await activateEnhancedAction(page, 'memory-export-file');
-  const download = await downloadPromise;
-  const path = await download.path();
-  expect(download.suggestedFilename()).toBe('closed-context-rescue.rc505proj');
-  expect(path).not.toBeNull();
-  expect((await fs.stat(path!)).size).toBeGreaterThan(0);
-  await expect(status).toHaveText('EXPORTED V1 closed-context-rescue · NATIVE-COMPATIBLE PCM/TEMPO');
-  await tools.getByRole('button', { name: 'CLOSE', exact: true }).click();
-  await expect(tools).toHaveCount(0);
-
+test('closed Browser AudioContext production recovery adopts and resumes safely', async ({ page }, testInfo) => {
+  const result = await prepareClosedContext(page);
   // Exercise the app's production recovery route. First inject failure while
   // the real replacement BrowserAudioEngine builds its persisted FX graph;
   // this must leave the old closed engine and all exportable PCM/history in
@@ -726,8 +781,11 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     return { oldContextState: oldEngine.context.state, injected };
   });
   expect(failureSetup).toEqual({ oldContextState: 'closed', injected: false });
+  const recoveryTimings: Record<string, number> = {};
+  let operationStarted = performance.now();
   await page.getByTestId('start-audio').click();
   await expect(page.getByRole('alert')).toContainText('injected production recovery worklet failure');
+  recoveryTimings.failedBuildMs = performance.now() - operationStarted;
   const failedProductionRecovery = await page.evaluate(async () => {
     const probe = (window as any).__rc505RecoveryFailureProbe;
     window.AudioWorkletNode = probe.originalNode;
@@ -768,12 +826,14 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     outputLevel: 37,
   });
   expect(failedProductionRecovery.pcm).toEqual(result.beforePcm.map(({ sha256 }: { sha256: string }) => sha256));
-  expect(failedProductionRecovery.history).toEqual(candidateResult.tracks.map((track: any) => track.sourceHistory));
+  expect(failedProductionRecovery.history).toEqual(result.beforeHistoryPcm);
   expect(failedProductionRecovery.historyStatus).toEqual(result.beforeHistory);
   expect(failedProductionRecovery.archiveBytes).toBeGreaterThan(0);
 
+  operationStarted = performance.now();
   await page.getByTestId('start-audio').click();
   await expect(page.getByTestId('recovery-awaiting-resume')).toBeVisible({ timeout: 20_000 });
+  recoveryTimings.adoptionMs = performance.now() - operationStarted;
   const adoptedRecovery = await page.evaluate(async () => {
     const loadModule = (specifier: string) =>
       (new Function('specifier', 'return import(specifier)') as (value: string) => Promise<any>)(specifier);
@@ -867,7 +927,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(adoptedRecovery.trackMixGain).toBeCloseTo(result.recovery.trackMixGainValue, 6);
   expect(adoptedRecovery.mainGain).toBeCloseTo(result.recovery.mainGainValue, 6);
   expect(adoptedRecovery.pcm).toEqual(result.beforePcm.map(({ sha256 }: { sha256: string }) => sha256));
-  expect(adoptedRecovery.history).toEqual(candidateResult.tracks.map((track: any) => track.sourceHistory));
+  expect(adoptedRecovery.history).toEqual(result.beforeHistoryPcm);
   expect(adoptedRecovery.historyStatus).toEqual(result.beforeHistory);
   expect(adoptedRecovery.historyBudget).toEqual({
     retainedBytes: result.recovery.historyBufferBytes,
@@ -916,11 +976,14 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
       return originalConnectMidi(...args);
     };
     probe.outputRetry = {
+      restore: () => { browser.loadAudioWorkletModule = originalLoad; browser.connectMidiInput = originalConnectMidi; },
       get midiConnectCalls() { return midiConnectCalls; },
     };
   });
+  operationStarted = performance.now();
   await page.getByTestId('start-audio').click();
   await expect(page.getByRole('alert')).toContainText('injected recovered output worklet setup failure');
+  recoveryTimings.failedOutputSetupMs = performance.now() - operationStarted;
   await expect(page.getByTestId('recovery-awaiting-resume')).toBeVisible();
   await expect(page.getByTestId('start-audio')).toHaveText('RESUME RECOVERED AUDIO');
   const partialOutputRecovery = await page.evaluate(async () => {
@@ -960,7 +1023,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     contextState: 'running', ready: false, inputReady: false, awaitingResume: true,
     microphoneRequests: 0, midiConnectCalls: 0, midiState: 'disconnected', masterGain: 0, monitorGain: 0,
     pcm: result.beforePcm.map(({ sha256 }: { sha256: string }) => sha256),
-    history: candidateResult.tracks.map((track: any) => track.sourceHistory),
+    history: result.beforeHistoryPcm,
     historyStatus: result.beforeHistory,
     retainedHistoryBytes: result.recovery.historyBufferBytes,
     transportBpm: result.beforeTransport.bpm,
@@ -968,8 +1031,10 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
 
   // Retrying a partially initialized running context must use the recovery
   // output-only path again, never BrowserAudioEngine.init()/microphone setup.
+  operationStarted = performance.now();
   await page.getByTestId('start-audio').click();
   await expect(page.getByTestId('input-status')).toContainText('NOT CONNECTED');
+  recoveryTimings.outputResumeMs = performance.now() - operationStarted;
   const resumedRecovery = await page.evaluate(() => {
     const probe = (window as any).__rc505RecoveryFailureProbe;
     const facade = probe.facade;
@@ -1008,4 +1073,6 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     window.AudioWorkletNode = probe.originalNode;
     probe.mediaDevices.getUserMedia = probe.originalGetUserMedia;
   });
+  await testInfo.attach('production-recovery-timings.json', { body: JSON.stringify(recoveryTimings, null, 2), contentType: 'application/json' });
+
 });
