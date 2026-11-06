@@ -67,17 +67,32 @@ test('Classic ALL controls recover one exact five-track batch without replay', a
       if (request.method() === 'POST' && request.url().includes('/v1/transport/batch-schedule')) requests.push(request.postData() ?? '');
     });
     let blockReceipt = true;
-    await page.route('**/v1/transport/batch-status', route => blockReceipt ? route.abort('failed') : route.continue());
+    let blockedReceiptQueries = 0;
+    let resumedReceiptQueries = 0;
+    await page.route('**/v1/transport/batch-status', route => {
+      if (blockReceipt) { blockedReceiptQueries += 1; return route.abort('failed'); }
+      resumedReceiptQueries += 1;
+      return route.continue();
+    });
     await page.getByRole('button', { name: 'Start all tracks' }).click();
     await expect.poll(() => requests.length).toBe(1);
-    await expect.poll(() => page.evaluate(() => sessionStorage.getItem('webrc.nativeTransportBatchReceipt.v1'))).not.toBeNull();
+    await expect.poll(() => page.evaluate(() => {
+      const raw = sessionStorage.getItem('webrc.nativeTransportBatchReceipt.v1');
+      return raw ? JSON.parse(raw).batchId : null;
+    })).toBeGreaterThan(0);
     const retained = await page.evaluate(() => JSON.parse(sessionStorage.getItem('webrc.nativeTransportBatchReceipt.v1')!));
     expect(retained).toMatchObject({ action: 'play', trackMask: 31 });
+    expect(retained.intentId).toMatch(/^[0-9a-f]{32}$/);
+    expect(retained.hostIncarnationId).toMatch(/^[0-9a-f]{32}$/);
+    expect(retained.revisions).toHaveLength(5);
+    expect(retained.revisions.every((revision: number) => Number.isSafeInteger(revision) && revision > 0)).toBe(true);
+    await expect.poll(() => blockedReceiptQueries).toBeGreaterThan(0);
     await expect(page.getByTestId('start-audio')).toBeEnabled();
     await expect(page.getByTestId('start-audio')).toHaveText('RETRY AUDIO');
     blockReceipt = false;
     await page.getByTestId('start-audio').click();
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem('webrc.nativeTransportBatchReceipt.v1'))).toBeNull();
+    expect(resumedReceiptQueries).toBeGreaterThan(0);
     await expect.poll(async () => {
       const status = await fetch(`${bridge}/v1/status`).then(response => response.json());
       return status.nativeTracks.map((track: { state: string }) => track.state);
