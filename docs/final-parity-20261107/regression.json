@@ -143,7 +143,37 @@
       "browserErrors": []
     }
   },
+  "currentIntegrated": {
+    "sourceCommit": "f4e9f99ed2b6714ff08438013020ff18a0dfa8c5",
+    "unit": {
+      "files": 227,
+      "passed": 2833,
+      "failed": 0,
+      "skipped": 0,
+      "workers": 2,
+      "reportFile": "rc505-main-unit-f4e9f99-20261107.json",
+      "reportSha256": "f3f7d7d43a6fb108249062ae90628d4623ce78a8e94bb36980101cfdb78c363e"
+    },
+    "productionBuild": "PASS: TypeScript, both worklets, Vite, six license files",
+    "scopedE2e": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "retry": 0,
+      "durationMs": 52458.433,
+      "workers": 1,
+      "testTimeoutMs": 30000,
+      "reportFile": "rc505-main-scoped-f4e9f99-20261107.json",
+      "reportSha256": "8e2a6f162f56ea007a2ce017ea253ea4a9dc2e6b1b7c4fb6d7e583adf0013714",
+      "scope": "closed-context three scenarios, Browser/Native archive v2, Classic navigation/layers/virtual recording and 1920/1366 layouts"
+    },
+    "completeE2e": "PENDING on this source",
+    "rhythmHqHostSha256": "2dfaaf8b05269f93e385eb235738fb748a88c0470fbf71ccf75905f9505ffa4e",
+    "nativeTrackedTree": "6360a7ebab7123cb49173c4bfd28c70c0a7d16d1",
+    "nativeBuildScope": "Rhythm worktree fresh HQ build; tracked native tree equals integrated source, not an independently rebuilt root executable"
+  },
   "hardware": {
+    "checkedAt": "2026-11-07T06:32:38.6887454+08:00",
     "rc505SoundDeviceDetected": false,
     "rc505PresentPnpDetected": false,
     "physicalAcceptance": "HARDWARE_RC505_BLOCKED"
