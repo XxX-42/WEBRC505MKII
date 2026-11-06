@@ -46,7 +46,7 @@ describe('Native REC tempo provenance tokens', () => {
     };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       requestBodies.push({ url: String(input), body: typeof init?.body === 'string' ? init.body : undefined });
-      if (String(input).endsWith('/record-tempo/receipt')) return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 1, state: 1 });
+      if (String(input).endsWith('/record-tempo/receipts')) return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), receipts: [{ identity: JSON.parse(sessionStorage.getItem('rc505.native.tempo-confirmation.1')!), revision: 1, state: 1 }] });
       return jsonResponse(status);
     }));
     const client = new NativeBridgeClient('http://127.0.0.1:17755');
@@ -77,10 +77,10 @@ describe('Native REC tempo provenance tokens', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/record-tempo/confirm')) { confirmCalls += 1; throw new Error('response lost'); }
-      if (url.endsWith('/record-tempo/receipt')) {
+      if (url.endsWith('/record-tempo/receipts')) {
         receiptCalls += 1;
         if (receiptCalls === 1) throw new Error('offline');
-        return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 9, state: 1 });
+        return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), receipts: [{ identity: JSON.parse(sessionStorage.getItem('rc505.native.tempo-confirmation.1')!), revision: 9, state: 1 }] });
       }
       return jsonResponse(status);
     }));
@@ -130,7 +130,7 @@ describe('Native REC tempo provenance tokens', () => {
         if (capacity) return { ok: false, status: 429, json: async () => ({ ok: false, error: 'full; no submission' }) } as Response;
         throw new Error('response lost');
       }
-      if (url.endsWith('/receipt')) return jsonResponse({ ok: true, identity: { ...JSON.parse(init!.body as string), stopRevision: 999 }, revision: 1, state: 1 });
+      if (url.endsWith('/receipts')) return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), receipts: [{ identity: { ...JSON.parse(sessionStorage.getItem('rc505.native.tempo-confirmation.1')!), stopRevision: 999 }, revision: 1, state: 1 }] });
       return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), nativeRecordTempoProvenance: { requestedRevision: [0, 0, 0, 0, 0] } });
     }));
     const client = new NativeBridgeClient('http://127.0.0.1:17755');
@@ -155,7 +155,7 @@ describe('Native REC tempo provenance tokens', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/confirm')) { confirms += 1; return jsonResponse({ ok: true }); }
-      if (url.endsWith('/receipt')) return jsonResponse({ ok: true, identity: JSON.parse(init!.body as string), revision: 2, state: 2 });
+      if (url.endsWith('/receipts')) return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), receipts: [{ identity: JSON.parse(sessionStorage.getItem('rc505.native.tempo-confirmation.1')!), revision: 2, state: 2 }] });
       return jsonResponse({ ok: true, hostIncarnationId: 'a'.repeat(32), nativeRecordTempoProvenance: { requestedRevision: [1, 0, 0, 0, 0] } });
     }));
     const client = new NativeBridgeClient('http://127.0.0.1:17755');
@@ -174,6 +174,7 @@ describe('Native REC tempo provenance tokens', () => {
     engine.bridge = {
       confirmTrackTempoProvenance: vi.fn(async () => { order.push('confirm'); return { ok: true }; }),
       releaseTrackTempoConfirmation: vi.fn(async () => { order.push('release'); }),
+      getRetainedTrackTempoConfirmations: vi.fn(() => []),
     };
     engine.dispatchStatusRequest = async (request: () => Promise<unknown>) => {
       const result = await request(); order.push('apply'); return result;

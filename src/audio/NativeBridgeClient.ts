@@ -1656,11 +1656,17 @@ export class NativeBridgeClient {
     }
     const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
     for (;;) {
-      let receipt: { ok: boolean; identity?: Record<string, unknown>; revision?: number; state?: number };
+      let receipt: { identity?: Record<string, unknown>; revision?: number; state?: number } | undefined;
       try {
-        receipt = await this.request('/v1/transport/record-tempo/receipt', { method: 'POST', body: JSON.stringify(identity) });
+        const inventory = await this.request<{ ok: boolean; hostIncarnationId?: string;
+          receipts?: Array<{ identity?: Record<string, unknown>; revision?: number; state?: number }> }>(
+          '/v1/transport/record-tempo/receipts', { headers: { 'X-Native-Host-Incarnation': identity.hostIncarnationId as string } });
+        if (inventory.hostIncarnationId !== identity.hostIncarnationId || !Array.isArray(inventory.receipts)) throw new Error('host mismatch');
+        const matches = inventory.receipts.filter(item => isObject(item) && isObject(item.identity) && item.identity.operationId === identity.operationId);
+        if (matches.length !== 1) throw new Error('exact receipt is unavailable');
+        receipt = matches[0];
       } catch { throw new Error('Native tempo confirmation outcome is unknown; retain its exact receipt and query it again, never resend.'); }
-      if (!isObject(receipt.identity) || Object.keys(receipt.identity).length !== Object.keys(identity).length ||
+      if (!receipt || !isObject(receipt.identity) || Object.keys(receipt.identity).length !== Object.keys(identity).length ||
           Object.entries(identity).some(([field, value]) => receipt.identity![field] !== value) ||
           !Number.isSafeInteger(receipt.revision) || receipt.revision! <= 0 || ![0, 1, 2].includes(receipt.state!)) {
         throw new Error('Native tempo confirmation receipt does not match its exact identity; outcome remains unknown.');
@@ -1678,6 +1684,21 @@ export class NativeBridgeClient {
       if (Date.now() >= deadline) throw new Error('Native tempo confirmation remains pending; query its exact receipt again, never resend.');
       await new Promise(resolve => setTimeout(resolve, 10));
     }
+  }
+
+  public getRetainedTrackTempoConfirmations(): Array<{ trackId: number; releasePending: boolean; rejected: boolean }> {
+    const retained: Array<{ trackId: number; releasePending: boolean; rejected: boolean }> = [];
+    for (let trackId = 1; trackId <= 5; trackId += 1) {
+      const key = `rc505.native.tempo-confirmation.${trackId}`;
+      const saved = globalThis.sessionStorage?.getItem(key);
+      if (!saved) continue;
+      let operationId: unknown;
+      try { operationId = (JSON.parse(saved) as Record<string, unknown>).operationId; } catch { /* fail closed below */ }
+      retained.push({ trackId,
+        releasePending: typeof operationId === 'string' && globalThis.sessionStorage.getItem(`${key}.releasePending`) === operationId,
+        rejected: typeof operationId === 'string' && globalThis.sessionStorage.getItem(`${key}.rejected`) === operationId });
+    }
+    return retained;
   }
 
   /** Read host-owned receipts, including those orphaned by a lost browser tab. */
