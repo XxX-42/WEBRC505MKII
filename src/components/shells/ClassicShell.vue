@@ -186,6 +186,6 @@ onBeforeUnmount(() => {
   .zoom-slider-label { gap: 4px; }
   .zoom-slider-label input { width: 72px; }
   .classic-fit { margin: 8px; }
-  .viewport-warning { font-size: 11px; }
+  .viewport-warning { flex: 0 0 auto; font-size: 11px; }
 }
 </style>

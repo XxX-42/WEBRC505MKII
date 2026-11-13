@@ -287,6 +287,17 @@ struct NativeAudioCoreTestAccess {
     static int inputCallback(NativeAudioCore& core, const float* input, unsigned int frames) {
         return NativeAudioCore::inputAudioCallback(nullptr, const_cast<float*>(input), frames, 0.0, 0U, &core);
     }
+    static int outputCallback(NativeAudioCore& core, float* output, unsigned int frames) {
+        return NativeAudioCore::outputAudioCallback(output, nullptr, frames, 0.0,
+            static_cast<RtAudioStreamStatus>(0), &core);
+    }
+    static bool scheduledCommand(NativeAudioCore& core, CommandType type, std::size_t trackIndex) {
+        NativeAudioCore::ScheduledTrackCommandContext context{};
+        context.core = &core;
+        context.command = {type, false, static_cast<std::uint8_t>(trackIndex)};
+        NativeAudioCore::applyScheduledTrackCommand(&context);
+        return context.applied;
+    }
 
     static void setRunningForQueueTest(NativeAudioCore& core, bool running) {
         core.engineRunning_.store(running, std::memory_order_release);
@@ -1417,6 +1428,161 @@ void testNativeLivePolyPitchUsesOnlyPlaybackTap() {
     assert(shortStatus.nativePitchMode == NativePitchMode::LivePolyPhaseVocoder);
     assert(!shortStatus.nativePitchActive);
     assert(shortStatus.nativePitchFallbackReason == NativePitchFallbackReason::LoopShorterThanLatency);
+}
+
+void testNativeMonoPitchIgnoresUnrelatedTrackCommandsAcrossCallbackEntries() {
+    constexpr unsigned int frames = 64U;
+    constexpr unsigned int loopFrames = 8192U;
+    NativePitchConfig pitch;
+    pitch.enabled = true;
+    pitch.trackId = 1U;
+    pitch.semitones = 7.0f;
+    std::string error;
+    const auto prepare = [&](NativeAudioCore& core) {
+        NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+        assert(core.setNativePitchConfig(pitch, error));
+        std::array<float, frames * 2U> output{};
+        NativeAudioCoreTestAccess::recordLoop(core, 0U,
+            makeCallbackTestTone(220.0f, loopFrames, 0.25f), frames, output.data());
+        NativeAudioCoreTestAccess::recordLoop(core, 1U,
+            std::vector<float>(loopFrames, 0.0f), frames, output.data());
+        NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        for (unsigned int i = 0U; i < 96U; ++i)
+            assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        assert(core.getStatus().nativePitchActive);
+    };
+    auto reference = std::make_unique<NativeAudioCore>();
+    auto queued = std::make_unique<NativeAudioCore>();
+    auto splitReference = std::make_unique<NativeAudioCore>();
+    auto splitQueued = std::make_unique<NativeAudioCore>();
+    auto scheduled = std::make_unique<NativeAudioCore>();
+    auto scheduledReference = std::make_unique<NativeAudioCore>();
+    for (auto* core : {reference.get(), queued.get(), splitReference.get(), splitQueued.get(),
+        scheduled.get(), scheduledReference.get()}) prepare(*core);
+
+    std::array<float, frames * 2U> expected{}, actual{};
+    assert(NativeAudioCoreTestAccess::callback(*reference, nullptr, expected.data(), frames) == 0);
+    NativeAudioCoreTestAccess::commandTrack(*queued, CommandType::Play, 1U);
+    assert(NativeAudioCoreTestAccess::callback(*queued, nullptr, actual.data(), frames) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i) assert(actual[i] == expected[i]);
+    NativeAudioCoreTestAccess::commandTrack(*queued, CommandType::StopRecordOrPlayback, 1U);
+    assert(NativeAudioCoreTestAccess::callback(*queued, nullptr, actual.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*reference, nullptr, expected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i) assert(actual[i] == expected[i]);
+
+    // The split input entry drains the same transport queue and must preserve
+    // the selected track's live pitch history just like the duplex callback.
+    std::array<float, frames> silentInput{};
+    NativeAudioCoreTestAccess::commandTrack(*splitQueued, CommandType::Play, 1U);
+    assert(NativeAudioCoreTestAccess::inputCallback(*splitQueued, silentInput.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::inputCallback(*splitReference, silentInput.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::outputCallback(*splitQueued, actual.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::outputCallback(*splitReference, expected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i) assert(actual[i] == expected[i]);
+
+    // Scheduled commands share applyTrackCommandAtCallback; exercise the
+    // callback wrapper directly to guard that reset semantics stay aligned.
+    assert(NativeAudioCoreTestAccess::scheduledCommand(*scheduled, CommandType::Play, 1U));
+    assert(NativeAudioCoreTestAccess::callback(*scheduled, nullptr, actual.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*scheduledReference, nullptr, expected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i) assert(actual[i] == expected[i]);
+
+    // Target 0 is the shared playback mix: adding a real playing member must
+    // begin a fresh pitch epoch, unlike a command on an unselected track above.
+    auto sharedMix = std::make_unique<NativeAudioCore>();
+    auto sharedReference = std::make_unique<NativeAudioCore>();
+    NativeAudioCoreTestAccess::prepareWithoutDevice(*sharedMix);
+    NativeAudioCoreTestAccess::prepareWithoutDevice(*sharedReference);
+    pitch.trackId = 0U;
+    assert(sharedMix->setNativePitchConfig(pitch, error));
+    assert(sharedReference->setNativePitchConfig(pitch, error));
+    std::array<float, frames * 2U> sharedOutput{};
+    NativeAudioCoreTestAccess::recordLoop(*sharedMix, 0U,
+        makeCallbackTestTone(220.0f, loopFrames, 0.2f), frames, sharedOutput.data());
+    NativeAudioCoreTestAccess::recordLoop(*sharedMix, 1U,
+        std::vector<float>(loopFrames, 0.0f), frames, sharedOutput.data());
+    NativeAudioCoreTestAccess::recordLoop(*sharedReference, 0U,
+        makeCallbackTestTone(220.0f, loopFrames, 0.2f), frames, sharedOutput.data());
+    NativeAudioCoreTestAccess::recordLoop(*sharedReference, 1U,
+        std::vector<float>(loopFrames, 0.0f), frames, sharedOutput.data());
+    NativeAudioCoreTestAccess::commandTrack(*sharedMix, CommandType::Play, 0U);
+    NativeAudioCoreTestAccess::commandTrack(*sharedReference, CommandType::Play, 0U);
+    assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+    std::array<float, frames * 2U> sharedExpected{};
+    assert(NativeAudioCoreTestAccess::callback(*sharedReference, nullptr, sharedExpected.data(), frames) == 0);
+    for (unsigned int i = 0U; i < 96U; ++i) {
+        assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+        assert(NativeAudioCoreTestAccess::callback(*sharedReference, nullptr, sharedExpected.data(), frames) == 0);
+    }
+    assert(sharedMix->getStatus().nativePitchActive);
+    NativeAudioCoreTestAccess::commandTrack(*sharedMix, CommandType::Play, 1U);
+    assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*sharedReference, nullptr, sharedExpected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < sharedOutput.size(); ++i) assert(sharedOutput[i] == sharedExpected[i]);
+    NativeAudioCoreTestAccess::commandTrack(*sharedMix, CommandType::StopRecordOrPlayback, 1U);
+    assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*sharedReference, nullptr, sharedExpected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < sharedOutput.size(); ++i) assert(sharedOutput[i] == sharedExpected[i]);
+    NativeAudioCoreTestAccess::commandTrack(*sharedMix, CommandType::StopRecordOrPlayback, 0U);
+    assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+    NativeAudioCoreTestAccess::commandTrack(*sharedMix, CommandType::Play, 0U);
+    assert(NativeAudioCoreTestAccess::callback(*sharedMix, nullptr, sharedOutput.data(), frames) == 0);
+    for (const float sample : sharedOutput) assert(std::fabs(sample) < 1.0e-6f);
+}
+
+void testNativeSharedPitchOneShotRestartOnlyResetsForSoloSource() {
+    constexpr unsigned int frames = 64U;
+    constexpr unsigned int loopFrames = 8192U;
+    NativePitchConfig pitch;
+    pitch.enabled = true;
+    pitch.trackId = 0U;
+    pitch.semitones = 7.0f;
+    LoopTransportConfig oneShot;
+    oneShot.oneShot = true;
+    std::string error;
+    std::array<float, frames * 2U> output{};
+
+    auto solo = std::make_unique<NativeAudioCore>();
+    NativeAudioCoreTestAccess::prepareWithoutDevice(*solo);
+    assert(solo->setNativePitchConfig(pitch, error));
+    assert(solo->setNativeLoopTransport(0U, oneShot, error));
+    NativeAudioCoreTestAccess::recordLoop(*solo, 0U,
+        makeCallbackTestTone(220.0f, loopFrames, 0.2f), frames, output.data());
+    NativeAudioCoreTestAccess::commandTrack(*solo, CommandType::Play, 0U);
+    assert(NativeAudioCoreTestAccess::callback(*solo, nullptr, output.data(), frames) == 0);
+    for (unsigned int i = 0U; i < 96U; ++i)
+        assert(NativeAudioCoreTestAccess::callback(*solo, nullptr, output.data(), frames) == 0);
+    assert(solo->getStatus().nativePitchActive);
+    NativeAudioCoreTestAccess::commandTrack(*solo, CommandType::Play, 0U);
+    assert(NativeAudioCoreTestAccess::callback(*solo, nullptr, output.data(), frames) == 0);
+    assert(solo->getStatus().nativeTrackStates[0] == LooperState::Playing);
+    for (const float sample : output) assert(std::fabs(sample) < 1.0e-6f);
+
+    // Restarting one silent one-shot member of an already active shared mix
+    // must preserve the other member's continuous pitch state.
+    auto multi = std::make_unique<NativeAudioCore>();
+    auto multiReference = std::make_unique<NativeAudioCore>();
+    for (auto* core : {multi.get(), multiReference.get()}) {
+        NativeAudioCoreTestAccess::prepareWithoutDevice(*core);
+        assert(core->setNativePitchConfig(pitch, error));
+        assert(core->setNativeLoopTransport(0U, oneShot, error));
+        NativeAudioCoreTestAccess::recordLoop(*core, 0U,
+            std::vector<float>(loopFrames, 0.0f), frames, output.data());
+        NativeAudioCoreTestAccess::recordLoop(*core, 1U,
+            makeCallbackTestTone(330.0f, loopFrames, 0.2f), frames, output.data());
+        NativeAudioCoreTestAccess::commandTrack(*core, CommandType::Play, 0U);
+        NativeAudioCoreTestAccess::commandTrack(*core, CommandType::Play, 1U);
+        assert(NativeAudioCoreTestAccess::callback(*core, nullptr, output.data(), frames) == 0);
+        for (unsigned int i = 0U; i < 96U; ++i)
+            assert(NativeAudioCoreTestAccess::callback(*core, nullptr, output.data(), frames) == 0);
+        assert(core->getStatus().nativePitchActive);
+    }
+    NativeAudioCoreTestAccess::commandTrack(*multi, CommandType::Play, 0U);
+    std::array<float, frames * 2U> actual{}, expected{};
+    assert(NativeAudioCoreTestAccess::callback(*multi, nullptr, actual.data(), frames) == 0);
+    assert(NativeAudioCoreTestAccess::callback(*multiReference, nullptr, expected.data(), frames) == 0);
+    for (std::size_t i = 0U; i < actual.size(); ++i) assert(actual[i] == expected[i]);
 }
 
 void testNativeCatalogSlotsRunInsidePlaybackCallback() {
@@ -4646,6 +4812,8 @@ int main() {
     testNativeTransportBatchShortOneShotAcknowledgesAtCommandFrame();
     testNativeTransportBatchStopPreservesEachRecordingTempoToken();
     testNativePitchChangesOnlyLoopPlaybackAndIsRealtimeSafe();
+    testNativeMonoPitchIgnoresUnrelatedTrackCommandsAcrossCallbackEntries();
+    testNativeSharedPitchOneShotRestartOnlyResetsForSoloSource();
     testNativeLivePolyPitchUsesOnlyPlaybackTap();
     testNativeInputCatalogLoFiProcessesLiveBeforeRecord();
     testNativeTrackFxApplySelectsRecordingSourceAtCallbackBoundary();

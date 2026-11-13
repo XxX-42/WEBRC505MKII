@@ -940,7 +940,9 @@ export class NativeBridgeClient {
       this.pendingNativeTransportBatch, this.latestStatus,
       new Error('An earlier ALL batch is unresolved; reconcile it before another transport action.'),
     );
+    const clockStarted = performance.now();
     const before = await this.getStatus();
+    const statusRoundTripMs = performance.now() - clockStarted;
     const scheduling = before.nativeLoopFrameScheduling;
     const hostIncarnationId = before.hostIncarnationId;
     const sampleFrame = before.nativeSampleFrame;
@@ -1002,7 +1004,19 @@ export class NativeBridgeClient {
         !Number.isSafeInteger(before.bufferFrames) || before.bufferFrames <= 0) {
       throw new Error('Native status lacks an audio frame clock; ALL was not submitted.');
     }
-    const absoluteFrame = sampleFrame! + Math.max(before.bufferFrames * 4, Math.ceil(before.sampleRate / 2));
+    // The status sample may have been captured as early as GET start. Budget
+    // its full age plus another observed RTT for the POST, then four render
+    // blocks for callback/HTTP jitter. No clamp: stale measurements fail closed.
+    const statusAgeMs = performance.now() - clockStarted;
+    const leadMs = statusAgeMs + statusRoundTripMs + 4 * before.bufferFrames * 1000 / before.sampleRate;
+    if (!Number.isFinite(leadMs) || statusRoundTripMs < 0 || statusAgeMs < statusRoundTripMs || leadMs > 250) {
+      throw new Error('Native ALL clock observation is too old for low-latency scheduling; no batch was submitted. Retry after the bridge responds promptly.');
+    }
+    const leadFrames = Math.ceil(leadMs * before.sampleRate / 1000 / before.bufferFrames) * before.bufferFrames;
+    if (!Number.isFinite(leadFrames) || leadFrames * 1000 / before.sampleRate > 250) {
+      throw new Error('Native ALL clock observation is too old for low-latency scheduling; no batch was submitted. Retry after the bridge responds promptly.');
+    }
+    const absoluteFrame = sampleFrame! + leadFrames;
     if (!Number.isSafeInteger(absoluteFrame) || absoluteFrame <= sampleFrame!) throw new Error('Native ALL target frame is outside the safe integer range.');
     const intentId = createNativeRhythmIntentId();
     const unknownReceipt: NativeTransportBatchReceipt = { batchId: null, trackMask, action, intentId,

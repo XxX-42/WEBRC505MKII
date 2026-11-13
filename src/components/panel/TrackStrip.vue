@@ -71,6 +71,7 @@
           @pointerup="handleStopPointerUp"
           @pointercancel="handleStopPointerCancel"
           @lostpointercapture="handleStopLostPointerCapture"
+          @click="handleStopClick"
           @keydown.space.prevent="handleStopKeyDown"
           @keyup.space.prevent="handleStopKeyUp"
           @keydown.enter.prevent="handleStopKeyDown"
@@ -205,6 +206,14 @@ const {
   handleStopKeyDown,
   handleStopKeyUp,
 } = trackController;
+
+function handleStopClick(event: MouseEvent): void {
+  // Pointer releases already stop the track; key handlers prevent native clicks.
+  // Assistive technology and HTMLElement.click() activate without a press sequence.
+  if (event.detail !== 0 || stopPressActive.value || !resolvedControls.value.stop.enabled) return;
+  trackController.startStopPress('keyboard');
+  trackController.endStopPress('keyboard');
+}
 
 const trackTransportReady = computed(() => trackTransportEnabled.value && audioReady.value);
 const loopIndicatorPosition = computed(() => {

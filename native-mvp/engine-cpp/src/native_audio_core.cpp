@@ -2172,6 +2172,53 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     const std::uint64_t originalTempoBefore = originalTempoBpmBits_[index].load(std::memory_order_acquire);
     track.applyCommand(command);
     const LoopMetadata after = track.metadata();
+    const auto contributesPitchPlayback = [this](std::size_t trackIndex, LooperState state) noexcept {
+        return !historyPinSuppressesPlayback(trackIndex) &&
+            (state == LooperState::Playing || state == LooperState::Overdubbing);
+    };
+    bool pitchSourceMembershipChanged = false;
+    if (nativePitchRuntimeEnabled_ && nativePitchRuntimeTrackId_ == 0U) {
+        bool hadSharedPlaybackSource = false;
+        bool hasSharedPlaybackSource = false;
+        for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
+            const auto state = trackIndex == index ? before.state : looperForTrack(trackIndex).state();
+            hadSharedPlaybackSource = hadSharedPlaybackSource || contributesPitchPlayback(trackIndex, state);
+            const auto nextState = trackIndex == index ? after.state : state;
+            hasSharedPlaybackSource = hasSharedPlaybackSource || contributesPitchPlayback(trackIndex, nextState);
+        }
+        pitchSourceMembershipChanged = hadSharedPlaybackSource != hasSharedPlaybackSource;
+    } else if (nativePitchRuntimeEnabled_ && nativePitchRuntimeTrackId_ == index + 1U) {
+        pitchSourceMembershipChanged = contributesPitchPlayback(index, before.state) !=
+            contributesPitchPlayback(index, after.state);
+    }
+    bool pitchSharedSoloSourceRestarted = false;
+    if (nativePitchRuntimeEnabled_ && nativePitchRuntimeTrackId_ == 0U &&
+        command.type == CommandType::Play && before.state == LooperState::Playing &&
+        after.state == LooperState::Playing && track.loopTransportConfig().oneShot &&
+        contributesPitchPlayback(index, before.state)) {
+        pitchSharedSoloSourceRestarted = true;
+        for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
+            if (trackIndex == index) continue;
+            if (contributesPitchPlayback(trackIndex, looperForTrack(trackIndex).state())) {
+                pitchSharedSoloSourceRestarted = false;
+                break;
+            }
+        }
+    }
+    const bool pitchSourceRestarted = nativePitchRuntimeEnabled_ &&
+        nativePitchRuntimeTrackId_ == index + 1U &&
+        command.type == CommandType::Play &&
+        before.state == LooperState::Playing && after.state == LooperState::Playing &&
+        track.loopTransportConfig().oneShot;
+    if (pitchSourceMembershipChanged || pitchSourceRestarted || pitchSharedSoloSourceRestarted) {
+        // LIVE_MONO and LIVE_POLY keep streaming state for the selected source.
+        // A selected source resets when it enters/leaves playback or a
+        // one-shot restarts. The shared target-0 mix resets when the whole mix
+        // enters/leaves playback, plus a solo one-shot restart; a member
+        // stopping/restarting cannot interrupt another member's pitch state.
+        nativePitchProcessor_->reset();
+        nativePolyPitchProcessor_->reset();
+    }
     bool tempoProvenanceConfirmed = false;
     if (command.type == CommandType::ConfirmRecordTempoProvenance) {
         const auto requestedBpmBits = originalTempoBits(command.provenanceValid
@@ -6187,11 +6234,6 @@ int NativeAudioCore::handleAudioCallback(
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
-            if (command.type == CommandType::Record || command.type == CommandType::FinishRecording || command.type == CommandType::StopRecordOrPlayback ||
-                command.type == CommandType::Play || command.type == CommandType::Clear) {
-                nativePitchProcessor_->reset();
-                nativePolyPitchProcessor_->reset();
-            }
             applyTrackCommandAtCallback(command);
             if (command.type != CommandType::SetRecordAction && command.type != CommandType::SetMonitoring &&
                 command.trackIndex < kNativeTrackCount) {
@@ -6278,11 +6320,6 @@ int NativeAudioCore::handleInputAudioCallback(
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
-            if (command.type == CommandType::Record || command.type == CommandType::FinishRecording || command.type == CommandType::StopRecordOrPlayback ||
-                command.type == CommandType::Play || command.type == CommandType::Clear) {
-                nativePitchProcessor_->reset();
-                nativePolyPitchProcessor_->reset();
-            }
             applyTrackCommandAtCallback(command);
             if (command.type != CommandType::SetRecordAction && command.type != CommandType::SetMonitoring &&
                 command.trackIndex < kNativeTrackCount) {

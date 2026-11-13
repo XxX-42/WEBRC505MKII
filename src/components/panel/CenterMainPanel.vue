@@ -1173,7 +1173,7 @@ onUnmounted(() => {
   font-family: var(--font-lcd, 'Lucida Console', monospace);
 }
 .lcd-display:not(.lcd-editor-active) { aspect-ratio: 2 / 1; }
-.lcd-display.lcd-editor-active { grid-template-rows: 12px 12px minmax(0, 1fr) 24px; gap: 1px; }
+.lcd-display.lcd-editor-active { grid-template-rows: 12px minmax(0, 1fr) 24px; gap: 1px; }
 .lcd-editor-active .lcd-status { display: -webkit-box; line-height: 12px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: 2; }
 .lcd-data-rows { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); gap: 1px; min-height: 0; overflow: hidden; color: #202d41; font-size: 11px; line-height: 1; }
 .lcd-data-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }

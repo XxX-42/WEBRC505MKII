@@ -13,6 +13,8 @@ export interface NativeMemoryPort {
   install?(status: NativeStatus): void;
   syncRhythmBpm?(bpm: number, hostIncarnationId: string): Promise<boolean>;
   suppressTransportSync?(): () => void;
+  /** Apply archive BPM without creating an ordinary user tempo intent. */
+  applyTransportBpm?(bpm: number): void;
   /** Host publication is confirmed; invalidate previous-generation UI ACKs before any readback. */
   committed?(generation: number): void;
   pendingEdits?(): boolean;
@@ -491,7 +493,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           transport.masterTrackId = savedTransport.masterTrackId;
           transport.measureLength = savedTransport.measureLengthSeconds;
           transport.masterLoopLengthSamples = savedTransport.masterLoopLengthSamples;
-          transport.setBpm(document.semantics.tempo);
+          if (port.applyTransportBpm) port.applyTransportBpm(document.semantics.tempo);
+          else transport.setBpm(document.semantics.tempo);
           if (port.clearOperationIntent) await port.clearOperationIntent(operationId);
           else await operationIntentStore.clearNativeImportOperationIntent(operationId);
           } catch (error) {

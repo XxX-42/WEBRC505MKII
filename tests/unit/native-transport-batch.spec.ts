@@ -253,6 +253,54 @@ describe('Native ALL atomic transport batches', () => {
     expect(client.getPendingNativeTransportBatch()).toBeNull();
   });
 
+  it('budgets status age, GET round trip, and four callback blocks into the ALL frame', async () => {
+    const { posts } = mockBatch('play');
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? 'GET').toUpperCase() === 'GET' && new URL(String(input)).pathname === '/v1/status') now += 10;
+      return originalFetch(input, init);
+    });
+    const client = new NativeBridgeClient('http://native.test');
+    // The GET takes 10 ms. Its round trip is budgeted again for the POST,
+    // along with four 128-frame blocks (10.67 ms at 48 kHz).
+    await client.scheduleNativeTransportBatch('play');
+    const schedule = posts.find(item => item.path === '/v1/transport/batch-schedule');
+    expect(schedule?.body.absoluteFrame).toBeGreaterThanOrEqual(1_000 + Math.ceil(30.67 / (128 * 1000 / 48_000)) * 128);
+  });
+
+  it('does not submit an ALL batch when the clock observation exceeds the latency budget', async () => {
+    const { posts } = mockBatch('play');
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const originalFetch = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? 'GET').toUpperCase() === 'GET' && new URL(String(input)).pathname === '/v1/status') now += 130;
+      return originalFetch(input, init);
+    });
+    const client = new NativeBridgeClient('http://native.test');
+    await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/clock observation is too old/);
+    expect(posts.filter(item => item.path === '/v1/transport/batch-schedule')).toHaveLength(0);
+  });
+
+  it('rejects an ALL lead that fits the raw cap but exceeds it after block alignment', async () => {
+    const { posts } = mockBatch('play');
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const originalFetch = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? 'GET').toUpperCase() === 'GET' && new URL(String(input)).pathname === '/v1/status') now += 119;
+      return originalFetch(input, init);
+    });
+    const client = new NativeBridgeClient('http://native.test');
+    // Raw lead is 119 + 119 + 10.67 = 248.67 ms. Rounding to the next
+    // 128-frame block would exceed the 250 ms scheduling limit.
+    await expect(client.scheduleNativeTransportBatch('play')).rejects.toThrow(/clock observation is too old/);
+    expect(posts.filter(item => item.path === '/v1/transport/batch-schedule')).toHaveLength(0);
+  });
+
   it('accepts an archived ACK even when later track state and schedule have changed', async () => {
     mockBatch('play', false, false, 'mutate');
     const client = new NativeBridgeClient('http://native.test');

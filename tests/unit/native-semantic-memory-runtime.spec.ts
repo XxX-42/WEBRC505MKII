@@ -61,11 +61,13 @@ function fixture(archiveBpm = 120) {
     status = { ...status, nativeRhythm: { ...status.nativeRhythm!, bpm } };
     return true;
   });
+  const applyTransportBpm = vi.fn((bpm: number) => Transport.getInstance().setBpm(bpm));
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
     status: () => cached, editRevision: () => String(edits), publish, install, committed, syncRhythmBpm,
+    applyTransportBpm,
     persistOperationIntent, readOperationIntent, clearOperationIntent, listOperationIntents,
     archive: () => encodeProjectArchive({ name: '', bpm: archiveBpm, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, install, committed, persistOperationIntent, readOperationIntent, clearOperationIntent, listOperationIntents, publish, syncRhythmBpm, hostStatus: () => status,
+  return { runtime, bridge, install, committed, persistOperationIntent, readOperationIntent, clearOperationIntent, listOperationIntents, publish, syncRhythmBpm, applyTransportBpm, hostStatus: () => status,
     restartHost: (hostIncarnationId: string) => { status = { ...status, hostIncarnationId }; cached = status; },
     edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
@@ -388,6 +390,7 @@ describe('Native semantic Memory runtime', () => {
     expect(h.syncRhythmBpm).toHaveBeenCalledExactlyOnceWith(90, 'a'.repeat(32));
     expect(h.hostStatus().nativeRhythm?.bpm).toBe(90);
     expect(transport.bpm).toBe(90);
+    expect(h.applyTransportBpm).toHaveBeenCalledExactlyOnceWith(90);
     await prepared.dispose();
   });
   it('refuses to install Memory semantics when the host restarts after commit ACK', async () => {

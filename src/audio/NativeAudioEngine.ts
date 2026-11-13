@@ -271,7 +271,7 @@ export class NativeAudioEngine {
     const revision = transport.tempoMutationRevision;
     if (revision === this.lastObservedLocalTempoRevision) return;
     this.lastObservedLocalTempoRevision = revision;
-    if (this.nativeMemoryTransportSyncSuppressions > 0 || this.syncingNativeRhythmBpm) return;
+    if (this.syncingNativeRhythmBpm) return;
     this.localTempoIntent = { revision, bpm: transport.bpm, host: this.boundTempoHost,
       floor: this.confirmedTempoRevision, state: 'unsent' };
     this.localTempoError = '';
@@ -1065,14 +1065,12 @@ export class NativeAudioEngine {
       archive: () => this.exportProjectArchive(''),
       publish: (status, synchronizeRhythmBpm = true) => this.applyStatus(status, synchronizeRhythmBpm),
       syncRhythmBpm: (bpm, hostIncarnationId) => this.rhythmEngine.setBpm(bpm, hostIncarnationId),
-      suppressTransportSync: () => {
-        this.nativeMemoryTransportSyncSuppressions += 1;
-        let released = false;
-        return () => {
-          if (released) return;
-          released = true;
-          this.nativeMemoryTransportSyncSuppressions = Math.max(0, this.nativeMemoryTransportSyncSuppressions - 1);
-        };
+      suppressTransportSync: () => this.suppressMemoryTransportSync(),
+      applyTransportBpm: (bpm) => {
+        const wasSyncing = this.syncingNativeRhythmBpm;
+        this.syncingNativeRhythmBpm = true;
+        try { Transport.getInstance().setBpm(bpm); }
+        finally { this.syncingNativeRhythmBpm = wasSyncing; }
       },
       committed: (generation) => {
         this.nativeMemoryReadbackGeneration = generation;
@@ -3346,6 +3344,18 @@ export class NativeAudioEngine {
       if (this.localTempoIntent?.host && this.localTempoIntent.host !== host) this.localTempoIntent.state = 'failed';
     }
     this.tempoHostChangeDetected = false;
+  }
+
+  /** Suppress host writes/adoption, but continue collecting actual user edits. */
+  private suppressMemoryTransportSync(): () => void {
+    this.nativeMemoryTransportSyncSuppressions += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.nativeMemoryTransportSyncSuppressions -= 1;
+      if (this.nativeMemoryTransportSyncSuppressions === 0) this.dispatchLocalTempoIntent();
+    };
   }
 
   private dispatchLocalTempoIntent(): void {

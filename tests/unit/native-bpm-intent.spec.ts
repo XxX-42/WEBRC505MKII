@@ -259,4 +259,35 @@ describe('Native user BPM intent and confirmed revision', () => {
     await vi.waitFor(() => expect(engine.localTempoIntent).toBeNull());
     expect(transport.bpm).toBe(126);
   });
+
+  it('retains user BPM edits during Memory suppression and dispatches the latest edit on release', async () => {
+    const { engine, transport, requests } = setup();
+    const release = engine.suppressMemoryTransportSync();
+    transport.setBpm(131);
+    expect(engine.localTempoIntent).toMatchObject({ bpm: 131, state: 'unsent' });
+    expect(requests).toHaveLength(0);
+
+    // Status arriving during an import cannot overwrite the user's edit.
+    engine.applyStatus(status(hostA, 140, 1, intentExternal));
+    expect(transport.bpm).toBe(131);
+    expect(engine.localTempoIntent).toMatchObject({ bpm: 131, state: 'unsent' });
+
+    transport.setBpm(133);
+    release();
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]!.bpm).toBe(133);
+    // The import can abort after restoring sync. A subsequent stale poll
+    // still cannot erase the retained user BPM while its write is pending.
+    engine.applyStatus(status(hostA, 140, 1, intentExternal));
+    expect(transport.bpm).toBe(133);
+    expect(engine.localTempoIntent).toMatchObject({ bpm: 133, state: 'pending' });
+  });
+
+  it('does not turn an archive BPM application into a user intent', () => {
+    const { engine, transport } = setup();
+    engine.syncingNativeRhythmBpm = true;
+    try { transport.setBpm(132); }
+    finally { engine.syncingNativeRhythmBpm = false; }
+    expect(engine.localTempoIntent).toBeNull();
+  });
 });

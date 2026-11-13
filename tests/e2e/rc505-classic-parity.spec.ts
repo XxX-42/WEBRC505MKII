@@ -56,6 +56,77 @@ test('LOOP and MENU expose hardware roots; encoder push and EXIT retain context'
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'menu-root');
 });
 
+test('Classic editor LCD fits all field cards and status row without clipping', async ({ page }) => {
+  for (const width of [1920, 1366]) {
+    await page.setViewportSize({ width, height: width === 1920 ? 1080 : 768 });
+    await button(page, 'loop').click();
+    await button(page, 'screen-encoder-1').click();
+    const screen = lcd(page);
+    await expect(screen).toHaveAttribute('data-classic-screen', 'editor-track');
+    const layout = await screen.evaluate((element) => {
+      const rows = getComputedStyle(element).gridTemplateRows.split(' ').length;
+      const status = element.querySelector('.lcd-status')!.getBoundingClientRect();
+      const grid = element.querySelector('.lcd-field-grid')!;
+      const gridRect = grid.getBoundingClientRect();
+      const cards = Array.from(grid.querySelectorAll<HTMLElement>('.lcd-field-card'));
+      const cardLayouts = cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        const children = Array.from(card.querySelectorAll<HTMLElement>('.lcd-field-label, input, output, button'));
+        return { empty: card.classList.contains('is-empty'), height: rect.height, childCount: children.length, childrenInside: children.every((child) => {
+          const childRect = child.getBoundingClientRect();
+          return childRect.height > 0 && childRect.top >= rect.top - 1 && childRect.bottom <= rect.bottom + 1;
+        }) };
+      });
+      return { rows, statusTop: status.top, statusBottom: status.bottom, gridBottom: gridRect.bottom, cardLayouts };
+    });
+    expect(layout.rows, `${width}px grid rows`).toBe(3);
+    expect(layout.gridBottom, `${width}px grid/footer spacing`).toBeLessThanOrEqual(layout.statusTop + 1);
+    expect(layout.statusBottom).toBeGreaterThan(layout.statusTop);
+    expect(layout.cardLayouts).toHaveLength(4);
+    for (const card of layout.cardLayouts) {
+      expect(card.height, `${width}px card height`).toBeGreaterThan(0);
+      if (!card.empty) {
+        expect(card.childCount, `${width}px card content`).toBeGreaterThan(0);
+        expect(card.childrenInside, `${width}px card content visibility`).toBe(true);
+      }
+    }
+    await button(page, 'exit').click();
+  }
+});
+
+test('narrow viewport warning keeps its own flex space', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 480 });
+  const warning = page.locator('.viewport-warning');
+  await expect(warning).toBeVisible();
+  expect(await warning.evaluate((el) => getComputedStyle(el).flex)).toBe('0 0 auto');
+  expect(await warning.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(100);
+  expect(await page.locator('.viewport-toolbar').evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(180);
+});
+
+test('STOP pointer activation sends one stop and detail-zero activation remains accessible', async ({ page }) => {
+  await startBrowserAudio(page);
+  const strip = page.locator('.track-strip[data-track-id="1"]');
+  const rec = strip.locator('[data-panel-control="record-play"]');
+  const stop = strip.locator('.stop-disc');
+  await rec.click();
+  await expect(strip.locator('.track-state')).toHaveText('RECORD');
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    const original = track.triggerStop.bind(track);
+    (window as any).__stopCalls = 0;
+    track.triggerStop = (...args: unknown[]) => { (window as any).__stopCalls++; return original(...args); };
+  });
+  await stop.click();
+  await expect(strip.locator('.track-state')).toHaveText('STOP');
+  expect(await page.evaluate(() => (window as any).__stopCalls)).toBe(1);
+  await rec.click();
+  await expect(strip.locator('.track-state')).toHaveText('PLAY');
+  await stop.evaluate((el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })));
+  await expect(strip.locator('.track-state')).toHaveText('STOP');
+  expect(await page.evaluate(() => (window as any).__stopCalls)).toBe(2);
+});
+
 test('Classic LCD excludes software tools while Enhanced keeps the tools reachable', async ({ page }) => {
   const forbidden = /HQ WAV|NATIVE RENDERER|TECH COMPATIBILITY|MEMORY MIB|BROWSER BACKEND|PERFORMANCE|DIAGNOSTIC/;
   for (const target of ['menu', 'loop']) {
