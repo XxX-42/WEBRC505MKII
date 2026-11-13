@@ -495,6 +495,10 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         expectedFields["record.bounceSw"] = candidate->bounce.bounceSw;
         if (candidate->recordActionIncluded) expectedFields["record.recAction"] = settings.at("recAction");
         if (candidate->recordQuantizeIncluded) expectedFields["record.quantize"] = settings.at("recQuantize");
+        if (candidate->autoRecIncluded) {
+            expectedFields["record.autoRecSw"] = candidate->autoRecEnabled;
+            expectedFields["record.autoRecSens"] = candidate->autoRecSensitivity;
+        }
         json trackBanks = json::array();
         for (std::size_t bank = 1U; bank < 7U; ++bank) trackBanks.push_back(banks[bank]);
         expectedFields["trackFx.banks"] = std::move(trackBanks);
@@ -516,6 +520,10 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             }
         };
         if (candidate->recordQuantizeIncluded) requireSemanticField("record.quantize", settings.at("recQuantize"));
+        if (candidate->autoRecIncluded) {
+            requireSemanticField("record.autoRecSw", candidate->autoRecEnabled);
+            requireSemanticField("record.autoRecSens", candidate->autoRecSensitivity);
+        }
         if (candidate->loopSyncIncluded) {
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
                 requireSemanticField("track." + std::to_string(track + 1U) + ".loopSync",

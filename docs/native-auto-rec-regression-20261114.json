@@ -1,0 +1,48 @@
+{
+  "local": {
+    "nativeRealBridge": "not listening",
+    "hardware": "No present PnP friendly-name match for RC505/BOSS/Roland; not exhaustive USB identity proof",
+    "url": "http://127.0.0.1:5173/?audio=browser&ui=classic",
+    "observed": "Chrome actual rendered PLAY 1 to PLAY 2 and LOOP editor",
+    "worktree": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-autorec-20261114",
+    "viteReadyMs": 514,
+    "audioStarted": false
+  },
+  "build": "PASS",
+  "unit": {
+    "pending": 0,
+    "failed": 0,
+    "passed": 2931
+  },
+  "sourceCheckpoint": "6d4ad2f0520c8a725fdff3bd98539d5a2aa540a4",
+  "remaining": [
+    "loaded audio graph performance",
+    "real Native audio startup",
+    "physical RC505 parity"
+  ],
+  "firstFullE2EResult": "FAIL; Native semantic Memory field whitelist",
+  "firstFullE2E": {
+    "startTime": "2026-11-13T20:26:37.703Z",
+    "duration": 405582.081,
+    "expected": 143,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "finalFullE2E": {
+    "startTime": "2026-11-13T20:44:42.116Z",
+    "duration": 400165.877,
+    "expected": 144,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "finalFullE2EResult": "PASS: one complete run; workers=1; retries=0; 30s test timeout",
+  "nativeSimulationSha256": "A5EE6C4B75A2FE10BBCDC4F21B17E4041EBE7E1707DE942E0F47029EC50E7289",
+  "hostSourceSha256": "A00CEACDE1C53FED5D53C0F38F25F372044F4730B4CB59153A0B121E613B58D7",
+  "nativeSimulationCtest": {
+    "passed": 17,
+    "failed": 0,
+    "seconds": 79.81
+  }
+}

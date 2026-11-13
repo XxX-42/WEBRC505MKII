@@ -1,5 +1,6 @@
 """AUTO REC Memory transaction proof against the device-free HTTP host."""
 import os
+import json
 import socket
 import subprocess
 import sys
@@ -51,14 +52,57 @@ def main():
         code, result = request('/v1/engine/start', 'POST', {})
         require(code == 200, result)
         initial = request('/v1/status')[1]
-        body = envelope(initial, mutate=lambda m: m['extensions']['WEBRC']['nativeMemory'].update(
-            autoRec={'enabled': True, 'sensitivity': 1}))
+        def capture_auto_rec(meta, sensitivity=1, semantic_sensitivity=1):
+            meta['extensions']['WEBRC']['nativeMemory']['autoRec'] = {'enabled': True, 'sensitivity': sensitivity}
+            meta['semantics']['fields']['record.autoRecSw'] = {'availability': 'supported', 'value': True}
+            meta['semantics']['fields']['record.autoRecSens'] = {'availability': 'supported', 'value': semantic_sensitivity}
+        body = envelope(initial, mutate=capture_auto_rec)
         installed = import_memory(initial, body)
         settings = installed['nativeAutoRec']['settings']
         require(settings['enabled'] is True and settings['sensitivity'] == 1 and
                 settings['requestedRevision'] == settings['appliedRevision'], settings)
         code, _, pcm_before = request_raw('/v1/export/loop-snapshot?trackId=1')
         require(code == 200 and pcm_before, 'could not capture incumbent PCM')
+        def mutate_invalid(meta, kind):
+            capture_auto_rec(meta)
+            native = meta['extensions']['WEBRC']['nativeMemory']
+            fields = meta['semantics']['fields']
+            if kind == 'sens mismatch': fields['record.autoRecSens']['value'] = 2
+            elif kind == 'switch mismatch': fields['record.autoRecSw']['value'] = False
+            elif kind == 'missing field': fields.pop('record.autoRecSens')
+            elif kind == 'unsupported field': fields['record.autoRecSw']['availability'] = 'unsupported'
+            elif kind == 'missing extension': native.pop('autoRec')
+            elif kind == 'zero': native['autoRec']['sensitivity'] = 0
+            elif kind == 'above range': native['autoRec']['sensitivity'] = 101
+            elif kind == 'boolean sensitivity': native['autoRec']['sensitivity'] = True
+        for kind in ('sens mismatch', 'switch mismatch', 'missing field', 'unsupported field',
+                     'missing extension', 'zero', 'above range', 'boolean sensitivity'):
+            code, rejected = request_project_archive(
+                f"/v1/project/import?expectedContentRevision={installed['projectContentRevision']}",
+                'POST', envelope(installed, mutate=lambda m: mutate_invalid(m, kind)), 'application/octet-stream')
+            require(code == 400, ('invalid AUTO REC semantic did not return validation rejection', kind, code, rejected))
+            after_mismatch = request('/v1/status')[1]
+            code, _, pcm_mismatch = request_raw('/v1/export/loop-snapshot?trackId=1')
+            require(code == 200 and pcm_mismatch == pcm_before and
+                    after_mismatch['projectContentRevision'] == installed['projectContentRevision'] and
+                    after_mismatch['nativeAutoRec']['settings'] == installed['nativeAutoRec']['settings'],
+                    ('invalid Memory changed incumbent PCM or settings', kind))
+        code, prepared = request_project_archive(
+            f"/v1/project/import?expectedContentRevision={installed['projectContentRevision']}",
+            'POST', envelope(installed, mutate=lambda m: capture_auto_rec(m, 33, 33)), 'application/octet-stream')
+        require(code == 202, prepared)
+        generation = prepared['generation']
+        prepared_status = request('/v1/status')[1]
+        require(prepared_status['nativeAutoRec']['settings'] == installed['nativeAutoRec']['settings'], 'prepare published settings')
+        code, cancelled_prepare = request_project_archive('/v1/project/import/cancel', 'POST',
+            json.dumps({'generation': generation}).encode(), 'text/plain')
+        require(code == 200 and cancelled_prepare['state'] == 'cancelled', cancelled_prepare)
+        after_cancel = request('/v1/status')[1]
+        code, _, pcm_cancel = request_raw('/v1/export/loop-snapshot?trackId=1')
+        require(code == 200 and pcm_cancel == pcm_before and
+                after_cancel['projectContentRevision'] == installed['projectContentRevision'] and
+                after_cancel['nativeAutoRec']['settings'] == installed['nativeAutoRec']['settings'],
+                'cancelled prepare changed incumbent PCM or settings')
         headers = {'X-Native-Host-Incarnation': installed['hostIncarnationId']}
         code, armed = request('/v1/transport/record/auto-rec?trackId=2', 'POST',
             {'intentId': '11111111111111111111111111111111', 'expectedArmRevision': 0}, headers)

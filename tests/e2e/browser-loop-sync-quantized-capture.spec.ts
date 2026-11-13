@@ -13,13 +13,16 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     const context = browser.context as AudioContext;
     const transport = Transport.getInstance();
     const [master, slave] = engine.tracks as any[];
+    let diagnosticRequestFrame: number | null = null;
+    let diagnosticTargetFrame: number | null = null;
     const waitFor = async (predicate: () => boolean, label: string, timeoutMs = 12_000) => {
       const deadline = performance.now() + timeoutMs;
       while (performance.now() < deadline) {
         if (predicate()) return;
         await new Promise((resolve) => window.setTimeout(resolve, 10));
       }
-      throw new Error(`Timed out waiting for ${label}; transport=${transport.state}; track=${slave.state}; diagnostic=${slave.recordingDiagnostic ?? 'none'}`);
+      const frame = browser.getInputCaptureRequestFrame();
+      throw new Error(`Timed out waiting for ${label}; transport=${transport.state}; track=${slave.state}; diagnostic=${slave.recordingDiagnostic ?? 'none'}; request=${diagnosticRequestFrame}; target=${diagnosticTargetFrame}; frame=${frame}; nextGrid=${frame === null ? null : transport.getNextMeasureStartFrame(frame)}; ready=${browser.inputCaptureReady}; epoch=${browser.inputCaptureReadyEpoch}; generation=${browser.inputCaptureReadyGeneration}`);
     };
 
     if (context.state !== 'running' || !browser.inputCaptureNode || !browser.inputCaptureReady) {
@@ -76,6 +79,14 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     // user action. A later epoch change is still reported as a real capture
     // failure; the test never retries at a different frame.
     await browser.waitForInputCaptureReady();
+    const waitForEarlyMeasure = async () => {
+      await waitFor(() => {
+        const frame = browser.getInputCaptureRequestFrame();
+        const next = frame === null ? null : transport.getNextMeasureStartFrame(frame);
+        return Number.isSafeInteger(frame) && Number.isSafeInteger(next) && next! - frame! >= measureFrames / 2;
+      }, 'early master measure with capture ready');
+    };
+    await waitForEarlyMeasure();
     let triggerRequestFrame: number | null = null;
     const getInputCaptureRequestFrame = browser.getInputCaptureRequestFrame.bind(browser);
     browser.getInputCaptureRequestFrame = () => {
@@ -88,8 +99,11 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     const requestFrame = triggerRequestFrame;
     if (!Number.isSafeInteger(requestFrame)) throw new Error(`REC did not sample a valid shared-capture request frame: ${requestFrame}`);
     const expectedStartFrame = transport.getNextMeasureStartFrame(requestFrame!);
+    diagnosticRequestFrame = requestFrame;
+    diagnosticTargetFrame = expectedStartFrame;
     // An action exactly on a measure boundary may validly use that frame.
     if (!Number.isSafeInteger(expectedStartFrame) || expectedStartFrame! < requestFrame!) throw new Error(`Invalid quantized start ${expectedStartFrame} from request ${requestFrame}`);
+    if (expectedStartFrame! - requestFrame! < measureFrames / 2) throw new Error(`REC sampled insufficient measure lead: request=${requestFrame}, target=${expectedStartFrame}, epoch=${browser.inputCaptureReadyEpoch}, generation=${browser.inputCaptureReadyGeneration}`);
     await waitFor(() => slave.state === 'RECORDING', 'quantized first-frame ACK');
     const firstSession = slave.recordingCaptureSession;
     if (!firstSession || firstSession.startFrame !== expectedStartFrame) {
@@ -127,7 +141,23 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     const incumbentLeft = incumbent.getChannelData(0).slice();
     const incumbentRight = incumbent.getChannelData(1).slice();
     slave.stop(); slave.state = 'EMPTY';
+    await browser.waitForInputCaptureReady();
+    await waitForEarlyMeasure();
+    triggerRequestFrame = null;
+    browser.getInputCaptureRequestFrame = () => {
+      const frame = getInputCaptureRequestFrame();
+      if (triggerRequestFrame === null) triggerRequestFrame = frame;
+      return frame;
+    };
     slave.triggerRecord();
+    browser.getInputCaptureRequestFrame = getInputCaptureRequestFrame;
+    const cancelRequestFrame = triggerRequestFrame;
+    const cancelTargetFrame = cancelRequestFrame === null ? null : transport.getNextMeasureStartFrame(cancelRequestFrame);
+    diagnosticRequestFrame = cancelRequestFrame;
+    diagnosticTargetFrame = cancelTargetFrame;
+    if (!Number.isSafeInteger(cancelRequestFrame) || !Number.isSafeInteger(cancelTargetFrame) || cancelTargetFrame! - cancelRequestFrame! < measureFrames / 2) {
+      throw new Error(`Cancel test REC sampled insufficient measure lead: request=${cancelRequestFrame}, target=${cancelTargetFrame}, epoch=${browser.inputCaptureReadyEpoch}, generation=${browser.inputCaptureReadyGeneration}`);
+    }
     await waitFor(() => slave.state === 'REC_STANDBY' && !!slave.recordingCaptureSession, 'second reserved quantized start');
     const cancelledSession = slave.recordingCaptureSession;
     slave.triggerStop();
