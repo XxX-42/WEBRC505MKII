@@ -180,6 +180,38 @@ describe('Native AUTO REC client protocol and acknowledged UI state', () => {
     expect(sessionStorage.getItem('webrc.nativeAutoRecArmReceipts.v1')).toBeNull();
   });
 
+  it('only retries a lost cancel for the same armed generation on an explicit user action', async () => {
+    const receipt = { operation: 'arm', trackId: 1, hostIncarnationId: host, intentId: intent, expectedArmRevision: 0, armRevision: 1 };
+    sessionStorage.setItem('webrc.nativeAutoRecArmReceipts.v1', JSON.stringify([receipt]));
+    const armed = autoStatus({}, { intentId: intent, armRequestedRevision: 1, armAppliedRevision: 1, armed: true });
+    const cancelled = autoStatus({}, { intentId: intent, armRequestedRevision: 1, armAppliedRevision: 1, cancelAppliedRevision: 1, armed: false });
+    let postCount = 0;
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith('/v1/status')) return response(armed);
+      expect(String(url)).toContain('/v1/transport/record/auto-rec/cancel?trackId=1');
+      expect(new Headers(init?.headers).get('X-Native-Host-Incarnation')).toBe(host);
+      expect(JSON.parse(String(init?.body))).toEqual({ intentId: intent, armRevision: 1 });
+      if (++postCount === 1) throw new Error('request lost before submission');
+      return response(cancelled);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+    await expect(client.cancelNativeAutoRecTrack(1)).rejects.toThrow(/cancellation outcome is unknown/);
+    expect(JSON.parse(sessionStorage.getItem('webrc.nativeAutoRecArmReceipts.v1')!)[0]).toEqual({ ...receipt, operation: 'cancel' });
+    expect(fetchMock.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual(['GET', 'POST', 'GET']);
+
+    // A later status reconciliation only reads the host and retains the unresolved receipt.
+    const readback = await client.getStatus();
+    expect(client.hasUnresolvedNativeAutoRecOperation(1, readback)).toBe(true);
+    expect(fetchMock.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual(['GET', 'POST', 'GET', 'GET']);
+
+    await expect(client.cancelNativeAutoRecTrack(1)).resolves.toMatchObject({
+      nativeAutoRec: { tracks: expect.arrayContaining([expect.objectContaining({ cancelAppliedRevision: 1, armed: false })]) },
+    });
+    expect(fetchMock.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual(['GET', 'POST', 'GET', 'GET', 'GET', 'POST']);
+    expect(sessionStorage.getItem('webrc.nativeAutoRecArmReceipts.v1')).toBeNull();
+  });
+
   it('surfaces a trigger-winning cancel race and does not call it a successful cancel', async () => {
     const receipt = { operation: 'arm', trackId: 1, hostIncarnationId: host, intentId: intent, expectedArmRevision: 0, armRevision: 1 };
     sessionStorage.setItem('webrc.nativeAutoRecArmReceipts.v1', JSON.stringify([receipt]));

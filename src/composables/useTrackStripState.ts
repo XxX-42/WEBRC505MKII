@@ -550,7 +550,9 @@ export function useTrackStripState(trackId: number) {
       }
       stopPressTriggered = true;
       isClearing.value = true;
-      trackAudio.clear();
+      const reportClearError = (error: unknown) => classicControls.reportError('CLEAR FAILED', error instanceof Error ? error.message : String(error));
+      try { Promise.resolve(trackAudio.clear()).catch(reportClearError); }
+      catch (error) { reportClearError(error); }
       clearVisualTimer = window.setTimeout(() => {
         isClearing.value = false;
         clearVisualTimer = null;
@@ -567,7 +569,11 @@ export function useTrackStripState(trackId: number) {
       window.clearTimeout(stopPressTimer);
       stopPressTimer = null;
     }
-    if (!stopPressTriggered && trackTransportEnabled.value && getPitchRuntimeReady() && classicControls.state.controlLayer === 'NORMAL' && trackAudio.state === stopPressTrackState) trackAudio.triggerStop();
+    if (!stopPressTriggered && trackTransportEnabled.value && getPitchRuntimeReady() && classicControls.state.controlLayer === 'NORMAL' && trackAudio.state === stopPressTrackState) {
+      const reportStopError = (error: unknown) => classicControls.reportError('STOP FAILED', error instanceof Error ? error.message : String(error));
+      try { Promise.resolve(trackAudio.triggerStop()).catch(reportStopError); }
+      catch (error) { reportStopError(error); }
+    }
     stopPressTriggered = false;
   };
 

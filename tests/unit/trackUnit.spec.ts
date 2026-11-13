@@ -337,6 +337,46 @@ describe('TrackUnit', () => {
     wrapper.unmount();
   });
 
+  it('reports a rejected STOP without retrying', async () => {
+    const trackAudio = {
+      state: 'EMPTY', track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false },
+      isReverse: false, isAvailable: true, transportEnabled: true, disabledReason: '', updateSettings: vi.fn(),
+      toggleReverse: vi.fn(), fxChain: { setFilterEnabled: vi.fn(), setFilterParam: vi.fn() },
+      triggerRecord: vi.fn(), triggerStop: vi.fn().mockRejectedValueOnce(new Error('AUTO REC STOP rejected')), clear: vi.fn(),
+    };
+    const { wrapper } = await mountTrackUnit({ trackAudio, trackCapabilities: {
+      supportsTrackLevel: true, levelReason: '', supportsTrackFx: true, trackFxReason: '', supportsReverse: true, reverseReason: '',
+    } });
+    const button = wrapper.findAllComponents(StubButton).find((item) => item.props('label') === 'STOP')!;
+    button.vm.$emit('press'); button.vm.$emit('release');
+    await Promise.resolve();
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(trackAudio.triggerStop).toHaveBeenCalledOnce();
+    expect(JSON.stringify(useRc505Controls().state)).toContain('STOP FAILED');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('AUTO REC STOP rejected');
+    wrapper.unmount();
+  });
+
+  it('reports a rejected long-hold CLEAR without issuing STOP or retrying', async () => {
+    const trackAudio = {
+      state: 'EMPTY', track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false },
+      isReverse: false, isAvailable: true, transportEnabled: true, disabledReason: '', updateSettings: vi.fn(),
+      toggleReverse: vi.fn(), fxChain: { setFilterEnabled: vi.fn(), setFilterParam: vi.fn() },
+      triggerRecord: vi.fn(), triggerStop: vi.fn(), clear: vi.fn().mockRejectedValueOnce(new Error('AUTO REC CLEAR rejected')),
+    };
+    const { wrapper } = await mountTrackUnit({ trackAudio, trackCapabilities: {
+      supportsTrackLevel: true, levelReason: '', supportsTrackFx: true, trackFxReason: '', supportsReverse: true, reverseReason: '',
+    } });
+    const button = wrapper.findAllComponents(StubButton).find((item) => item.props('label') === 'STOP')!;
+    button.vm.$emit('press'); await vi.advanceTimersByTimeAsync(2000); button.vm.$emit('release');
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(trackAudio.clear).toHaveBeenCalledOnce();
+    expect(trackAudio.triggerStop).not.toHaveBeenCalled();
+    expect(JSON.stringify(useRc505Controls().state)).toContain('CLEAR FAILED');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('AUTO REC CLEAR rejected');
+    wrapper.unmount();
+  });
+
   it('refreshes Native track capabilities when status expands from one track to five', async () => {
     const trackAudio = {
       state: 'EMPTY',

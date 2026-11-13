@@ -341,7 +341,9 @@ const startStopPress = () => {
     }
     stopPressTriggered = true;
     isClearing.value = true;
-    trackAudio.clear();
+    const reportClearError = (error: unknown) => controls.reportError('CLEAR FAILED', error instanceof Error ? error.message : String(error));
+    try { Promise.resolve(trackAudio.clear()).catch(reportClearError); }
+    catch (error) { reportClearError(error); }
     clearVisualTimer = window.setTimeout(() => {
       isClearing.value = false;
       clearVisualTimer = null;
@@ -356,7 +358,11 @@ const endStopPress = () => {
     clearTimeout(stopPressTimer);
     stopPressTimer = null;
   }
-  if (!stopPressTriggered && trackTransportEnabled.value) trackAudio.triggerStop();
+  if (!stopPressTriggered && trackTransportEnabled.value) {
+    const reportStopError = (error: unknown) => controls.reportError('STOP FAILED', error instanceof Error ? error.message : String(error));
+    try { Promise.resolve(trackAudio.triggerStop()).catch(reportStopError); }
+    catch (error) { reportStopError(error); }
+  }
 };
 
 const cancelStopPress = () => {

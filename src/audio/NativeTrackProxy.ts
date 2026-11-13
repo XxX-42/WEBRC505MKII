@@ -199,12 +199,12 @@ export class NativeTrackProxy {
 
   public triggerStop() {
     if (!this.transportEnabled) return;
-    void this.engine.stopTrack(this.trackId);
+    return this.engine.stopTrack(this.trackId);
   }
 
   public clear() {
     if (!this.transportEnabled) return;
-    void this.engine.clearTrack(this.trackId);
+    return this.engine.clearTrack(this.trackId);
   }
 
   public play() {

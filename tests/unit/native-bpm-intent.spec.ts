@@ -38,7 +38,7 @@ function setup() {
     getPendingRhythmTempoIdentity: vi.fn(() => retained),
     releaseSupersededRhythmTempoIdentity: vi.fn(() => true),
     setRhythm: vi.fn((config: { bpm: number }) => new Promise((resolve, reject) => requests.push({ bpm: config.bpm, resolve, reject }))),
-    getPendingNativeTransportBatch: vi.fn(() => null),
+    hasUnresolvedNativeAutoRecOperation: vi.fn(() => false), getPendingNativeTransportBatch: vi.fn(() => null),
   };
   engine.bridge = bridge;
   const initial = status(hostA, 120, 0, '0'.repeat(32));

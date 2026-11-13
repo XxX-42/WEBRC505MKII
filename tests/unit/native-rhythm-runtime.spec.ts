@@ -168,7 +168,7 @@ describe('Native rhythm runtime adapter', () => {
         tempoAppliedRevision: value, tempoAppliedValid: true } };
     };
     const setRhythm = vi.fn(async (config: NativeRhythmConfig) => modern(config, ++revision));
-    internals.bridge = { setRhythm, getPendingNativeTransportBatch: vi.fn(() => null),
+    internals.bridge = { setRhythm, hasUnresolvedNativeAutoRecOperation: vi.fn(() => false), getPendingNativeTransportBatch: vi.fn(() => null),
       getPendingRhythmTempoIdentity: vi.fn(() => null) } as unknown as NativeBridgeClient;
     const initial = modern({ bpm: 91 }, 0);
     internals.bindTempoHostFromConnection(initial);
@@ -205,7 +205,7 @@ describe('Native rhythm runtime adapter', () => {
     const setLoopTransportFx = vi.fn(async (_trackId: number, _config: NativeLoopTransportConfig) => status);
     const engine = NativeAudioEngine.getInstance();
     const internals = engine as unknown as { bridge: NativeBridgeClient; bridgeAvailable: boolean; latestStatus: NativeStatus | null };
-    internals.bridge = { setLoopTransportFx, getPendingNativeTransportBatch: vi.fn(() => null) } as unknown as NativeBridgeClient;
+    internals.bridge = { setLoopTransportFx, hasUnresolvedNativeAutoRecOperation: vi.fn(() => false), getPendingNativeTransportBatch: vi.fn(() => null) } as unknown as NativeBridgeClient;
     internals.bridgeAvailable = true;
     const facade = AudioEngine.getInstance();
     facade.setMode('native');

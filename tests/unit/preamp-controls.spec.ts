@@ -102,6 +102,7 @@ describe('PREAMP controls', () => {
     const engine = NativeAudioEngine.getInstance();
     const fakeBridge = {
       getPendingNativeTransportBatch: vi.fn(() => null),
+      hasUnresolvedNativeAutoRecOperation: vi.fn(() => false),
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
         const path = config.path ?? 'track';
         selected[path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);

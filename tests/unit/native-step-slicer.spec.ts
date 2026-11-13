@@ -70,6 +70,7 @@ describe('Native STEP SLICER parameters and catalog API', () => {
     };
     const fakeBridge = {
       getPendingNativeTransportBatch: vi.fn(() => null),
+      hasUnresolvedNativeAutoRecOperation: vi.fn(() => false),
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
         selected[config.path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);
         return statusFor(selected);

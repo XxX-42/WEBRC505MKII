@@ -106,6 +106,33 @@ describe('useTrackStripState STOP interactions', () => {
     wrapper.unmount();
   });
 
+  it('reports one rejected STOP without retrying', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState(true, true);
+    trackAudio.triggerStop.mockRejectedValueOnce(new Error('AUTO REC STOP outcome unknown'));
+    state.startStopPress('keyboard');
+    state.endStopPress('keyboard');
+    await Promise.resolve();
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(trackAudio.triggerStop).toHaveBeenCalledOnce();
+    expect(JSON.stringify(useRc505Controls().state)).toContain('AUTO REC STOP outcome unknown');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('STOP FAILED');
+    wrapper.unmount();
+  });
+
+  it('reports a rejected long-hold CLEAR without issuing STOP or retrying', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState(true, true);
+    trackAudio.clear.mockRejectedValueOnce(new Error('AUTO REC CLEAR rejected'));
+    state.startStopPress('keyboard');
+    await vi.advanceTimersByTimeAsync(2000);
+    state.endStopPress('keyboard');
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(trackAudio.clear).toHaveBeenCalledOnce();
+    expect(trackAudio.triggerStop).not.toHaveBeenCalled();
+    expect(JSON.stringify(useRc505Controls().state)).toContain('CLEAR FAILED');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('AUTO REC CLEAR rejected');
+    wrapper.unmount();
+  });
+
   it('stops on a short keyboard release, clears after the long hold, and cancels interrupted pointer holds', async () => {
     const { wrapper, state, trackAudio } = await mountStripState();
     const down = new KeyboardEvent('keydown', { key: ' ', cancelable: true });
