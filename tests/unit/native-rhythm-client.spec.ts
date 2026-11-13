@@ -149,6 +149,14 @@ describe('Native rhythm bridge client', () => {
 
   it('refuses old hosts before sending a rhythm write', async () => {
     const status = nativeRhythmStatus(config);
+    delete status.hostIncarnationId;
+    delete status.nativeRhythm!.tempoRequestReceiptVersion;
+    delete status.nativeRhythm!.tempoRequestIntentId;
+    delete status.nativeRhythm!.configRequestIntentId;
+    delete status.nativeRhythm!.configRequestedRevision;
+    delete status.nativeRhythm!.tempoRequestedRevision;
+    delete status.nativeRhythm!.tempoAppliedRevision;
+    delete status.nativeRhythm!.tempoAppliedValid;
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => status }) as Response));
     await expect(new NativeBridgeClient().setRhythm(config)).rejects.toThrow(/settled host revision/);
   });

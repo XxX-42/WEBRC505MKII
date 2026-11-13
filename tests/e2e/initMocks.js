@@ -496,11 +496,14 @@
   const rhythmUiE2e = new URLSearchParams(window.location.search).get('rhythmUiE2e') === '1';
   window.__rc505NativeRhythmRequests = [];
   if (rhythmUiE2e) {
+    nativeStatus.hostIncarnationId = 'a'.repeat(32);
     nativeStatus.nativeRhythm = {
       available: true, enabled: false, bpm: 93, patternIndex: 198, kitIndex: 13,
       variation: 'C', section: 'intro', swingPercent: 67, quantizeGrid: '1/8', volume: 73,
       patternCatalogAvailable: true, patternId: 'rhythm-198', genre: 'ELCTRO', pattern: 'ELCTRO1', beat: '4/4',
       meterNumerator: 4, meterDenominator: 4, eventsCleanRoomProcedural: true,
+      tempoRequestReceiptVersion: 1, tempoRequestIntentId: '0'.repeat(32), configRequestIntentId: '0'.repeat(32),
+      configRequestedRevision: 0, tempoRequestedRevision: 0, tempoAppliedRevision: 0, tempoAppliedValid: true,
       patternSource: 'metadata-only-240-pattern-catalog', statusNote: 'TEST-ONLY clean-room Native rhythm fixture',
     };
     window.__rc505NativeRhythmState = nativeStatus.nativeRhythm;
@@ -582,10 +585,36 @@
       const config = init && init.body ? JSON.parse(String(init.body)) : {};
       window.__rc505NativeRhythmRequests.push(config);
       if (window.__rc505RejectNativeRhythmConfig) {
-        return { json: async () => ({ ok: false, error: 'Native rhythm configuration rejected by test bridge' }) };
+        return { status: 409, ok: false, json: async () => ({ ok: false,
+          error: 'Native rhythm configuration rejected by test bridge' }) };
       }
-      Object.assign(nativeStatus.nativeRhythm, config);
-      return { json: async () => nativeStatus };
+      const headers = new Headers(init && init.headers ? init.headers : undefined);
+      const rhythm = nativeStatus.nativeRhythm;
+      const host = headers.get('X-Native-Host-Incarnation');
+      const intent = headers.get('X-Native-Operation-Id');
+      const tempoRevision = Number(headers.get('X-Native-Tempo-Revision'));
+      const configRevision = Number(headers.get('X-Native-Rhythm-Revision'));
+      if (host !== nativeStatus.hostIncarnationId || !/^(?!0{32}$)[0-9a-f]{32}$/i.test(intent ?? '') ||
+          tempoRevision !== rhythm.tempoRequestedRevision || configRevision !== rhythm.configRequestedRevision) {
+        return { status: 409, ok: false, json: async () => ({ ok: false,
+          error: 'Native rhythm request receipt identity is invalid or stale.' }) };
+      }
+
+      const tempoChanged = config.bpm !== rhythm.bpm;
+      const acceptedTempoRevision = tempoRevision + (tempoChanged ? 1 : 0);
+      Object.assign(rhythm, config, {
+        configRequestIntentId: intent,
+        configRequestedRevision: configRevision + 1,
+      });
+      if (tempoChanged) {
+        rhythm.tempoRequestIntentId = intent;
+        rhythm.tempoRequestedRevision = acceptedTempoRevision;
+        rhythm.tempoAppliedRevision = acceptedTempoRevision;
+      }
+      rhythm.tempoAppliedValid = true;
+      // The POST response includes the accepted tempo revision; subsequent GET
+      // status responses expose the settled requested/applied receipt only.
+      return { json: async () => ({ ...nativeStatus, nativeRhythm: { ...rhythm, acceptedTempoRevision } }) };
     }
     if (path === '/v1/native-pitch/config' && pitchUiE2e) {
       const config = init && init.body ? JSON.parse(String(init.body)) : {};

@@ -158,6 +158,25 @@ describe('Native ACK-backed shared rhythm panels', () => {
     expect(setRhythm).not.toHaveBeenCalled();
   });
 
+  it('keeps an older host rhythm readable and running while gating writes without receipt support', async () => {
+    const oldHost = nativeRhythmStatus({ enabled: true, patternIndex: 198, volume: 73 });
+    delete oldHost.hostIncarnationId;
+    delete oldHost.nativeRhythm!.tempoRequestReceiptVersion;
+    delete oldHost.nativeRhythm!.tempoRequestIntentId;
+    delete oldHost.nativeRhythm!.configRequestIntentId;
+    delete oldHost.nativeRhythm!.configRequestedRevision;
+    delete oldHost.nativeRhythm!.tempoRequestedRevision;
+    delete oldHost.nativeRhythm!.tempoAppliedRevision;
+    delete oldHost.nativeRhythm!.tempoAppliedValid;
+    const { center, setRhythm } = await mountNativeControls(oldHost);
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('197');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').attributes('disabled')).toBeDefined();
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('disabled')).toBeDefined();
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('data-active')).toBe('true');
+    expect(center.get('.lcd-status').attributes('title')).toContain('revisioned rhythm configuration receipts');
+    expect(setRhythm).not.toHaveBeenCalled();
+  });
+
   it('shows Native failures in both panels, preserves acknowledged settings, and clears errors after retry', async () => {
     const { center, setRhythm } = await mountNativeControls();
     setRhythm.mockRejectedValueOnce(new Error('Native rhythm endpoint unsupported'));

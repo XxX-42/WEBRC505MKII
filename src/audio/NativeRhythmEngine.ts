@@ -27,7 +27,8 @@ export class NativeRhythmEngine {
   get available(): boolean {
     const status = this.host.status();
     return this.host.bridgeAvailable() && status?.bridgeHealthy === true
-      && status.nativeRhythm?.available === true && isNativeRhythmConfig(status.nativeRhythm);
+      && status.nativeRhythm?.available === true && isNativeRhythmConfig(status.nativeRhythm)
+      && this.hasConfigurationReceipt(status);
   }
 
   get unavailableReason(): string {
@@ -38,11 +39,15 @@ export class NativeRhythmEngine {
       return status.nativeRhythm?.statusNote || 'Native rhythm is unavailable in the current bridge status.';
     }
     if (!isNativeRhythmConfig(status.nativeRhythm)) return 'This Native bridge does not report the supported rhythm settings. Update the bridge.';
+    if (!this.hasConfigurationReceipt(status)) return 'This Native bridge does not report revisioned rhythm configuration receipts. Update the bridge.';
     return '';
   }
 
   get isRunning(): boolean {
-    return this.available && this.host.status()?.engineRunning === true && this.host.status()?.nativeRhythm?.enabled === true;
+    const status = this.host.status();
+    return this.host.bridgeAvailable() && status?.bridgeHealthy === true && status.engineRunning === true
+      && status.nativeRhythm?.available === true && isNativeRhythmConfig(status.nativeRhythm)
+      && status.nativeRhythm.enabled === true;
   }
 
   get error(): string { return this.lastError; }
@@ -151,5 +156,18 @@ export class NativeRhythmEngine {
     this.lastError = message;
     this.host.notify();
     return Promise.resolve(false);
+  }
+
+  private hasConfigurationReceipt(status: NativeStatus): boolean {
+    const rhythm = status.nativeRhythm;
+    return isNativeHostIncarnationId(status.hostIncarnationId)
+      && rhythm?.tempoRequestReceiptVersion === 1
+      && Number.isSafeInteger(rhythm.configRequestedRevision) && rhythm.configRequestedRevision! >= 0
+      && Number.isSafeInteger(rhythm.tempoRequestedRevision) && rhythm.tempoRequestedRevision! >= 0
+      && Number.isSafeInteger(rhythm.tempoAppliedRevision) && rhythm.tempoAppliedRevision! >= 0
+      && rhythm.tempoAppliedValid === true
+      && isNativeHostIncarnationId(rhythm.tempoRequestIntentId)
+      && isNativeHostIncarnationId(rhythm.configRequestIntentId)
+      && (rhythm.tempoAppliedRevision === rhythm.tempoRequestedRevision || rhythm.tempoRequestIntentId !== '0'.repeat(32));
   }
 }

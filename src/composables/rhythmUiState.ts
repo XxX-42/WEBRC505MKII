@@ -43,7 +43,10 @@ export function useRhythmUiControls(options: { initializeOnMount?: boolean } = {
         playback.volume = settings.volume;
       }
     }
-    if (!playback.available) playback.isPlaying = false;
+    // An older Native bridge may report the running Rhythm state but lack the
+    // revisioned write receipts required to edit it safely. Keep that confirmed
+    // state visible while leaving all rhythm controls read-only.
+    if (!playback.available && !(rhythm instanceof NativeRhythmEngine)) playback.isPlaying = false;
   };
 
   const perform = async (action: () => void | boolean | Promise<boolean>): Promise<boolean> => {

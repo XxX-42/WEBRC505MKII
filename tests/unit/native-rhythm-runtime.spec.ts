@@ -83,6 +83,43 @@ describe('Native rhythm runtime adapter', () => {
     expect(runtime.setRhythm).not.toHaveBeenCalled();
   });
 
+  it('keeps confirmed status readable for a pending tempo receipt but requires the receipt schema to edit', () => {
+    const runtime = createRuntime(nativeRhythmStatus({ enabled: true, patternIndex: 198 }));
+    const pending = nativeRhythmStatus({ enabled: true, patternIndex: 198 });
+    pending.nativeRhythm!.tempoRequestedRevision = 4;
+    pending.nativeRhythm!.tempoAppliedRevision = 3;
+    pending.nativeRhythm!.tempoRequestIntentId = 'd'.repeat(32);
+    runtime.setStatus(pending);
+    expect(runtime.rhythm.available).toBe(true);
+    expect(runtime.rhythm.settings).toMatchObject({ enabled: true, patternIndex: 198 });
+    expect(runtime.rhythm.isRunning).toBe(true);
+
+    const olderHost = nativeRhythmStatus({ enabled: true, patternIndex: 198 });
+    delete olderHost.hostIncarnationId;
+    delete olderHost.nativeRhythm!.tempoRequestReceiptVersion;
+    delete olderHost.nativeRhythm!.tempoRequestIntentId;
+    delete olderHost.nativeRhythm!.configRequestIntentId;
+    delete olderHost.nativeRhythm!.configRequestedRevision;
+    delete olderHost.nativeRhythm!.tempoRequestedRevision;
+    delete olderHost.nativeRhythm!.tempoAppliedRevision;
+    delete olderHost.nativeRhythm!.tempoAppliedValid;
+    runtime.setStatus(olderHost);
+    expect(runtime.rhythm.available).toBe(false);
+    expect(runtime.rhythm.settings).toMatchObject({ enabled: true, patternIndex: 198 });
+    expect(runtime.rhythm.isRunning).toBe(true);
+    expect(runtime.rhythm.unavailableReason).toContain('revisioned rhythm configuration receipts');
+  });
+
+  it.each(['tempoRequestReceiptVersion', 'tempoRequestIntentId', 'configRequestIntentId',
+    'configRequestedRevision', 'tempoRequestedRevision', 'tempoAppliedRevision', 'tempoAppliedValid'] as const)(
+    'fails closed when the host omits receipt field %s', (field) => {
+      const status = nativeRhythmStatus();
+      delete (status.nativeRhythm as unknown as Record<string, unknown>)[field];
+      const runtime = createRuntime(status);
+      expect(runtime.rhythm.available).toBe(false);
+      expect(runtime.rhythm.unavailableReason).toContain('revisioned rhythm configuration receipts');
+    });
+
   it('does not optimistically claim playback and serializes rapid edits against their preceding ACK', async () => {
     const runtime = createRuntime();
     let acknowledge!: (status: NativeStatus) => void;
