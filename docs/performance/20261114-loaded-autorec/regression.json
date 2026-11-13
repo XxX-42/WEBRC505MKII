@@ -1,0 +1,29 @@
+{
+  "performance": "Strict 64-frame stress gate remains open; see README and raw JSON",
+  "hardware": "UNMEASURED",
+  "workers": 1,
+  "units": {
+    "failed": 0,
+    "pending": 0,
+    "passed": 2933,
+    "total": 2933
+  },
+  "realWasapi": "BUILD_PASS; isolated launch/GET blocked by automatic approval",
+  "baseline": "41756410108712ce1fa2600f43b6bdf1575be4db",
+  "branch": "codex/rc505-loaded-gate-20261114",
+  "retries": 0,
+  "build": "PASS; six license artifacts verified",
+  "testTimeoutMs": 30000,
+  "mainHintSourceSha256": "07B4842B846142972EF3B9E24237ECD3193DA35AFCF8CA0AB28190CD63440792",
+  "e2e": {
+    "startTime": "2026-11-13T21:08:49.642Z",
+    "duration": 400206.988,
+    "expected": 144,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "harnessSourceSha256": "CA0D1442DA4A4B573DCA9EE8DA02D8E24BA506D8E15FE8869A1CB80C7B91260C",
+  "productionNativeDspChanged": false,
+  "localUi": "Actual Chrome OUTPUT MIXER MAIN100% and updated provider description; no audio started"
+}

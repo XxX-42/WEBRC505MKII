@@ -699,7 +699,9 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
       value: channel === 'MAIN' && engine.getMixerState?.().available ? `${engine.getMixerState().main}%` : 'UNAVAILABLE',
       disabled: channel !== 'MAIN' || !engine.getMixerState?.().available,
       reason: channel === 'MAIN'
-        ? 'Independent MAIN output level is not exposed. The shared master level is shown on the MASTER mixer page.'
+        ? engine.getMixerState?.().available
+          ? 'Independent software MAIN gain scales loop playback and rhythm; monitoring bypasses MAIN.'
+          : engine.getMixerState?.().reason || 'Independent MAIN output level is unavailable on this audio runtime.'
         : `${channel} output routing is not exposed by the current audio engine.`,
     }));
     return page.channels.map((channel) => channel === 'RHYTHM'

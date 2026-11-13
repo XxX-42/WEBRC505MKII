@@ -10,15 +10,35 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#include <xmmintrin.h>
+#endif
 using namespace webrc::native;
 #include "native_benchmark_access.hpp"
 int main(int argc,char** argv){
+ const std::string fpMode=argc>11?argv[11]:"default";
+ if(fpMode!="default"&&fpMode!="ftz-daz")return 20;
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+ struct RestoreMxcsr { unsigned saved; ~RestoreMxcsr(){_mm_setcsr(saved);} } restoreMxcsr{_mm_getcsr()};
+ if(fpMode=="ftz-daz")_mm_setcsr(restoreMxcsr.saved | (1U<<15U) | (1U<<6U));
+#else
+ if(fpMode=="ftz-daz")return 20;
+#endif
+ const std::string initialMxcsr =
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+     std::to_string(restoreMxcsr.saved);
+#else
+     "null";
+#endif
  const unsigned rate=argc>1?std::stoul(argv[1]):48000, frames=argc>2?std::stoul(argv[2]):64, tracks=argc>3?std::stoul(argv[3]):5;
  const unsigned fxMode=argc>4?std::stoul(argv[4]):1; const bool fx=fxMode!=0;
  const std::string transport=argc>6?argv[6]:"playback";
  const unsigned channels=argc>7?std::stoul(argv[7]):2;
  const std::string supplement=argc>8?argv[8]:"none";
  const std::string boundaries=argc>9?argv[9]:"none";
+ const std::string profile=argc>10?argv[10]:"mixed";
+ const std::string sharedProfile=argc>12?argv[12]:"mixed";
+ if(sharedProfile!="mixed"&&sharedProfile!="preamp"&&sharedProfile!="robot")return 21;
  const bool extras=supplement!="none";
  const unsigned count=argc>5?std::stoul(argv[5]):3000;
  if((rate!=44100&&rate!=48000)||(frames!=64&&frames!=128&&frames!=256)||(tracks!=1&&tracks!=5)||!count||channels<1||channels>2||fxMode>2||(transport!="playback"&&transport!="record"&&transport!="overdub")||(boundaries!="none"&&boundaries!="batch")||(boundaries=="batch"&&(tracks!=5||transport!="playback"))) return 1;
@@ -37,9 +57,12 @@ int main(int argc,char** argv){
  const char* heavyIds[]={"preamp","dist","robot","reverb"};
  const char* realisticIds[]={"chorus","fractional_delay","dynamics","reverb"};
  const char** ids=fxMode==2?realisticIds:heavyIds;
+ const char* singleIds[]={profile.c_str(),profile.c_str(),profile.c_str(),profile.c_str()};
+ if(profile!="mixed"){if(profile!="preamp"&&profile!="dist"&&profile!="robot"&&profile!="reverb")return 19;ids=singleIds;}
  if(fx) for(unsigned t=0;t<tracks;++t)for(unsigned s=0;s<4;++s){std::string err;if(!core.setNativeCatalogSlot(static_cast<NativeEffectSlot>(s),ids[s],{},false,err,NativeCatalogFxPath::Track,t+1)){std::cerr<<err;return 4;}}
  if(extras){
   const char* inIds[]={"filter.lpf","manual_pan","dynamics","radio"};const char* sharedIds[]={"chorus","reverb","tape_echo","stereo_enhance"};std::string error;
+  if(sharedProfile!="mixed")for(unsigned s=0;s<4;++s){inIds[s]=sharedProfile.c_str();sharedIds[s]=sharedProfile.c_str();}
   for(unsigned s=0;s<4;++s){if(!core.setNativeCatalogSlot(static_cast<NativeEffectSlot>(s),inIds[s],{},false,error,NativeCatalogFxPath::Input,0)||!core.setNativeCatalogSlot(static_cast<NativeEffectSlot>(s),sharedIds[s],{},false,error,NativeCatalogFxPath::Track,0))return 14;}
   NativeRhythmConfig rhythm;rhythm.enabled=true;if(!core.setNativeRhythmConfig(rhythm,error))return 14;
   if(supplement=="live-mono"||supplement=="live-poly"||supplement=="live-mono-short"){NativePitchConfig pitch;pitch.enabled=true;pitch.trackId=1;pitch.semitones=7;pitch.mode=supplement=="live-poly"?NativePitchMode::LivePolyPhaseVocoder:NativePitchMode::LiveMonoKeepPitch;if(!core.setNativePitchConfig(pitch,error))return 14;}
@@ -56,6 +79,12 @@ int main(int argc,char** argv){
  if(boundaries=="batch"){std::cerr<<"batch boundary workload not supported by baseline";return 18;}
 #else
  if(boundaries=="batch") NativeAudioCoreTestAccess::setRunning(core,true);
+#endif
+ const std::string effectiveMxcsr =
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+     std::to_string(_mm_getcsr());
+#else
+     "null";
 #endif
  for(unsigned b=0;b<count;++b){
 #if !defined(NATIVE_BENCH_BASELINE_NO_BATCH)
@@ -88,6 +117,6 @@ int main(int argc,char** argv){
  rusage usage{};if(getrusage(RUSAGE_SELF,&usage)==0)peakRssKiB=usage.ru_maxrss;
 #endif
  std::sort(ns.begin(),ns.end());auto q=[&](double p){return ns[std::min(ns.size()-1,static_cast<size_t>(std::ceil(p*ns.size())-1))];};
- std::cout<<"{\"sampleRate\":"<<rate<<",\"supplement\":\""<<supplement<<"\",\"boundaries\":\""<<boundaries<<"\",\"inputFxPeak\":"<<inputFxPeak<<",\"rhythmVoicesObserved\":"<<rhythmVoices<<",\"frames\":"<<frames<<",\"tracks\":"<<tracks<<",\"inputChannels\":"<<channels<<",\"transport\":\""<<transport<<"\",\"fxMode\":"<<fxMode<<",\"fx\":"<<(fx?"true":"false")<<",\"callbacks\":"<<count<<",\"meanNs\":"<<sum/count<<",\"p50Ns\":"<<q(.5)<<",\"p95Ns\":"<<q(.95)<<",\"p99Ns\":"<<q(.99)<<",\"p999Ns\":"<<q(.999)<<",\"maxNs\":"<<ns.back()<<",\"cpuBudgetExceedances\":"<<over<<",\"budgetNs\":"<<budget<<",\"peak\":"<<peak<<",\"peakRssKiB\":"<<peakRssKiB<<",\"callbackAllocations\":"<<test_alloc::count()<<",\"stereoDistinct\":"<<(stereo?"true":"false")<<",\"hash\":\""<<hash<<"\",\"hardwareStatus\":\"HARDWARE_BLOCKED\"}\n";
+ std::cout<<"{\"sampleRate\":"<<rate<<",\"supplement\":\""<<supplement<<"\",\"fpMode\":\""<<fpMode<<"\",\"initialMxcsr\":"<<initialMxcsr<<",\"effectiveMxcsr\":"<<effectiveMxcsr<<",\"sharedProfile\":\""<<sharedProfile<<"\",\"profile\":\""<<profile<<"\",\"boundaries\":\""<<boundaries<<"\",\"inputFxPeak\":"<<inputFxPeak<<",\"rhythmVoicesObserved\":"<<rhythmVoices<<",\"frames\":"<<frames<<",\"tracks\":"<<tracks<<",\"inputChannels\":"<<channels<<",\"transport\":\""<<transport<<"\",\"fxMode\":"<<fxMode<<",\"fx\":"<<(fx?"true":"false")<<",\"callbacks\":"<<count<<",\"meanNs\":"<<sum/count<<",\"p50Ns\":"<<q(.5)<<",\"p95Ns\":"<<q(.95)<<",\"p99Ns\":"<<q(.99)<<",\"p999Ns\":"<<q(.999)<<",\"maxNs\":"<<ns.back()<<",\"cpuBudgetExceedances\":"<<over<<",\"budgetNs\":"<<budget<<",\"peak\":"<<peak<<",\"peakRssKiB\":"<<peakRssKiB<<",\"callbackAllocations\":"<<test_alloc::count()<<",\"stereoDistinct\":"<<(stereo?"true":"false")<<",\"hash\":\""<<hash<<"\",\"hardwareStatus\":\"HARDWARE_BLOCKED\"}\n";
  return !test_alloc::count()&&(transport=="record"||((channels==1||stereo)&&peak>0))?0:10;
 }

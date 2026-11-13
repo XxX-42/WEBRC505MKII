@@ -1,0 +1,66 @@
+diff --git a/native-mvp/engine-cpp/include/native_robot_core.hpp b/native-mvp/engine-cpp/include/native_robot_core.hpp
+index 0d9e85c..2334f44 100644
+--- a/native-mvp/engine-cpp/include/native_robot_core.hpp
++++ b/native-mvp/engine-cpp/include/native_robot_core.hpp
+@@ -173,0 +174 @@ private:
++    friend struct NativeRobotCoreTestAccess;
+@@ -182,0 +184 @@ private:
++        std::array<float, kDetectorRingCapacity> analysisFrame{};
+diff --git a/native-mvp/engine-cpp/src/native_robot_core.cpp b/native-mvp/engine-cpp/src/native_robot_core.cpp
+index 7c58073..ea6f159 100644
+--- a/native-mvp/engine-cpp/src/native_robot_core.cpp
++++ b/native-mvp/engine-cpp/src/native_robot_core.cpp
+@@ -79,0 +80,3 @@ void NativeRobotCore::PitchTracker::analyzeFrame() noexcept {
++    const unsigned int firstCount = std::min(frameSamples, kDetectorRingCapacity - frameStart);
++    std::copy_n(ring.data() + frameStart, firstCount, analysisFrame.data());
++    std::copy_n(ring.data(), frameSamples - firstCount, analysisFrame.data() + firstCount);
+@@ -82 +85 @@ void NativeRobotCore::PitchTracker::analyzeFrame() noexcept {
+-        const double sample = ring[(frameStart + i) & kDetectorRingMask];
++        const double sample = analysisFrame[i];
+@@ -91,2 +94,2 @@ void NativeRobotCore::PitchTracker::analyzeFrame() noexcept {
+-            const double delta = static_cast<double>(ring[(frameStart + i) & kDetectorRingMask]) -
+-                static_cast<double>(ring[(frameStart + i + lag) & kDetectorRingMask]);
++            const double delta = static_cast<double>(analysisFrame[i]) -
++                static_cast<double>(analysisFrame[i + lag]);
+diff --git a/native-mvp/engine-cpp/tests/native_robot_core_tests.cpp b/native-mvp/engine-cpp/tests/native_robot_core_tests.cpp
+index b017438..55af9af 100644
+--- a/native-mvp/engine-cpp/tests/native_robot_core_tests.cpp
++++ b/native-mvp/engine-cpp/tests/native_robot_core_tests.cpp
+@@ -12,0 +13,35 @@
++namespace webrc::native {
++struct NativeRobotCoreTestAccess {
++    static void verifyAnalysisDifferences() {
++        for (unsigned int rate : {4000U, 8000U, 12000U}) {
++            NativeRobotCore::PitchTracker tracker;
++            assert(tracker.configure(rate));
++            std::uint32_t state = 1234567U;
++            unsigned int framesChecked = 0U;
++            for (unsigned int n = 0; n < 5000U; ++n) {
++                state = state * 1664525U + 1013904223U;
++                float sample = n < 1000U ? 0.0f : n < 2500U
++                    ? static_cast<float>(0.3 * std::sin(n * 0.123))
++                    : static_cast<float>(static_cast<int>(state >> 16U) - 32768) / 32768.0f;
++                const auto expectedAnalysis = tracker.nextAnalysisSample;
++                tracker.pushSample(sample);
++                if (tracker.sampleCount != expectedAnalysis) continue;
++                ++framesChecked;
++                const auto start = (tracker.writeIndex + NativeRobotCore::kDetectorRingCapacity - tracker.frameSamples)
++                    & NativeRobotCore::kDetectorRingMask;
++                for (unsigned int lag = 1; lag <= tracker.maximumLag; ++lag) {
++                    double expected = 0.0;
++                    for (unsigned int i = 0; i < tracker.analysisWindowSamples; ++i) {
++                        const double delta = static_cast<double>(tracker.ring[(start + i) & NativeRobotCore::kDetectorRingMask]) -
++                            static_cast<double>(tracker.ring[(start + i + lag) & NativeRobotCore::kDetectorRingMask]);
++                        expected += delta * delta;
++                    }
++                    assert(expected == tracker.differences[lag]);
++                }
++            }
++            assert(framesChecked > 0U);
++        }
++    }
++};
++} // namespace webrc::native
++
+@@ -632,0 +668 @@ int main() {
++    NativeRobotCoreTestAccess::verifyAnalysisDifferences();

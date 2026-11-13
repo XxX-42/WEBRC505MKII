@@ -13,7 +13,7 @@ afterEach(() => {
   vi.doUnmock('../../src/composables/useDeviceScreenEditor');
 });
 
-async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 198, kitIndex: 13, variation: 'C', section: 'intro', swingPercent: 67, quantizeGrid: '1/8', volume: 73 })) {
+async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 198, kitIndex: 13, variation: 'C', section: 'intro', swingPercent: 67, quantizeGrid: '1/8', volume: 73 }), mixer = { available: false, main: 100, reason: 'Mixer readback unavailable.' }) {
   window.localStorage.clear();
   const { NativeRhythmEngine } = await import('../../src/audio/NativeRhythmEngine');
   let status = initial;
@@ -38,6 +38,7 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
     }),
     getUiStatus: () => uiStatus,
     getOutputLevel: () => 100,
+    getMixerState: () => ({ ...mixer, master: 100, tracks: [100, 100, 100, 100, 100] }),
     getTrackHistoryStatus: () => ({ canUndo: false, canRedo: false, busy: false, unavailableReason: 'No history fixture' }),
     getTrackCapabilities: () => ({
       trackId: 1, isAvailable: false, availabilityReason: 'No track fixture',
@@ -73,6 +74,24 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
 
 
 describe('Classic LCD runtime status priority', () => {
+  it.each([
+    [{ available: true, main: 73, reason: '' }, '73%', 'Independent software MAIN gain scales loop playback and rhythm; monitoring bypasses MAIN.', false],
+    [{ available: false, main: 100, reason: 'Host does not expose mixer readback.' }, 'UNAVAILABLE', 'Host does not expose mixer readback.', true],
+  ])('shows MAIN capability and its actual reason', async (mixer, value, reason, disabled) => {
+    const { center } = await mountNativeControls(undefined, mixer);
+    const { useDevicePanel } = await import('../../src/composables/useDevicePanel');
+    const panel = useDevicePanel();
+    panel.classicDispatch({ type: 'EXIT' });
+    panel.classicDispatch({ type: 'ENTER' });
+    panel.classicDispatch({ type: 'PAGE', direction: 1 });
+    await nextTick();
+    const row = center.findAll('.lcd-data-row').find(item => item.text().includes('MAIN'));
+    expect(row).toBeDefined();
+    expect(row!.text()).toContain(value);
+    expect(row!.attributes('title')).toBe(reason);
+    expect(row!.classes().includes('is-disabled')).toBe(disabled);
+  });
+
   it('shows pending and unknown runtime status over stale FX feedback and scoped errors, then restores notice', async () => {
     const { center, setUiStatus } = await mountNativeControls();
     const lcd = () => center.get('.lcd-status');

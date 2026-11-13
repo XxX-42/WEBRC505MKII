@@ -1,0 +1,17 @@
+{
+  "binarySha256": "24E9A3E1B9080FFFDC19F85661FE39F697649062466DC7DAE0FCE5B732EF1130",
+  "compiler": "Visual Studio 16 2019 MSVC",
+  "deviceApiEnumeration": "NOT_RUN",
+  "blockedAction": "Start isolated real host, GET devices/status, stop only that child",
+  "rc505": "HARDWARE_RC505_BLOCKED: no present matching name or Roland VID_0582 found by read-only PnP inventory",
+  "sourceWorktree": "C:/Users/user1000/.codex/scratch/rc505-wasapi-validation-20261114",
+  "launch": "BLOCKED_BY_AUTOMATIC_APPROVAL",
+  "source": "41756410108712ce1fa2600f43b6bdf1575be4db",
+  "backend": "RtAudio WASAPI",
+  "audioCallback": "NOT_RUN",
+  "build": "PASS",
+  "systemRoutingChanged": false,
+  "reviewReason": "blocked by policy; no more specific reason supplied",
+  "binaryPath": "C:/Users/user1000/.codex/scratch/rc505-wasapi-real-build-20261114/Release/native_bridge_host.exe",
+  "cmakeCache": "C:/Users/user1000/.codex/scratch/rc505-wasapi-real-build-20261114/CMakeCache.txt"
+}
