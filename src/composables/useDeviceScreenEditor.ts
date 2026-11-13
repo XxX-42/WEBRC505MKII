@@ -1382,14 +1382,16 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
               : quantizeAvailable ? '' : settings?.reason || 'Recording quantization is unavailable.' }),
         ...(engine.getBrowserAutoRecSettings() ? (() => {
           const autoRec = engine.getBrowserAutoRecSettings()!;
-          const approximation = 'Browser software approximation: raw-input peak threshold starts recording; no added pre-roll. Roland’s exact detector behavior is unpublished.';
+          const approximation = `Software approximation: raw-input peak threshold starts recording; no added pre-roll. ${engine.getMode?.() === 'native' ? 'Native uses raw-peak-dbfs-v1.' : 'Browser uses its raw-input peak detector.'} Roland’s exact detector mapping is unpublished.`;
+          const nativeSettingsPending = engine.getMode?.() === 'native' && engine.isNativeAutoRecSettingsPending();
           return [
             makeBooleanField('auto-rec-sw', 'AUTO REC SW', autoRec.enabled, enabled => engine.setBrowserAutoRecSettings({ ...autoRec, enabled }),
-              { reason: approximation }),
+              { disabled: nativeSettingsPending, reason: nativeSettingsPending
+                  ? 'Native AUTO REC is waiting for callback acknowledgement; the displayed value is the last confirmed setting.' : approximation }),
             makeNumberField('auto-rec-sens', 'SENS', autoRec.sensitivity, sensitivity => engine.setBrowserAutoRecSettings({ ...autoRec, sensitivity: Math.round(sensitivity) }),
-              { min: 1, max: 100, step: 1, disabled: !autoRec.enabled, reason: autoRec.enabled ? approximation : 'Turn AUTO REC SW ON to edit sensitivity.' }),
+              { min: 1, max: 100, step: 1, disabled: nativeSettingsPending, reason: nativeSettingsPending ? 'Native AUTO REC is waiting for callback acknowledgement.' : approximation }),
           ];
-        })() : [makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'Browser Auto Rec is available only in Browser audio mode.' })]),
+        })() : [makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'AUTO REC needs a supported runtime and confirmed settings readback.' })]),
         ...(bounce ? [
           makeBooleanField('bounce-sw', 'BOUNCE SW', bounce.bounceSw, (enabled) => {
             const current = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();

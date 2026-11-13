@@ -310,6 +310,15 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         semanticMeter = {{metadata.at("semantics").at("meter")[0U].get<unsigned int>(), metadata.at("semantics").at("meter")[1U].get<unsigned int>()}};
         const auto& settings = metadata.at("extensions").at("WEBRC").at("nativeMemory");
         auto candidate = std::make_unique<NativeMemorySettings>();
+        if (settings.contains("autoRec")) {
+            const auto& autoRec = settings.at("autoRec");
+            if (!autoRec.is_object() || autoRec.size() != 2U || !autoRec.contains("enabled") || !autoRec.at("enabled").is_boolean() ||
+                !autoRec.contains("sensitivity") || !boundedMemoryInteger(autoRec.at("sensitivity"), 1, 100))
+                throw std::runtime_error("Invalid Native Memory AUTO REC settings.");
+            candidate->autoRecEnabled = autoRec.at("enabled").get<bool>();
+            candidate->autoRecSensitivity = autoRec.at("sensitivity").get<unsigned int>();
+            candidate->autoRecIncluded = true;
+        }
         if (settings.contains("recAction")) {
             const auto action = settings.at("recAction").get<std::string>();
             if (action != "REC->PLAY" && action != "REC->DUB") throw std::runtime_error("Invalid Memory REC ACTION.");
@@ -747,6 +756,24 @@ json statusToJson(const EngineStatus& status) {
     }
     for (const auto mode : status.nativeMemoryDubModes) memoryDubModes.push_back(nativeDubModeToString(mode));
     for (const bool enabled : status.nativeLoopSync) loopSync.push_back(enabled);
+    json autoRecTracks = json::array();
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        autoRecTracks.push_back({{"trackId", track + 1U},
+            {"armRequestedRevision", status.nativeAutoRecArmRequestedRevision[track]},
+            {"armAppliedRevision", status.nativeAutoRecArmAppliedRevision[track]},
+            {"triggerAppliedRevision", status.nativeAutoRecTriggerAppliedRevision[track]},
+            {"triggerContentRevision", status.nativeAutoRecTriggerContentRevision[track]},
+            {"cancelAppliedRevision", status.nativeAutoRecCancelAppliedRevision[track]},
+            {"armed", status.nativeAutoRecArmed[track]},
+            {"intentId", status.nativeAutoRecIntentIds[track]},
+            {"stopReceipt", {{"intentId", status.nativeAutoRecStopIntentIds[track]},
+                {"armRevision", status.nativeAutoRecStopArmRevisions[track]},
+                {"expectedContentRevision", status.nativeAutoRecStopExpectedContentRevisions[track]},
+                {"requestedRevision", status.nativeAutoRecStopRequestedRevisions[track]},
+                {"appliedRevision", status.nativeAutoRecStopAppliedRevisions[track]},
+                {"rejectedRevision", status.nativeAutoRecStopRejectedRevisions[track]},
+                {"appliedContentRevision", status.nativeAutoRecStopAppliedContentRevisions[track]}}}});
+    }
     json bounceIn = json::array();
     json bounceTrack = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -1037,6 +1064,10 @@ json statusToJson(const EngineStatus& status) {
             }
             return tokens;
         }()},
+        {"nativeAutoRec", {{"available", status.nativeAutoRecAvailable}, {"detectorModel", "raw-peak-dbfs-v1"},
+            {"settings", {{"enabled", status.nativeAutoRecEnabled}, {"sensitivity", status.nativeAutoRecSensitivity},
+                {"requestedRevision", status.nativeAutoRecRequestedRevision}, {"appliedRevision", status.nativeAutoRecAppliedRevision}}},
+            {"tracks", autoRecTracks}}},
         {"nativeLoopFrameScheduling", {{"version", 1}, {"available", status.nativeRhythmFrameSchedulingAvailable},
             {"batchTransportAvailable", true},
             {"batchTransportReason", ""},
@@ -1248,6 +1279,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
         {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes}, {"loopSync", loopSync},
+            {"autoRec", {{"enabled", status.nativeAutoRecEnabled}, {"sensitivity", status.nativeAutoRecSensitivity}}},
             {"recQuantize", status.nativeRecordQuantizeMeasure ? "MEASURE" : "OFF"},
             {"bounce", {{"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack}}}}},
         {"nativeBounce", {{"version", 1U}, {"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack},
@@ -2429,6 +2461,115 @@ int main() {
             return;
         }
         writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    server.Post("/v1/record/auto-rec", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        if (!requestMatchesHostIncarnation(request) || request.get_header_value_count("X-Native-Host-Incarnation") != 1U) {
+            response.status = 409; writeError(response, "Native host incarnation changed; AUTO REC settings were not accepted."); return;
+        }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t expectedRevision = 0U, acceptedRevision = 0U, sensitivityValue = 0U;
+            if (!body.is_object() || body.size() != 3U || !body.contains("enabled") || !body.at("enabled").is_boolean() ||
+                !body.contains("sensitivity") || !readUnsignedJsonInteger(body.at("sensitivity"), 100U, sensitivityValue) || sensitivityValue < 1U ||
+                !body.contains("expectedRevision") || !readUnsignedJsonInteger(body.at("expectedRevision"), kMaximumSafeTempoRevision, expectedRevision)) {
+                response.status = 400; writeError(response, "AUTO REC settings require enabled, sensitivity 1..100, and expectedRevision."); return;
+            }
+            const auto sensitivity = static_cast<unsigned int>(sensitivityValue);
+            if (!engine.setNativeAutoRecSettings(body.at("enabled").get<bool>(), sensitivity, expectedRevision, acceptedRevision, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto result = statusToJson(engine.getStatus());
+            result["nativeAutoRecSettingsReceipt"] = {{"requestedRevision", acceptedRevision}};
+            writeJson(response, result);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    server.Post("/v1/transport/record/auto-rec", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        if (!requestMatchesHostIncarnation(request) || request.get_header_value_count("X-Native-Host-Incarnation") != 1U) {
+            response.status = 409; writeError(response, "Native host incarnation changed; AUTO REC arm was not accepted."); return;
+        }
+        if (!readTrackIndex(request, trackIndex, error)) { response.status = 400; writeError(response, error); return; }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t expectedRevision = 0U, intentHigh = 0U, intentLow = 0U, acceptedRevision = 0U;
+            if (!body.is_object() || body.size() != 2U || !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentHigh, intentLow) ||
+                !body.contains("expectedArmRevision") || !readUnsignedJsonInteger(body.at("expectedArmRevision"), kMaximumSafeTempoRevision, expectedRevision)) {
+                response.status = 400; writeError(response, "AUTO REC arm requires an intentId and safe expectedArmRevision."); return;
+            }
+            bool duplicate = false;
+            if (!engine.armNativeAutoRec(trackIndex, body.at("intentId").get<std::string>(), expectedRevision, acceptedRevision, duplicate, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto result = statusToJson(engine.getStatus());
+            result["nativeAutoRecArmReceipt"] = {{"intentId", body.at("intentId")}, {"trackId", trackIndex + 1U},
+                {"expectedArmRevision", expectedRevision}, {"armRevision", acceptedRevision}, {"duplicate", duplicate}};
+            writeJson(response, result);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    server.Post("/v1/transport/record/auto-rec/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        if (!requestMatchesHostIncarnation(request) || request.get_header_value_count("X-Native-Host-Incarnation") != 1U) {
+            response.status = 409; writeError(response, "Native host incarnation changed; AUTO REC cancel was not accepted."); return;
+        }
+        if (!readTrackIndex(request, trackIndex, error)) { response.status = 400; writeError(response, error); return; }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t intentHigh = 0U, intentLow = 0U, armRevision = 0U;
+            if (!body.is_object() || body.size() != 2U || !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), intentHigh, intentLow) ||
+                !body.contains("armRevision") || !readUnsignedJsonInteger(body.at("armRevision"), kMaximumSafeTempoRevision, armRevision)) {
+                response.status = 400; writeError(response, "AUTO REC cancel requires an intentId and safe armRevision."); return;
+            }
+            if (!engine.cancelNativeAutoRec(trackIndex, body.at("intentId").get<std::string>(), armRevision, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto result = statusToJson(engine.getStatus());
+            result["nativeAutoRecCancelReceipt"] = {{"intentId", body.at("intentId")}, {"trackId", trackIndex + 1U}, {"armRevision", armRevision}};
+            writeJson(response, result);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+
+    server.Post("/v1/transport/record/auto-rec/stop", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        if (!requestMatchesHostIncarnation(request) || request.get_header_value_count("X-Native-Host-Incarnation") != 1U) {
+            response.status = 409; writeError(response, "Native host incarnation changed; AUTO REC STOP was not accepted."); return;
+        }
+        if (!readTrackIndex(request, trackIndex, error)) { response.status = 400; writeError(response, error); return; }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t ignoredHigh = 0U, ignoredLow = 0U;
+            std::uint64_t armRevision = 0U, expectedContentRevision = 0U;
+            if (!body.is_object() || body.size() != 4U || !body.contains("intentId") || !body.at("intentId").is_string() ||
+                !parseRhythmIntentId(body.at("intentId").get<std::string>(), ignoredHigh, ignoredLow) ||
+                !body.contains("armRevision") || !readUnsignedJsonInteger(body.at("armRevision"), kMaximumSafeTempoRevision, armRevision) ||
+                !body.contains("expectedContentRevision") || !readUnsignedJsonInteger(body.at("expectedContentRevision"), kMaximumSafeTempoRevision, expectedContentRevision) ||
+                !body.contains("stopIntentId") || !body.at("stopIntentId").is_string() ||
+                !parseRhythmIntentId(body.at("stopIntentId").get<std::string>(), ignoredHigh, ignoredLow)) {
+                response.status = 400; writeError(response, "AUTO REC STOP requires intentId, armRevision, expectedContentRevision, and stopIntentId."); return;
+            }
+            bool duplicate = false;
+            if (!engine.stopNativeAutoRecGeneration(trackIndex, body.at("intentId").get<std::string>(), armRevision,
+                    expectedContentRevision, body.at("stopIntentId").get<std::string>(), duplicate, error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            auto result = statusToJson(engine.getStatus());
+            result["nativeAutoRecStopReceipt"] = {{"stopIntentId", body.at("stopIntentId")},
+                {"trackId", trackIndex + 1U}, {"armRevision", armRevision},
+                {"expectedContentRevision", expectedContentRevision}, {"duplicate", duplicate},
+                {"requestedRevision", result["nativeAutoRec"]["tracks"][trackIndex]["stopReceipt"]["requestedRevision"]},
+                {"rejected", result["nativeAutoRec"]["tracks"][trackIndex]["stopReceipt"]["rejectedRevision"] ==
+                    result["nativeAutoRec"]["tracks"][trackIndex]["stopReceipt"]["requestedRevision"]},
+                {"detail", error}};
+            writeJson(response, result);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
 
     // Rhythm-measure REC/STOP is deliberately a separate command path. The

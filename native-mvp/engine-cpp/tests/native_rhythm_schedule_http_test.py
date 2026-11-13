@@ -430,11 +430,17 @@ def main():
             value['nativeTracks'][1]['state'] == 'Stopped' and value['nativeTracks'][1]['loopLengthSamples'] == 2 and
             value['nativeTracks'][1]['phaseProvenance']['verified'] is False)
         require(imported['nativeMemory']['loopSync'][1] is True, imported['nativeMemory'])
-        play_after_import = phase(imported)
+        set_callback_gate(True)
+        fresh_imported = request('/v1/status')[1]
+        play_after_import = phase(fresh_imported)
         play_after_import['action'] = 'play'
         import_play_code, import_play = request('/v1/transport/rhythm-schedule', 'POST', play_after_import)
         require(import_play_code == 409 and 'provenance' in import_play.get('error', '').lower(),
             ('imported PCM inherited a synchronized PLAY phase proof', import_play_code, import_play))
+        after_rejection = request('/v1/status')[1]
+        require(after_rejection['nativeLoopFrameScheduling']['requests'][1]['requestedRevision'] ==
+            play_after_import['expectedRevision'], ('rejected PLAY changed schedule revision', after_rejection))
+        set_callback_gate(False)
         print('Native Rhythm LOOP SYNC HTTP: fractional-boundary provenance, synchronized PLAY, Clear/Undo/Redo, import invalidation, phase-change guards, emergency PCM-preserving STOP')
     finally:
         try:

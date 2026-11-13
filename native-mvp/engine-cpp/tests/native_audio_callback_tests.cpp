@@ -15,6 +15,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#if defined(_MSC_VER) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 
 namespace {
 bool trackAllocations = false;
@@ -28,6 +31,28 @@ struct CommandCallbackGate {
     bool entered = false;
     bool release = false;
 };
+
+struct AutoRecBeforeTriggerGate {
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool entered = false;
+    bool release = false;
+    std::size_t expectedTrack = webrc::native::kNativeTrackCount;
+    std::uint64_t expectedGeneration = 0U;
+    unsigned int expectedFrameOffset = 0U;
+};
+
+void holdAutoRecBeforeTrigger(void* context, std::size_t trackIndex,
+    std::uint64_t scannedGeneration, unsigned int frameOffset) noexcept {
+    auto& gate = *static_cast<AutoRecBeforeTriggerGate*>(context);
+    std::unique_lock<std::mutex> lock(gate.mutex);
+    assert(trackIndex == gate.expectedTrack);
+    assert(scannedGeneration == gate.expectedGeneration);
+    assert(frameOffset == gate.expectedFrameOffset);
+    gate.entered = true;
+    gate.condition.notify_all();
+    gate.condition.wait(lock, [&gate] { return gate.release; });
+}
 
 void holdCallbackAfterCommand(void* context, std::size_t) noexcept {
     auto& gate = *static_cast<CommandCallbackGate*>(context);
@@ -335,10 +360,27 @@ struct NativeAudioCoreTestAccess {
         NativeAudioCore::callbackBeforeBatchPublishTestContext_.store(context, std::memory_order_release);
         NativeAudioCore::callbackBeforeBatchPublishTestHook_.store(hook, std::memory_order_release);
     }
+    static void setAutoRecBeforeTriggerTestHook(
+        NativeAudioCore::AutoRecBeforeTriggerTestHook hook, void* context) {
+        NativeAudioCore::autoRecBeforeTriggerTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::autoRecBeforeTriggerTestHook_.store(hook, std::memory_order_release);
+    }
+    static void setAutoRecAfterClaimTestHook(
+        NativeAudioCore::AutoRecBeforeTriggerTestHook hook, void* context) {
+        NativeAudioCore::autoRecAfterClaimTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::autoRecAfterClaimTestHook_.store(hook, std::memory_order_release);
+    }
+    static void setAutoRecBeforeStopGuardTestHook(NativeAudioCore::CallbackCommandTestHook hook, void* context) {
+        NativeAudioCore::autoRecBeforeStopGuardTestContext_.store(context, std::memory_order_release);
+        NativeAudioCore::autoRecBeforeStopGuardTestHook_.store(hook, std::memory_order_release);
+    }
     static std::size_t queuedCommands(const NativeAudioCore& core) {
         return core.commandQueue_.size();
     }
 #endif
+    static float nativeAutoRecThreshold(const NativeAudioCore& core) {
+        return core.nativeAutoRecThresholdLinear_.load(std::memory_order_acquire);
+    }
     static unsigned int pendingTrackCommands(const NativeAudioCore& core, std::size_t track) {
         return core.pendingTrackStateCommands_[track].load(std::memory_order_acquire);
     }
@@ -3329,6 +3371,7 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     const auto makeMemory = [] {
         auto memory = std::make_unique<NativeMemorySettings>();
         memory->recordActionIncluded = true; memory->recordActionDub = true;
+        memory->autoRecIncluded = true; memory->autoRecEnabled = true; memory->autoRecSensitivity = 73U;
         for (auto& bank : memory->banks) bank[0U].effectId = "fractional_delay";
         memory->rhythm.volume = 37U;
         memory->reverb.enabled = true;
@@ -3395,6 +3438,8 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     assert(status.nativeReverbEnabled && std::fabs(status.nativeReverbWetMix - 0.4f) < 1.0e-6f);
     assert(status.nativePitchEnabled && status.nativePitchSemitones == 3.0f);
     assert(status.nativeRecordActionDub && status.nativeRecordActionRequestedRevision == status.nativeRecordActionAppliedRevision);
+    assert(status.nativeAutoRecEnabled && status.nativeAutoRecSensitivity == 73U);
+    assert(status.nativeAutoRecRequestedRevision == status.nativeAutoRecAppliedRevision);
     assert((status.nativeMemoryDubModes == std::array<NativeDubMode, kNativeTrackCount>{{
         NativeDubMode::Replace1, NativeDubMode::Overdub, NativeDubMode::Replace2,
         NativeDubMode::Overdub, NativeDubMode::Replace1}}));
@@ -3417,8 +3462,365 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     assert(core.getStatus().projectContentRevision > beforeAba);
     assert(!core.beginProjectArchiveImport(makeArchive(), 256U, beforeAba, generation, error, makeMemory()));
     assert(generation == 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    (void)core.getStatus(); // Acknowledge the queued rhythm changes before the fresh import.
+    auto oldMemory = makeMemory();
+    oldMemory->autoRecIncluded = false;
+    const auto oldBaseline = core.getStatus().projectContentRevision;
+    assert(core.beginProjectArchiveImport(makeArchive(), 256U, oldBaseline, generation, error, std::move(oldMemory)));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.commitPreparedMemory(generation, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto oldStatus = core.getStatus();
+    assert(core.getProjectArchiveImportStatus(generation).state == NativeProjectImportState::Committed);
+    assert(!oldStatus.nativeAutoRecEnabled && oldStatus.nativeAutoRecSensitivity == 50U);
+    assert(oldStatus.nativeAutoRecRequestedRevision == oldStatus.nativeAutoRecAppliedRevision);
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
+
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+namespace {
+constexpr unsigned int kAutoRecTestFrames = 64U;
+
+void prepareAutoRecTestCore(NativeAudioCore& core, float* output) {
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::string error;
+    std::uint64_t acceptedRevision = 0U;
+    assert(core.setNativeAutoRecSettings(true, 1U, 0U, acceptedRevision, error));
+    assert(acceptedRevision == 1U);
+    const auto pending = core.getStatus();
+    assert(pending.nativeAutoRecRequestedRevision == 1U);
+    assert(pending.nativeAutoRecAppliedRevision == 0U);
+    std::array<float, kAutoRecTestFrames * 2U> quiet{};
+    assert(NativeAudioCoreTestAccess::callback(core, quiet.data(), output, kAutoRecTestFrames) == 0);
+    const auto status = core.getStatus();
+    assert(status.nativeAutoRecEnabled);
+    assert(status.nativeAutoRecRequestedRevision == 1U);
+    assert(status.nativeAutoRecAppliedRevision == 1U);
+}
+
+std::uint64_t armAutoRecTestTrack(NativeAudioCore& core, std::size_t trackIndex,
+    const char* intentId, std::uint64_t expectedRevision = 0U) {
+    std::string error;
+    std::uint64_t acceptedRevision = 0U;
+    bool duplicate = false;
+    assert(core.armNativeAutoRec(trackIndex, intentId, expectedRevision, acceptedRevision, duplicate, error));
+    assert(!duplicate);
+    assert(acceptedRevision == expectedRevision + 1U);
+    return acceptedRevision;
+}
+
+void waitForAutoRecBeforeTrigger(AutoRecBeforeTriggerGate& gate) {
+    std::unique_lock<std::mutex> lock(gate.mutex);
+    const bool entered = gate.condition.wait_for(lock, std::chrono::seconds(2), [&gate] { return gate.entered; });
+    assert(entered);
+}
+
+void releaseAutoRecBeforeTrigger(AutoRecBeforeTriggerGate& gate) {
+    {
+        std::lock_guard<std::mutex> lock(gate.mutex);
+        gate.release = true;
+    }
+    gate.condition.notify_all();
+}
+}
+
+void testNativeAutoRecQuietStereoThresholdAndExactSampleOffset() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{};
+    prepareAutoRecTestCore(core, output.data());
+
+    constexpr std::size_t trackIndex = 1U;
+    const auto generation = armAutoRecTestTrack(core, trackIndex, "00000000000000000000000000000011");
+    std::array<float, kAutoRecTestFrames * 2U> quiet{};
+    assert(NativeAudioCoreTestAccess::callback(core, quiet.data(), output.data(), kAutoRecTestFrames) == 0);
+    auto status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Empty);
+    assert(status.nativeTrackStates[0U] == LooperState::Empty);
+    assert(status.nativeAutoRecArmed[trackIndex]);
+    assert(status.nativeAutoRecArmRequestedRevision[trackIndex] == generation);
+    assert(status.nativeAutoRecArmAppliedRevision[trackIndex] == generation);
+    assert(status.nativeAutoRecTriggerAppliedRevision[trackIndex] == 0U);
+
+    constexpr unsigned int triggerFrame = 23U;
+    const float threshold = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    assert(threshold > 0.0f);
+    std::array<float, kAutoRecTestFrames * 2U> input{};
+    for (unsigned int frame = 0U; frame < kAutoRecTestFrames; ++frame) {
+        input[frame * 2U] = 0.10f;
+        input[frame * 2U + 1U] = 0.20f;
+    }
+    input[triggerFrame * 2U + 1U] = threshold; // Right channel alone reaches the exact raw-peak threshold.
+
+    const auto allocBefore = trackedAllocations;
+    const auto deallocBefore = trackedDeallocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == allocBefore);
+    assert(trackedDeallocations == deallocBefore);
+
+    status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Recording);
+    assert(status.nativeTrackStates[0U] == LooperState::Empty);
+    assert(!status.nativeAutoRecArmed[trackIndex]);
+    assert(status.nativeAutoRecTriggerAppliedRevision[trackIndex] == generation);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, trackIndex).recordedFrames == kAutoRecTestFrames - triggerFrame);
+
+    std::string error;
+    assert(core.finishRecordingTrack(trackIndex, error));
+    std::array<float, 2U> oneQuietFrame{};
+    assert(NativeAudioCoreTestAccess::callback(core, oneQuietFrame.data(), output.data(), 1U) == 0);
+    std::array<float, kAutoRecTestFrames * 2U> captured{};
+    std::size_t copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, trackIndex, captured.data(), kAutoRecTestFrames, copiedFrames));
+    assert(copiedFrames == kAutoRecTestFrames - triggerFrame);
+    assert(captured[0U] == input[triggerFrame * 2U]);
+    assert(captured[1U] == threshold);
+}
+
+void testNativeAutoRecCancelWinsAndStaleGenerationCannotUseOldSample() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{};
+    prepareAutoRecTestCore(core, output.data());
+    constexpr std::size_t trackIndex = 0U;
+    constexpr unsigned int triggerFrame = 17U;
+    const float threshold = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    std::array<float, kAutoRecTestFrames * 2U> input{};
+    input[triggerFrame * 2U + 1U] = threshold;
+
+    const auto firstGeneration = armAutoRecTestTrack(core, trackIndex, "00000000000000000000000000000021");
+    AutoRecBeforeTriggerGate gate{};
+    gate.expectedTrack = trackIndex;
+    gate.expectedGeneration = firstGeneration;
+    gate.expectedFrameOffset = triggerFrame;
+    NativeAudioCoreTestAccess::setAutoRecBeforeTriggerTestHook(&holdAutoRecBeforeTrigger, &gate);
+    std::thread callback([&] {
+        assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    });
+    waitForAutoRecBeforeTrigger(gate);
+
+    std::string error;
+    assert(core.cancelNativeAutoRec(trackIndex, "00000000000000000000000000000021", firstGeneration, error));
+    assert(core.getStatus().nativeAutoRecCancelAppliedRevision[trackIndex] == firstGeneration);
+    const auto secondGeneration = armAutoRecTestTrack(core, trackIndex,
+        "00000000000000000000000000000022", firstGeneration);
+    assert(secondGeneration == firstGeneration + 1U);
+    releaseAutoRecBeforeTrigger(gate);
+    callback.join();
+    NativeAudioCoreTestAccess::setAutoRecBeforeTriggerTestHook(nullptr, nullptr);
+
+    auto status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Empty);
+    assert(status.nativeAutoRecTriggerAppliedRevision[trackIndex] != secondGeneration);
+    assert(status.nativeAutoRecArmRequestedRevision[trackIndex] == secondGeneration);
+
+    std::array<float, kAutoRecTestFrames * 2U> quiet{};
+    assert(NativeAudioCoreTestAccess::callback(core, quiet.data(), output.data(), kAutoRecTestFrames) == 0);
+    status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Empty);
+    assert(status.nativeAutoRecArmAppliedRevision[trackIndex] == secondGeneration);
+    assert(status.nativeAutoRecArmed[trackIndex]);
+
+    std::array<float, kAutoRecTestFrames * 2U> nextInput{};
+    nextInput[5U * 2U] = threshold;
+    assert(NativeAudioCoreTestAccess::callback(core, nextInput.data(), output.data(), kAutoRecTestFrames) == 0);
+    status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Recording);
+    assert(status.nativeAutoRecTriggerAppliedRevision[trackIndex] == secondGeneration);
+    assert(NativeAudioCoreTestAccess::trackMetadata(core, trackIndex).recordedFrames == kAutoRecTestFrames - 5U);
+}
+
+void testNativeAutoRecConditionalStopAppliesMatchingTake() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{}, input{};
+    prepareAutoRecTestCore(core, output.data());
+    const char* intent = "00000000000000000000000000000091";
+    const auto generation = armAutoRecTestTrack(core, 0U, intent);
+    input[0U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    const auto before = core.getStatus();
+    bool duplicate = false;
+    std::string error;
+    assert(core.stopNativeAutoRecGeneration(0U, intent, generation, before.nativeTrackContentRevision[0U],
+        "00000000000000000000000000000092", duplicate, error));
+    assert(!duplicate);
+    const auto pending = core.getStatus();
+    assert(pending.nativeAutoRecStopRequestedRevisions[0U] != pending.nativeAutoRecStopAppliedRevisions[0U]);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    const auto after = core.getStatus();
+    assert(after.nativeTrackStates[0U] != LooperState::Recording);
+    assert(after.nativeAutoRecStopAppliedRevisions[0U] == after.nativeAutoRecStopRequestedRevisions[0U]);
+    assert(after.nativeAutoRecStopAppliedContentRevisions[0U] == after.nativeTrackContentRevision[0U]);
+}
+
+void testNativeAutoRecOldTakeCannotStopNewRecording() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{}, input{};
+    prepareAutoRecTestCore(core, output.data());
+    const char* intent = "00000000000000000000000000000071";
+    const auto generation = armAutoRecTestTrack(core, 0U, intent);
+    input[0U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    std::string error;
+    assert(core.finishRecordingTrack(0U, error, 120.0, 1U));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    std::uint64_t settingsRevision = 0U;
+    assert(core.setNativeAutoRecSettings(false, 1U, 1U, settingsRevision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    input.fill(0.125f);
+    assert(core.recordTrack(0U, error, 120.0, 1U));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    const auto before = core.getStatus();
+    assert(before.nativeTrackStates[0U] == LooperState::Recording);
+    bool duplicate = false;
+    assert(core.stopNativeAutoRecGeneration(0U, intent, generation, before.nativeTrackContentRevision[0U],
+        "00000000000000000000000000000072", duplicate, error));
+    const auto rejected = core.getStatus();
+    assert(rejected.nativeAutoRecStopRejectedRevisions[0U] == rejected.nativeAutoRecStopRequestedRevisions[0U]);
+    assert(rejected.nativeTrackStates[0U] == LooperState::Recording);
+    assert(core.finishRecordingTrack(0U, error, 120.0, 1U));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    std::array<float, kAutoRecTestFrames * 4U> captured{};
+    std::size_t copied = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, captured.data(), kAutoRecTestFrames * 2U, copied));
+    assert(copied >= kAutoRecTestFrames);
+    assert(captured[0U] == 0.125f && captured[1U] == 0.125f);
+}
+
+void testNativeAutoRecConditionalStopRejectsStaleAtCallback() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{}, input{};
+    prepareAutoRecTestCore(core, output.data());
+    const char* intent = "00000000000000000000000000000061";
+    const auto generation = armAutoRecTestTrack(core, 0U, intent);
+    input[0U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    const auto before = core.getStatus();
+    const auto revision = before.nativeTrackContentRevision[0U];
+    bool duplicate = false;
+    std::string error;
+    assert(core.stopNativeAutoRecGeneration(0U, intent, generation, revision,
+        "00000000000000000000000000000062", duplicate, error));
+    assert(!duplicate);
+    CommandCallbackGate gate;
+    NativeAudioCoreTestAccess::setAutoRecBeforeStopGuardTestHook(&holdCallbackAfterCommand, &gate);
+    std::thread callback([&] { assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0); });
+    {
+        std::unique_lock<std::mutex> lock(gate.mutex);
+        assert(gate.condition.wait_for(lock, std::chrono::seconds(2), [&] { return gate.entered; }));
+    }
+    NativeAudioCoreTestAccess::changeProjectRevisionForTest(core, 0U);
+    { std::lock_guard<std::mutex> lock(gate.mutex); gate.release = true; }
+    gate.condition.notify_all();
+    callback.join();
+    NativeAudioCoreTestAccess::setAutoRecBeforeStopGuardTestHook(nullptr, nullptr);
+    const auto after = core.getStatus();
+    assert(after.nativeTrackStates[0U] == LooperState::Recording);
+    assert(after.nativeAutoRecStopRejectedRevisions[0U] == after.nativeAutoRecStopRequestedRevisions[0U]);
+    assert(after.nativeAutoRecStopAppliedRevisions[0U] == 0U);
+}
+
+void testNativeAutoRecClaimCannotBeRearmedBeforePublication() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{}, input{};
+    prepareAutoRecTestCore(core, output.data());
+    const auto generation = armAutoRecTestTrack(core, 0U, "00000000000000000000000000000051");
+    input[8U * 2U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    AutoRecBeforeTriggerGate gate{};
+    gate.expectedTrack = 0U; gate.expectedGeneration = generation; gate.expectedFrameOffset = 8U;
+    NativeAudioCoreTestAccess::setAutoRecAfterClaimTestHook(&holdAutoRecBeforeTrigger, &gate);
+    std::thread callback([&] { assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0); });
+    waitForAutoRecBeforeTrigger(gate);
+    std::string error;
+    std::uint64_t accepted = 0U;
+    bool duplicate = false;
+    assert(!core.armNativeAutoRec(0U, "00000000000000000000000000000052", generation, accepted, duplicate, error));
+    releaseAutoRecBeforeTrigger(gate);
+    callback.join();
+    NativeAudioCoreTestAccess::setAutoRecAfterClaimTestHook(nullptr, nullptr);
+    const auto status = core.getStatus();
+    assert(status.nativeAutoRecTriggerAppliedRevision[0U] == generation);
+    assert(status.nativeTrackStates[0U] == LooperState::Recording);
+}
+
+void testNativeAutoRecResetCancelsArmedGeneration() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{}, quiet{}, loud{};
+    prepareAutoRecTestCore(core, output.data());
+    const auto generation = armAutoRecTestTrack(core, 0U, "00000000000000000000000000000081");
+    assert(NativeAudioCoreTestAccess::callback(core, quiet.data(), output.data(), kAutoRecTestFrames) == 0);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    NativeAudioCoreTestAccess::resetRhythmRuntimeForTest(core);
+    auto status = core.getStatus();
+    assert(!status.nativeAutoRecArmed[0U]);
+    assert(status.nativeAutoRecCancelAppliedRevision[0U] == generation);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    loud[0U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    assert(NativeAudioCoreTestAccess::callback(core, loud.data(), output.data(), kAutoRecTestFrames) == 0);
+    status = core.getStatus();
+    assert(status.nativeTrackStates[0U] == LooperState::Empty);
+    assert(status.nativeAutoRecTriggerAppliedRevision[0U] != generation);
+}
+
+void testNativeAutoRecStopAndClearCancelArmedGeneration() {
+    for (bool clear : {false, true}) {
+        NativeAudioCore core;
+        std::array<float, kAutoRecTestFrames * 2U> output{}, quiet{}, loud{};
+        prepareAutoRecTestCore(core, output.data());
+        const auto generation = armAutoRecTestTrack(core, 0U, "00000000000000000000000000000041");
+        assert(NativeAudioCoreTestAccess::callback(core, quiet.data(), output.data(), kAutoRecTestFrames) == 0);
+        std::string error;
+        assert(clear ? core.clearTrack(0U, error) : core.stopTrack(0U, error));
+        loud[0U] = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+        assert(NativeAudioCoreTestAccess::callback(core, loud.data(), output.data(), kAutoRecTestFrames) == 0);
+        const auto status = core.getStatus();
+        assert(status.nativeTrackStates[0U] == LooperState::Empty);
+        assert(!status.nativeAutoRecArmed[0U]);
+        assert(status.nativeAutoRecCancelAppliedRevision[0U] == generation);
+        assert(status.nativeAutoRecTriggerAppliedRevision[0U] != generation);
+    }
+}
+
+void testNativeAutoRecCancelAtTriggerBoundaryDoesNotReportARecording() {
+    NativeAudioCore core;
+    std::array<float, kAutoRecTestFrames * 2U> output{};
+    prepareAutoRecTestCore(core, output.data());
+    constexpr std::size_t trackIndex = 3U;
+    constexpr unsigned int triggerFrame = 19U;
+    const float threshold = NativeAudioCoreTestAccess::nativeAutoRecThreshold(core);
+    std::array<float, kAutoRecTestFrames * 2U> input{};
+    input[triggerFrame * 2U] = threshold;
+    const auto generation = armAutoRecTestTrack(core, trackIndex, "00000000000000000000000000000031");
+    AutoRecBeforeTriggerGate gate{};
+    gate.expectedTrack = trackIndex;
+    gate.expectedGeneration = generation;
+    gate.expectedFrameOffset = triggerFrame;
+    NativeAudioCoreTestAccess::setAutoRecBeforeTriggerTestHook(&holdAutoRecBeforeTrigger, &gate);
+    std::thread callback([&] {
+        assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), kAutoRecTestFrames) == 0);
+    });
+    waitForAutoRecBeforeTrigger(gate);
+    std::string error;
+    assert(core.cancelNativeAutoRec(trackIndex, "00000000000000000000000000000031", generation, error));
+    assert(core.cancelNativeAutoRec(trackIndex, "00000000000000000000000000000031", generation, error));
+    releaseAutoRecBeforeTrigger(gate);
+    callback.join();
+    NativeAudioCoreTestAccess::setAutoRecBeforeTriggerTestHook(nullptr, nullptr);
+
+    const auto status = core.getStatus();
+    assert(status.nativeTrackStates[trackIndex] == LooperState::Empty);
+    assert(status.nativeAutoRecCancelAppliedRevision[trackIndex] == generation);
+    assert(status.nativeAutoRecTriggerAppliedRevision[trackIndex] == 0U);
+    std::array<float, kAutoRecTestFrames * 2U> captured{};
+    std::size_t copiedFrames = 0U;
+    assert(!NativeAudioCoreTestAccess::copyStereoTrack(core, trackIndex, captured.data(), kAutoRecTestFrames, copiedFrames));
+}
+#endif
 
 void testNativeRecActionAtomicCompletionAndBudgetedShadow() {
     for (const bool dub : {false, true}) {
@@ -4757,8 +5159,23 @@ void testNativeTrackPhaseProvenanceSnapshotUnderConcurrentPublication() {
 }
 
 int main() {
+#if defined(_MSC_VER) && defined(_DEBUG)
+    _set_error_mode(_OUT_TO_STDERR);
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#endif
 #if defined(NATIVE_CALLBACK_NO_HARDWARE)
     testBatchAckWaitsForPublishedTrackSnapshots();
+    testNativeAutoRecQuietStereoThresholdAndExactSampleOffset();
+    testNativeAutoRecCancelWinsAndStaleGenerationCannotUseOldSample();
+    testNativeAutoRecCancelAtTriggerBoundaryDoesNotReportARecording();
+    testNativeAutoRecStopAndClearCancelArmedGeneration();
+    testNativeAutoRecResetCancelsArmedGeneration();
+    testNativeAutoRecClaimCannotBeRearmedBeforePublication();
+    testNativeAutoRecConditionalStopRejectsStaleAtCallback();
+    testNativeAutoRecOldTakeCannotStopNewRecording();
+    testNativeAutoRecConditionalStopAppliesMatchingTake();
 #endif
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testNativeOneShotOverdubAdmissionIsSideEffectFree();

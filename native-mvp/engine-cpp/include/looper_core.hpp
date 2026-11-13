@@ -89,6 +89,8 @@ struct Command {
     std::uint64_t emergencyPhaseEpoch = 0U;
     std::uint64_t emergencyPhaseAvailabilityGeneration = 0U;
     std::uint64_t emergencySettingsRevision = 0U;
+    bool autoRecStopGuard = false;
+    std::uint64_t autoRecArmRevision = 0U;
 };
 
 struct ProcessStats {

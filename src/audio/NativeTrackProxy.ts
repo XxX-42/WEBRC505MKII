@@ -16,6 +16,14 @@ export class NativeTrackProxy {
   public readonly trackId: number;
   public readonly track: Track;
   public state: TrackState = TrackState.EMPTY;
+  public get autoRecArmed(): boolean {
+    const autoRec = this.engine.getNativeAutoRecStatus()?.tracks.find((item) => item.trackId === this.trackId);
+    return autoRec?.armed === true && autoRec.armRequestedRevision > 0
+      && autoRec.armAppliedRevision === autoRec.armRequestedRevision
+      && autoRec.cancelAppliedRevision < autoRec.armRequestedRevision
+      && autoRec.triggerAppliedRevision < autoRec.armRequestedRevision
+      && this.engine.isNativeAutoRecTrackArmed(this.trackId);
+  }
   public get isReverse(): boolean {
     return this.engine.getReverse(this.trackId) === true;
   }
@@ -39,11 +47,23 @@ export class NativeTrackProxy {
     if (!this.isAvailable) {
       return 'NATIVE HOST DOES NOT EXPOSE THIS LOOP TRACK';
     }
-    return this.engine.isNativeReady() ? '' : 'START native_bridge_host';
+    const reportedArm = this.engine.getNativeAutoRecStatus()?.tracks.find((item) => item.trackId === this.trackId);
+    if ((reportedArm?.armed && !this.engine.isNativeAutoRecTrackArmed(this.trackId))
+      || this.engine.isNativeAutoRecTrackResolving(this.trackId)
+      || this.engine.hasUnresolvedNativeAutoRecOperation(this.trackId)) {
+      return 'NATIVE AUTO REC IS ARMED, BUT THIS CLIENT CANNOT CONFIRM ITS ARM INTENT. REC cancels the exact host generation; wait for status before recording.';
+    }
+    if (!this.engine.isNativeReady()) return 'START native_bridge_host';
+    if (this.state === TrackState.EMPTY && this.engine.getNativeAutoRecSettings()?.enabled) {
+      return this.engine.nativeAutoRecArmDisabledReason(this.trackId);
+    }
+    return '';
   }
 
   public get transportEnabled(): boolean {
-    return this.isAvailable && this.engine.isNativeReady();
+    return this.isAvailable && this.engine.isNativeReady()
+      && !(this.state === TrackState.EMPTY && this.engine.getNativeAutoRecSettings()?.enabled
+        && this.engine.nativeAutoRecArmDisabledReason(this.trackId));
   }
 
   public get canExportHqWav(): boolean {
@@ -155,7 +175,9 @@ export class NativeTrackProxy {
   public triggerRecord() {
     if (!this.transportEnabled) return;
 
+    if (this.state === TrackState.REC_STANDBY) return this.engine.stopTrack(this.trackId);
     if (this.state === TrackState.EMPTY) {
+      if (this.autoRecArmed) return this.engine.stopTrack(this.trackId);
       return this.engine.recordTrack(this.trackId);
     } else if (this.state === TrackState.RECORDING) {
       if (this.engine.getRecordPlaySettings().recActionAvailable) return this.engine.finishRecordingTrack(this.trackId);
@@ -201,7 +223,18 @@ export class NativeTrackProxy {
   }
 
   public syncNativeState(state: NativeLooperState, progress: number) {
-    this.state = stateMap[state];
+    const autoRec = this.engine.getNativeAutoRecStatus()?.tracks.find((item) => item.trackId === this.trackId);
+    const armedRevision = autoRec?.armRequestedRevision ?? 0;
+    const unresolved = this.engine.hasUnresolvedNativeAutoRecOperation(this.trackId);
+    const hostArmApplied = autoRec?.armed === true && armedRevision > 0
+      && autoRec.armAppliedRevision === armedRevision && autoRec.cancelAppliedRevision < armedRevision
+      && autoRec.triggerAppliedRevision < armedRevision;
+    const hostArmTransitionPending = autoRec && armedRevision > 0
+      && !autoRec.armed && (autoRec.armAppliedRevision !== armedRevision
+        || autoRec.cancelAppliedRevision < armedRevision && autoRec.triggerAppliedRevision < armedRevision);
+    const armed = unresolved || state === 'Empty' && (hostArmApplied || hostArmTransitionPending);
+    // Only an acknowledged, current host arm is rendered as standby. A request alone never appears ready.
+    this.state = armed ? TrackState.REC_STANDBY : stateMap[state];
     this.engine.updateTrackTelemetry(this.trackId, this.state, progress);
   }
 

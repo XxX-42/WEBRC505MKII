@@ -26,6 +26,9 @@ export interface NativeMemoryPort {
 const copyJson = (value: unknown): Rc505Json => JSON.parse(JSON.stringify(value)) as Rc505Json;
 
 function stopped(status: NativeStatus | null): { allowed: boolean; reason: string } {
+  if (status?.nativeAutoRec?.tracks?.some((track) => track.armed)) {
+    return { allowed: false, reason: 'Cancel every armed Native AUTO REC track before switching Memory.' };
+  }
   const allowed = !!status?.engineRunning && status.nativeTracks?.length === 5
     && status.nativeTracks.every((track) => track.state === 'Empty' || track.state === 'Stopped');
   return { allowed, reason: allowed ? '' : 'Stop all five Native tracks before switching Memory.' };
@@ -69,6 +72,14 @@ function assertLoopTransportReadback(status: NativeStatus): void {
     if (appliedReverse !== undefined && appliedReverse !== savedReverse) {
       throw new Error(`Track ${index + 1} Native REVERSE readback is inconsistent; Memory operation was refused.`);
     }
+  }
+}
+function assertNoPendingAutoRec(port: NativeMemoryPort, status: NativeStatus): void {
+  if (status.nativeAutoRec?.tracks.some((track) => track.armed || track.armRequestedRevision > 0
+    && (track.armAppliedRevision !== track.armRequestedRevision
+      || track.triggerAppliedRevision < track.armRequestedRevision && track.cancelAppliedRevision < track.armRequestedRevision))
+    || [1, 2, 3, 4, 5].some((trackId) => port.bridge.hasUnresolvedNativeAutoRecOperation(trackId, status))) {
+    throw new Error('Cancel or reconcile every Native AUTO REC arm before Memory capture or switching.');
   }
 }
 function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
@@ -119,6 +130,17 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   if (native.loopSync?.some(Boolean) && record?.recAction === 'REC->DUB') {
     throw new Error('Native Memory cannot capture REC->DUB with LOOP SYNC enabled; use REC->PLAY or disable LOOP SYNC.');
   }
+  let autoRec: { enabled: boolean; sensitivity: number } | undefined;
+  if (status.nativeAutoRec?.available === true) {
+    const auto = status.nativeAutoRec;
+    if (auto.detectorModel !== 'raw-peak-dbfs-v1' || auto.settings.requestedRevision !== auto.settings.appliedRevision
+      || auto.tracks.some((track) => track.armed)
+      || !Number.isInteger(auto.settings.sensitivity) || auto.settings.sensitivity < 1 || auto.settings.sensitivity > 100
+      || native.autoRec?.enabled !== auto.settings.enabled || native.autoRec?.sensitivity !== auto.settings.sensitivity) {
+      throw new Error('Wait for Native AUTO REC settings acknowledgement and cancel armed tracks before Memory capture.');
+    }
+    autoRec = { enabled: auto.settings.enabled, sensitivity: auto.settings.sensitivity };
+  }
   const dubModes: NativeDubMode[] | undefined = native.dubModes === undefined
     ? undefined
     : native.dubModes.length === 5 && native.dubModes.every((mode): mode is NativeDubMode =>
@@ -136,6 +158,7 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   }
   return {
     ...(record?.recActionAvailable ? { recAction: record.recAction } : {}),
+    ...(autoRec ? { autoRec } : {}),
     ...(native.recQuantize === 'OFF' || native.recQuantize === 'MEASURE' ? { recQuantize: native.recQuantize } : {}),
     ...(native.loopSync?.length === 5 ? { loopSync: [...native.loopSync] } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
@@ -170,7 +193,16 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
   const assertStopped = (status: NativeStatus | null) => { const result = stopped(status); if (!result.allowed) throw new Error(result.reason); };
   return {
     revision,
-    canSwitch: () => port.pendingEdits?.() ? { allowed: false, reason: 'Wait for pending Native FX edits before switching Memory.' } : stopped(port.status()),
+    canSwitch: () => {
+      if (port.pendingEdits?.()) return { allowed: false, reason: 'Wait for pending Native FX edits before switching Memory.' };
+      const status = port.status();
+      try { if (status) assertNoPendingAutoRec(port, status); }
+      catch (error) { return { allowed: false, reason: error instanceof Error ? error.message : String(error) }; }
+      if ([1, 2, 3, 4, 5].some((trackId) => port.bridge.hasUnresolvedNativeAutoRecOperation(trackId, status))) {
+        return { allowed: false, reason: 'Cancel or reconcile every Native AUTO REC arm before switching Memory.' };
+      }
+      return stopped(status);
+    },
     capture: async () => {
       if (port.pendingEdits?.()) throw new Error('Wait for pending Native FX edits before Memory capture.');
       const initial = await port.bridge.getStatus();
@@ -184,6 +216,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       if (!Number.isSafeInteger(initial.projectContentRevision) || initial.projectContentRevision! >= Number.MAX_SAFE_INTEGER) throw new Error('Native Memory revision is unavailable or exhausted.');
       assertStopped(initial);
+      assertNoPendingAutoRec(port, initial);
       const settings = nativeSettings(initial);
       const before = initial.projectContentRevision;
       const local = port.editRevision();
@@ -194,6 +227,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const archive = await port.archive();
       const after = await port.bridge.getStatus();
       assertStopped(after);
+      assertNoPendingAutoRec(port, after);
       if (initial.hostIncarnationId !== after.hostIncarnationId || before !== after.projectContentRevision || after.projectContentRevisionSnapshotStable !== true
         || local !== port.editRevision() || transportRevision !== Transport.getInstance().projectMutationRevision) {
         throw new Error('Native Memory changed during capture.');
@@ -221,6 +255,12 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       fields['record.quantize'] = settings.recQuantize !== undefined
         ? { value: settings.recQuantize, availability: 'supported' }
         : { value: null, availability: 'unsupported', reason: 'Native host does not implement REC QUANTIZE Memory.' };
+      fields['record.autoRecSw'] = settings.autoRec !== undefined
+        ? { value: (settings.autoRec as { enabled: boolean }).enabled, availability: 'supported' }
+        : { value: null, availability: 'unsupported', reason: 'Native host does not implement AUTO REC settings Memory.' };
+      fields['record.autoRecSens'] = settings.autoRec !== undefined
+        ? { value: (settings.autoRec as { sensitivity: number }).sensitivity, availability: 'supported' }
+        : { value: null, availability: 'unsupported', reason: 'Native host does not implement AUTO REC settings Memory.' };
       fields['rhythm.settings'] = { value: settings.rhythm!, availability: 'supported' };
       fields['inputFx.bank'] = { value: (settings.banks as Rc505Json[])[0]!, availability: 'supported' };
       fields['trackFx.banks'] = { value: (settings.banks as Rc505Json[]).slice(1), availability: 'supported' };
@@ -245,6 +285,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const expectedHostIncarnationId = port.status()?.hostIncarnationId;
       const current = await port.bridge.getStatus();
       assertStopped(current);
+      assertNoPendingAutoRec(port, current);
       assertLoopTransportReadback(current);
       if (!isNativeHostIncarnationId(expectedHostIncarnationId) || !isNativeHostIncarnationId(current.hostIncarnationId) ||
           current.hostIncarnationId !== expectedHostIncarnationId ||
@@ -253,6 +294,30 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       if (!document.extensions.WEBRC.nativeMemory) throw new Error('This Memory has no Native engine settings.');
       const settings = document.extensions.WEBRC.nativeMemory as Record<string, Rc505Json>;
+      const savedAutoRec = settings.autoRec === undefined ? { enabled: false, sensitivity: 50 }
+        : settings.autoRec && typeof settings.autoRec === 'object' && !Array.isArray(settings.autoRec)
+          && typeof (settings.autoRec as { enabled?: unknown }).enabled === 'boolean'
+          && Number.isInteger((settings.autoRec as { sensitivity?: unknown }).sensitivity)
+          && (settings.autoRec as { sensitivity: number }).sensitivity >= 1
+          && (settings.autoRec as { sensitivity: number }).sensitivity <= 100
+          ? { enabled: (settings.autoRec as { enabled: boolean }).enabled, sensitivity: (settings.autoRec as { sensitivity: number }).sensitivity }
+          : (() => { throw new Error('Native Memory AUTO REC settings are invalid.'); })();
+      if (current.nativeAutoRec?.available === true && settings.autoRec !== undefined) {
+        const sw = document.semantics.fields['record.autoRecSw'];
+        const sens = document.semantics.fields['record.autoRecSens'];
+        if (sw?.availability !== 'supported' || sw.value !== savedAutoRec.enabled
+          || sens?.availability !== 'supported' || sens.value !== savedAutoRec.sensitivity) {
+          throw new Error('Native Memory AUTO REC semantic fields are missing or inconsistent.');
+        }
+      }
+      if (settings.autoRec !== undefined && current.nativeAutoRec?.available !== true) {
+        throw new Error('This Native host does not support AUTO REC Memory restore.');
+      }
+      const targetAutoRec = current.nativeAutoRec?.available === true ? savedAutoRec : undefined;
+      if (targetAutoRec && (current.nativeAutoRec!.tracks.some((track) => track.armed)
+        || current.nativeAutoRec!.settings.requestedRevision !== current.nativeAutoRec!.settings.appliedRevision)) {
+        throw new Error('Cancel armed Native AUTO REC tracks and wait for settings acknowledgement before Memory import.');
+      }
       const dubModes: NativeDubMode[] | undefined = settings.dubModes === undefined
         ? undefined
         : Array.isArray(settings.dubModes) && settings.dubModes.length === 5
@@ -268,6 +333,10 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         'mixer.mainLevel': (settings.mixerLevels as Rc505Json[])[0]!, 'mixer.masterLevel': (settings.mixerLevels as Rc505Json[])[1]!,
       };
       if (settings.recAction !== undefined) expectedFields['record.recAction'] = settings.recAction;
+      if (settings.autoRec !== undefined) {
+        expectedFields['record.autoRecSw'] = savedAutoRec.enabled;
+        expectedFields['record.autoRecSens'] = savedAutoRec.sensitivity;
+      }
       if (settings.recQuantize !== undefined) expectedFields['record.quantize'] = settings.recQuantize;
       const targetRecQuantize = settings.recQuantize;
       const targetLoopSync = settings.loopSync;
@@ -429,9 +498,16 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             const loopSyncAcknowledged = !Array.isArray(targetLoopSync) ||
               (status.nativeMemory?.loopSync?.length === 5 &&
                 targetLoopSync.every((enabled, index) => status.nativeMemory!.loopSync![index] === enabled));
+            const autoRecAcknowledged = !targetAutoRec || (status.nativeAutoRec?.available === true
+              && status.nativeAutoRec.settings.enabled === targetAutoRec.enabled
+              && status.nativeAutoRec.settings.sensitivity === targetAutoRec.sensitivity
+              && status.nativeAutoRec.settings.requestedRevision === status.nativeAutoRec.settings.appliedRevision
+              && status.nativeMemory?.autoRec?.enabled === targetAutoRec.enabled
+              && status.nativeMemory?.autoRec?.sensitivity === targetAutoRec.sensitivity
+              && status.nativeAutoRec.tracks.every((track) => !track.armed));
             return Boolean(bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
               && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)
-              && quantizeAcknowledged && loopSyncAcknowledged);
+              && quantizeAcknowledged && loopSyncAcknowledged && autoRecAcknowledged);
           };
           for (;;) {
             const status = await port.bridge.getStatus();

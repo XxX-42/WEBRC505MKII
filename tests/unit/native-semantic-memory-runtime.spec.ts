@@ -39,6 +39,7 @@ function fixture(archiveBpm = 120) {
   let edits = 0;
   const bridge = {
     getPendingNativeTransportBatch: vi.fn(() => null),
+    hasUnresolvedNativeAutoRecOperation: vi.fn(() => false),
     getStatus: vi.fn(async () => status),
     beginProjectArchiveImport: vi.fn(async (_archive: unknown, _revision: number, _host: string, operationId: string) => ({ generation: 19, hostIncarnationId, operationId })),
     getProjectArchiveImportStatusByOperationId: vi.fn(async (operationId: string) => ({ ok: true, generation: 12,
@@ -91,6 +92,48 @@ afterEach(() => {
 });
 
 describe('Native semantic Memory runtime', () => {
+  it('round-trips only acknowledged AUTO REC settings and rejects Memory boundaries while armed', async () => {
+    const h = fixture();
+    const status = h.hostStatus();
+    status.nativeMemory!.autoRec = { enabled: false, sensitivity: 50 };
+    status.nativeAutoRec = { available: true, detectorModel: 'raw-peak-dbfs-v1',
+      settings: { enabled: false, sensitivity: 50, requestedRevision: 3, appliedRevision: 3 },
+      tracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, armRequestedRevision: 0,
+        armAppliedRevision: 0, triggerAppliedRevision: 0, cancelAppliedRevision: 0, armed: false })) };
+    const runtime = h.runtime;
+    const captured = await runtime.capture();
+    expect((captured.extensions.WEBRC.nativeMemory as any).autoRec).toEqual({ enabled: false, sensitivity: 50 });
+    expect(captured.semantics.fields['record.autoRecSw']).toMatchObject({ value: false, availability: 'supported' });
+    expect(captured.semantics.fields['record.autoRecSens']).toMatchObject({ value: 50, availability: 'supported' });
+
+    const target = structuredClone(captured);
+    (target.extensions.WEBRC.nativeMemory as any).autoRec = { enabled: true, sensitivity: 77 };
+    target.semantics.fields['record.autoRecSw'] = { value: true, availability: 'supported' };
+    target.semantics.fields['record.autoRecSens'] = { value: 77, availability: 'supported' };
+    const candidate = await runtime.prepare(target, runtime.revision());
+    h.hostStatus().nativeMemory!.autoRec = { enabled: true, sensitivity: 77 };
+    h.hostStatus().nativeAutoRec!.settings = { enabled: true, sensitivity: 77, requestedRevision: 4, appliedRevision: 4 };
+    await candidate.commit();
+    expect(h.hostStatus().nativeMemory!.autoRec).toEqual({ enabled: true, sensitivity: 77 });
+
+    const legacy = structuredClone(captured);
+    delete (legacy.extensions.WEBRC.nativeMemory as any).autoRec;
+    delete legacy.semantics.fields['record.autoRecSw'];
+    delete legacy.semantics.fields['record.autoRecSens'];
+    const legacyCandidate = await runtime.prepare(legacy, runtime.revision());
+    h.hostStatus().nativeMemory!.autoRec = { enabled: false, sensitivity: 50 };
+    h.hostStatus().nativeAutoRec!.settings = { enabled: false, sensitivity: 50, requestedRevision: 5, appliedRevision: 5 };
+    await legacyCandidate.commit();
+    expect(h.hostStatus().nativeMemory!.autoRec).toEqual({ enabled: false, sensitivity: 50 });
+
+    const armed = h.hostStatus().nativeAutoRec!.tracks[0]!;
+    Object.assign(armed, { armRequestedRevision: 8, armAppliedRevision: 8, armed: true });
+    expect(runtime.canSwitch()).toMatchObject({ allowed: false, reason: expect.stringContaining('Native AUTO REC arm') });
+    await expect(runtime.capture()).rejects.toThrow(/armed Native AUTO REC/);
+    Object.assign(armed, { armed: false, armAppliedRevision: 7 });
+    expect(runtime.canSwitch()).toMatchObject({ allowed: false, reason: expect.stringContaining('Native AUTO REC arm') });
+    await expect(runtime.capture()).rejects.toThrow(/Native AUTO REC arm/);
+  });
   it.each([false, true])('invalidates every old engine bank/gate/Mark ACK at host commit (network failure: %s)', async (failReadback) => {
     const h = fixture();
     const status = h.hostStatus();

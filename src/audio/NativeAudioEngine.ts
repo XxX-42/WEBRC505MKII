@@ -7,7 +7,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeHttpError, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeHttpError, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, NativeAutoRecTriggerWonCancelError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -1712,6 +1712,89 @@ export class NativeAudioEngine {
       reason: !available ? 'Native REC ACTION readback is unavailable or pending.' : quantizeAvailable ? '' : 'Native REC QUANTIZE requires the Native Rhythm measure source.',
       recAction: available ? settings!.recAction : null, quantize: quantizeAvailable ? settings!.quantize! : null, autoRecAvailable: false, bounceAvailable: false });
   }
+  public getNativeAutoRecStatus(): NativeStatus['nativeAutoRec'] | null {
+    const status = this.latestStatus?.nativeAutoRec;
+    if (!status || status.available !== true || status.detectorModel !== 'raw-peak-dbfs-v1'
+      || typeof status.settings?.enabled !== 'boolean' || !Number.isInteger(status.settings.sensitivity)
+      || status.settings.sensitivity < 1 || status.settings.sensitivity > 100
+      || !Number.isSafeInteger(status.settings.requestedRevision) || !Number.isSafeInteger(status.settings.appliedRevision)
+      || !Array.isArray(status.tracks) || status.tracks.length !== 5
+      || status.tracks.some((track, index) => track.trackId !== index + 1 || !Number.isSafeInteger(track.armRequestedRevision)
+        || !Number.isSafeInteger(track.armAppliedRevision) || !Number.isSafeInteger(track.triggerAppliedRevision)
+        || !Number.isSafeInteger(track.triggerContentRevision) || track.triggerContentRevision < 0
+        || !Number.isSafeInteger(track.cancelAppliedRevision) || typeof track.armed !== 'boolean')) return null;
+    return status;
+  }
+  public getNativeAutoRecSettings(): Readonly<{ enabled: boolean; sensitivity: number }> | null {
+    const status = this.getNativeAutoRecStatus();
+    if (!status || !Number.isSafeInteger(status.settings.appliedRevision)) return null;
+    return Object.freeze({ enabled: status.settings.enabled, sensitivity: status.settings.sensitivity });
+  }
+  public isNativeAutoRecSettingsPending(): boolean {
+    const status = this.getNativeAutoRecStatus();
+    return !!status && status.settings.requestedRevision !== status.settings.appliedRevision;
+  }
+  public isNativeAutoRecTrackResolving(trackId: number): boolean {
+    const track = this.latestStatus?.nativeAutoRec?.tracks.find((item) => item.trackId === trackId);
+    if (!track) return false;
+    const generation = track.armRequestedRevision;
+    return track.armed === true || generation > 0 && (track.armAppliedRevision !== generation
+      || (track.triggerAppliedRevision < generation && track.cancelAppliedRevision < generation));
+  }
+  public isNativeAutoRecTrackArmed(trackId: number): boolean {
+    const status = this.latestStatus;
+    const track = status?.nativeAutoRec?.tracks.find((item) => item.trackId === trackId);
+    return !!status && track?.armed === true && this.bridge.isNativeAutoRecArmConfirmed(trackId, status);
+  }
+  public hasUnresolvedNativeAutoRecOperation(trackId: number): boolean {
+    return this.bridge.hasUnresolvedNativeAutoRecOperation(trackId, this.latestStatus);
+  }
+  public async setNativeAutoRecSettings(settings: { enabled: boolean; sensitivity: number }): Promise<void> {
+    if (typeof settings.enabled !== 'boolean' || !Number.isInteger(settings.sensitivity) || settings.sensitivity < 1 || settings.sensitivity > 100) {
+      throw new RangeError('Native AUTO REC requires enabled:boolean and integer sensitivity 1..100.');
+    }
+    const current = this.getNativeAutoRecStatus();
+    const settingsOutcome = this.bridge.reconcileNativeAutoRecSettings(this.latestStatus);
+    if (settingsOutcome === 'unknown') throw new Error('Native AUTO REC settings outcome is unknown; read host status before another update.');
+    if (settingsOutcome === 'superseded') throw new Error('Prior Native AUTO REC settings were superseded; inspect current settings.');
+    if (!current) throw new Error('Native AUTO REC is unavailable on this host or its status is not valid.');
+    if (current.settings.requestedRevision !== current.settings.appliedRevision) {
+      throw new Error('Native AUTO REC settings are pending; read status before another update.');
+    }
+    if (current.tracks.some((track) => this.isNativeAutoRecTrackResolving(track.trackId))
+      || current.tracks.some((track) => this.hasUnresolvedNativeAutoRecOperation(track.trackId))) {
+      throw new Error('Cancel or reconcile every Native AUTO REC generation before changing settings.');
+    }
+    const incarnation = this.latestStatus?.hostIncarnationId;
+    if (!isNativeHostIncarnationId(incarnation)) throw new Error('Native host incarnation is unavailable; AUTO REC settings were not submitted.');
+    // Exactly one CAS submission. Any lost response remains unresolved and is not resent.
+    const accepted = await this.dispatchStatusRequest(() => this.bridge.setNativeAutoRecSettings(
+      settings, current.settings.requestedRevision, incarnation));
+    const acceptedAutoRec = accepted.nativeAutoRec;
+    const expectedRevision = current.settings.requestedRevision + 1;
+    if (!acceptedAutoRec || acceptedAutoRec.settings.requestedRevision !== expectedRevision) {
+      throw new Error('Native AUTO REC settings request was not acknowledged; check host status before another update.');
+    }
+    const deadline = Date.now() + 3000;
+    for (;;) {
+      const readback = await this.bridge.getStatus();
+      if (readback.hostIncarnationId !== incarnation) throw new Error('Native host restarted during AUTO REC settings acknowledgement; outcome is unknown.');
+      this.applyStatus(readback);
+      const value = readback.nativeAutoRec?.settings;
+      if (value?.requestedRevision === expectedRevision && value.appliedRevision === expectedRevision
+        && value.enabled === settings.enabled && value.sensitivity === settings.sensitivity) {
+        this.bridge.reconcileNativeAutoRecSettings(readback);
+        return;
+      }
+      if (value?.appliedRevision === expectedRevision && (value.enabled !== settings.enabled || value.sensitivity !== settings.sensitivity)) {
+        this.bridge.reconcileNativeAutoRecSettings(readback);
+        throw new Error('Native AUTO REC applied settings differ from the requested values; inspect host status.');
+      }
+      if (value?.requestedRevision !== expectedRevision) throw new Error('Native AUTO REC settings request was superseded; check status before retrying.');
+      if (Date.now() >= deadline) throw new Error('Native AUTO REC callback acknowledgement timed out; do not resend automatically.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
   public async setRecordPlaySettings(patch: RecordPlaySettingsPatch): Promise<void> {
     if (Object.keys(patch).some(key => key !== 'recAction' && key !== 'quantize')) throw new Error('Unsupported Native record setting.');
     if (!this.getRecordPlaySettings().recActionAvailable) throw new Error(this.getRecordPlaySettings().reason);
@@ -1766,7 +1849,7 @@ export class NativeAudioEngine {
       await this.stopTrack(trackId);
       return;
     }
-    const finishToken = this.nativeRecordTempoToken();
+    const finishToken = this.nativeRecordTempoTokenForTrack(trackId);
     await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId, finishToken));
     if (!finishToken) return;
     const finishedTrack = this.latestStatus?.nativeTracks?.find(track => track.trackId === trackId);
@@ -1823,25 +1906,82 @@ export class NativeAudioEngine {
     await this.dispatchStatusRequest(() => this.bridge.setMixerLevel(mixerChannelIndex(channel), percent));
   }
 
+  public nativeAutoRecArmDisabledReason(trackId: number): string {
+    const sync = this.latestStatus?.nativeMemory?.loopSync?.[trackId - 1];
+    if (sync === true) return 'Native AUTO REC requires LOOP SYNC OFF on this track.';
+    if (sync !== false) return 'Native AUTO REC requires confirmed LOOP SYNC OFF on this track.';
+    const quantize = this.latestStatus?.nativeRecordPlay?.quantize;
+    if (quantize === 'MEASURE') return 'Native AUTO REC requires REC QUANTIZE OFF.';
+    if (quantize !== 'OFF') return 'Native AUTO REC requires confirmed REC QUANTIZE OFF.';
+    return '';
+  }
+
   public async recordTrack(trackId = 1) {
     if (!this.assertNoUnresolvedNativeTransportBatch('record')) throw new Error(this.lastError);
     this.assertTempoRecoveryClear();
     this.assertPublishedProjectTempoCleanup();
+    const autoRecStatus = this.getNativeAutoRecStatus();
+    if (this.hasUnresolvedNativeAutoRecOperation(trackId)) {
+      throw new Error('Native AUTO REC has an unresolved host-bound intent; reconcile that generation before recording.');
+    }
+    if (autoRecStatus && autoRecStatus.settings.requestedRevision !== autoRecStatus.settings.appliedRevision) {
+      throw new Error('Native AUTO REC settings are pending; refresh host status before recording.');
+    }
+    const autoRecEnabled = autoRecStatus?.settings.enabled === true;
+    const track = this.tracks.find((candidate) => candidate.trackId === trackId);
+    if (autoRecEnabled && track?.state === TrackState.EMPTY) {
+      const reason = this.nativeAutoRecArmDisabledReason(trackId);
+      if (reason) throw new Error(reason);
+      const armed = await this.bridge.armNativeAutoRecTrack(trackId);
+      this.applyStatus(armed);
+      return;
+    }
     if (this.getTrackLoopSync(trackId) && this.getRecordPlaySettings().quantize === 'MEASURE') {
       await this.scheduleNativeRhythmAction(trackId, 'record');
       return;
     }
-    await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId, this.nativeRecordTempoToken()));
+    // AUTO REC arm time is not take start time; the host samples tempo only when its input callback triggers.
+    await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId,
+      autoRecEnabled ? undefined : this.nativeRecordTempoToken()));
   }
 
   public async stopTrack(trackId = 1) {
     if (!this.assertNoUnresolvedNativeTransportBatch('stop a track')) throw new Error(this.lastError);
     this.assertTempoRecoveryClear();
     this.assertPublishedProjectTempoCleanup();
+    if (this.isNativeAutoRecTrackResolving(trackId) || this.hasUnresolvedNativeAutoRecOperation(trackId)) {
+      try {
+        const status = await this.bridge.cancelNativeAutoRecTrack(trackId);
+        this.applyStatus(status);
+        return;
+      } catch (error) {
+        if (!(error instanceof NativeAutoRecTriggerWonCancelError)) throw error;
+        const wonTrack = error.status.nativeTracks?.find((track) => track.trackId === trackId);
+        const wonAutoRec = error.status.nativeAutoRec?.tracks.find((track) => track.trackId === trackId);
+        if (error.trackId !== trackId || wonAutoRec?.intentId !== error.intentId
+          || wonAutoRec.armRequestedRevision !== error.armRevision || wonAutoRec.triggerAppliedRevision !== error.armRevision
+          || wonTrack?.state !== 'Recording' || !Number.isSafeInteger(wonTrack.contentRevision)
+          || wonAutoRec.triggerContentRevision !== wonTrack.contentRevision) throw error;
+        // Callback CAS binds this one follow-up STOP to the confirmed trigger generation and content revision.
+        const stopped = await this.bridge.stopNativeAutoRecTriggeredTrack(trackId, wonTrack.contentRevision!);
+        this.applyStatus(stopped);
+        return;
+      }
+    }
     const beforeTrack = this.latestStatus?.nativeTracks?.find(track => track.trackId === trackId);
+    const autoTrack = this.latestStatus?.nativeAutoRec?.tracks.find(track => track.trackId === trackId);
+    if (beforeTrack?.state === 'Recording' && autoTrack && autoTrack.armRequestedRevision > 0
+      && autoTrack.armAppliedRevision === autoTrack.armRequestedRevision
+      && autoTrack.triggerAppliedRevision === autoTrack.armRequestedRevision
+      && Number.isSafeInteger(autoTrack.triggerContentRevision)
+      && autoTrack.triggerContentRevision === beforeTrack.contentRevision) {
+      const stopped = await this.bridge.stopNativeAutoRecTriggeredTrack(trackId, beforeTrack.contentRevision!);
+      this.applyStatus(stopped);
+      return;
+    }
     const wasRecording = beforeTrack?.state === 'Recording';
     const beforeContentRevision = beforeTrack?.contentRevision;
-    const stopToken = wasRecording ? this.nativeRecordTempoToken() : undefined;
+    const stopToken = wasRecording ? this.nativeRecordTempoTokenForTrack(trackId) : undefined;
     const callbackAckSupported = this.latestStatus?.nativeTempoRecordProvenanceVersion === 1;
     let stopStatus: NativeStatus;
     let emergencyStop = false;
@@ -1921,6 +2061,17 @@ export class NativeAudioEngine {
   private nativeRecordTempoToken(): NativeRecordTempoToken | undefined {
     const transport = Transport.getInstance();
     return nativeRecordTempoToken(this.latestStatus, transport.bpm, transport.tempoMutationRevision);
+  }
+
+  private nativeRecordTempoTokenForTrack(trackId: number): NativeRecordTempoToken | undefined {
+    const auto = this.latestStatus?.nativeAutoRec?.tracks.find((track) => track.trackId === trackId);
+    if (auto && auto.armRequestedRevision > 0 && auto.triggerAppliedRevision === auto.armRequestedRevision) {
+      const confirmed = this.latestStatus?.nativeRecordingTempoTokens?.find((token) => token.trackId === trackId);
+      if (!confirmed?.valid || typeof confirmed.bpm !== 'number' || !Number.isFinite(confirmed.bpm)
+        || confirmed.bpm < 40 || confirmed.bpm > 300 || !Number.isSafeInteger(confirmed.revision) || confirmed.revision < 0) return undefined;
+      return { bpm: confirmed.bpm, revision: confirmed.revision };
+    }
+    return this.nativeRecordTempoToken();
   }
 
   public async playTrack(trackId = 1) {

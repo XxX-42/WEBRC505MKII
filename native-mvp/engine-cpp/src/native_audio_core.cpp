@@ -23,6 +23,12 @@ std::atomic<NativeAudioCore::CallbackBeforeEnterTestHook> NativeAudioCore::callb
 std::atomic<void*> NativeAudioCore::callbackBeforeEnterTestContext_{nullptr};
 std::atomic<NativeAudioCore::CallbackEntryTestHook> NativeAudioCore::callbackBeforeBatchPublishTestHook_{nullptr};
 std::atomic<void*> NativeAudioCore::callbackBeforeBatchPublishTestContext_{nullptr};
+std::atomic<NativeAudioCore::AutoRecBeforeTriggerTestHook> NativeAudioCore::autoRecBeforeTriggerTestHook_{nullptr};
+std::atomic<void*> NativeAudioCore::autoRecBeforeTriggerTestContext_{nullptr};
+std::atomic<NativeAudioCore::AutoRecBeforeTriggerTestHook> NativeAudioCore::autoRecAfterClaimTestHook_{nullptr};
+std::atomic<void*> NativeAudioCore::autoRecAfterClaimTestContext_{nullptr};
+std::atomic<NativeAudioCore::CallbackCommandTestHook> NativeAudioCore::autoRecBeforeStopGuardTestHook_{nullptr};
+std::atomic<void*> NativeAudioCore::autoRecBeforeStopGuardTestContext_{nullptr};
 #endif
 
 namespace {
@@ -335,11 +341,29 @@ EngineStatus NativeAudioCore::getStatus() const {
 
     const auto projectRevisionAtSnapshotStart = projectContentRevision_.load(std::memory_order_acquire);
     EngineStatus status;
+    status.nativeAutoRecEnabled = nativeAutoRecEnabledApplied_.load(std::memory_order_acquire);
+    status.nativeAutoRecSensitivity = nativeAutoRecSensitivityApplied_.load(std::memory_order_acquire);
+    status.nativeAutoRecRequestedRevision = nativeAutoRecRequestedRevision_.load(std::memory_order_acquire);
+    status.nativeAutoRecAppliedRevision = nativeAutoRecAppliedRevision_.load(std::memory_order_acquire);
     status.nativeRecordActionDub = recordActionDubRequested_;
     status.nativeRecordQuantizeMeasure = recordQuantizeMeasure_.load(std::memory_order_acquire);
     status.nativeRecordActionRequestedRevision = recordActionRequestedRevision_;
     status.nativeRecordActionAppliedRevision = recordActionAppliedRevision_.load(std::memory_order_acquire);
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+        status.nativeAutoRecArmRequestedRevision[i] = nativeAutoRecArmRequested_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecArmAppliedRevision[i] = nativeAutoRecArmApplied_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecTriggerAppliedRevision[i] = nativeAutoRecTriggerApplied_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecTriggerContentRevision[i] = nativeAutoRecTriggerContentRevision_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecCancelAppliedRevision[i] = nativeAutoRecCancelApplied_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecArmed[i] = nativeAutoRecArmGeneration_[i].load(std::memory_order_acquire) != 0U;
+        status.nativeAutoRecIntentIds[i] = nativeAutoRecIntentIds_[i];
+        status.nativeAutoRecStopIntentIds[i] = nativeAutoRecStopIntentIds_[i];
+        status.nativeAutoRecStopArmRevisions[i] = nativeAutoRecStopArmRevisions_[i];
+        status.nativeAutoRecStopExpectedContentRevisions[i] = nativeAutoRecStopExpectedContentRevisions_[i];
+        status.nativeAutoRecStopRequestedRevisions[i] = nativeAutoRecStopRequestedRevisions_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecStopAppliedRevisions[i] = nativeAutoRecStopAppliedRevisions_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecStopRejectedRevisions[i] = nativeAutoRecStopRejectedRevisions_[i].load(std::memory_order_acquire);
+        status.nativeAutoRecStopAppliedContentRevisions[i] = nativeAutoRecStopAppliedContentRevisions_[i].load(std::memory_order_acquire);
         status.nativeLoopSync[i] = nativeLoopSync_[i].load(std::memory_order_acquire);
         status.nativeRecordFinishRequested[i] = recordFinishRequested_[i];
         status.nativeRecordFinishApplied[i] = recordFinishApplied_[i].load(std::memory_order_acquire);
@@ -1067,11 +1091,213 @@ bool NativeAudioCore::recordTrack(std::size_t trackIndex, std::string& error, st
     return queueTrackCommand(CommandType::Record, trackIndex, error, provenanceBpm, provenanceRevision);
 }
 
+bool NativeAudioCore::setNativeAutoRecSettings(bool enabled, unsigned int sensitivity,
+    std::uint64_t expectedRevision, std::uint64_t& acceptedRevision, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (sensitivity < 1U || sensitivity > 100U || expectedRevision > kMaximumSafeProjectContentRevision) {
+        error = "AUTO REC sensitivity must be 1..100 and revision a safe integer."; return false;
+    }
+    const auto currentRequestedRevision = nativeAutoRecRequestedRevision_.load(std::memory_order_acquire);
+    if (expectedRevision != currentRequestedRevision) { error = "AUTO REC settings revision conflict."; return false; }
+    if (!engineRunning_.load(std::memory_order_acquire)) { error = "Start the Native audio engine before editing AUTO REC settings."; return false; }
+    if (nativeAutoRecAppliedRevision_.load(std::memory_order_acquire) != currentRequestedRevision) {
+        error = "Wait for the pending AUTO REC settings callback acknowledgement."; return false;
+    }
+    if (commandQueue_.size() != 0U || std::any_of(pendingTrackStateCommands_.begin(), pendingTrackStateCommands_.end(),
+        [](const auto& pending) { return pending.load(std::memory_order_acquire) != 0U; })) {
+        error = "Wait for pending Native record/track commands before changing AUTO REC settings."; return false;
+    }
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for the pending Native Memory import before editing AUTO REC."; return false;
+    }
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto requested = nativeAutoRecArmRequested_[track].load(std::memory_order_acquire);
+        const auto applied = nativeAutoRecArmApplied_[track].load(std::memory_order_acquire);
+        const auto cancelled = nativeAutoRecCancelApplied_[track].load(std::memory_order_acquire);
+        const auto triggered = nativeAutoRecTriggerApplied_[track].load(std::memory_order_acquire);
+        if (nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire) != 0U ||
+            (requested > applied && cancelled < requested) ||
+            (requested != 0U && cancelled != requested && triggered != requested)) {
+            error = "AUTO REC settings cannot change while a track is armed or an arm is pending."; return false;
+        }
+    }
+    if (currentRequestedRevision >= kMaximumSafeProjectContentRevision) { error = "AUTO REC settings revision exhausted."; return false; }
+    const auto revision = currentRequestedRevision + 1U;
+    const float db = -12.0f - static_cast<float>(sensitivity - 1U) * (48.0f / 99.0f);
+    const float threshold = std::pow(10.0f, db / 20.0f);
+    nativeAutoRecEnabledRequested_.store(enabled, std::memory_order_relaxed);
+    nativeAutoRecSensitivityRequested_.store(sensitivity, std::memory_order_relaxed);
+    nativeAutoRecThresholdRequested_.store(threshold, std::memory_order_relaxed);
+    nativeAutoRecRequestedRevision_.store(revision, std::memory_order_release);
+    acceptedRevision = revision;
+    error.clear(); return true;
+}
+
+bool NativeAudioCore::armNativeAutoRec(std::size_t trackIndex, const std::string& intentId,
+    std::uint64_t expectedArmRevision, std::uint64_t& acceptedArmRevision, bool& duplicate, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    acceptedArmRevision = 0U; duplicate = false;
+    if (trackIndex >= kNativeTrackCount || intentId.size() != 32U ||
+        !std::all_of(intentId.begin(), intentId.end(), [](unsigned char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }) ||
+        std::all_of(intentId.begin(), intentId.end(), [](char c) { return c == '0'; })) {
+        error = "AUTO REC requires a track and nonzero lowercase 32-hex intentId."; return false;
+    }
+    const auto current = nativeAutoRecArmRequested_[trackIndex].load(std::memory_order_acquire);
+    if (nativeAutoRecIntentIds_[trackIndex] == intentId && expectedArmRevision < kMaximumSafeProjectContentRevision &&
+        expectedArmRevision + 1U == current) {
+        acceptedArmRevision = current; duplicate = true; error.clear(); return true;
+    }
+    if (nativeAutoRecIntentIds_[trackIndex] == intentId && current != 0U) {
+        error = "An AUTO REC intentId cannot be reused for a different arm generation."; return false;
+    }
+    const auto settingsRevision = nativeAutoRecRequestedRevision_.load(std::memory_order_acquire);
+    if (nativeAutoRecAppliedRevision_.load(std::memory_order_acquire) != settingsRevision) {
+        error = "Wait for the AUTO REC settings callback acknowledgement."; return false;
+    }
+    if (!nativeAutoRecEnabledApplied_.load(std::memory_order_acquire)) { error = "Native AUTO REC is disabled."; return false; }
+    if (!engineRunning_.load(std::memory_order_acquire)) { error = "Start the Native audio engine before arming AUTO REC."; return false; }
+    if (expectedArmRevision != current) { error = "AUTO REC arm revision conflict."; return false; }
+    if (nativeAutoRecArmGeneration_[trackIndex].load(std::memory_order_acquire) != 0U ||
+        (current > nativeAutoRecArmApplied_[trackIndex].load(std::memory_order_acquire) &&
+         nativeAutoRecCancelApplied_[trackIndex].load(std::memory_order_acquire) < current) ||
+        (current != 0U && nativeAutoRecCancelApplied_[trackIndex].load(std::memory_order_acquire) != current &&
+         nativeAutoRecTriggerApplied_[trackIndex].load(std::memory_order_acquire) != current)) {
+        error = "This track already has a pending or active AUTO REC arm."; return false;
+    }
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U ||
+        nativeLoopSync_[trackIndex].load(std::memory_order_acquire) || recordQuantizeMeasure_.load(std::memory_order_acquire) ||
+        static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire)) != LooperState::Empty ||
+        recordStartPending_[trackIndex].load(std::memory_order_acquire) || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
+        error = "AUTO REC requires an Empty track, no pending transport, and LOOP SYNC / REC QUANTIZE OFF."; return false;
+    }
+    if (current >= kMaximumSafeProjectContentRevision) { error = "AUTO REC arm revision exhausted."; return false; }
+    acceptedArmRevision = current + 1U;
+    nativeAutoRecIntentIds_[trackIndex] = intentId;
+    nativeAutoRecArmRequested_[trackIndex] = acceptedArmRevision;
+    nativeAutoRecTriggerApplied_[trackIndex].store(0U, std::memory_order_release);
+    nativeAutoRecTriggerContentRevision_[trackIndex].store(0U, std::memory_order_release);
+    nativeAutoRecCancelApplied_[trackIndex].store(0U, std::memory_order_release);
+    nativeAutoRecArmGeneration_[trackIndex].store(acceptedArmRevision, std::memory_order_release);
+    error.clear(); return true;
+}
+
+bool NativeAudioCore::cancelNativeAutoRec(std::size_t trackIndex, const std::string& intentId,
+    std::uint64_t armRevision, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (trackIndex >= kNativeTrackCount || armRevision == 0U || nativeAutoRecIntentIds_[trackIndex] != intentId ||
+        nativeAutoRecArmRequested_[trackIndex].load(std::memory_order_acquire) != armRevision) {
+        error = "AUTO REC cancel identity does not match the latest arm generation."; return false;
+    }
+    if (nativeAutoRecCancelApplied_[trackIndex].load(std::memory_order_acquire) == armRevision) { error.clear(); return true; }
+    if (nativeAutoRecTriggerApplied_[trackIndex].load(std::memory_order_acquire) == armRevision) {
+        error = "AUTO REC trigger already won; cancellation is too late."; return false;
+    }
+    auto expected = armRevision;
+    if (!nativeAutoRecArmGeneration_[trackIndex].compare_exchange_strong(expected, 0U,
+            std::memory_order_acq_rel, std::memory_order_acquire)) {
+        error = "AUTO REC generation is resolving or is no longer armed; read status before retrying."; return false;
+    }
+    nativeAutoRecCancelApplied_[trackIndex].store(armRevision, std::memory_order_release);
+    error.clear(); return true;
+}
+
+bool NativeAudioCore::stopNativeAutoRecGeneration(std::size_t trackIndex, const std::string& intentId,
+    std::uint64_t armRevision, std::uint64_t expectedContentRevision, const std::string& stopIntentId,
+    bool& duplicate, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    duplicate = false;
+    const auto validId = [](const std::string& value) {
+        return value.size() == 32U && std::any_of(value.begin(), value.end(), [](char c) { return c != '0'; }) &&
+            std::all_of(value.begin(), value.end(), [](unsigned char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
+    };
+    if (trackIndex >= kNativeTrackCount || !validId(intentId) || !validId(stopIntentId) || armRevision == 0U ||
+        expectedContentRevision > kMaximumSafeProjectContentRevision) {
+        error = "AUTO REC STOP requires valid track, arm/stop intents, arm revision, and content revision."; return false;
+    }
+    if (nativeAutoRecStopIntentIds_[trackIndex] == stopIntentId) {
+        if (nativeAutoRecStopArmRevisions_[trackIndex] != armRevision ||
+            nativeAutoRecStopExpectedContentRevisions_[trackIndex] != expectedContentRevision ||
+            nativeAutoRecIntentIds_[trackIndex] != intentId) {
+            error = "AUTO REC stopIntentId is already bound to a different fingerprint."; return false;
+        }
+        duplicate = true; error.clear(); return true;
+    }
+    const auto previousRequest = nativeAutoRecStopRequestedRevisions_[trackIndex].load(std::memory_order_acquire);
+    const auto previousApplied = nativeAutoRecStopAppliedRevisions_[trackIndex].load(std::memory_order_acquire);
+    const auto previousRejected = nativeAutoRecStopRejectedRevisions_[trackIndex].load(std::memory_order_acquire);
+    if (previousRequest != std::max(previousApplied, previousRejected)) {
+        error = "An AUTO REC STOP receipt is still pending; read its status before submitting another."; return false;
+    }
+    if (previousRequest >= kMaximumSafeProjectContentRevision) {
+        error = "AUTO REC STOP revision exhausted."; return false;
+    }
+    const auto requestRevision = previousRequest + 1U;
+    nativeAutoRecStopIntentIds_[trackIndex] = stopIntentId;
+    nativeAutoRecStopArmRevisions_[trackIndex] = armRevision;
+    nativeAutoRecStopExpectedContentRevisions_[trackIndex] = expectedContentRevision;
+    nativeAutoRecStopRejectedRevisions_[trackIndex].store(0U, std::memory_order_relaxed);
+    nativeAutoRecStopAppliedContentRevisions_[trackIndex].store(0U, std::memory_order_relaxed);
+    nativeAutoRecStopRequestedRevisions_[trackIndex].store(requestRevision, std::memory_order_release);
+    const auto rejectIntent = [this, trackIndex, requestRevision, &error](const char* reason) {
+        nativeAutoRecStopRejectedRevisions_[trackIndex].store(requestRevision, std::memory_order_release);
+        error = reason;
+        return true;
+    };
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
+        !engineRunning_.load(std::memory_order_acquire) || commandQueue_.size() != 0U ||
+        pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        return rejectIntent("AUTO REC STOP requires a running engine and no pending track/project command.");
+    }
+    const auto currentContentRevision = trackContentRevision_[trackIndex].load(std::memory_order_acquire);
+    if (nativeAutoRecIntentIds_[trackIndex] != intentId ||
+        nativeAutoRecArmRequested_[trackIndex].load(std::memory_order_acquire) != armRevision ||
+        nativeAutoRecTriggerApplied_[trackIndex].load(std::memory_order_acquire) != armRevision ||
+        nativeAutoRecTriggerContentRevision_[trackIndex].load(std::memory_order_acquire) != expectedContentRevision ||
+        currentContentRevision != expectedContentRevision ||
+        static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire)) != LooperState::Recording) {
+        return rejectIntent("AUTO REC STOP target no longer matches the triggered take and content revision.");
+    }
+    if (recordStopRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) {
+        return rejectIntent("Native STOP revision exhausted.");
+    }
+    const auto stopRevision = recordStopRequested_[trackIndex] + 1U;
+    Command command{};
+    command.type = CommandType::StopRecordOrPlayback;
+    command.trackIndex = static_cast<std::uint8_t>(trackIndex);
+    command.revision = stopRevision;
+    command.expectedContentRevision = expectedContentRevision;
+    command.expectedStopRevision = requestRevision;
+    command.autoRecStopGuard = true;
+    command.autoRecArmRevision = armRevision;
+    recordStopRequested_[trackIndex] = stopRevision;
+    pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
+    if (!commandQueue_.push(command)) {
+        pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
+        recordStopRequested_[trackIndex] = stopRevision - 1U;
+        nativeAutoRecStopRejectedRevisions_[trackIndex].store(requestRevision, std::memory_order_release);
+        telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed);
+        return rejectIntent("Native command queue is full; AUTO REC take was not stopped.");
+    }
+    error.clear(); return true;
+}
+
 bool NativeAudioCore::setRecordAction(bool overdub, std::string& error) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
         error = "Wait for pending Memory/track commands before changing REC ACTION."; return false;
+    }
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto revision = nativeAutoRecArmRequested_[track].load(std::memory_order_acquire);
+        if (nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire) != 0U ||
+            (revision != 0U && nativeAutoRecCancelApplied_[track].load(std::memory_order_acquire) != revision &&
+             nativeAutoRecTriggerApplied_[track].load(std::memory_order_acquire) != revision)) {
+            error = "Cancel or resolve every AUTO REC arm before changing REC ACTION."; return false;
+        }
     }
     if (overdub) {
         for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
@@ -1108,6 +1334,14 @@ bool NativeAudioCore::setRecordQuantizeMeasure(bool enabled, std::string& error)
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
         error = "Wait for pending Memory/track commands before changing REC QUANTIZE."; return false;
     }
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto revision = nativeAutoRecArmRequested_[track].load(std::memory_order_acquire);
+        if (nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire) != 0U ||
+            (revision != 0U && nativeAutoRecCancelApplied_[track].load(std::memory_order_acquire) != revision &&
+             nativeAutoRecTriggerApplied_[track].load(std::memory_order_acquire) != revision)) {
+            error = "Cancel or resolve AUTO REC before changing REC QUANTIZE."; return false;
+        }
+    }
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
         const auto state = static_cast<LooperState>(trackStates_[i].load(std::memory_order_acquire));
         if (state == LooperState::Recording || state == LooperState::Overdubbing || nativeScheduledLoopPending_[i].load(std::memory_order_acquire)) {
@@ -1134,6 +1368,12 @@ bool NativeAudioCore::setTrackLoopSync(std::size_t trackIndex, bool enabled, std
     if (trackIndex >= kNativeTrackCount) { error = "Invalid Native track for LOOP SYNC."; return false; }
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
         error = "Wait for pending Memory/track commands before changing LOOP SYNC."; return false;
+    }
+    const auto autoRecRevision = nativeAutoRecArmRequested_[trackIndex].load(std::memory_order_acquire);
+    if (nativeAutoRecArmGeneration_[trackIndex].load(std::memory_order_acquire) != 0U ||
+        (autoRecRevision != 0U && nativeAutoRecCancelApplied_[trackIndex].load(std::memory_order_acquire) != autoRecRevision &&
+         nativeAutoRecTriggerApplied_[trackIndex].load(std::memory_order_acquire) != autoRecRevision)) {
+        error = "Cancel or resolve AUTO REC before changing LOOP SYNC."; return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
     if (state == LooperState::Recording || state == LooperState::Overdubbing || nativeScheduledLoopPending_[trackIndex].load(std::memory_order_acquire)) {
@@ -1980,6 +2220,13 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (type == CommandType::Record && state == LooperState::Empty &&
+        (nativeAutoRecEnabledRequested_.load(std::memory_order_acquire) ||
+         nativeAutoRecEnabledApplied_.load(std::memory_order_acquire) ||
+         nativeAutoRecRequestedRevision_.load(std::memory_order_acquire) != nativeAutoRecAppliedRevision_.load(std::memory_order_acquire))) {
+        error = "Use the host-bound AUTO REC arm endpoint when AUTO REC is enabled or its settings are pending.";
+        return false;
+    }
     std::uint64_t emergencyPhaseEpoch = 0U;
     std::uint64_t emergencyPhaseAvailabilityGeneration = 0U;
     std::uint64_t emergencySettingsRevision = 0U;
@@ -2067,6 +2314,15 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     command.emergencyPhaseEpoch = emergencyPhaseEpoch;
     command.emergencyPhaseAvailabilityGeneration = emergencyPhaseAvailabilityGeneration;
     command.emergencySettingsRevision = emergencySettingsRevision;
+    if (type == CommandType::StopRecordOrPlayback || type == CommandType::Clear) {
+        const auto autoRecGeneration = nativeAutoRecArmGeneration_[trackIndex].load(std::memory_order_acquire);
+        if (autoRecGeneration != 0U) {
+            auto expectedGeneration = autoRecGeneration;
+            if (nativeAutoRecArmGeneration_[trackIndex].compare_exchange_strong(expectedGeneration, 0U,
+                    std::memory_order_acq_rel, std::memory_order_acquire))
+                nativeAutoRecCancelApplied_[trackIndex].store(autoRecGeneration, std::memory_order_release);
+        }
+    }
     if (!commandQueue_.push(command)) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision - 1U;
@@ -2151,6 +2407,24 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     }
     if (command.trackIndex >= kNativeTrackCount) return;
     const std::size_t index = command.trackIndex;
+    if (command.autoRecStopGuard) {
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+        if (const auto hook = autoRecBeforeStopGuardTestHook_.load(std::memory_order_acquire))
+            hook(autoRecBeforeStopGuardTestContext_.load(std::memory_order_acquire), index);
+#endif
+        const bool matches = command.type == CommandType::StopRecordOrPlayback &&
+            command.expectedStopRevision != 0U &&
+            nativeAutoRecStopRequestedRevisions_[index].load(std::memory_order_acquire) == command.expectedStopRevision &&
+            nativeAutoRecTriggerApplied_[index].load(std::memory_order_acquire) == command.autoRecArmRevision &&
+            nativeAutoRecArmRequested_[index].load(std::memory_order_acquire) == command.autoRecArmRevision &&
+            nativeAutoRecTriggerContentRevision_[index].load(std::memory_order_acquire) == command.expectedContentRevision &&
+            trackContentRevision_[index].load(std::memory_order_acquire) == command.expectedContentRevision &&
+            looperForTrack(index).state() == LooperState::Recording;
+        if (!matches) {
+            nativeAutoRecStopRejectedRevisions_[index].store(command.expectedStopRevision, std::memory_order_release);
+            return;
+        }
+    }
     if (command.emergencyPhaseAvailabilityGeneration != 0U) {
         bool phaseStable = false;
         std::uint64_t ignoredSnapshotRevision = 0U;
@@ -2411,6 +2685,14 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     if (command.type == CommandType::ConfirmRecordTempoProvenance) {
         recordTempoConfirmAccepted_[index].store(tempoProvenanceConfirmed ? command.revision : 0U, std::memory_order_release);
         recordTempoConfirmApplied_[index].store(command.revision, std::memory_order_release);
+    }
+    if (command.autoRecStopGuard && command.type == CommandType::StopRecordOrPlayback &&
+        committedTake && after.state == LooperState::Stopped) {
+        nativeAutoRecStopAppliedContentRevisions_[index].store(
+            trackContentRevision_[index].load(std::memory_order_acquire), std::memory_order_relaxed);
+        nativeAutoRecStopAppliedRevisions_[index].store(command.expectedStopRevision, std::memory_order_release);
+    } else if (command.autoRecStopGuard) {
+        nativeAutoRecStopRejectedRevisions_[index].store(command.expectedStopRevision, std::memory_order_release);
     }
 }
 
@@ -4087,6 +4369,27 @@ bool NativeAudioCore::beginProjectArchiveImport(
         error = "Another Native project import is pending; wait for its generation to finish.";
         return false;
     }
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto requested = nativeAutoRecArmRequested_[track].load(std::memory_order_acquire);
+        const auto applied = nativeAutoRecArmApplied_[track].load(std::memory_order_acquire);
+        const auto cancelled = nativeAutoRecCancelApplied_[track].load(std::memory_order_acquire);
+        const auto triggered = nativeAutoRecTriggerApplied_[track].load(std::memory_order_acquire);
+        if (nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire) != 0U ||
+            (requested > applied && cancelled < requested) ||
+            (requested != 0U && cancelled != requested && triggered != requested)) {
+            error = "Cancel or resolve every Native AUTO REC arm before importing a Memory.";
+            return false;
+        }
+    }
+    if (nativeAutoRecRequestedRevision_.load(std::memory_order_acquire) !=
+        nativeAutoRecAppliedRevision_.load(std::memory_order_acquire)) {
+        error = "Wait for the pending AUTO REC settings callback acknowledgement before importing a Memory.";
+        return false;
+    }
+    if (nativeAutoRecRequestedRevision_.load(std::memory_order_acquire) >= kMaximumSafeProjectContentRevision) {
+        error = "AUTO REC settings revision exhausted; Memory import cannot publish a safe revision.";
+        return false;
+    }
     const auto currentProjectRevision = projectContentRevision_.load(std::memory_order_acquire);
     if (currentProjectRevision >= kMaximumSafeProjectContentRevision) {
         error = "Native project load was refused because the host project revision reached the safe JSON integer limit; restart the Native host before importing a project.";
@@ -4243,6 +4546,12 @@ bool NativeAudioCore::beginProjectArchiveImport(
     } catch (const std::bad_alloc&) {
         error = "Native project import could not allocate its transaction record; the current project was not changed.";
         return false;
+    }
+    if (memory) {
+        transaction->autoRecEnabled = memory->autoRecIncluded ? memory->autoRecEnabled : false;
+        transaction->autoRecSensitivity = memory->autoRecIncluded ? memory->autoRecSensitivity : 50U;
+        const float db = -12.0f - static_cast<float>(transaction->autoRecSensitivity - 1U) * (48.0f / 99.0f);
+        transaction->autoRecThresholdLinear = std::pow(10.0f, db / 20.0f);
     }
     if (memory) {
         if (nativeTrackFxApplyCommandQueue_.size() != 0U || nativeCatalogFxCommandQueue_.size() != 0U || nativeLoopTransportCommandQueue_.size() != 0U || nativeDubModeCommandQueue_.size() != 0U ||
@@ -5021,6 +5330,8 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
     commandQueue_.clear();
     for (auto& pending : pendingTrackStateCommands_) pending.store(0U, std::memory_order_release);
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto generation = nativeAutoRecArmGeneration_[track].exchange(0U, std::memory_order_acq_rel);
+        if (generation != 0U) nativeAutoRecCancelApplied_[track].store(generation, std::memory_order_release);
         recordStartPending_[track].store(false, std::memory_order_release);
         if (recordFinishApplied_[track].load(std::memory_order_acquire) != recordFinishRequested_[track]) recordFinishCancelled_[track] = recordFinishRequested_[track];
         if (recordingMirrorReserved_[track].load(std::memory_order_acquire) && looperForTrack(track).state() != LooperState::Recording) {
@@ -5467,6 +5778,13 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     NativePitchRouteDecision* pitchRouteDecision
 ) noexcept {
     ProcessStats stats{};
+    const auto autoRecSettingsRevision = nativeAutoRecRequestedRevision_.load(std::memory_order_acquire);
+    if (autoRecSettingsRevision != nativeAutoRecAppliedRevision_.load(std::memory_order_acquire)) {
+        nativeAutoRecEnabledApplied_.store(nativeAutoRecEnabledRequested_.load(std::memory_order_relaxed), std::memory_order_release);
+        nativeAutoRecSensitivityApplied_.store(nativeAutoRecSensitivityRequested_.load(std::memory_order_relaxed), std::memory_order_release);
+        nativeAutoRecThresholdLinear_.store(nativeAutoRecThresholdRequested_.load(std::memory_order_relaxed), std::memory_order_release);
+        nativeAutoRecAppliedRevision_.store(autoRecSettingsRevision, std::memory_order_release);
+    }
     stats.state = static_cast<LooperState>(trackStates_[0U].load(std::memory_order_acquire));
     if (outputInterleaved == nullptr || frames > kMaxCallbackFrames || outputChannels_ == 0U || outputChannels_ > 2U) {
         publishSharedCatalogProcessingFaults(1U, false);
@@ -5517,15 +5835,63 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     std::array<bool, kNativeTrackCount> eventDone{};
     std::array<bool, kNativeTrackCount> eventApplied{};
     std::array<std::uint64_t, kNativeTrackCount> eventContentRevision{};
+    bool anyAutoRecArmed = false;
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         std::fill_n(nativeSegmentBuffers_->mix[track].data(), sampleCount, 0.0f);
         std::fill_n(nativeSegmentBuffers_->playback[track].data(), sampleCount, 0.0f);
+        const auto armGeneration = nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire);
+        if (armGeneration != 0U) {
+            if (!nativeAutoRecEnabledApplied_.load(std::memory_order_acquire) ||
+                looperForTrack(track).state() != LooperState::Empty) {
+                auto expectedGeneration = armGeneration;
+                if (nativeAutoRecArmGeneration_[track].compare_exchange_strong(expectedGeneration, 0U,
+                        std::memory_order_acq_rel, std::memory_order_acquire))
+                    nativeAutoRecCancelApplied_[track].store(armGeneration, std::memory_order_release);
+            } else {
+                nativeAutoRecArmApplied_[track].store(armGeneration, std::memory_order_release);
+                anyAutoRecArmed = true;
+            }
+        }
     }
     unsigned int segmentStart = 0U;
+    bool skipAutoRecAtBoundaryFrame = false;
     while (segmentStart < frames) {
         unsigned int boundary = frames;
+        unsigned int autoRecTriggerOffset = frames;
+        std::uint8_t autoRecTriggerMask = 0U;
+        std::array<std::uint64_t, kNativeTrackCount> autoRecTriggerGenerations{};
+        const unsigned int autoRecScanStart = segmentStart + (skipAutoRecAtBoundaryFrame ? 1U : 0U);
+        skipAutoRecAtBoundaryFrame = false;
+        if (anyAutoRecArmed && rawInputInterleaved != nullptr && rawInputChannels > 0U &&
+            nativeAutoRecEnabledApplied_.load(std::memory_order_acquire)) {
+            const float threshold = nativeAutoRecThresholdLinear_.load(std::memory_order_acquire);
+            for (unsigned int frame = autoRecScanStart; frame < frames; ++frame) {
+                std::uint8_t hitMask = 0U;
+                for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                    const auto generation = nativeAutoRecArmGeneration_[track].load(std::memory_order_acquire);
+                    if (generation == 0U || nativeAutoRecArmApplied_[track].load(std::memory_order_acquire) != generation) continue;
+                    const auto offset = static_cast<std::size_t>(frame) * rawInputChannels;
+                    float peak = 0.0f;
+                    for (unsigned int channel = 0U; channel < rawInputChannels; ++channel) {
+                        const float sample = rawInputInterleaved[offset + channel];
+                        if (std::isfinite(sample)) peak = std::max(peak, std::fabs(sample));
+                    }
+                    if (peak >= threshold) {
+                        hitMask |= static_cast<std::uint8_t>(1U << track);
+                        autoRecTriggerGenerations[track] = generation;
+                    }
+                }
+                if (hitMask != 0U) {
+                    autoRecTriggerOffset = frame;
+                    autoRecTriggerMask = hitMask;
+                    break;
+                }
+            }
+        }
+        boundary = std::min(boundary, autoRecTriggerOffset);
         for (std::size_t i = 0U; i < scheduledEventCount; ++i)
             if (!eventDone[i]) boundary = std::min(boundary, scheduledEvents[i].frameOffset);
+        if (autoRecTriggerOffset != boundary) autoRecTriggerMask = 0U;
         const unsigned int segmentFrames = boundary - segmentStart;
         if (segmentFrames > 0U) {
             // Carrier readiness and every input/track effect advance on this
@@ -5755,6 +6121,50 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 recordStopCommittedRuntimeRevision_[event.request.trackIndex] == event.request.stopRevision)
                 eventContentRevision[i] = trackContentRevision_[event.request.trackIndex].load(std::memory_order_acquire);
             eventDone[i] = true;
+        }
+        if (autoRecTriggerMask != 0U) {
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if ((autoRecTriggerMask & (1U << track)) == 0U) continue;
+                const auto generation = autoRecTriggerGenerations[track];
+                if (generation == 0U) continue;
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+                if (const auto hook = autoRecBeforeTriggerTestHook_.load(std::memory_order_acquire))
+                    hook(autoRecBeforeTriggerTestContext_.load(std::memory_order_acquire), track, generation, autoRecTriggerOffset);
+#endif
+                if (looperForTrack(track).state() != LooperState::Empty) {
+                    auto staleGeneration = generation;
+                    if (nativeAutoRecArmGeneration_[track].compare_exchange_strong(staleGeneration, 0U,
+                            std::memory_order_acq_rel, std::memory_order_acquire))
+                        nativeAutoRecCancelApplied_[track].store(generation, std::memory_order_release);
+                    skipAutoRecAtBoundaryFrame = true;
+                    continue;
+                }
+                auto expectedGeneration = generation;
+                if (!nativeAutoRecArmGeneration_[track].compare_exchange_strong(expectedGeneration, 0U,
+                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                    skipAutoRecAtBoundaryFrame = true;
+                    continue;
+                }
+#if defined(NATIVE_CALLBACK_NO_HARDWARE)
+                if (const auto hook = autoRecAfterClaimTestHook_.load(std::memory_order_acquire))
+                    hook(autoRecAfterClaimTestContext_.load(std::memory_order_acquire), track, generation, autoRecTriggerOffset);
+#endif
+                Command trigger{};
+                trigger.type = CommandType::Record;
+                trigger.trackIndex = static_cast<std::uint8_t>(track);
+                trigger.revision = generation;
+                const auto bpmBits = nativeTempoAppliedBpmBits_.load(std::memory_order_acquire);
+                std::memcpy(&trigger.provenanceBpm, &bpmBits, sizeof(bpmBits));
+                trigger.provenanceRevision = nativeTempoAppliedRevision_.load(std::memory_order_acquire);
+                trigger.provenanceValid = nativeTempoAppliedValid_.load(std::memory_order_acquire);
+                applyTrackCommandAtCallback(trigger);
+                if (looperForTrack(track).state() == LooperState::Recording) {
+                    nativeAutoRecTriggerContentRevision_[track].store(
+                        trackContentRevision_[track].load(std::memory_order_acquire), std::memory_order_relaxed);
+                    nativeAutoRecTriggerApplied_[track].store(generation, std::memory_order_release);
+                } else
+                    nativeAutoRecCancelApplied_[track].store(generation, std::memory_order_release);
+            }
         }
         segmentStart = boundary;
     }
@@ -6015,6 +6425,18 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         nativeTrackLoopLengthSamples_[track].store(looperForTrack(track).loopLengthSamples(), std::memory_order_release);
         writeTrackPhaseProvenance(track, {});
+    }
+
+    if (transaction->memory) {
+    const auto autoRecSettingsRevision = nativeAutoRecRequestedRevision_.load(std::memory_order_acquire) + 1U;
+    nativeAutoRecEnabledRequested_.store(transaction->autoRecEnabled, std::memory_order_relaxed);
+    nativeAutoRecSensitivityRequested_.store(transaction->autoRecSensitivity, std::memory_order_relaxed);
+    nativeAutoRecThresholdRequested_.store(transaction->autoRecThresholdLinear, std::memory_order_relaxed);
+    nativeAutoRecRequestedRevision_.store(autoRecSettingsRevision, std::memory_order_release);
+    nativeAutoRecEnabledApplied_.store(transaction->autoRecEnabled, std::memory_order_release);
+    nativeAutoRecSensitivityApplied_.store(transaction->autoRecSensitivity, std::memory_order_release);
+    nativeAutoRecThresholdLinear_.store(transaction->autoRecThresholdLinear, std::memory_order_release);
+    nativeAutoRecAppliedRevision_.store(autoRecSettingsRevision, std::memory_order_release);
     }
 
     if (transaction->memory) {

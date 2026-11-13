@@ -4,6 +4,34 @@ import { PROJECT_ARCHIVE_LIMITS } from './projectArchive';
 
 export type NativeBackend = 'WASAPI' | 'ASIO';
 export type NativeLooperState = 'Empty' | 'Recording' | 'Stopped' | 'Playing' | 'Overdubbing';
+export interface NativeAutoRecTrackStatus {
+  trackId: number;
+  intentId: string;
+  armRequestedRevision: number;
+  armAppliedRevision: number;
+  triggerAppliedRevision: number;
+  triggerContentRevision: number;
+  cancelAppliedRevision: number;
+  armed: boolean;
+  stopReceipt?: { intentId: string; armRevision: number; expectedContentRevision: number; requestedRevision: number;
+    appliedRevision: number; rejectedRevision: number; appliedContentRevision: number };
+}
+export interface NativeAutoRecStatus {
+  available: boolean;
+  detectorModel: 'raw-peak-dbfs-v1';
+  settings: { enabled: boolean; sensitivity: number; requestedRevision: number; appliedRevision: number };
+  tracks: NativeAutoRecTrackStatus[];
+}
+interface NativeAutoRecArmReceipt {
+  operation: 'arm' | 'cancel' | 'stop';
+  trackId: number;
+  hostIncarnationId: string;
+  intentId: string;
+  expectedArmRevision: number;
+  armRevision: number;
+  stopIntentId?: string;
+  expectedContentRevision?: number;
+}
 export type NativeHqEngine = 'R2' | 'R3';
 export type NativeLoopTransportMode = 'off' | 'beatShift' | 'vinylFlick';
 export type NativeDubMode = 'OVERDUB' | 'REPLACE1' | 'REPLACE2';
@@ -113,6 +141,21 @@ export class NativeProjectImportOutcomeUnknownError extends Error {
     const detail = cause instanceof Error ? cause.message : String(cause);
     super(`The Native bridge did not acknowledge an import generation, so the request outcome is unknown. Do not retry until the host state is checked. ${detail}`);
     this.name = 'NativeProjectImportOutcomeUnknownError';
+  }
+}
+
+export class NativeAutoRecTriggerWonCancelError extends Error {
+  public readonly trackId: number;
+  public readonly armRevision: number;
+  public readonly intentId: string;
+  public readonly status: NativeStatus;
+  public constructor(status: NativeStatus, receipt: NativeAutoRecArmReceipt) {
+    super(`Native AUTO REC trigger won the cancel race for Track ${receipt.trackId} generation ${receipt.armRevision}; check the confirmed Recording state before any further action.`);
+    this.name = 'NativeAutoRecTriggerWonCancelError';
+    this.trackId = receipt.trackId;
+    this.armRevision = receipt.armRevision;
+    this.intentId = receipt.intentId;
+    this.status = status;
   }
 }
 
@@ -240,7 +283,9 @@ export interface NativeStatus {
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
   nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
+    autoRec?: { enabled: boolean; sensitivity: number };
     bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
+  nativeAutoRec?: NativeAutoRecStatus;
   nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
@@ -816,6 +861,8 @@ export class NativeTransportBatchOutcomeUnknownError extends Error {
 
 export class NativeBridgeClient {
   private static readonly pendingBatchStorageKey = 'webrc.nativeTransportBatchReceipt.v1';
+  private static readonly pendingAutoRecArmStorageKey = 'webrc.nativeAutoRecArmReceipts.v1';
+  private static readonly pendingAutoRecSettingsKey = 'webrc.nativeAutoRecSettingsReceipt.v1';
   private readonly baseUrl: string;
   private latestStatus: NativeStatus | null = null;
   private pendingRhythmSchedule: NativeRhythmScheduleReceipt | null = null;
@@ -1707,6 +1754,383 @@ export class NativeBridgeClient {
     if (Object.keys(settings).length !== 1 || Object.keys(settings).some((key) => key !== 'recAction' && key !== 'quantize'))
       throw new RangeError('Invalid Native record settings.');
     return this.request<NativeStatus>('/v1/record/settings', { method: 'POST', body: JSON.stringify(settings) });
+  }
+
+  /** Reconcile a durable settings CAS without issuing another write. */
+  public reconcileNativeAutoRecSettings(status: NativeStatus | null): 'clear' | 'confirmed' | 'superseded' | 'unknown' {
+    try {
+      const storage = globalThis.sessionStorage;
+      if (!storage) return 'unknown';
+      const raw = storage.getItem(NativeBridgeClient.pendingAutoRecSettingsKey);
+      if (raw === null) return 'clear';
+      const receipt: unknown = JSON.parse(raw);
+      if (!isObject(receipt) || !isNativeHostIncarnationId(receipt.hostIncarnationId)
+        || typeof receipt.baseline !== 'number' || !Number.isSafeInteger(receipt.baseline) || receipt.baseline < 0
+        || typeof receipt.enabled !== 'boolean' || typeof receipt.sensitivity !== 'number'
+        || !Number.isInteger(receipt.sensitivity) || receipt.sensitivity < 1 || receipt.sensitivity > 100) return 'unknown';
+      const settings = status?.nativeAutoRec?.settings;
+      if (status?.hostIncarnationId !== receipt.hostIncarnationId || !settings
+        || !Number.isSafeInteger(settings.appliedRevision) || settings.appliedRevision <= receipt.baseline
+        || settings.requestedRevision !== settings.appliedRevision) return 'unknown';
+      const result = settings.enabled === receipt.enabled && settings.sensitivity === receipt.sensitivity ? 'confirmed' : 'superseded';
+      storage.removeItem(NativeBridgeClient.pendingAutoRecSettingsKey);
+      if (storage.getItem(NativeBridgeClient.pendingAutoRecSettingsKey) !== null) return 'unknown';
+      return result;
+    } catch { return 'unknown'; }
+  }
+
+  /** Submit one CAS settings update. A lost response is indeterminate; callers must read status, never resend blindly. */
+  public async setNativeAutoRecSettings(settings: { enabled: boolean; sensitivity: number }, expectedRevision: number,
+    hostIncarnationId: string): Promise<NativeStatus> {
+    if (typeof settings.enabled !== 'boolean' || !Number.isInteger(settings.sensitivity) || settings.sensitivity < 1 || settings.sensitivity > 100
+      || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || !isNativeHostIncarnationId(hostIncarnationId)) {
+      throw new RangeError('Invalid Native AUTO REC settings CAS.');
+    }
+    const prior = this.reconcileNativeAutoRecSettings(await this.getStatus());
+    if (prior === 'unknown') throw new Error('Native AUTO REC settings outcome is unknown; GET-only reconciliation is required.');
+    if (prior === 'superseded') throw new Error('Prior Native AUTO REC settings were superseded; inspect current settings.');
+    if (prior === 'confirmed') throw new Error('Prior Native AUTO REC settings are confirmed; inspect current settings before another update.');
+    const encoded = JSON.stringify({ hostIncarnationId, baseline: expectedRevision, ...settings });
+    try {
+      const storage = globalThis.sessionStorage;
+      storage.setItem(NativeBridgeClient.pendingAutoRecSettingsKey, encoded);
+      if (storage.getItem(NativeBridgeClient.pendingAutoRecSettingsKey) !== encoded) throw new Error('readback disagrees');
+    } catch { throw new Error('Native AUTO REC settings identity could not be retained; request was not submitted.'); }
+    try {
+      return await this.request<NativeStatus>('/v1/record/auto-rec', {
+        method: 'POST',
+        headers: { 'X-Native-Host-Incarnation': hostIncarnationId },
+        body: JSON.stringify({ ...settings, expectedRevision }),
+      });
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status === 409) {
+        const storage = globalThis.sessionStorage;
+        if (!storage) throw new Error('Native AUTO REC settings receipt storage is unavailable.');
+        if (storage.getItem(NativeBridgeClient.pendingAutoRecSettingsKey) === encoded) {
+          storage.removeItem(NativeBridgeClient.pendingAutoRecSettingsKey);
+          if (storage.getItem(NativeBridgeClient.pendingAutoRecSettingsKey) !== null) throw new Error('Native AUTO REC settings receipt removal failed.');
+        }
+      }
+      throw error;
+    }
+  }
+
+  private readAutoRecReceipts(): NativeAutoRecArmReceipt[] {
+    let raw: string | null;
+    try {
+      const storage = globalThis.sessionStorage;
+      if (!storage) throw new Error('session storage is absent');
+      raw = storage.getItem(NativeBridgeClient.pendingAutoRecArmStorageKey);
+    }
+    catch { throw new Error('Native AUTO REC operation receipt storage is unavailable; no operation was submitted.'); }
+    if (!raw) return [];
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.some((item) => !isObject(item)
+        || !['arm', 'cancel', 'stop'].includes(String(item.operation)) || typeof item.trackId !== 'number' || !Number.isInteger(item.trackId) || item.trackId < 1 || item.trackId > 5
+        || !isNativeHostIncarnationId(item.hostIncarnationId) || !isNativeHostIncarnationId(item.intentId)
+        || typeof item.expectedArmRevision !== 'number' || !Number.isSafeInteger(item.expectedArmRevision) || item.expectedArmRevision < 0
+        || typeof item.armRevision !== 'number' || !Number.isSafeInteger(item.armRevision) || item.armRevision !== item.expectedArmRevision + 1)) {
+        throw new Error('Invalid stored operation receipt.');
+      }
+      if (parsed.some((item) => isObject(item) && item.operation === 'stop'
+        && (!isNativeHostIncarnationId(item.stopIntentId) || typeof item.expectedContentRevision !== 'number'
+          || !Number.isSafeInteger(item.expectedContentRevision) || item.expectedContentRevision < 0))) throw new Error('Invalid stored stop receipt.');
+      return parsed as NativeAutoRecArmReceipt[];
+    } catch { throw new Error('Stored Native AUTO REC identity is invalid; preserve it and reconcile host status before another operation.'); }
+  }
+
+  private writeAutoRecReceipts(receipts: NativeAutoRecArmReceipt[]): void {
+    try {
+      const storage = globalThis.sessionStorage;
+      if (!storage) throw new Error('session storage is absent');
+      if (receipts.length) storage.setItem(NativeBridgeClient.pendingAutoRecArmStorageKey, JSON.stringify(receipts));
+      else storage.removeItem(NativeBridgeClient.pendingAutoRecArmStorageKey);
+      const expected = receipts.length ? JSON.stringify(receipts) : null;
+      if (storage.getItem(NativeBridgeClient.pendingAutoRecArmStorageKey) !== expected) throw new Error('receipt readback disagrees');
+    } catch (error) { throw new Error(`Native AUTO REC operation identity could not be retained; request was not submitted. ${error instanceof Error ? error.message : String(error)}`); }
+  }
+
+  /** Re-read storage after asynchronous requests; never remove or replace a newer owner. */
+  private updateExactAutoRecReceipt(receipt: NativeAutoRecArmReceipt, replacement?: NativeAutoRecArmReceipt): void {
+    const current = this.readAutoRecReceipts();
+    const matches = (item: NativeAutoRecArmReceipt) => item.operation === receipt.operation
+      && item.trackId === receipt.trackId && item.hostIncarnationId === receipt.hostIncarnationId
+      && item.intentId === receipt.intentId && item.expectedArmRevision === receipt.expectedArmRevision
+      && item.armRevision === receipt.armRevision && item.stopIntentId === receipt.stopIntentId
+      && item.expectedContentRevision === receipt.expectedContentRevision;
+    if (!current.some(matches)) return;
+    this.writeAutoRecReceipts(current.flatMap((item) => matches(item) ? (replacement ? [replacement] : []) : [item]));
+  }
+
+  private autoRecReceiptOutcome(status: NativeStatus, receipt: NativeAutoRecArmReceipt): 'armed' | 'triggered' | 'cancelled' | 'pending' | 'different' {
+    const auto = status.nativeAutoRec;
+    const track = auto?.tracks?.find((item) => item.trackId === receipt.trackId);
+    if (!track || status.hostIncarnationId !== receipt.hostIncarnationId || track.intentId !== receipt.intentId
+      || track.armRequestedRevision !== receipt.armRevision) return 'different';
+    if (track.triggerAppliedRevision === receipt.armRevision && track.armed === false) return 'triggered';
+    if (track.cancelAppliedRevision === receipt.armRevision && track.armed === false) return 'cancelled';
+    if (track.armAppliedRevision === receipt.armRevision && track.armed === true) return 'armed';
+    return 'pending';
+  }
+
+  private autoRecStopReceiptOutcome(status: NativeStatus, receipt: NativeAutoRecArmReceipt): 'applied' | 'rejected' | 'pending' | 'different' {
+    const track = status.nativeAutoRec?.tracks.find((item) => item.trackId === receipt.trackId);
+    const stop = track?.stopReceipt;
+    if (!track || status.hostIncarnationId !== receipt.hostIncarnationId || track.intentId !== receipt.intentId
+      || track.armRequestedRevision !== receipt.armRevision || !receipt.stopIntentId
+      || !Number.isSafeInteger(receipt.expectedContentRevision) || !stop || stop.intentId !== receipt.stopIntentId
+      || stop.armRevision !== receipt.armRevision || stop.expectedContentRevision !== receipt.expectedContentRevision
+      || !Number.isSafeInteger(stop.requestedRevision) || stop.requestedRevision <= 0) return 'different';
+    const audioTrack = status.nativeTracks?.find((item) => item.trackId === receipt.trackId);
+    if (stop.appliedRevision === stop.requestedRevision && stop.appliedContentRevision >= receipt.expectedContentRevision
+      && audioTrack?.state === 'Stopped' && audioTrack.contentRevision === stop.appliedContentRevision) return 'applied';
+    if (stop.rejectedRevision === stop.requestedRevision) return 'rejected';
+    return 'pending';
+  }
+
+  public isNativeAutoRecArmConfirmed(trackId: number, status: NativeStatus): boolean {
+    try {
+      const receipt = this.readAutoRecReceipts().find((item) => item.trackId === trackId && item.operation === 'arm');
+      return !!receipt && this.autoRecReceiptOutcome(status, receipt) === 'armed';
+    } catch { return false; }
+  }
+
+  /** True while an exact arm/cancel/stop intent is unresolved, invalid, or bound to another host. */
+  public hasUnresolvedNativeAutoRecOperation(trackId: number, status: NativeStatus | null): boolean {
+    try {
+      const receipt = this.readAutoRecReceipts().find((item) => item.trackId === trackId);
+      if (!receipt) return false;
+      if (receipt.operation === 'stop') {
+        if (!status) return true;
+        const outcome = this.autoRecStopReceiptOutcome(status, receipt);
+        return outcome !== 'applied' && outcome !== 'rejected';
+      }
+      const outcome = status ? this.autoRecReceiptOutcome(status, receipt) : 'different';
+      if (receipt.operation === 'arm' && (outcome === 'armed' || outcome === 'triggered' || outcome === 'cancelled')) return false;
+      if (receipt.operation === 'cancel' && (outcome === 'triggered' || outcome === 'cancelled')) return false;
+      return true;
+    } catch { return true; }
+  }
+
+  public async armNativeAutoRecTrack(trackId: number): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    const before = await this.getStatus();
+    const auto = before.nativeAutoRec;
+    if (this.reconcileNativeAutoRecSettings(before) === 'unknown') throw new Error('Native AUTO REC settings outcome is unknown; no arm was submitted.');
+    if (!isNativeHostIncarnationId(before.hostIncarnationId) || !auto?.available || auto.detectorModel !== 'raw-peak-dbfs-v1'
+      || auto.settings.enabled !== true || auto.settings.requestedRevision !== auto.settings.appliedRevision) {
+      throw new Error('Native AUTO REC is unavailable, disabled, or has unacknowledged settings; no arm was submitted.');
+    }
+    const track = auto.tracks.find((item) => item.trackId === trackId);
+    if (!track || !Number.isSafeInteger(track.armRequestedRevision) || track.armRequestedRevision < 0
+      || track.armAppliedRevision !== track.armRequestedRevision) throw new Error('Native AUTO REC arm generation is unavailable or pending.');
+    let receipts = this.readAutoRecReceipts();
+    const existing = receipts.find((item) => item.trackId === trackId);
+    if (existing) {
+      if (existing.operation === 'stop') {
+        const outcome = this.autoRecStopReceiptOutcome(before, existing);
+        if (outcome === 'applied') { this.updateExactAutoRecReceipt(existing); receipts = this.readAutoRecReceipts(); }
+        else if (outcome === 'rejected') { this.updateExactAutoRecReceipt(existing); receipts = this.readAutoRecReceipts(); throw new Error('A prior exact-take STOP was rejected; inspect the current recording before another REC command.'); }
+        else throw new Error('A prior exact-take STOP is unresolved; reconcile its exact stop intent before another REC command.');
+      } else {
+      const outcome = this.autoRecReceiptOutcome(before, existing);
+      if (outcome === 'armed') {
+        if (existing.operation === 'cancel') throw new Error('Native AUTO REC cancellation outcome is unresolved; do not re-arm.');
+        return before;
+      }
+      if (outcome === 'pending' || outcome === 'different') throw new Error('Native AUTO REC arm outcome is unknown; reconcile this retained intent before another arm.');
+      this.updateExactAutoRecReceipt(existing); receipts = this.readAutoRecReceipts();
+      }
+    }
+    if (track.armed) throw new Error('Native AUTO REC track is already armed; use its exact-generation cancel command.');
+    if (track.armRequestedRevision >= Number.MAX_SAFE_INTEGER - 1) throw new Error('Native AUTO REC arm generation is exhausted.');
+    const intentId = createNativeRhythmIntentId();
+    const receipt: NativeAutoRecArmReceipt = { operation: 'arm', trackId, hostIncarnationId: before.hostIncarnationId!, intentId,
+      expectedArmRevision: track.armRequestedRevision, armRevision: track.armRequestedRevision + 1 };
+    receipts.push(receipt); this.writeAutoRecReceipts(receipts);
+    const path = `/v1/transport/record/auto-rec?trackId=${trackId}`;
+    const confirm = (status: NativeStatus): 'accepted' | 'pending' | 'different' => {
+      const outcome = this.autoRecReceiptOutcome(status, receipt);
+      return outcome === 'armed' || outcome === 'triggered' || outcome === 'cancelled' ? 'accepted' : outcome === 'pending' ? 'pending' : 'different';
+    };
+    try {
+      const accepted = await this.request<NativeStatus>(path, { method: 'POST',
+        headers: { 'X-Native-Host-Incarnation': receipt.hostIncarnationId },
+        body: JSON.stringify({ intentId, expectedArmRevision: receipt.expectedArmRevision }), });
+      if (confirm(accepted) === 'accepted') return accepted;
+      if (confirm(accepted) === 'different') throw new Error('Native AUTO REC response did not identify the submitted arm generation.');
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status === 409) {
+        this.updateExactAutoRecReceipt(receipt);
+        throw error;
+      }
+      // Reconcile this exact identity once. Never replay the arm request after a lost response.
+      let observed: NativeStatus | null = null;
+      try { observed = await this.getStatus(); } catch { /* Retain the durable identity when host status is unavailable. */ }
+      if (observed && confirm(observed) === 'accepted') {
+        return observed;
+      }
+      throw new Error(`Native AUTO REC arm outcome is unknown; identity ${intentId} was retained and must not be replayed. ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const deadline = Date.now() + 3000;
+    for (;;) {
+      const readback = await this.getStatus();
+      const result = confirm(readback);
+      if (result === 'accepted') return readback;
+      if (result === 'different') throw new Error(`Native AUTO REC arm identity ${intentId} remains unresolved; do not submit another arm.`);
+      if (Date.now() >= deadline) throw new Error(`Native AUTO REC arm ${intentId} is pending; its identity was retained and must not be replayed.`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  public async cancelNativeAutoRecTrack(trackId: number): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    const before = await this.getStatus();
+    let receipts = this.readAutoRecReceipts();
+    const pending = receipts.find((item) => item.trackId === trackId);
+    if (pending) {
+      if (pending.operation === 'stop') {
+        const result = this.autoRecStopReceiptOutcome(before, pending);
+        if (result === 'applied') { this.updateExactAutoRecReceipt(pending); return before; }
+        if (result === 'rejected') { this.updateExactAutoRecReceipt(pending); throw new Error('A prior exact-take STOP was rejected; no cancellation was submitted.'); }
+        throw new Error('A prior exact-take STOP is unresolved; reconcile its stop intent before cancellation.');
+      }
+      const prior = this.autoRecReceiptOutcome(before, pending);
+      if (prior === 'triggered') {
+        this.updateExactAutoRecReceipt(pending, { ...pending, operation: 'arm' });
+        throw new NativeAutoRecTriggerWonCancelError(before, pending);
+      }
+      if (prior === 'cancelled') {
+        this.updateExactAutoRecReceipt(pending); return before;
+      }
+      if (prior === 'different' || prior === 'pending' && pending.operation !== 'arm') {
+        throw new Error('Native AUTO REC operation identity is unresolved; reconcile this exact host generation before cancellation.');
+      }
+      // A same-host arm receipt with an exact pending generation can be cancelled by this explicit user action.
+      this.updateExactAutoRecReceipt(pending);
+      receipts = this.readAutoRecReceipts();
+    }
+    const auto = before.nativeAutoRec;
+    const track = auto?.tracks?.find((item) => item.trackId === trackId);
+    if (!auto?.available || !isNativeHostIncarnationId(before.hostIncarnationId) || !track
+      || track.armRequestedRevision <= 0
+      || (track.triggerAppliedRevision === track.armRequestedRevision || track.cancelAppliedRevision === track.armRequestedRevision)
+      || !isNativeHostIncarnationId(track.intentId)) throw new Error('Native AUTO REC does not expose an acknowledged armed generation to cancel.');
+    const receipt: NativeAutoRecArmReceipt = { operation: 'cancel', trackId, hostIncarnationId: before.hostIncarnationId!,
+      intentId: track.intentId, expectedArmRevision: track.armRequestedRevision - 1, armRevision: track.armRequestedRevision };
+    receipts = receipts.filter((item) => item.trackId !== trackId);
+    receipts.push(receipt); this.writeAutoRecReceipts(receipts);
+    const preserveArmReceipt = () => this.updateExactAutoRecReceipt(receipt, { ...receipt, operation: 'arm' });
+    const path = `/v1/transport/record/auto-rec/cancel?trackId=${trackId}`;
+    const outcome = (status: NativeStatus): 'cancelled' | 'triggered' | 'pending' | 'different' => {
+      const result = this.autoRecReceiptOutcome(status, receipt);
+      return result === 'armed' ? 'pending' : result;
+    };
+    try {
+      const accepted = await this.request<NativeStatus>(path, { method: 'POST',
+        headers: { 'X-Native-Host-Incarnation': receipt.hostIncarnationId },
+        body: JSON.stringify({ intentId: receipt.intentId, armRevision: receipt.armRevision }), });
+      const result = outcome(accepted);
+      if (result === 'triggered') {
+        preserveArmReceipt();
+        throw new NativeAutoRecTriggerWonCancelError(accepted, receipt);
+      }
+      if (result === 'cancelled') {
+        this.updateExactAutoRecReceipt(receipt); return accepted;
+      }
+      if (result === 'different') throw new Error('Native AUTO REC cancellation readback did not identify the target generation.');
+    } catch (error) {
+      if (error instanceof NativeAutoRecTriggerWonCancelError) throw error;
+      let observed: NativeStatus | null = null;
+      try { observed = await this.getStatus(); } catch { /* Preserve the exact retained generation for later status reconciliation. */ }
+      if (observed) {
+        const result = outcome(observed);
+        if (result === 'triggered') {
+          preserveArmReceipt();
+          throw new NativeAutoRecTriggerWonCancelError(observed, receipt);
+        }
+        if (result === 'cancelled') {
+          this.updateExactAutoRecReceipt(receipt); return observed;
+        }
+      }
+      throw new Error(`Native AUTO REC cancellation outcome is unknown for generation ${receipt.armRevision}; do not issue a new generation. ${error instanceof Error ? error.message : String(error)}`);
+    }
+    throw new Error(`Native AUTO REC cancellation for generation ${receipt.armRevision} is pending; reconcile status before another command.`);
+  }
+
+  /** Stop one exact AUTO REC take after a trigger/cancel race; never retry the write. */
+  public async stopNativeAutoRecTriggeredTrack(trackId: number, expectedContentRevision: number): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (!Number.isSafeInteger(expectedContentRevision) || expectedContentRevision < 0) throw new RangeError('Invalid AUTO REC take content revision.');
+    const before = await this.getStatus();
+    const auto = before.nativeAutoRec;
+    const nativeTrack = before.nativeTracks?.find((item) => item.trackId === trackId);
+    const track = auto?.tracks.find((item) => item.trackId === trackId);
+    let receipts = this.readAutoRecReceipts();
+    const existing = receipts.find((item) => item.trackId === trackId);
+    if (existing?.operation === 'stop') {
+      const outcome = this.autoRecStopReceiptOutcome(before, existing);
+      if (outcome === 'applied') { this.updateExactAutoRecReceipt(existing); return before; }
+      if (outcome === 'rejected') { this.updateExactAutoRecReceipt(existing); throw new Error('Native AUTO REC exact-take STOP was rejected; PCM and the newer host state were preserved.'); }
+      throw new Error('Native AUTO REC exact-take STOP identity is unresolved; GET-only reconciliation is required before another operation.');
+    }
+    if (!auto?.available || !isNativeHostIncarnationId(before.hostIncarnationId) || !track
+      || track.armRequestedRevision <= 0 || track.armAppliedRevision !== track.armRequestedRevision
+      || track.triggerAppliedRevision !== track.armRequestedRevision || track.armed
+      || !Number.isSafeInteger(track.triggerContentRevision) || track.triggerContentRevision !== expectedContentRevision
+      || !isNativeHostIncarnationId(track.intentId) || nativeTrack?.state !== 'Recording'
+      || nativeTrack.contentRevision !== expectedContentRevision) {
+      throw new Error('Native AUTO REC exact-take STOP refused; the same triggered generation and PCM revision are not confirmed.');
+    }
+    if (existing && (existing.hostIncarnationId !== before.hostIncarnationId || existing.intentId !== track.intentId
+      || existing.armRevision !== track.armRequestedRevision || this.autoRecReceiptOutcome(before, existing) !== 'triggered')) {
+      throw new Error('Native AUTO REC arm identity does not authorize a STOP against the current take.');
+    }
+    const stopIntentId = createNativeRhythmIntentId();
+    const receipt: NativeAutoRecArmReceipt = { operation: 'stop', trackId, hostIncarnationId: before.hostIncarnationId!,
+      intentId: track.intentId, expectedArmRevision: track.armRequestedRevision - 1, armRevision: track.armRequestedRevision,
+      stopIntentId, expectedContentRevision };
+    receipts = receipts.filter((item) => item.trackId !== trackId);
+    receipts.push(receipt); this.writeAutoRecReceipts(receipts);
+    const path = `/v1/transport/record/auto-rec/stop?trackId=${trackId}`;
+    const reconcile = (status: NativeStatus): 'applied' | 'rejected' | 'pending' | 'different' => this.autoRecStopReceiptOutcome(status, receipt);
+    const finish = (status: NativeStatus): NativeStatus => {
+      const outcome = reconcile(status);
+      if (outcome === 'applied') { this.updateExactAutoRecReceipt(receipt); return status; }
+      if (outcome === 'rejected') {
+        this.updateExactAutoRecReceipt(receipt);
+        throw new Error('Native AUTO REC exact-take STOP was rejected by callback CAS; no later take or PCM was changed.');
+      }
+      if (outcome === 'different') throw new Error('Native AUTO REC STOP response did not confirm this exact stop intent.');
+      return status;
+    };
+    try {
+      const accepted = await this.request<NativeStatus>(path, { method: 'POST',
+        headers: { 'X-Native-Host-Incarnation': receipt.hostIncarnationId },
+        body: JSON.stringify({ intentId: receipt.intentId, armRevision: receipt.armRevision,
+          expectedContentRevision, stopIntentId }), });
+      const result = reconcile(accepted);
+      if (result === 'applied' || result === 'rejected') return finish(accepted);
+      if (result === 'different') throw new Error('Native AUTO REC STOP response did not identify the submitted stop intent.');
+    } catch (error) {
+      let observed: NativeStatus | null = null;
+      try { observed = await this.getStatus(); } catch { /* Keep exact durable stop identity; the request is never replayed. */ }
+      if (observed) {
+        const result = reconcile(observed);
+        if (result === 'applied' || result === 'rejected') return finish(observed);
+      }
+      throw new Error(`Native AUTO REC exact-take STOP outcome is unknown; identity ${stopIntentId} was retained for GET-only reconciliation. ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const deadline = Date.now() + 3000;
+    for (;;) {
+      const readback = await this.getStatus();
+      const result = reconcile(readback);
+      if (result === 'applied' || result === 'rejected') return finish(readback);
+      if (result === 'different') throw new Error(`Native AUTO REC STOP intent ${stopIntentId} is unresolved; do not submit another command.`);
+      if (Date.now() >= deadline) throw new Error(`Native AUTO REC STOP intent ${stopIntentId} is pending; use GET-only reconciliation.`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
   }
 
   public async setTrackLoopSync(trackId: number, enabled: boolean): Promise<NativeStatus> {

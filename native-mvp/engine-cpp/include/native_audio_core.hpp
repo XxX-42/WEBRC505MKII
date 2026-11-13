@@ -164,6 +164,25 @@ struct EngineConfig {
 };
 
 struct EngineStatus {
+    bool nativeAutoRecAvailable = true;
+    bool nativeAutoRecEnabled = false;
+    unsigned int nativeAutoRecSensitivity = 50U;
+    std::uint64_t nativeAutoRecRequestedRevision = 0U;
+    std::uint64_t nativeAutoRecAppliedRevision = 0U;
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecArmRequestedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecArmAppliedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecTriggerAppliedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecTriggerContentRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecCancelAppliedRevision{};
+    std::array<bool, kNativeTrackCount> nativeAutoRecArmed{};
+    std::array<std::string, kNativeTrackCount> nativeAutoRecIntentIds{};
+    std::array<std::string, kNativeTrackCount> nativeAutoRecStopIntentIds{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopArmRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopExpectedContentRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopRequestedRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopAppliedRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopRejectedRevisions{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopAppliedContentRevisions{};
     NativeBounceSettings nativeBounce{};
     std::uint64_t nativeBounceRequestedRevision = 0U;
     std::uint64_t nativeBounceAppliedRevision = 0U;
@@ -463,6 +482,9 @@ struct NativePitchConfig {
 };
 
 struct NativeMemorySettings {
+    bool autoRecEnabled = false;
+    unsigned int autoRecSensitivity = 50U;
+    bool autoRecIncluded = false;
     bool recordActionDub = false;
     bool recordActionIncluded = false;
     bool recordQuantizeMeasure = false;
@@ -585,6 +607,14 @@ public:
     bool clear(std::string& error);
     bool recordTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                      std::uint64_t provenanceRevision = 0U);
+    bool setNativeAutoRecSettings(bool enabled, unsigned int sensitivity, std::uint64_t expectedRevision,
+        std::uint64_t& acceptedRevision, std::string& error);
+    bool armNativeAutoRec(std::size_t trackIndex, const std::string& intentId, std::uint64_t expectedArmRevision,
+        std::uint64_t& acceptedArmRevision, bool& duplicate, std::string& error);
+    bool cancelNativeAutoRec(std::size_t trackIndex, const std::string& intentId, std::uint64_t armRevision,
+        std::string& error);
+    bool stopNativeAutoRecGeneration(std::size_t trackIndex, const std::string& intentId, std::uint64_t armRevision,
+        std::uint64_t expectedContentRevision, const std::string& stopIntentId, bool& duplicate, std::string& error);
     bool finishRecordingTrack(std::size_t trackIndex, std::string& error, std::optional<double> provenanceBpm = std::nullopt,
                               std::uint64_t provenanceRevision = 0U);
     bool setRecordAction(bool overdub, std::string& error);
@@ -778,6 +808,13 @@ private:
     static std::atomic<void*> callbackBeforeEnterTestContext_;
     static std::atomic<CallbackEntryTestHook> callbackBeforeBatchPublishTestHook_;
     static std::atomic<void*> callbackBeforeBatchPublishTestContext_;
+    using AutoRecBeforeTriggerTestHook = void (*)(void*, std::size_t, std::uint64_t, unsigned int) noexcept;
+    static std::atomic<AutoRecBeforeTriggerTestHook> autoRecBeforeTriggerTestHook_;
+    static std::atomic<void*> autoRecBeforeTriggerTestContext_;
+    static std::atomic<AutoRecBeforeTriggerTestHook> autoRecAfterClaimTestHook_;
+    static std::atomic<void*> autoRecAfterClaimTestContext_;
+    static std::atomic<CallbackCommandTestHook> autoRecBeforeStopGuardTestHook_;
+    static std::atomic<void*> autoRecBeforeStopGuardTestContext_;
 #endif
 
     static constexpr unsigned int kMaxCallbackFrames = 4096;
@@ -790,6 +827,9 @@ private:
     struct ProjectImportTransaction {
         std::uint64_t generation = 0U;
         std::uint64_t expectedProjectContentRevision = 0U;
+        bool autoRecEnabled = false;
+        unsigned int autoRecSensitivity = 50U;
+        float autoRecThresholdLinear = 0.25118864f;
         std::array<std::vector<float>, kNativeTrackCount> candidateStereoStorage{};
         std::array<std::size_t, kNativeTrackCount> frameCounts{};
         std::array<LoopMetadata, kNativeTrackCount> previousMetadata{};
@@ -1011,6 +1051,18 @@ private:
     std::array<std::atomic<bool>, kNativeTrackCount> nativeScheduledLoopPending_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeScheduledLoopRevision_{};
     bool recordActionDubRequested_ = false;
+    std::atomic<bool> nativeAutoRecEnabledRequested_{false};
+    std::atomic<unsigned int> nativeAutoRecSensitivityRequested_{50U};
+    std::atomic<std::uint64_t> nativeAutoRecRequestedRevision_{0U};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecArmRequested_{};
+    std::array<std::string, kNativeTrackCount> nativeAutoRecIntentIds_{};
+    std::array<std::string, kNativeTrackCount> nativeAutoRecStopIntentIds_{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopArmRevisions_{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeAutoRecStopExpectedContentRevisions_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecStopRequestedRevisions_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecStopAppliedRevisions_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecStopRejectedRevisions_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecStopAppliedContentRevisions_{};
     std::uint64_t recordActionRequestedRevision_ = 0U;
     std::atomic<bool> recordActionDubApplied_{false};
     std::atomic<std::uint64_t> recordActionAppliedRevision_{0U};
@@ -1138,6 +1190,17 @@ private:
     // bypass/removal restores each independently authored route, not generic OFF.
     std::array<LoopTransportConfig, kNativeTrackCount> nativeBaseLoopTransportConfigs_{};
     std::array<LoopTransportConfig, kNativeTrackCount> nativeMemoryLoopTransportSettings_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecArmApplied_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecArmGeneration_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecTriggerApplied_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecTriggerContentRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeAutoRecCancelApplied_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeAutoRecArmed_{};
+    std::atomic<bool> nativeAutoRecEnabledApplied_{false};
+    std::atomic<unsigned int> nativeAutoRecSensitivityApplied_{50U};
+    std::atomic<float> nativeAutoRecThresholdLinear_{0.25118864f};
+    std::atomic<float> nativeAutoRecThresholdRequested_{0.25118864f};
+    std::atomic<std::uint64_t> nativeAutoRecAppliedRevision_{0U};
     std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportRequestedRevision_{};
     std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportRuntimeRevision_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportAppliedRevision_{};

@@ -937,13 +937,16 @@ export class AudioEngine {
   public setMidiClockSyncMode(mode: BrowserMidiSyncMode): void {
     if (this.currentMode === 'browser') this.browser.setMidiClockSyncMode(mode);
   }
-  /** Browser Auto Rec is a software approximation; Native remains explicitly unavailable. */
+  /** Browser/Native AUTO REC uses the shared software approximation; Native requires host readback support. */
   public getBrowserAutoRecSettings(): Readonly<BrowserAutoRecSettings> | null {
-    return this.currentMode === 'browser' ? this.browser.getBrowserAutoRecSettings() : null;
+    return this.currentMode === 'browser' ? this.browser.getBrowserAutoRecSettings() : this.nativeEngine.getNativeAutoRecSettings();
   }
-  public setBrowserAutoRecSettings(settings: BrowserAutoRecSettings): void {
-    if (this.currentMode !== 'browser') throw new Error('Auto Rec is available only in Browser audio mode.');
-    this.browser.setBrowserAutoRecSettings(settings);
+  public setBrowserAutoRecSettings(settings: BrowserAutoRecSettings): void | Promise<void> {
+    if (this.currentMode === 'browser') this.browser.setBrowserAutoRecSettings(settings);
+    else return this.nativeEngine.setNativeAutoRecSettings(settings);
+  }
+  public isNativeAutoRecSettingsPending(): boolean {
+    return this.currentMode === 'native' && this.nativeEngine.isNativeAutoRecSettingsPending();
   }
   public getBrowserBounceSettings(): Readonly<BrowserBounceSettings> | null {
     return this.currentMode === 'browser' ? this.browser.getBrowserBounceSettings() : null;
