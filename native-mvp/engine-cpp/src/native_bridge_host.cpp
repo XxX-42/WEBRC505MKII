@@ -405,6 +405,18 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         // Older Native Memory envelopes did not store DUB MODE; preserve their
         // historical OVERDUB default. New envelopes store one validated value
         // for each track inside the same atomic Memory transaction.
+        if (settings.contains("trackPans")) {
+            const auto& pans = settings.at("trackPans");
+            if (!pans.is_array() || pans.size() != kNativeTrackCount) throw std::runtime_error("Memory requires five PAN values.");
+            for (std::size_t track = 0; track < kNativeTrackCount; ++track) {
+                if (!pans[track].is_number_integer()) throw std::runtime_error("Memory PAN must be an integer.");
+                if (pans[track].is_number_unsigned() && pans[track].get<std::uint64_t>() > 50U) throw std::runtime_error("Memory PAN out of range.");
+                const auto value = pans[track].get<std::int64_t>();
+                if (value < -50 || value > 50) throw std::runtime_error("Memory PAN out of range.");
+                candidate->trackPans[track] = static_cast<int>(value);
+            }
+            candidate->trackPansIncluded = true;
+        }
         if (settings.contains("dubModes")) {
             const auto& dubModes = settings.at("dubModes");
             if (!dubModes.is_array() || dubModes.size() != kNativeTrackCount) {
@@ -508,6 +520,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             expectedFields[root + ".level"] = levels[track + 2U];
             expectedFields[root + ".bounceIn"] = candidate->bounce.bounceIn[track];
             expectedFields[root + ".bounceTrack"] = candidate->bounce.bounceTrack[track];
+            if (candidate->trackPansIncluded) expectedFields[root + ".pan"] = candidate->trackPans[track];
             if (candidate->dubModesIncluded) expectedFields[root + ".dubMode"] = settings.at("dubModes")[track];
             if (candidate->loopSyncIncluded) expectedFields[root + ".loopSync"] = candidate->loopSync[track] ? "ON" : "OFF";
         }
@@ -523,6 +536,10 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         if (candidate->autoRecIncluded) {
             requireSemanticField("record.autoRecSw", candidate->autoRecEnabled);
             requireSemanticField("record.autoRecSens", candidate->autoRecSensitivity);
+        }
+        if (candidate->trackPansIncluded) {
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track)
+                requireSemanticField("track." + std::to_string(track + 1U) + ".pan", candidate->trackPans[track]);
         }
         if (candidate->loopSyncIncluded) {
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -812,6 +829,7 @@ json statusToJson(const EngineStatus& status) {
             {"loopTransportAppliedOneShot", status.nativeLoopTransportAppliedOneShot[track]},
             {"loopTransportAppliedReverse", status.nativeLoopTransportAppliedReverse[track]},
             {"loopTransportStatus", loopTransportStatusToString(status.nativeTrackLoopTransportStatus[track])},
+            {"pan", {{"applied", status.nativeTrackPans[track]}, {"requested", status.nativeTrackRequestedPans[track]}, {"requestedRevision", status.nativePanRequestedRevision[track]}, {"appliedRevision", status.nativePanAppliedRevision[track]}, {"law", "webaudio-stereo-v1"}}},
             {"dubMode", {
                 {"applied", nativeDubModeToString(status.nativeTrackDubModes[track])},
                 {"requested", nativeDubModeToString(status.nativeTrackRequestedDubModes[track])},
@@ -1286,7 +1304,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
-        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes}, {"loopSync", loopSync},
+        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes}, {"trackPans", status.nativeMemoryTrackPans}, {"loopSync", loopSync},
             {"autoRec", {{"enabled", status.nativeAutoRecEnabled}, {"sensitivity", status.nativeAutoRecSensitivity}}},
             {"recQuantize", status.nativeRecordQuantizeMeasure ? "MEASURE" : "OFF"},
             {"bounce", {{"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack}}}}},
@@ -3296,6 +3314,27 @@ int main() {
             response.status = 400;
             writeError(response, error.what());
         }
+    });
+
+    server.Post("/v1/native-track-pan/config", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) { response.status = 409; writeError(response, "Native host incarnation mismatch."); return; }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t track = 0, expected = 0, accepted = 0;
+            if (!body.is_object() || !body.contains("trackId") || !readUnsignedJsonInteger(body.at("trackId"), kNativeTrackCount, track) || track == 0 ||
+                !body.contains("expectedRevision") || !readUnsignedJsonInteger(body.at("expectedRevision"), kMaximumSafeTempoRevision, expected) ||
+                !body.contains("pan") || !body.at("pan").is_number_integer()) {
+                response.status = 400; writeError(response, "PAN requires trackId, integer pan and expectedRevision."); return;
+            }
+            if (body.at("pan").is_number_unsigned() && body.at("pan").get<std::uint64_t>() > 50U) { response.status = 400; writeError(response, "PAN must be -50..50."); return; }
+            const auto pan = body.at("pan").get<std::int64_t>();
+            if (pan < -50 || pan > 50) { response.status = 400; writeError(response, "PAN must be -50..50."); return; }
+            std::string error;
+            if (!engine.setNativeTrackPan(static_cast<std::size_t>(track - 1), static_cast<int>(pan), expected, accepted, error)) { response.status = 409; writeError(response, error); return; }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeTracks"][track - 1]["pan"]["acceptedRevision"] = accepted;
+            writeJson(response, status);
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
 
     server.Post("/v1/monitoring", [&engine](const httplib::Request& request, httplib::Response& response) {

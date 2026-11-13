@@ -3,6 +3,7 @@ import {
   RC505_MENU_ROOT_ITEMS,
   RC505_MIXER_PAGES,
   RC505_PLAY_SCREENS,
+  RC505_ROOT_PAGE_IDS,
   type Rc505DisplayAction,
   type Rc505DisplayRoot,
   type Rc505DisplayRootItem,
@@ -10,7 +11,6 @@ import {
   type Rc505DisplayView,
 } from './rc505DisplayTypes';
 
-const ROOT_ITEMS_PER_PAGE = 4;
 const MAX_RETURN_DEPTH = 10;
 
 export function createRc505DisplayState(): Rc505DisplayState {
@@ -26,6 +26,24 @@ export function getRc505RootItems(root: Rc505DisplayRoot): readonly Rc505Display
   return root === 'loop' ? RC505_LOOP_ROOT_ITEMS : RC505_MENU_ROOT_ITEMS;
 }
 
+export function getRc505RootPage(root: Rc505DisplayRoot, pageIndex: number): readonly Rc505DisplayRootItem[] {
+  const items = getRc505RootItems(root);
+  return (RC505_ROOT_PAGE_IDS[root][pageIndex] ?? []).flatMap(id => items.find(item => item.id === id) ?? []);
+}
+
+export function getRc505RootPageCount(root: Rc505DisplayRoot): number {
+  return RC505_ROOT_PAGE_IDS[root].length;
+}
+
+export function getRc505RootPageStart(root: Rc505DisplayRoot, pageIndex: number): number {
+  return RC505_ROOT_PAGE_IDS[root].slice(0, pageIndex).reduce((count, page) => count + page.length, 0);
+}
+
+function rootPageForItem(root: Rc505DisplayRoot, itemIndex: number): number {
+  return RC505_ROOT_PAGE_IDS[root].findIndex((page, index) => itemIndex >= getRc505RootPageStart(root, index)
+    && itemIndex < getRc505RootPageStart(root, index) + page.length);
+}
+
 function rootForView(view: Rc505DisplayView): Rc505DisplayRoot | null {
   if (view.kind === 'loop-root') return 'loop';
   if (view.kind === 'menu-root') return 'menu';
@@ -37,7 +55,7 @@ function rootViewKind(root: Rc505DisplayRoot): 'loop-root' | 'menu-root' {
 }
 
 function rootPageCount(root: Rc505DisplayRoot): number {
-  return Math.max(1, Math.ceil(getRc505RootItems(root).length / ROOT_ITEMS_PER_PAGE));
+  return getRc505RootPageCount(root);
 }
 
 function wrap(index: number, count: number): number {
@@ -79,15 +97,15 @@ function navigateRoot(state: Rc505DisplayState, delta: number): Rc505DisplayStat
   if (!Number.isFinite(delta) || delta === 0) return state;
   const count = getRc505RootItems(root).length;
   const selectedIndex = wrap(state.view.selectedIndex + Math.trunc(delta), count);
-  const pageIndex = Math.floor(selectedIndex / ROOT_ITEMS_PER_PAGE);
+  const pageIndex = rootPageForItem(root, selectedIndex);
   return withView(state, { ...state.view, pageIndex, selectedIndex });
 }
 
 function selectRootEncoder(state: Rc505DisplayState, encoderIndex: number): Rc505DisplayState {
   if (state.view.kind !== 'loop-root' && state.view.kind !== 'menu-root') return state;
   const root = state.view.kind === 'loop-root' ? 'loop' : 'menu';
-  if (!Number.isInteger(encoderIndex) || encoderIndex < 0 || encoderIndex >= ROOT_ITEMS_PER_PAGE) return state;
-  const itemIndex = state.view.pageIndex * ROOT_ITEMS_PER_PAGE + encoderIndex;
+  if (!Number.isInteger(encoderIndex) || encoderIndex < 0 || encoderIndex >= getRc505RootPage(root, state.view.pageIndex).length) return state;
+  const itemIndex = getRc505RootPageStart(root, state.view.pageIndex) + encoderIndex;
   return openRootItem(state, root, itemIndex);
 }
 
@@ -153,8 +171,8 @@ export function reduceRc505DisplayState(state: Rc505DisplayState, action: Rc505D
         const root = rootForView(state.view)!;
         const count = rootPageCount(root);
         const pageIndex = wrap(state.view.pageIndex + action.direction, count);
-        const firstItem = pageIndex * ROOT_ITEMS_PER_PAGE;
-        const selectedIndex = state.view.selectedIndex >= firstItem && state.view.selectedIndex < firstItem + ROOT_ITEMS_PER_PAGE
+        const firstItem = getRc505RootPageStart(root, pageIndex);
+        const selectedIndex = state.view.selectedIndex >= firstItem && state.view.selectedIndex < firstItem + getRc505RootPage(root, pageIndex).length
           ? state.view.selectedIndex
           : firstItem;
         return withView(state, { ...state.view, pageIndex, selectedIndex });

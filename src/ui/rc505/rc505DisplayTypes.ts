@@ -19,10 +19,11 @@ export const RC505_PLAY_SCREENS: ReadonlyArray<{ id: Rc505PlayScreenId; label: s
   { id: 'track-fx', label: 'TRACK FX' },
 ];
 
-export type Rc505MixerPageId = 'inputs' | 'outputs' | 'master';
+export type Rc505MixerPageId = 'inputs' | 'tracks' | 'outputs' | 'master';
 
 export const RC505_MIXER_PAGES: ReadonlyArray<{ id: Rc505MixerPageId; label: string; channels: readonly string[] }> = [
   { id: 'inputs', label: 'INPUT MIXER', channels: ['MIC1', 'MIC2', 'INST1', 'INST2'] },
+  { id: 'tracks', label: 'TRACK MIXER', channels: ['TRACK1', 'TRACK2', 'TRACK3', 'TRACK4'] },
   { id: 'outputs', label: 'OUTPUT MIXER', channels: ['MAIN', 'SUB1', 'SUB2', 'LOOP'] },
   { id: 'master', label: 'MASTER MIXER', channels: ['RHYTHM', 'PHONES', 'MASTER'] },
 ];
@@ -57,6 +58,14 @@ export const RC505_MENU_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [
   { id: 'setup', label: 'SETUP', target: 'menu' },
   { id: 'factory-reset', label: 'FACTORY RESET', reason: 'Factory reset is not implemented in this build.' },
 ];
+
+// Owner eng04/chs04 p13 explicitly pictures LOOP as 3 + 4. MENU p17
+// pictures the first three and final two; its middle group follows the
+// documented category order and is an explicit engineering grouping.
+export const RC505_ROOT_PAGE_IDS: Readonly<Record<Rc505DisplayRoot, readonly (readonly string[])[]>> = {
+  loop: [['track', 'rec', 'play'], ['input-fx', 'track-fx', 'rhythm', 'name']],
+  menu: [['input', 'output', 'mixer'], ['ctl-func', 'assign', 'usb', 'midi'], ['setup', 'factory-reset']],
+};
 
 export type Rc505DisplayView =
   | { kind: 'play'; pageIndex: number }

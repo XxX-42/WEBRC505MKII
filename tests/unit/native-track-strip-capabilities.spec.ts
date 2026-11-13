@@ -82,12 +82,12 @@ function createAudioEngine(mode: 'native' | 'browser', optionsByTrack = new Map<
   return { engine, tracks, setHistoryStatus: (status: typeof historyStatus) => { historyStatus = status; } };
 }
 
-async function mountTrack(engine: ReturnType<typeof createAudioEngine>['engine'], trackId = 2) {
+async function mountTrack(engine: ReturnType<typeof createAudioEngine>['engine'], trackId = 2, realButton = false) {
   vi.doMock('../../src/audio/AudioEngine', () => ({ AudioEngine: { getInstance: () => engine } }));
   const component = (await import('../../src/components/panel/TrackStrip.vue')).default;
   return mount(component, {
     props: { trackId },
-    global: { stubs: { HardwareButton: HardwareButtonStub, HardwareFader: HardwareFaderStub, LoopHalo: true } },
+    global: { stubs: { ...(realButton ? {} : { HardwareButton: HardwareButtonStub }), HardwareFader: HardwareFaderStub, LoopHalo: true } },
   });
 }
 
@@ -102,6 +102,43 @@ describe('TrackStrip physical FX key', () => {
     vi.clearAllMocks();
   });
 
+  it('keeps available REC and STOP visually stable while FX is awaiting confirmation', async () => {
+    const { engine } = createAudioEngine('native');
+    let rejectFx!: (error: Error) => void;
+    const pending = new Promise((_resolve, reject) => { rejectFx = reject; });
+    Object.assign(engine, { getTrackFxApply: () => [{ available: true, pending: false, controlFaulted: false, applied: false }], setTrackFxApply: vi.fn(() => pending) });
+    wrapper = await mountTrack(engine, 2, true);
+    const rec = wrapper.get('[data-panel-control="record-play"]');
+    const stop = wrapper.get('.stop-disc');
+    expect(rec.attributes('disabled')).toBeUndefined(); expect(stop.attributes('disabled')).toBeUndefined();
+    await stop.trigger('pointerdown', { pointerId: 7, button: 0, isPrimary: true });
+    expect(stop.classes()).toContain('is-pressed');
+    await wrapper.get('[data-track-control="fx"]').trigger('click');
+    expect(stop.classes()).not.toContain('is-pressed');
+    await stop.trigger('pointerup', { pointerId: 7, button: 0, isPrimary: true });
+    expect(engine.tracks[1]!.triggerStop).not.toHaveBeenCalled();
+    expect(rec.attributes('disabled')).toBeDefined(); expect(stop.attributes('disabled')).toBeDefined();
+    expect(rec.classes()).not.toContain('is-disabled');
+    expect(stop.classes()).toContain('is-busy');
+    expect(rec.attributes('aria-busy')).toBe('true'); expect(stop.attributes('aria-busy')).toBe('true');
+    rejectFx(new Error('route rejected')); await Promise.resolve(); await nextTick();
+    expect(rec.attributes('disabled')).toBeUndefined(); expect(stop.attributes('disabled')).toBeUndefined();
+    expect(rec.attributes('aria-busy')).toBeUndefined(); expect(stop.attributes('aria-busy')).toBeUndefined();
+  });
+  it('keeps an independently unavailable REC control gray during an FX wait', async () => {
+    const { engine } = createAudioEngine('browser');
+    let rejectFx!: (error: Error) => void;
+    const pending = new Promise((_resolve, reject) => { rejectFx = reject; });
+    Object.assign(engine, { getUiStatus: () => ({ ready: true, inputCaptureWarming: true }),
+      getTrackFxApply: () => [{ available: true, pending: false, controlFaulted: false, applied: false }], setTrackFxApply: vi.fn(() => pending) });
+    wrapper = await mountTrack(engine, 2, true);
+    const rec = wrapper.get('[data-panel-control="record-play"]');
+    expect(rec.attributes('disabled')).toBeDefined(); expect(rec.classes()).toContain('is-disabled');
+    await wrapper.get('[data-track-control="fx"]').trigger('click');
+    expect(rec.attributes('disabled')).toBeDefined(); expect(rec.classes()).toContain('is-disabled');
+    expect(rec.attributes('aria-busy')).toBeUndefined();
+    rejectFx(new Error('route rejected')); await Promise.resolve(); await nextTick();
+  });
   it('keeps Classic per-track FX apply disabled when no per-track shared-FX gate exists', async () => {
     vi.useFakeTimers();
     const { engine } = createAudioEngine('native');

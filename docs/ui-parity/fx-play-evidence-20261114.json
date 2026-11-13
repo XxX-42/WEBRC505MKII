@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-14",
+  "observation": "official document visual review, not physical hardware",
+  "sources": [
+    {
+      "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_eng02_W.pdf",
+      "pages": [
+        8
+      ]
+    },
+    {
+      "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+      "pages": [
+        30,
+        33
+      ]
+    }
+  ],
+  "confirmed": [
+    "FX status uses four horizontal type blocks A-D",
+    "inverse block indicates ON; ordinary block indicates OFF",
+    "Play encoders have configurable functions; four blocks do not establish four direct edit mappings",
+    "default encoder1 MEMORY, encoder2/3 OFF, encoder4 MFX REVERB"
+  ],
+  "unknown": [
+    "meaning of final letter in Play TRACK FX-A diagram",
+    "physical font metrics and photometry",
+    "complete official abbreviation dictionary"
+  ],
+  "local_evidence": {
+    "RC-505mk2_eng02_W.pdf": {
+      "sha256": "398bfde8393d9f73372857916ea4cc6c2ec3dacc6143233d99c44b7174224322",
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-trackfx-official-evidence\\RC-505mk2_eng02_W.pdf"
+    },
+    "RC-505mk2_Parameter_eng04_W.pdf": {
+      "sha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-trackfx-official-evidence\\RC-505mk2_Parameter_eng04_W.pdf"
+    },
+    "owner-p8-fx-evidence.png": {
+      "sha256": "ab44e3549b8921ea8abc364608c5255e9fe47dd9dec158acacf8eff7b3983e13",
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-trackfx-official-evidence\\owner-p8-fx-evidence.png"
+    },
+    "parameter-p30.png": {
+      "sha256": "b7bcf958ec0284c41e33f24d49d1a4003583fa3db149791e38198077562abb0a",
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-trackfx-official-evidence\\parameter-p30.png"
+    },
+    "parameter-p33.png": {
+      "sha256": "7a0b01aa8853b6f94209ccabfa0f6e91eae67b14f120230f2f120de3ec96536f",
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-trackfx-official-evidence\\parameter-p33.png"
+    }
+  }
+}

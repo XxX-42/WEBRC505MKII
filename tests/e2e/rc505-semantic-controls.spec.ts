@@ -39,7 +39,7 @@ test('Classic WRITE chord, NAME and encoder recall preserve real stereo PCM and 
     const result = TrackAudio.restoreProjectBuffersAtomically(engine.tracks, [buffer, null, null, null, null]);
     if (!result.ok) throw new Error(result.reason);
   });
-  await button(page, 'loop').click(); await button(page, 'page-next').click(); await button(page, 'screen-encoder-3').click();
+  await button(page, 'loop').click(); await button(page, 'page-next').click(); await button(page, 'screen-encoder-4').click();
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'editor-name');
   await page.getByTestId('lcd-field-memory-name-0').focus(); await page.keyboard.press('ArrowRight');
   await button(page, 'exit').click(); await button(page, 'exit').click();

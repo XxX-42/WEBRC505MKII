@@ -34,6 +34,8 @@ interface NativeAutoRecArmReceipt {
 }
 export type NativeHqEngine = 'R2' | 'R3';
 export type NativeLoopTransportMode = 'off' | 'beatShift' | 'vinylFlick';
+export interface NativeTrackPanEditContext { hostIncarnationId: string; expectedRevision: number }
+export interface NativeTrackPanStatus { applied: number; requested: number; requestedRevision: number; appliedRevision: number; law: 'webaudio-stereo-v1'; acceptedRevision?: number }
 export type NativeDubMode = 'OVERDUB' | 'REPLACE1' | 'REPLACE2';
 export interface NativeDubModeStatus {
   applied: NativeDubMode;
@@ -282,7 +284,7 @@ export interface NativeStatus {
     recordingTempoTokens: Array<NativeRecordTempoToken | null> };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
-  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
+  nativeMemory?: { version: number; loopTransports: NativeMemoryLoopTransport[]; dubModes?: NativeDubMode[]; trackPans?: number[]; loopSync?: boolean[]; recQuantize?: 'OFF' | 'MEASURE';
     autoRec?: { enabled: boolean; sensitivity: number };
     bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
   nativeAutoRec?: NativeAutoRecStatus;
@@ -360,6 +362,7 @@ export interface NativeStatus {
     loopTransportAppliedOneShot?: boolean;
     loopTransportAppliedReverse?: boolean;
     dubMode?: NativeDubModeStatus;
+    pan?: NativeTrackPanStatus;
     vocoderCarrierStatus?: NativeVocoderCarrierStatus;
     history?: NativeTrackHistoryStatus;
     mark?: NativeTrackMarkStatus;
@@ -2901,6 +2904,57 @@ export class NativeBridgeClient {
       if (Date.now() >= deadline) throw new Error('Native REVERSE callback acknowledgement timed out; check the track setting before retrying.');
       await new Promise((resolve) => setTimeout(resolve, 10));
       status = await this.getStatus();
+    }
+  }
+
+  private trackPanReceiptKey(trackId: number): string { return `native-track-pan:${this.baseUrl}:${trackId}`; }
+
+  public hasUnresolvedNativeTrackPanOperation(trackId: number, status: NativeStatus | null = null): boolean {
+    assertNativeTrackId(trackId);
+    try {
+      const raw = globalThis.sessionStorage.getItem(this.trackPanReceiptKey(trackId));
+      if (!raw) return false;
+      const receipts: unknown = JSON.parse(raw);
+      if (!Array.isArray(receipts) || !receipts.length || receipts.some(item => !item || !isNativeHostIncarnationId(item.hostIncarnationId) || !Number.isSafeInteger(item.expectedRevision) || item.expectedRevision < 0 || typeof item.id !== 'string')) return true;
+      const pan = status?.nativeTracks?.find(track => track.trackId === trackId)?.pan;
+      const remaining = receipts.filter(item => {
+        if (!isNativeHostIncarnationId(status?.hostIncarnationId)) return true;
+        if (status!.hostIncarnationId !== item.hostIncarnationId) return false;
+        return !pan || pan.law !== 'webaudio-stereo-v1' || !Number.isInteger(pan.applied) || pan.applied < -50 || pan.applied > 50 || !Number.isInteger(pan.requested) || pan.requested < -50 || pan.requested > 50 || !Number.isSafeInteger(pan.requestedRevision) || pan.requestedRevision < 0 || !Number.isSafeInteger(pan.appliedRevision) || pan.appliedRevision < 0 || pan.appliedRevision > pan.requestedRevision || pan.appliedRevision <= item.expectedRevision;
+      });
+      if (remaining.length !== receipts.length) {
+        if (remaining.length) globalThis.sessionStorage.setItem(this.trackPanReceiptKey(trackId), JSON.stringify(remaining));
+        else globalThis.sessionStorage.removeItem(this.trackPanReceiptKey(trackId));
+      }
+      return remaining.length > 0;
+    } catch { return true; }
+  }
+
+  public async setTrackPan(trackId: number, pan: number, expectedRevision: number, host: string): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (!Number.isInteger(pan) || pan < -50 || pan > 50 || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || !isNativeHostIncarnationId(host)) throw new RangeError('Invalid Native PAN request.');
+    const key = this.trackPanReceiptKey(trackId);
+    const receipt = { hostIncarnationId: host, expectedRevision, id: `${Date.now()}-${Math.random()}` };
+    let receipts: typeof receipt[];
+    try {
+      const raw = globalThis.sessionStorage.getItem(key);
+      receipts = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(receipts) || receipts.some(item => !item || !isNativeHostIncarnationId(item.hostIncarnationId) || !Number.isSafeInteger(item.expectedRevision) || typeof item.id !== 'string')) throw new Error('Invalid PAN receipt');
+      receipts.push(receipt);
+      const encoded = JSON.stringify(receipts); globalThis.sessionStorage.setItem(key, encoded);
+      if (globalThis.sessionStorage.getItem(key) !== encoded) throw new Error('PAN receipt storage failed');
+    } catch { throw new Error('Native PAN request identity could not be retained; no request was submitted.'); }
+    try {
+      return await this.request<NativeStatus>('/v1/native-track-pan/config', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Native-Host-Incarnation': host }, body: JSON.stringify({ trackId, pan, expectedRevision }) });
+    } catch (error) {
+      if (error instanceof NativeBridgeHttpError && error.status === 409) {
+        try {
+          const current = JSON.parse(globalThis.sessionStorage.getItem(key) || '[]') as typeof receipt[];
+          const remaining = current.filter(item => item.id !== receipt.id);
+          if (remaining.length) globalThis.sessionStorage.setItem(key, JSON.stringify(remaining)); else globalThis.sessionStorage.removeItem(key);
+        } catch { /* retain uncertainty */ }
+      }
+      throw error;
     }
   }
 

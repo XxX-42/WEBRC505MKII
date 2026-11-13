@@ -18,15 +18,26 @@ The Owner’s Manual p. 8 numbers the seven Play Screen variations. The order be
 
 **UNKNOWN:** Whether the physical unit treats right as next/forward, whether navigation wraps, and whether there are any version-specific variations beyond the seven shown.
 
+## FX Play layout (visual review 2026-11-14)
+
+Owner’s Manual p. 8 visually confirms that INPUT FX and TRACK FX display four horizontal effect-type blocks, corresponding left-to-right to A–D. The explicit ON/OFF callouts on the INPUT FX diagram identify inverse/light-background blocks as ON and ordinary/dark-background blocks as OFF. This is a status display, not four rows of software READY/ACK diagnostics. Long abbreviations can occupy two lines *within* a column.
+
+The common header contains Memory identity and tempo; unmodeled lock/phantom indicators must not be invented. `TRACK FX-A` is legible in the diagram, but the meaning of that trailing letter remains UNKNOWN here: BANK and FX TARGET are distinct parameters, and the diagram alone does not resolve this.
+
+Parameter Guide pp. 30–33 defines configurable Play-screen KNOB FUNC assignments. Its printed defaults are 1=MEMORY, 2/3=OFF (p. 30), 4=MFX REVERB (p. 33). Four FX columns do not establish a one-column/one-encoder editing contract. Unsupported assignments must remain unavailable; ENTER still opens MIXER, not a software FX shortcut.
+
+Sources: [Owner p. 8](https://static.roland.com/assets/media/pdf/RC-505mk2_eng02_W.pdf#page=8), [Parameter Guide p. 30](https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf#page=30). Evidence class: OFFICIAL_CONFIRMED for structure, ON/OFF and configurable knobs; UNKNOWN for the Play suffix. No physical observation.
+
 ## MIXER pages
 
-Owner’s Manual p. 8 shows three MIXER pages and says arrows switch pages. ENTER from Play opens MIXER.
+Current Owner’s Manual eng04 p. 8 shows four MIXER groups and says arrows switch pages. ENTER from Play opens MIXER. This supersedes the older eng02 three-group diagram; see [versioned visual review](lcd-layout-matrix-20261114.md).
 
 | Page | Channel groups shown | Evidence | Status |
 |---:|---|---|---|
 | 1 | MIC1 / MIC2 / INST1 / INST2 IN | Owner’s Manual p. 8 | OFFICIAL_CONFIRMED |
-| 2 | MAIN / SUB1 / SUB2 / LOOP OUT | Owner’s Manual p. 8 | OFFICIAL_CONFIRMED |
-| 3 | RHYTHM / PHONES / MASTER OUT | Owner’s Manual p. 8 | OFFICIAL_CONFIRMED |
+| 2 | TRACK1 / TRACK2 / TRACK3 / TRACK4 | Owner eng04 p. 8 | OFFICIAL_CONFIRMED |
+| 3 | MAIN / SUB1 / SUB2 / LOOP OUT | Owner eng04 p. 8 | OFFICIAL_CONFIRMED |
+| 4 | RHYTHM / PHONES / MASTER OUT | Owner eng04 p. 8 | OFFICIAL_CONFIRMED |
 
 The manual says turning knobs changes levels and pushing input knobs mutes. Stereo-link settings can change which channels appear. Exact return behavior from each MIXER page is not fully diagrammed; see the control matrix.
 

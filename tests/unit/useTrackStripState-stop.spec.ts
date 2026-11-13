@@ -37,7 +37,7 @@ describe('useTrackStripState STOP interactions', () => {
     const setMixerLevel = vi.fn(async (_id: number, value: number) => { confirmedLevel = value; });
     const engine = {
       tracks: [trackAudio], selectedBackend: native ? 'NATIVE' : 'BROWSER', selectedSampleRate: 48000,
-      getMode: () => native ? 'native' : 'browser', getUiStatus: () => ({ ready: true }),
+      getMode: () => native ? 'native' : 'browser', getMixerControlIdentity: () => native ? 'fixture-native' : 'fixture-browser', refreshMixerState: async () => ({ tracks: [confirmedLevel] }), getUiStatus: () => ({ ready: true }),
       getTrackCapabilities: () => capabilities, getNativeHqRenderer: () => ({ available: false, engines: [] }),
       getMixerState: () => ({ tracks: [confirmedLevel] }), setMixerLevel,
     };
@@ -65,17 +65,18 @@ describe('useTrackStripState STOP interactions', () => {
     engine.setMixerLevel.mockImplementationOnce(() => new Promise<void>(resolve => { finish = () => { setConfirmed(174); resolve(); }; }));
     const pending = state.handleLevelChange(175);
     expect(state.levelWritePending.value).toBe(true); expect(state.playLevel.value).toBe(100);
-    await state.handleLevelChange(120);
+    void state.handleLevelChange(120);
     expect(engine.setMixerLevel).toHaveBeenCalledTimes(1); expect(engine.setMixerLevel).toHaveBeenCalledWith(1, 175);
-    finish(); await pending;
-    expect(state.playLevel.value).toBe(174); expect(state.levelWritePending.value).toBe(false);
+    finish(); await pending; await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(engine.setMixerLevel).toHaveBeenCalledTimes(2);
+    expect(state.playLevel.value).toBe(120); expect(state.levelWritePending.value).toBe(false);
     expect(trackAudio.track.playLevel).toBe(100); expect(trackAudio.updateSettings).not.toHaveBeenCalled();
     wrapper.unmount();
   });
   it('retains the last confirmed Native level and surfaces a rejected write', async () => {
     const { wrapper, state, engine, setConfirmed } = await mountStripState(true, true);
     setConfirmed(43); engine.setMixerLevel.mockRejectedValueOnce(new Error('HTTP 409 level rejected'));
-    await state.handleLevelChange(180);
+    await state.handleLevelChange(180); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     expect(state.playLevel.value).toBe(43); expect(state.levelWritePending.value).toBe(false);
     const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
     expect(JSON.stringify(useRc505Controls().state)).toContain('HTTP 409 level rejected');

@@ -41,7 +41,7 @@ int main(int argc,char** argv){
  if(sharedProfile!="mixed"&&sharedProfile!="preamp"&&sharedProfile!="robot")return 21;
  const bool extras=supplement!="none";
  const unsigned count=argc>5?std::stoul(argv[5]):3000;
- if((rate!=44100&&rate!=48000)||(frames!=64&&frames!=128&&frames!=256)||(tracks!=1&&tracks!=5)||!count||channels<1||channels>2||fxMode>2||(transport!="playback"&&transport!="record"&&transport!="overdub")||(boundaries!="none"&&boundaries!="batch")||(boundaries=="batch"&&(tracks!=5||transport!="playback"))) return 1;
+ if((rate!=44100&&rate!=48000)||(frames!=64&&frames!=128&&frames!=256)||(tracks!=1&&tracks!=5)||!count||channels<1||channels>2||fxMode>2||(transport!="playback"&&transport!="record"&&transport!="overdub")||(boundaries!="none"&&boundaries!="batch"&&boundaries!="pan")||((boundaries=="batch"||boundaries=="pan")&&(tracks!=5||transport!="playback"))) return 1;
  NativeAudioCore core; if(!NativeAudioCoreTestAccess::prepare(core,rate,frames,channels,transport=="record"?60:1))return 2;
  std::vector<float> input(frames*2),output(frames*2);
  for(unsigned t=0;t<tracks;++t){
@@ -78,8 +78,9 @@ int main(int argc,char** argv){
 #if defined(NATIVE_BENCH_BASELINE_NO_BATCH)
  if(boundaries=="batch"){std::cerr<<"batch boundary workload not supported by baseline";return 18;}
 #else
- if(boundaries=="batch") NativeAudioCoreTestAccess::setRunning(core,true);
+ if(boundaries=="batch"||boundaries=="pan") NativeAudioCoreTestAccess::setRunning(core,true);
 #endif
+ std::array<std::uint64_t,kNativeTrackCount> panRevisions{};
  const std::string effectiveMxcsr =
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
      std::to_string(_mm_getcsr());
@@ -99,8 +100,22 @@ int main(int argc,char** argv){
        baseline.nativeRecordStopRequested,bpm,provenance,0U,1U,b+1U,error,&batchId,&accepted)) {std::cerr<<error;return 17;}
   }
 #endif
+  if(boundaries=="pan") {
+   const int pan=(b%2U)==0U?25:-25;
+   for(std::size_t track=0;track<kNativeTrackCount;++track){
+    std::uint64_t accepted=0;std::string error;
+    if(!core.setNativeTrackPan(track,pan,panRevisions[track],accepted,error)||accepted!=panRevisions[track]+1U){std::cerr<<error;return 22;}
+    panRevisions[track]=accepted;
+   }
+  }
   test_alloc::beginTracking();auto start=std::chrono::steady_clock::now();if(NativeAudioCoreTestAccess::run(core,(transport=="playback"&&!extras)?nullptr:input.data(),output.data(),frames))return 7;
   double elapsed=std::chrono::duration<double,std::nano>(std::chrono::steady_clock::now()-start).count();test_alloc::endTracking();ns.push_back(elapsed);sum+=elapsed;over+=elapsed>budget;
+  if(boundaries=="pan") {
+   const auto applied=core.getStatus();const int pan=(b%2U)==0U?25:-25;
+   for(std::size_t track=0;track<kNativeTrackCount;++track)
+    if(applied.nativePanRequestedRevision[track]!=panRevisions[track]||applied.nativePanAppliedRevision[track]!=panRevisions[track]||
+       applied.nativeTrackRequestedPans[track]!=pan||applied.nativeTrackPans[track]!=pan){std::cerr<<"PAN callback acknowledgement mismatch";return 23;}
+  }
   for(unsigned f=0;f<frames;++f)stereo|=output[2*f]!=output[2*f+1];
   for(float v:output){if(!std::isfinite(v))return 8;peak=std::max(peak,std::abs(double(v)));std::uint32_t bits;std::memcpy(&bits,&v,4);hash^=bits;hash*=1099511628211ULL;}
  }

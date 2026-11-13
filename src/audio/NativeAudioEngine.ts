@@ -7,7 +7,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeHttpError, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, NativeAutoRecTriggerWonCancelError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeHttpError, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, NativeAutoRecTriggerWonCancelError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeTrackPanStatus, type NativeTrackPanEditContext, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -573,6 +573,58 @@ export class NativeAudioEngine {
     }
   }
 
+  private readonly pendingTrackPans = new Set<number>();
+
+  public isNativeTrackPanWritePending(): boolean {
+    return this.pendingTrackPans.size > 0 || (this.latestStatus?.nativeTracks?.some(track => !!track.pan && track.pan.requestedRevision !== track.pan.appliedRevision) ?? false);
+  }
+
+  public hasPendingNativeTrackPanChanges(): boolean {
+    return this.isNativeTrackPanWritePending() || [1, 2, 3, 4, 5].some(id => this.bridge.hasUnresolvedNativeTrackPanOperation?.(id, this.latestStatus));
+  }
+
+  public getNativeTrackPanStatus(trackId: number): (NativeTrackPanStatus & { hostIncarnationId: string }) | null {
+    if (this.nativeMemoryReadbackGeneration !== null || !Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
+    const status = this.latestStatus;
+    const pan = status?.nativeTracks?.find(track => track.trackId === trackId)?.pan;
+    const validValue = (value: number) => Number.isInteger(value) && value >= -50 && value <= 50;
+    if (!isNativeHostIncarnationId(status?.hostIncarnationId) || !pan || pan.law !== 'webaudio-stereo-v1' || !validValue(pan.applied) || !validValue(pan.requested)
+      || !Number.isSafeInteger(pan.requestedRevision) || pan.requestedRevision < 0 || !Number.isSafeInteger(pan.appliedRevision)
+      || pan.appliedRevision < 0 || pan.appliedRevision > pan.requestedRevision || status?.nativeMemory?.trackPans?.length !== 5
+      || !status.nativeMemory.trackPans.every(validValue) || status.nativeMemory.trackPans[trackId - 1] !== pan.requested) return null;
+    return { ...pan, hostIncarnationId: status.hostIncarnationId };
+  }
+
+  public async setNativeTrackPan(trackId: number, value: number, context?: NativeTrackPanEditContext): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !Number.isInteger(value) || value < -50 || value > 50) throw new RangeError('Invalid Native PAN.');
+    if (this.nativeMemoryReadbackGeneration !== null || this.pendingTrackPans.has(trackId)) throw new Error('Native PAN or Memory operation is pending.');
+    this.pendingTrackPans.add(trackId); this.emitAll();
+    try {
+      let status = await this.bridge.getStatus(); this.applyStatus(status);
+      const initial = this.getNativeTrackPanStatus(trackId); const host = status.hostIncarnationId;
+      if (!status.engineRunning || !initial || !isNativeHostIncarnationId(host) || initial.hostIncarnationId !== host || initial.requestedRevision !== initial.appliedRevision) throw new Error('Native PAN readback is unavailable or pending; no request was submitted.');
+      if (context && (context.hostIncarnationId !== host || context.expectedRevision !== initial.requestedRevision)) throw new Error('Native PAN edit context changed; no request was submitted.');
+      let response: NativeStatus;
+      try { response = await this.bridge.setTrackPan(trackId, value, initial.requestedRevision, host); }
+      catch (error) {
+        try { this.applyStatus(await this.bridge.getStatus()); } catch { /* retain confirmed readback */ }
+        if (error instanceof NativeBridgeHttpError && error.status === 409) throw error;
+        throw new Error('Native PAN POST outcome is unknown. Read back the current setting before retrying.');
+      }
+      this.applyStatus(response);
+      const accepted = response.nativeTracks?.find(track => track.trackId === trackId)?.pan; const revision = accepted?.acceptedRevision;
+      if (response.hostIncarnationId !== host || !Number.isSafeInteger(revision) || revision! <= initial.requestedRevision || accepted?.requestedRevision !== revision || accepted?.requested !== value) throw new Error('Native PAN request was superseded or its acknowledgement is invalid.');
+      const deadline = Date.now() + 5000; status = response;
+      for (;;) {
+        const current = this.getNativeTrackPanStatus(trackId);
+        if (status.hostIncarnationId !== host || !current || current.requestedRevision !== revision || current.requested !== value || current.appliedRevision > revision!) throw new Error('Native PAN request was superseded or its host changed.');
+        if (current.appliedRevision === revision) { if (current.applied !== value) throw new Error('Native PAN callback acknowledgement did not match the request.'); return status; }
+        if (Date.now() >= deadline) throw new Error('Native PAN callback acknowledgement timed out; read back before retrying.');
+        await new Promise(resolve => setTimeout(resolve, 10)); status = await this.bridge.getStatus(); this.applyStatus(status);
+      }
+    } finally { this.pendingTrackPans.delete(trackId); this.emitAll(); }
+  }
+
   /** Requests a bounded Native DUB MODE change and returns requested/applied revision readback. */
   public async setNativeDubMode(trackId: number, mode: NativeDubMode): Promise<NativeStatus> {
     if (this.nativeMemoryReadbackGeneration !== null) {
@@ -1089,7 +1141,7 @@ export class NativeAudioEngine {
       readOperationIntent: (operationId) => new ProjectMemoryStore().readNativeImportOperationIntent(operationId),
       listOperationIntents: () => new ProjectMemoryStore().listNativeImportOperationIntents(),
       clearOperationIntent: (operationId) => new ProjectMemoryStore().clearNativeImportOperationIntent(operationId),
-      pendingEdits: () => this.nativeFxSyncRunning || this.nativeFxSyncScheduled || this.nativeCatalogFxDirtySlots.size > 0,
+      pendingEdits: () => this.nativeFxSyncRunning || this.nativeFxSyncScheduled || this.nativeCatalogFxDirtySlots.size > 0 || this.hasPendingNativeTrackPanChanges(),
       install: (status) => {
         this.nativeCatalogFxDirtySlots.clear();
         this.nativeCatalogFxSubmittedEditRevisions.clear();
@@ -1899,6 +1951,26 @@ export class NativeAudioEngine {
     }
   }
   public getMixerState(): MixerState { return mixerState(this.latestStatus?.mixerLevels); }
+
+  /** Host identity fences UI gestures; this is not a DSP or wire-protocol change. */
+  public getMixerControlIdentity(): string {
+    return `${this.latestStatus?.hostIncarnationId ?? 'unknown'}:${this.bridgeAvailable}:${this.engineRunning}`;
+  }
+
+  /** Explicit readback after an uncertain mixer write. Never repeats a mutation. */
+  public async refreshMixerState(): Promise<MixerState> {
+    const host = this.latestStatus?.hostIncarnationId;
+    if (!isNativeHostIncarnationId(host)) throw new Error('Native mixer host is unavailable.');
+    const status = await this.bridge.getStatus();
+    if (status.hostIncarnationId !== host || this.latestStatus?.hostIncarnationId !== host) {
+      throw new Error('Native mixer host changed during readback.');
+    }
+    this.applyStatus(status);
+    const state = this.getMixerState();
+    if (!state.available) throw new Error(state.reason);
+    return state;
+  }
+
 
   public async setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {
     assertMixerLevel(percent);
@@ -3695,6 +3767,9 @@ export class NativeAudioEngine {
 
     for (const track of this.tracks) {
       const reported = status.nativeTracks?.find((entry) => entry.trackId === track.trackId);
+      this.bridge.hasUnresolvedNativeTrackPanOperation?.(track.trackId, status);
+      const pan = this.getNativeTrackPanStatus(track.trackId);
+      if (pan) track.track.pan = pan.applied;
       const dubMode = reported?.dubMode;
       if (dubMode && (dubMode.applied === 'OVERDUB' || dubMode.applied === 'REPLACE1' || dubMode.applied === 'REPLACE2')
         && Number.isSafeInteger(dubMode.appliedRevision)) track.track.dubMode = dubMode.applied;

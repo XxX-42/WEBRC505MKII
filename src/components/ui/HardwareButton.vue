@@ -7,7 +7,7 @@
       `color-${color}`,
       `shape-${shape}`,
       `appearance-${appearance}`,
-      { 'is-disabled': disabled },
+      { 'is-disabled': disabled && !busy },
       { 'active': legacyActiveClass },
       { 'is-active': active },
       { 'is-selected': selected },
@@ -17,6 +17,7 @@
     :style="ledStyle"
     type="button"
     :disabled="disabled"
+    :aria-busy="busy ? 'true' : undefined"
     :aria-label="computedAriaLabel"
     :aria-description="disabled && disabledReason ? disabledReason : undefined"
     :title="disabled ? (disabledReason || computedAriaLabel) : undefined"
@@ -58,6 +59,8 @@ interface Props {
   /** Enables a caller-timed LED blink. No hardware blink period is assumed. */
   ledBlinkPeriodMs?: number;
   disabled?: boolean;
+  /** Temporary operation wait; the button remains disabled but retains its available appearance. */
+  busy?: boolean;
   label?: string;
   shape?: 'circle' | 'rect';
   ariaLabel?: string;
@@ -78,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
   ledColor: undefined,
   ledBlinkPeriodMs: 0,
   disabled: false,
+  busy: false,
   label: '',
   shape: 'circle',
   ariaLabel: '',

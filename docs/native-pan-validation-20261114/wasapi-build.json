@@ -1,0 +1,43 @@
+{
+  "source_commit": "c543c67421456fc894d19a963364bc7d7c4e1bf9",
+  "source_state": "uncommitted PAN changes",
+  "configuration": "Release x64",
+  "generator": "Visual Studio 16 2019",
+  "compiler": "MSVC 19.29.30159.0",
+  "windows_sdk": "10.0.19041.0",
+  "options": {
+    "NATIVE_BRIDGE_SIMULATION_ONLY": "OFF",
+    "audio_backend": "WASAPI",
+    "NATIVE_PORTABLE_TESTS_ONLY": "OFF",
+    "NATIVE_ENABLE_RUBBERBAND_HQ": "ON"
+  },
+  "build_target": "native_bridge_host",
+  "build_exit_code": 0,
+  "runtime_tested": false,
+  "hashes": [
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-pan-20261114\\native-mvp\\engine-cpp\\CMakeLists.txt",
+      "sha256": "16ec644490df7e59c32ba16b646d21dea8c15497a0af45c3d7d9488ddf6bc3fb"
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-pan-20261114\\native-mvp\\engine-cpp\\include\\native_audio_core.hpp",
+      "sha256": "7cdf2e413440e4326edf7cadcc9be64c4526cf7d7ad740adebb2e9ce34404bba"
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-pan-20261114\\native-mvp\\engine-cpp\\src\\native_audio_core.cpp",
+      "sha256": "6380baf832a031d74ce9dd285976784576069fcaebc7cab2a091c7839a5cd267"
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-pan-20261114\\native-mvp\\engine-cpp\\src\\native_bridge_host.cpp",
+      "sha256": "fd4e4222865ebc7c97c58ffaa469578c5fe1e6a02fa7ed837a1b4617faf815b7"
+    },
+    {
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\rubberband-static.lib",
+      "sha256": "4de4accab9eb7717277cb69731bd25d94a783008f12371358382d1a5a28d982c"
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\build-rc505-pan-wasapi-20261114\\Release\\native_bridge_host.exe",
+      "sha256": "4c5035935fc15b40b1248d5400af5815708fb9eed4d4c28a0bcd94f67c8b3367"
+    }
+  ]
+}

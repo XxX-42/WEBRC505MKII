@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createRc505DisplayState, getRc505RootItems, reduceRc505DisplayState } from '../../src/ui/rc505/Rc505DisplayStateMachine';
-import type { Rc505DisplayAction, Rc505DisplayState } from '../../src/ui/rc505/rc505DisplayTypes';
+import { createRc505DisplayState, getRc505RootItems, getRc505RootPage, getRc505RootPageCount, getRc505RootPageStart, reduceRc505DisplayState } from '../../src/ui/rc505/Rc505DisplayStateMachine';
+import { RC505_MIXER_PAGES, type Rc505DisplayAction, type Rc505DisplayState } from '../../src/ui/rc505/rc505DisplayTypes';
 
 function send(state: Rc505DisplayState, ...actions: Rc505DisplayAction[]): Rc505DisplayState {
   return actions.reduce(reduceRc505DisplayState, state);
@@ -17,14 +17,16 @@ describe('RC-505 Classic LCD state machine', () => {
       { type: 'EDITOR_PAGE_COUNT', count: 3 });
     expect(send(state, { type: 'EDITOR_PAGE_COUNT', count: 3 })).toBe(state);
   });
-  it('wraps the seven PLAY variants and the three MIXER pages independently', () => {
+  it('wraps the seven PLAY variants and the four current MIXER pages independently', () => {
+    expect(RC505_MIXER_PAGES.map(page => page.id)).toEqual(['inputs', 'tracks', 'outputs', 'master']);
+    expect(RC505_MIXER_PAGES[1]!.channels).toEqual(['TRACK1', 'TRACK2', 'TRACK3', 'TRACK4']);
     let state = createRc505DisplayState();
     state = send(state, { type: 'PAGE', direction: -1 });
     expect(state.view).toEqual({ kind: 'play', pageIndex: 6 });
 
     state = send(state, { type: 'ENTER' }, { type: 'PAGE', direction: 1 });
     expect(state.view).toEqual({ kind: 'mixer', pageIndex: 1 });
-    state = send(state, { type: 'PAGE', direction: 1 }, { type: 'PAGE', direction: 1 });
+    state = send(state, { type: 'PAGE', direction: 1 }, { type: 'PAGE', direction: 1 }, { type: 'PAGE', direction: 1 });
     expect(state.view).toEqual({ kind: 'mixer', pageIndex: 0 });
   });
 
@@ -40,9 +42,9 @@ describe('RC-505 Classic LCD state machine', () => {
     let state = send(createRc505DisplayState(), { type: 'PAGE', direction: 1 }, { type: 'OPEN_ROOT', root: 'loop' });
     expect(state.view).toEqual({ kind: 'loop-root', pageIndex: 0, selectedIndex: 0 });
     state = send(state, { type: 'PAGE', direction: -1 });
-    expect(state.view).toEqual({ kind: 'loop-root', pageIndex: 1, selectedIndex: 4 });
+    expect(state.view).toEqual({ kind: 'loop-root', pageIndex: 1, selectedIndex: 3 });
     state = send(state, { type: 'ENCODER_PRESS', encoderIndex: 0 });
-    expect(state.view).toEqual({ kind: 'editor', target: 'track-fx', category: 'track-fx', pageIndex: 0, pageCount: 1 });
+    expect(state.view).toEqual({ kind: 'editor', target: 'input-fx', category: 'input-fx', pageIndex: 0, pageCount: 1 });
     state = send(state, { type: 'EXIT' }, { type: 'EXIT' });
     expect(state.view).toEqual({ kind: 'play', pageIndex: 1 });
   });
@@ -54,8 +56,8 @@ describe('RC-505 Classic LCD state machine', () => {
     expect(menuItems.find((item) => item.id === 'factory-reset')?.reason).toContain('not implemented');
 
     state = send(state, { type: 'PAGE', direction: -1 });
-    expect(state.view).toEqual({ kind: 'menu-root', pageIndex: 2, selectedIndex: 8 });
-    state = send(state, { type: 'ENCODER_PRESS', encoderIndex: 0 });
+    expect(state.view).toEqual({ kind: 'menu-root', pageIndex: 2, selectedIndex: 7 });
+    state = send(state, { type: 'ENCODER_PRESS', encoderIndex: 1 });
     expect(state.view).toEqual({ kind: 'menu-root', pageIndex: 2, selectedIndex: 8 });
     expect(state.notice).toContain('Factory reset is not implemented');
   });
@@ -69,9 +71,22 @@ describe('RC-505 Classic LCD state machine', () => {
 
   it('opens the supported Loop Indicator setting from MENU > SETUP', () => {
     const state = send(createRc505DisplayState(), { type: 'OPEN_ROOT', root: 'menu' },
-      { type: 'PAGE', direction: 1 }, { type: 'ENCODER_PRESS', encoderIndex: 3 });
+      { type: 'PAGE', direction: -1 }, { type: 'ENCODER_PRESS', encoderIndex: 0 });
     expect(state.view).toEqual({ kind: 'editor', target: 'menu', category: 'setup', pageIndex: 0, pageCount: 1 });
-    expect(send(state, { type: 'EXIT' }).view).toEqual({ kind: 'menu-root', pageIndex: 1, selectedIndex: 7 });
+    expect(send(state, { type: 'EXIT' }).view).toEqual({ kind: 'menu-root', pageIndex: 2, selectedIndex: 7 });
+  });
+
+  it('uses explicit LOOP 3+4 and MENU 3+4+2 groups, with empty encoders unable to enter another page', () => {
+    expect(Array.from({ length: getRc505RootPageCount('loop') }, (_, page) => getRc505RootPage('loop', page).map(item => item.label)))
+      .toEqual([['TRACK', 'REC', 'PLAY'], ['INPUT FX', 'TRACK FX', 'RHYTHM', 'NAME']]);
+    expect(Array.from({ length: getRc505RootPageCount('menu') }, (_, page) => getRc505RootPage('menu', page).map(item => item.label)))
+      .toEqual([['INPUT', 'OUTPUT', 'MIXER'], ['CTL FUNC', 'ASSIGN', 'USB', 'MIDI'], ['SETUP', 'FACTORY RESET']]);
+    expect([0, 1, 2].map(page => getRc505RootPageStart('menu', page))).toEqual([0, 3, 7]);
+    const first = send(createRc505DisplayState(), { type: 'OPEN_ROOT', root: 'loop' });
+    expect(send(first, { type: 'ENCODER_PRESS', encoderIndex: 3 })).toBe(first);
+    const fourth = send(first, { type: 'ENCODER_ROTATE', encoderIndex: 0, delta: 3 });
+    expect(fourth.view).toEqual({ kind: 'loop-root', pageIndex: 1, selectedIndex: 3 });
+    expect(send(fourth, { type: 'ENCODER_PRESS', encoderIndex: 3 }).view).toMatchObject({ kind: 'editor', category: 'name' });
   });
 
   it('replaces repeated roots and editor targets without growing the return stack', () => {

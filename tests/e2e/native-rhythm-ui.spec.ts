@@ -32,12 +32,12 @@ test('Native rhythm reads host settings, sends every LCD setting, and survives a
   const variation = await findLcdField(page, 'variation');
   await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('2/3');
   await expect(variation.getByTestId('lcd-field-variation')).toHaveValue('2');
-  await expect(variation.locator('.lcd-enum-value')).toHaveText('C');
+  await expect(variation.getByTestId('lcd-field-variation')).toHaveAttribute('aria-valuetext', 'C');
   await expect(lcdField(page, 'section')).toHaveValue('1');
-  await expect((await findLcdField(page, 'section')).locator('.lcd-enum-value')).toHaveText('INTRO');
+  await expect((await findLcdField(page, 'section')).getByTestId('lcd-field-section')).toHaveAttribute('aria-valuetext', 'INTRO');
   await expect(lcdField(page, 'swing')).toHaveValue('67');
   await expect(lcdField(page, 'quantize')).toHaveValue('1');
-  await expect((await findLcdField(page, 'quantize')).locator('.lcd-enum-value')).toHaveText('1/8');
+  await expect((await findLcdField(page, 'quantize')).getByTestId('lcd-field-quantize')).toHaveAttribute('aria-valuetext', '1/8');
   expect(await page.evaluate(() => (window as unknown as { __rc505NativeRhythmRequests: unknown[] }).__rc505NativeRhythmRequests.length)).toBe(0);
 
   await page.getByRole('button', { name: 'Previous display page', exact: true }).click();

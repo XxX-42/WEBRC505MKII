@@ -41,6 +41,7 @@
             :data-fx-selected="slotStates[slot.id]?.selected ? 'true' : 'false'"
             :data-fx-enabled="slot.active ? 'true' : 'false'"
             :aria-pressed="controlLayer === 'BANK_SELECT' ? banks.state.appliedBank === slot.id : slot.active"
+            allow-secondary-pointer
             :disabled="slotsDisabled"
             :disabled-reason="fxUnavailableReason"
             :aria-label="controlLayer === 'BANK_SELECT' ? `${title} Bank ${slot.id}` : `${title} FX ${slot.id}${slot.active ? ' active' : ''}`"
@@ -62,6 +63,7 @@
           :aria-label="`Edit ${title.toLowerCase()} effects`"
           :data-testid="`${location}-fx-edit-button`"
           data-hardware-control="button"
+          allow-secondary-pointer
           :selected="controlLayer !== 'NORMAL'"
           :led-on="false"
           :data-fx-layer="controlLayer"

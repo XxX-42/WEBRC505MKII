@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import HardwareButton from '../../src/components/ui/HardwareButton.vue';
 import HardwareKnob from '../../src/components/ui/HardwareKnob.vue';
+import HardwareFader from '../../src/components/ui/HardwareFader.vue';
+import { createRc505FxControlState, reduceRc505FxControl } from '../../src/ui/rc505/Rc505FxControlStateMachine';
 import LoopHalo from '../../src/components/LoopHalo.vue';
 
 const pointerEvent = (type: string, init: Record<string, unknown> = {}) => {
@@ -20,6 +22,26 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('confirmed-only mixer display', () => {
+  it('keeps the fader at confirmed value when a failed write reads back the same value', async () => {
+    const wrapper = mount(HardwareFader, { props: { modelValue: 100, max: 200, confirmedOnly: true } });
+    await wrapper.get('input').setValue('150');
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([150]);
+    expect(wrapper.get('.fader-value').text()).toBe('100');
+    await wrapper.setProps({ modelValue: 100 });
+    expect(wrapper.get('.fader-value').text()).toBe('100'); wrapper.unmount();
+  });
+  it('resets keyboard intent after reconciliation even when confirmed value is unchanged', async () => {
+    const wrapper = mount(HardwareKnob, { props: { modelValue: 100, max: 200, step: 1, confirmedOnly: true, confirmedRevision: 0 } });
+    await wrapper.trigger('keydown', { key: 'ArrowUp' });
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([101]);
+    expect(wrapper.attributes('aria-valuenow')).toBe('100');
+    await wrapper.setProps({ confirmedRevision: 1 });
+    await wrapper.trigger('keydown', { key: 'ArrowUp' });
+    expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([101]); wrapper.unmount();
+  });
 });
 
 describe('HardwareButton interaction semantics', () => {
@@ -61,6 +83,21 @@ describe('HardwareButton interaction semantics', () => {
     expect(wrapper.emitted('release')).toBeUndefined();
     expect(wrapper.emitted('cancel')).toHaveLength(1);
     wrapper.unmount();
+  });
+
+  it('allows a second touch to complete an EDIT and A chord once', async () => {
+    let state = createRc505FxControlState(); const effects: string[] = [];
+    const dispatch = (event: Parameters<typeof reduceRc505FxControl>[1]) => {
+      const result = reduceRc505FxControl(state, event); state = result.state;
+      effects.push(...result.effects.map(effect => effect.type));
+    };
+    const edit = mount(HardwareButton, { props: { allowSecondaryPointer: true }, attrs: { onPress: () => dispatch({ type: 'EDIT_DOWN' }), onRelease: () => dispatch({ type: 'EDIT_UP' }), onCancel: () => dispatch({ type: 'CANCEL' }) } });
+    const slot = mount(HardwareButton, { props: { allowSecondaryPointer: true }, attrs: { onPress: () => dispatch({ type: 'SLOT', slot: 'A' }) } });
+    await edit.trigger('pointerdown', { pointerId: 1, button: 0, isPrimary: true, pointerType: 'touch' });
+    await slot.trigger('pointerdown', { pointerId: 2, button: 0, isPrimary: false, pointerType: 'touch' });
+    await slot.trigger('pointerup', { pointerId: 2, button: 0 });
+    await edit.trigger('pointerup', { pointerId: 1, button: 0 });
+    expect(effects).toEqual(['OPEN_EDITOR']); edit.unmount(); slot.unmount();
   });
 
   it('keeps a disabled hardware button inert', async () => {

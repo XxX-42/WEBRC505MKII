@@ -27,7 +27,7 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
   });
   let uiStatus = { ready: true, engineRunning: true, message: 'NATIVE READY', lastError: '' };
   const audio = {
-    rhythmEngine: rhythm, tracks: [], getMode: () => 'native',
+    rhythmEngine: rhythm, tracks: [], getMode: () => 'native', getMixerControlIdentity: () => 'fixture-native',
     getCapabilities: () => ({
       mode: 'native', modeSummary: 'NATIVE · TEST RUNTIME', supportedTrackCount: 0,
       supportsInputFx: false, supportsTrackFx: false, supportsReverse: false, supportsRhythm: rhythm.available,
@@ -84,10 +84,11 @@ describe('Classic LCD runtime status priority', () => {
     panel.classicDispatch({ type: 'EXIT' });
     panel.classicDispatch({ type: 'ENTER' });
     panel.classicDispatch({ type: 'PAGE', direction: 1 });
+    panel.classicDispatch({ type: 'PAGE', direction: 1 });
     await nextTick();
     const row = center.findAll('.lcd-data-row').find(item => item.text().includes('MAIN'));
     expect(row).toBeDefined();
-    expect(row!.text()).toContain(value);
+    expect(row!.text()).toContain(value === 'UNAVAILABLE' ? '--' : value.replace('%', ''));
     expect(row!.attributes('title')).toBe(reason);
     expect(row!.classes().includes('is-disabled')).toBe(disabled);
   });

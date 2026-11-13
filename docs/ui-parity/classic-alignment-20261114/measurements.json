@@ -1,0 +1,1459 @@
+{
+  "scope": "isolated Chromium context, 4198 browser mode, no audio start",
+  "pages": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "startup-audio-off",
+      "file": "after-1920-startup-audio-off.png",
+      "status": "START AUDIO",
+      "screen": "memory-number",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "menu-1",
+      "file": "after-1920-menu-1.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "input",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "output",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "mixer",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "menu-2",
+      "file": "after-1920-menu-2.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "ctl-func",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "assign",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "usb",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "midi",
+          "rect": {
+            "x": 1019.25,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "menu-3",
+      "file": "after-1920-menu-3.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "setup",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "factory-reset",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "loop-1",
+      "file": "after-1920-loop-1.png",
+      "status": "START AUDIO",
+      "screen": "loop-root",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "track",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "rec",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "play",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "loop-2",
+      "file": "after-1920-loop-2.png",
+      "status": "START AUDIO",
+      "screen": "loop-root",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "input-fx",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-fx",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "rhythm",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "name",
+          "rect": {
+            "x": 1019.25,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "track-edit",
+      "file": "after-1920-track-edit.png",
+      "status": "START AUDIO",
+      "screen": "editor-track",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "track-level",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "key": "track-reverse",
+          "rect": {
+            "x": 901.5,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-fx-apply",
+          "rect": {
+            "x": 960,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-pan",
+          "rect": {
+            "x": 1018.5,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "rhythm-edit",
+      "file": "after-1920-rhythm-edit.png",
+      "status": "START AUDIO",
+      "screen": "editor-rhythm",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "bpm",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "volume",
+          "rect": {
+            "x": 901.5,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "pattern",
+          "rect": {
+            "x": 960,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "kit",
+          "rect": {
+            "x": 1018.5,
+            "y": 230.84375,
+            "width": 56.5,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "mixer-1",
+      "file": "after-1920-mixer-1.png",
+      "status": "START AUDIO",
+      "screen": "mixer-inputs",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "MIC1",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "MIC2",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "INST1",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "INST2",
+          "rect": {
+            "x": 1019.25,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "mixer-2",
+      "file": "after-1920-mixer-2.png",
+      "status": "START AUDIO",
+      "screen": "mixer-tracks",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "TRACK1",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK2",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK3",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK4",
+          "rect": {
+            "x": 1019.25,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "mixer-3",
+      "file": "after-1920-mixer-3.png",
+      "status": "START AUDIO",
+      "screen": "mixer-outputs",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "MAIN",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "SUB1",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "SUB2",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "LOOP",
+          "rect": {
+            "x": 1019.25,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "name": "mixer-4",
+      "file": "after-1920-mixer-4.png",
+      "status": "START AUDIO",
+      "screen": "mixer-master",
+      "bounds": {
+        "x": 834,
+        "y": 212.84375,
+        "width": 250,
+        "height": 107
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "RHYTHM",
+          "rect": {
+            "x": 843,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "PHONES",
+          "rect": {
+            "x": 901.75,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "MASTER",
+          "rect": {
+            "x": 960.5,
+            "y": 230.84375,
+            "width": 55.75,
+            "height": 69
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "startup-audio-off",
+      "file": "after-1366-startup-audio-off.png",
+      "status": "START AUDIO",
+      "screen": "memory-number",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": []
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "menu-1",
+      "file": "after-1366-menu-1.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "input",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "output",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "mixer",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "menu-2",
+      "file": "after-1366-menu-2.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "ctl-func",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "assign",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "usb",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "midi",
+          "rect": {
+            "x": 730.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "menu-3",
+      "file": "after-1366-menu-3.png",
+      "status": "START AUDIO",
+      "screen": "menu-root",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "setup",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "factory-reset",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "loop-1",
+      "file": "after-1366-loop-1.png",
+      "status": "START AUDIO",
+      "screen": "loop-root",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "track",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "rec",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "play",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "loop-2",
+      "file": "after-1366-loop-2.png",
+      "status": "START AUDIO",
+      "screen": "loop-root",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "input-fx",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-fx",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "rhythm",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "name",
+          "rect": {
+            "x": 730.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "track-edit",
+      "file": "after-1366-track-edit.png",
+      "status": "START AUDIO",
+      "screen": "editor-track",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "track-level",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "key": "track-reverse",
+          "rect": {
+            "x": 636.2000122070312,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-fx-apply",
+          "rect": {
+            "x": 683,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "track-pan",
+          "rect": {
+            "x": 729.7999877929688,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "rhythm-edit",
+      "file": "after-1366-rhythm-edit.png",
+      "status": "START AUDIO",
+      "screen": "editor-rhythm",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "bpm",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "volume",
+          "rect": {
+            "x": 636.2000122070312,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "pattern",
+          "rect": {
+            "x": 683,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "kit",
+          "rect": {
+            "x": 729.7999877929688,
+            "y": 209.44375610351562,
+            "width": 45.20001220703125,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "mixer-1",
+      "file": "after-1366-mixer-1.png",
+      "status": "START AUDIO",
+      "screen": "mixer-inputs",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "MIC1",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "MIC2",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "INST1",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "INST2",
+          "rect": {
+            "x": 730.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "mixer-2",
+      "file": "after-1366-mixer-2.png",
+      "status": "START AUDIO",
+      "screen": "mixer-tracks",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "TRACK1",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK2",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK3",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "TRACK4",
+          "rect": {
+            "x": 730.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "mixer-3",
+      "file": "after-1366-mixer-3.png",
+      "status": "START AUDIO",
+      "screen": "mixer-outputs",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "MAIN",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "SUB1",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "SUB2",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "LOOP",
+          "rect": {
+            "x": 730.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "name": "mixer-4",
+      "file": "after-1366-mixer-4.png",
+      "status": "START AUDIO",
+      "screen": "mixer-master",
+      "bounds": {
+        "x": 582.2000122070312,
+        "y": 195.04376220703125,
+        "width": 200,
+        "height": 85.5999755859375
+      },
+      "bodyScroll": {
+        "width": 248,
+        "client": 248,
+        "height": 105,
+        "clientHeight": 105
+      },
+      "items": [
+        {
+          "key": "RHYTHM",
+          "rect": {
+            "x": 589.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "PHONES",
+          "rect": {
+            "x": 636.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "key": "MASTER",
+          "rect": {
+            "x": 683.4000244140625,
+            "y": 209.44375610351562,
+            "width": 44.5999755859375,
+            "height": 55.199981689453125
+          },
+          "overflowX": false,
+          "overflowY": false
+        }
+      ]
+    }
+  ],
+  "sourceSha256": {
+    "src/components/panel/CenterMainPanel.vue": "3c590eeac96f82246953e9d09018614f5e9bdb6426514551a77a8e33050f81b5",
+    "src/components/panel/LcdFieldGrid.vue": "94937615e76c196c1b477650707a2693742b1624b033b856dbf95ab3bf976f1f",
+    "src/components/panel/LcdParameterDial.vue": "78955a3f652e48290a2e03b26cb9c4e8092dc1addc995562e91fa61da7d4912d",
+    "src/components/ui/HardwareKnob.vue": "e5abb779f2b4ec4efcb9e7847f2349b9ef34a9876e3a752a73713e448bc4194e",
+    "src/ui/rc505/rc505DisplayTypes.ts": "8c2a81810fe4967e9ea7c5d03e8af7384af7c2e73f05d9eddfb53e4b553d2b5d"
+  },
+  "screenshots": 24,
+  "startupScreens": [
+    {
+      "width": 1920,
+      "screen": "memory-number",
+      "startButton": "START AUDIO",
+      "file": "after-1920-startup-audio-off.png"
+    },
+    {
+      "width": 1366,
+      "screen": "memory-number",
+      "startButton": "START AUDIO",
+      "file": "after-1366-startup-audio-off.png"
+    }
+  ]
+}

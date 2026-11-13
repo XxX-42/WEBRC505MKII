@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import { latestMixerWrites } from './latestMixerWrites';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Rc505Memory, type Rc505MemoryRuntime } from '../audio/Rc505Memory';
 import { Rc505MemoryStore } from '../audio/Rc505MemoryStore';
@@ -40,6 +41,7 @@ export function useRc505Memory() {
   }
   async function perform(action: (session: Rc505Memory) => Promise<void>): Promise<void> {
     if (state.busy) throw new Error('A Memory transaction is already pending.');
+    if (latestMixerWrites.hasPending()) throw new Error('Wait for mixer level readback before changing Memory.');
     state.error = ''; state.busy = true;
     try { await action(getSession()); }
     catch (error) { state.error = error instanceof Error ? error.message : String(error); throw error; }

@@ -166,7 +166,7 @@ export async function setLcdRange(page: Page, keyOrLabel: string, value: number)
 
 export async function selectLcdEnum(page: Page, keyOrLabel: string, optionLabel: string): Promise<Locator> {
   const field = await findLcdField(page, keyOrLabel);
-  const control = field.locator('input.lcd-enum-range');
+  const control = field.locator('input[type="range"][data-option-labels]');
   await expect(control).toBeVisible();
   await expect(control).toBeEnabled();
   const labels = JSON.parse((await control.getAttribute('data-option-labels')) ?? '[]') as string[];
@@ -180,13 +180,13 @@ export async function selectLcdEnum(page: Page, keyOrLabel: string, optionLabel:
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, optionIndex);
-  await expect(field.locator('.lcd-enum-value')).toHaveText(labels[optionIndex]!);
+  await expect(control).toHaveAttribute('aria-valuetext', labels[optionIndex]!);
   return control;
 }
 
 export async function setLcdBoolean(page: Page, keyOrLabel: string, enabled: boolean): Promise<Locator> {
   const field = await findLcdField(page, keyOrLabel);
-  const control = field.locator('button');
+  const control = field.locator('button[data-testid^="lcd-field-"]');
   await expect(control).toBeVisible();
   await expect(control).toBeEnabled();
   if ((await control.getAttribute('aria-pressed')) !== String(enabled)) await control.click();
@@ -196,7 +196,7 @@ export async function setLcdBoolean(page: Page, keyOrLabel: string, enabled: boo
 
 export async function activateLcdAction(page: Page, keyOrLabel: string): Promise<Locator> {
   const field = await findLcdField(page, keyOrLabel);
-  const control = field.locator('button');
+  const control = field.locator('button[data-testid^="lcd-field-"]');
   await expect(control).toBeVisible();
   await expect(control).toBeEnabled();
   await control.click();

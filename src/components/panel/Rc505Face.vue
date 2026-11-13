@@ -219,6 +219,11 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
 /* High-confidence physical silhouettes from the complete frontal photograph. */
 .face-upper::after { height: 9px; border-top: 1px solid #d0d1d6; background: linear-gradient(#bebfc8,#8c8e98); box-shadow: 0 1px 2px #090a0d; }
 .rc505-face :deep(.fx-slot-button) { width: 48px !important; min-width: 48px !important; height: 48px !important; transform: translate(-6px,-6px); }
+/* Keep the alignment offset while depressing the FX cap at 25% of its 1px travel. */
+.rc505-face :deep(.fx-slot-button.appearance-classic:active:not(:disabled)),
+.rc505-face :deep(.fx-slot-button.appearance-classic.is-pressed:not(:disabled)) {
+  transform: translate(-6px, -5.75px);
+}
 .rc505-face :deep(.bank-heading) { top: 159px; left: 215px; }
 .rc505-face :deep(.fx-bank-track .bank-heading) { left: 48px; }
 .rc505-face :deep(.bank-heading h2) { color: #d84956; font-size: 16px; }

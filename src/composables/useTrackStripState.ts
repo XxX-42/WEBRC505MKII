@@ -1,3 +1,4 @@
+import { latestMixerWrites } from './latestMixerWrites';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import type { NativeHqEngine } from '../audio/NativeBridgeClient';
@@ -39,7 +40,7 @@ const isLivePitchMode = (value: unknown): value is LivePitchMode => (
   value === 'OFF' || value === 'LIVE_MONO' || value === 'LIVE_POLY'
 );
 
-export function useTrackStripState(trackId: number) {
+export function useTrackStripState(trackId: number, memoryBusy: () => boolean = () => false) {
   const engine = AudioEngine.getInstance();
   const trackAudio = engine.tracks[trackId - 1]!;
   const isAutoRecArmed = () => (trackAudio as unknown as { autoRecArmed?: boolean }).autoRecArmed === true;
@@ -463,20 +464,23 @@ export function useTrackStripState(trackId: number) {
   };
 
   const handleLevelChange = async (value: number) => {
-    if (!levelControlEnabled.value || levelWritePending.value || !Number.isFinite(value)) return;
+    if (!levelControlEnabled.value || !Number.isFinite(value)) return;
 
     const safeValue = clamp(Math.round(value), 0, 200);
     if (readAudioMode() === 'native') {
+      const identity = engine.getMixerControlIdentity();
       levelWritePending.value = true;
-      try {
-        await engine.setMixerLevel(trackId as 1 | 2 | 3 | 4 | 5, safeValue);
+      latestMixerWrites.submit(`${identity}:${trackId}`, safeValue, async (target) => {
+        await engine.setMixerLevel(trackId as 1 | 2 | 3 | 4 | 5, target);
         const confirmed = engine.getMixerState().tracks[trackId - 1];
         if (confirmed === null || confirmed === undefined) throw new Error('Native track level readback is unavailable.');
-        playLevel.value = confirmed;
-      } catch (error) {
-        playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? playLevel.value;
-        classicControls.reportError('LEVEL FAILED', error instanceof Error ? error.message : String(error));
-      } finally { levelWritePending.value = false; }
+        if (engine.getMixerControlIdentity() === identity) playLevel.value = confirmed;
+      }, () => engine.getMixerControlIdentity() === identity && !memoryBusy(), async (error) => {
+        let unknown = false;
+        try { if (engine.getMixerControlIdentity() === identity) await engine.refreshMixerState(); else unknown = true; } catch { unknown = true; }
+        if (engine.getMixerControlIdentity() === identity) playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? playLevel.value;
+        classicControls.reportError('LEVEL FAILED', `${error instanceof Error ? error.message : String(error)}${unknown ? ' Readback unknown.' : ''}`);
+      }, () => { levelWritePending.value = false; });
       return;
     }
     playLevel.value = safeValue;

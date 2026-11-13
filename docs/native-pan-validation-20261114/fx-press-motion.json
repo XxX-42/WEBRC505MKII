@@ -1,0 +1,53 @@
+{
+  "scope": "Chromium local preview 4198, 1920x1080 viewport, fake audio not required",
+  "requested_press_fraction": 0.25,
+  "baseline_design_travel_css_px": 1,
+  "applied_travel_css_px": 0.25,
+  "alignment_transform_css_px": [
+    -6,
+    -6
+  ],
+  "pressed_transform_css_px": [
+    -6,
+    -5.75
+  ],
+  "measurements": [
+    {
+      "control": "input-fx-slot-a",
+      "before": {
+        "x": 251,
+        "y": 366.84375
+      },
+      "held": {
+        "x": 251,
+        "y": 367.09375
+      },
+      "released": {
+        "x": 251,
+        "y": 366.84375
+      }
+    },
+    {
+      "control": "track-fx-slot-a",
+      "before": {
+        "x": 1416,
+        "y": 366.84375
+      },
+      "held": {
+        "x": 1416,
+        "y": 367.09375
+      },
+      "released": {
+        "x": 1416,
+        "y": 366.84375
+      }
+    }
+  ],
+  "result": "PASS",
+  "assertions": [
+    "no horizontal travel",
+    "vertical travel 0.25 CSS px",
+    "release returns to original position"
+  ],
+  "limit": "At 80% faceplate scale this becomes 0.2 screen pixels; the first probe incorrectly expected 0.25 screen pixels at that scale. The successful probe used 1920x1080 and waited for actual transform completion. No hardware switch travel measurement is claimed."
+}

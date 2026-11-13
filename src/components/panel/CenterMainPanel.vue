@@ -66,20 +66,48 @@
 
     <div class="display-cluster">
       <div class="screen-shell" aria-label="RC-505 status display">
-        <div class="lcd-display" :class="{ 'lcd-editor-active': isClassicEditor }" :data-classic-screen="classicScreenId" data-testid="rc505-lcd-screen" @keydown.esc.stop.prevent="exitPage">
-          <div class="lcd-row top">
+        <div class="lcd-display" :class="{ 'lcd-editor-active': isClassicEditor, 'lcd-parameter-active': isClassicEditor, 'lcd-root-active': classicRoot !== null, 'lcd-mixer-active': classicView.kind === 'mixer', 'lcd-fx-play-active': isFxPlayScreen }" :data-classic-screen="classicScreenId" data-testid="rc505-lcd-screen" @keydown.esc.stop.prevent="exitPage">
+          <div v-if="lcdDetail" ref="lcdDetailElement" class="lcd-detail" tabindex="-1" data-testid="lcd-details-view"><strong>{{ lcdDetail.label }}</strong><span>{{ lcdDetail.text }}</span><small>EXIT · BACK</small></div>
+          <div v-if="!lcdDetail && isFxPlayScreen" class="fx-play-display" :data-classic-fx-display="fxPlayLocation" :aria-label="`${pageTitle} status`">
+            <div class="fx-play-tempo" data-fx-tempo>{{ fxPlayTempo }}</div>
+            <div class="fx-play-memory"><span data-fx-memory-number>{{ fxPlayMemoryNumber }}</span> <span data-fx-memory-name :title="memory.state.name">{{ memory.state.name || '--' }}</span></div>
+            <div class="fx-play-heading">{{ pageTitle }}</div>
+            <div class="fx-play-slots" aria-label="FX A through D">
+              <div v-for="slot in fxPlaySlots" :key="slot.slot" class="fx-play-slot" :class="{ 'is-on': slot.confirmed && slot.active === 'ON', 'is-unconfirmed': !slot.confirmed }"
+                :data-fx-slot="slot.slot" :data-confirmed="slot.confirmed" :data-active="slot.active" :data-state="slot.state"
+                :aria-label="`${slot.slot}: ${slot.type}, ${slot.active === 'UNKNOWN' ? slot.state : slot.active}${slot.reason ? `. ${slot.reason}` : ''}`"
+                :title="`${slot.slot}: ${slot.type} · ${slot.state}${slot.reason ? ` · ${slot.reason}` : ''}${slot.labelSource === 'engineering' && slot.confirmed ? ' · Engineering display label' : ''}`">
+                <span class="fx-play-type">{{ slot.displayType }}</span>
+              </div>
+            </div>
+            <div v-if="fxPlayError" class="fx-play-error" role="status" aria-live="polite" :title="fxPlayError">{{ conciseStatus(fxPlayError) }}</div>
+            <div v-else class="fx-play-knob-labels"><span v-for="(control, index) in screenControls" :key="control.key" :data-fx-knob-label="index + 1">{{ control.disabled ? '' : control.label }}</span></div>
+          </div>
+          <div v-if="!lcdDetail && !isFxPlayScreen" class="lcd-row top">
             <span>{{ lcdContextLabel }}</span>{{ ' ' }}
             <span>{{ pageLabel }} {{ pageCounter }}</span>
           </div>
-          <div v-if="!isClassicEditor" class="lcd-name">{{ pageTitle }}</div>
-          <div v-if="!isClassicEditor" class="lcd-data-rows" :aria-label="`${pageTitle} display data`">
-            <div v-for="row in lcdDataRows" :key="row.key" class="lcd-data-row" :class="{ 'is-disabled': row.disabled, 'is-selected': row.selected }" :title="row.reason">
-              <span>{{ row.label }}</span><span>{{ row.value }}</span>
+          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen && classicRoot === null && classicView.kind !== 'mixer'" class="lcd-name">{{ pageTitle }}</div>
+          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen" class="lcd-data-rows" :class="{ 'lcd-category-columns': classicRoot !== null, 'lcd-mixer-columns': classicView.kind === 'mixer' }"
+            :data-classic-root="classicRoot ?? undefined" :data-classic-mixer="classicView.kind === 'mixer' ? RC505_MIXER_PAGES[classicView.pageIndex]?.id : undefined" :aria-label="`${pageTitle} display data`">
+            <div v-for="(row, index) in lcdDataRows" :key="row.key" class="lcd-data-row" :class="{ 'is-disabled': row.disabled, 'is-selected': row.selected }" :title="row.reason"
+              :data-root-item="classicRoot ? row.key : undefined" :data-root-encoder="classicRoot ? index + 1 : undefined"
+              :data-mixer-channel="classicView.kind === 'mixer' ? row.label : undefined" :data-mixer-encoder="classicView.kind === 'mixer' ? index + 1 : undefined"
+              :aria-label="`${row.label}${row.reason ? `. ${row.reason}` : ''}`">
+              <template v-if="classicView.kind === 'mixer'">
+                <span class="lcd-mixer-gain" :title="row.value">{{ row.gain === undefined ? '--' : Math.round(row.gain) }}</span>
+                <div class="lcd-mixer-strip" aria-hidden="true">
+                  <div class="lcd-mixer-fader"><span v-if="row.gain !== undefined" :style="{ bottom: `${Math.max(0, Math.min(100, row.gain / 2))}%` }"></span><span v-else class="lcd-mixer-unknown">--</span></div>
+                  <div class="lcd-mixer-meter" :data-meter-available="row.meter !== undefined"><span v-if="row.meter !== undefined" :style="{ height: `${row.meter * 100}%` }"></span><b v-else>--</b></div>
+                </div>
+                <span class="lcd-mixer-label">{{ row.label }}</span>
+              </template>
+              <template v-else><span>{{ row.label }}</span><span v-if="classicRoot === null">{{ row.value }}</span></template>
             </div>
           </div>
-          <LcdFieldGrid v-if="isClassicEditor" :fields="screenFields" :selected-index="screenEditor.selectedFieldIndex.value"
-            @select="screenEditor.selectField" @update="setScreenField" @activate="activateScreenField" />
-          <div class="lcd-status" role="status" aria-live="polite" :title="statusDetail">{{ statusHint }}</div>
+          <LcdFieldGrid v-if="isClassicEditor" v-show="!lcdDetail" layout="parameter-dials" :fields="screenFields" :selected-index="screenEditor.selectedFieldIndex.value"
+            @select="screenEditor.selectField" @update="setScreenField" @activate="activateScreenField" @details="openLcdDetails" />
+          <div v-if="!lcdDetail && !isFxPlayScreen" class="lcd-status" role="status" aria-live="polite" :title="statusDetail">{{ statusHint }}</div>
           <div id="rc505-lcd-confirmations" class="lcd-confirmations"></div>
         </div>
       </div>
@@ -90,7 +118,7 @@
             :model-value="control.value"
             interaction-mode="relative"
             pushable
-            :interaction-context-key="`${classicScreenId}:${control.key}:${currentTrackId}:${focusState.activeInputFxSlot}:${focusState.activeTrackFxSlot}:${uiStatus.mode}`"
+            :interaction-context-key="`${classicScreenId}:${'pageIndex' in classicView ? classicView.pageIndex : 0}:${control.key}:${currentTrackId}:${focusState.activeInputFxSlot}:${focusState.activeTrackFxSlot}:${uiStatus.mode}:${engine.getMixerControlIdentity()}`"
             appearance="classic"
             :label="control.label"
             :color="control.color"
@@ -178,6 +206,8 @@
         <div class="engraved-label output-caption"><span>OUTPUT</span><span>LEVEL</span></div>
         <HardwareKnob
           :model-value="outputLevel"
+          :confirmed-only="uiStatus.mode === 'native'"
+          :confirmed-revision="outputSyncRevision"
           appearance="classic"
           label="MASTER"
           color="red"
@@ -235,7 +265,9 @@
           aria-label="Tap tempo"
           data-panel-control="tap-tempo"
           data-hardware-control="button"
-          @press="handleTap"
+          @press="beginTap"
+          @release="endTap"
+          @cancel="cancelTap"
         />
       </div>
     </div>
@@ -244,6 +276,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { latestMixerWrites } from '../../composables/latestMixerWrites';
+import { NativeRhythmEngine } from '../../audio/NativeRhythmEngine';
+import { rc505LcdFieldText } from '../../ui/rc505/Rc505LcdFieldText';
 import { AudioEngine } from '../../audio/AudioEngine';
 import { NATIVE_CATALOG_FX_LABELS } from '../../audio/nativeFxCatalog';
 import { DRUM_KIT_CATALOG, RHYTHM_PATTERN_CATALOG } from '../../audio/rhythm';
@@ -257,12 +292,13 @@ import { useRc505Controls } from '../../composables/useRc505Controls';
 import { useTrackFxTargetState } from '../../composables/useTrackFxTargetState';
 import { advanceRc505EncoderField } from '../../ui/rc505/Rc505EncoderFields';
 import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
+import { browserFxPlaySlot, nativeFxPlaySlot, unavailableFxPlaySlot } from '../../ui/rc505/Rc505FxPlayDisplay';
 import { formatRc505TrackMeter } from '../../ui/rc505/Rc505TrackMeter';
 import { assertTrackFxApplyConfirmed } from '../../audio/TrackFxApplyStatus';
 import { useRc505Memory } from '../../composables/useRc505Memory';
 import { Rc505NavigationChord, type Rc505NavigationKey } from '../../ui/rc505/Rc505NavigationChord';
 import { rhythmUiState, useRhythmUiControls } from '../../composables/rhythmUiState';
-import { getRc505RootItems } from '../../ui/rc505/Rc505DisplayStateMachine';
+import { getRc505RootPage, getRc505RootPageCount, getRc505RootPageStart } from '../../ui/rc505/Rc505DisplayStateMachine';
 import { RC505_MIXER_PAGES, RC505_PLAY_SCREENS, type Rc505DisplayAction, type Rc505DisplayEditorTarget, type Rc505DisplayRoot, type Rc505DisplayRootItem, type Rc505DisplayState, type Rc505DisplayView, type Rc505PlayScreenId } from '../../ui/rc505/rc505DisplayTypes';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
@@ -308,9 +344,17 @@ const trackLevel = ref(engine.tracks[focusState.currentTrackId - 1]?.track.playL
 const pageActionHint = ref('');
 const capabilityRevision = ref(0);
 const mixerPending = ref(false);
+const outputSyncRevision = ref(0);
 const { isPlaying: isRhythmPlaying, volume: rhythmVolume, disabled: rhythmDisabled, pending: rhythmPending, message: rhythmMessage, toggleRhythm, updateVolume, updateSelection } = useRhythmUiControls({ initializeOnMount: false });
 let tapFlashTimer: number | null = null;
 let tapResetTimer: number | null = null;
+let tapHoldTimer: number | null = null;
+let tapSessionBpm: number | null = null;
+let tapHeld = false;
+let tapPressedAt = 0;
+let tapIdentity = '';
+let tapExpectedRevision = 0;
+let tapHoldConsumed = false;
 let unsubscribeStatus: (() => void) | null = null;
 const tapTimes: number[] = [];
 
@@ -321,7 +365,34 @@ const historyButtonDisabled = computed(() => !audioReady.value);
 const historyButtonDisabledReason = computed(() => !audioReady.value ? transportDisabledReason.value : '');
 const undoLayerActive = computed(() => controls.state.controlLayer === 'UNDO_REDO');
 const classicView = computed(() => classicState.value.view);
+const classicRoot = computed(() => classicView.value.kind === 'menu-root' ? 'menu' : classicView.value.kind === 'loop-root' ? 'loop' : null);
 const isClassicEditor = computed(() => classicView.value.kind === 'editor' && screenEditor.active.value);
+const fxPlayLocation = computed(() => classicView.value.kind === 'play'
+  ? classicScreenId.value === 'input-fx' ? 'input' : classicScreenId.value === 'track-fx' ? 'track' : null
+  : null);
+const isFxPlayScreen = computed(() => fxPlayLocation.value !== null);
+const fxPlayMemoryNumber = computed(() => memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0'));
+const fxPlayTempo = computed(() => Number.isFinite(bpm.value) ? `♩=${bpm.value.toFixed(1)}` : '♩=--');
+const fxPlaySlots = computed(() => {
+  capabilityRevision.value;
+  const location = fxPlayLocation.value;
+  if (!location) return [];
+  const supported = location === 'input' ? capabilities.value.supportsInputFx : capabilities.value.supportsTrackFx;
+  const snapshot = engine.getBrowserSharedFxSnapshot(location);
+  return ['A', 'B', 'C', 'D'].map((slot, index) => {
+    if (engine.getMode() === 'native') {
+      const readback = nativeFxPlaySlot(slot, resolveNativeFxReadback(engine.getNativeCatalogFxSlotStatus(location, index), id => NATIVE_CATALOG_FX_LABELS[id] ?? id));
+      // Preserve an explicit restart/error/pending diagnosis even if the engine
+      // is not ready. Only an ACK could otherwise falsely advertise audible ON.
+      if (!readback.confirmed) return readback;
+      if (supported && audioReady.value) return readback;
+    } else if (supported && audioReady.value) return browserFxPlaySlot(slot, snapshot?.[index]);
+    return unavailableFxPlaySlot(slot, 'UNAVAILABLE', !supported
+      ? capabilities.value.fxReason || 'FX is unavailable on this audio runtime.' : uiStatus.value.message || 'Start audio to confirm FX state.');
+  });
+});
+const fxPlayError = computed(() => runtimeStatusPriority.value || scopedControlError.value || memory.state.error || device.actionStatus.error
+  || fxPlaySlots.value.find(slot => slot.state === 'ERROR')?.reason || '');
 const lcdContextLabel = computed(() => {
   const view = classicView.value;
   if (view.kind !== 'editor') return 'BOSS RC-505mkII';
@@ -394,9 +465,9 @@ const pageLabel = computed(() => {
 const pageCounter = computed(() => {
   const view = classicView.value;
   if (view.kind === 'play') return `${view.pageIndex + 1}/7`;
-  if (view.kind === 'mixer') return `${view.pageIndex + 1}/3`;
+  if (view.kind === 'mixer') return `${view.pageIndex + 1}/${RC505_MIXER_PAGES.length}`;
   if (view.kind === 'loop-root' || view.kind === 'menu-root') {
-    const count = Math.ceil(getRc505RootItems(view.kind === 'loop-root' ? 'loop' : 'menu').length / 4);
+    const count = getRc505RootPageCount(view.kind === 'loop-root' ? 'loop' : 'menu');
     return `${view.pageIndex + 1}/${count}`;
   }
   if (view.kind === 'editor') return `${screenEditor.pageIndex.value + 1}/${screenEditor.pageCount.value}`;
@@ -454,11 +525,18 @@ const statusDetail = computed(() => runtimeStatusPriority.value ||
   || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value || (undoLayerActive.value ? 'UNDO/REDO CONTROLS ACTIVE' : '')
   || (rhythmPending.value ? 'RHYTHM COMMAND PENDING' : !audioReady.value ? uiStatus.value.message || 'AUDIO NOT READY'
     : rhythmMessage.value || (isPlaying.value ? 'TRANSPORT RUNNING' : 'READY')));
-const statusHint = computed(() => conciseStatus(runtimeStatusPriority.value || scopedControlError.value || statusDetail.value));
+const statusHint = computed(() => {
+  const message = runtimeStatusPriority.value || scopedControlError.value || statusDetail.value;
+  if (!uiStatus.value.lastError && !scopedControlError.value && /browser audio not initialized/i.test(message)) return 'AUDIO OFF';
+  return conciseStatus(message);
+});
 
 type ScreenField = {
   key: string;
   label: string;
+  shortLabel?: string;
+  shortValue?: string;
+  fullText?: string;
   value: number;
   min: number;
   max: number;
@@ -473,7 +551,7 @@ type ScreenField = {
   activate?: DeviceScreenField['activate'];
 };
 
-type LcdDataRow = { key: string; label: string; value: string; disabled?: boolean; selected?: boolean; reason?: string };
+type LcdDataRow = { key: string; label: string; value: string; disabled?: boolean; selected?: boolean; reason?: string; gain?: number; meter?: number };
 type ScreenControl = {
   key: string;
   label: string;
@@ -641,8 +719,8 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
       { key: 'action', label: view.busy ? 'BUSY' : 'ENTER', value: view.busy ? 'PLEASE WAIT' : view.operation.toUpperCase() }];
   if (view.kind === 'loop-root' || view.kind === 'menu-root') {
     const root = view.kind === 'loop-root' ? 'loop' : 'menu';
-    const start = view.pageIndex * 4;
-    return getRc505RootItems(root).slice(start, start + 4).map((item, index) => ({
+    const start = getRc505RootPageStart(root, view.pageIndex);
+    return getRc505RootPage(root, view.pageIndex).map((item, index) => ({
       key: item.id,
       label: item.label,
       value: item.reason ? 'DISABLED' : 'OPEN',
@@ -690,6 +768,18 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
   if (view.kind === 'mixer') {
     const page = RC505_MIXER_PAGES[view.pageIndex];
     if (!page) return [];
+    if (page.id === 'tracks') return page.channels.map((channel, index) => {
+      const trackId = index + 1;
+      const mixer = engine.getMixerState?.();
+      const capability = engine.getTrackCapabilities(trackId);
+      const readback = mixer?.available && capability.supportsTrackLevel ? mixer.tracks[index] : undefined;
+      const gain = typeof readback === 'number' && Number.isFinite(readback) ? readback : undefined;
+      const reading = engine.getTrackMeter?.(trackId);
+      const meter = reading?.available && Number.isFinite(reading.peak) && reading.peak >= 0 ? Math.min(1, reading.peak) : undefined;
+      return { key: `mixer-${channel}`, label: channel, value: gain === undefined ? 'UNAVAILABLE' : `${gain}%`,
+        gain, meter, disabled: gain === undefined, reason: gain === undefined ? capability.levelReason || mixer?.reason || 'Track gain is unavailable.'
+          : meter === undefined ? reading?.reason || 'Measured track level is unavailable.' : 'Gain and post-fader/pre-shared-FX peak are separate readings.' };
+    });
     if (page.id === 'inputs') return page.channels.map((channel) => ({
       key: `mixer-${channel}`, label: channel, value: 'PARTIAL', disabled: true,
       reason: `${channel} input gain and meter data are not exposed by the current audio engine.`,
@@ -697,6 +787,7 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
     if (page.id === 'outputs') return page.channels.map((channel) => ({
       key: `mixer-${channel}`, label: channel,
       value: channel === 'MAIN' && engine.getMixerState?.().available ? `${engine.getMixerState().main}%` : 'UNAVAILABLE',
+      gain: channel === 'MAIN' && engine.getMixerState?.().available ? engine.getMixerState().main ?? undefined : undefined,
       disabled: channel !== 'MAIN' || !engine.getMixerState?.().available,
       reason: channel === 'MAIN'
         ? engine.getMixerState?.().available
@@ -705,9 +796,9 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
         : `${channel} output routing is not exposed by the current audio engine.`,
     }));
     return page.channels.map((channel) => channel === 'RHYTHM'
-      ? { key: 'mixer-rhythm', label: 'RHYTHM', value: `${Math.round(rhythmVolume.value)}%` }
+      ? { key: 'mixer-rhythm', label: 'RHYTHM', value: `${Math.round(rhythmVolume.value)}%`, gain: rhythmDisabled.value ? undefined : rhythmVolume.value }
       : channel === 'MASTER'
-        ? { key: 'mixer-master', label: 'MASTER', value: `${Math.round(outputLevel.value)}%` }
+        ? { key: 'mixer-master', label: 'MASTER', value: `${Math.round(outputLevel.value)}%`, gain: outputDisabled.value ? undefined : outputLevel.value }
         : { key: 'mixer-phones', label: 'PHONES', value: 'UNAVAILABLE', disabled: true, reason: 'Independent headphone level is not exposed by the current audio engine.' });
   }
   return [];
@@ -717,7 +808,24 @@ function infoControl(key: string, label: string, display: string, reason = 'This
   return { key, label, value: 0, min: 0, max: 100, step: 1, color, disabled: true, reason, display, canRotate: false };
 }
 
+const lcdDetail = ref<{ label: string; text: string } | null>(null);
+const lcdDetailElement = ref<HTMLElement | null>(null);
+let lcdDetailOpener: HTMLElement | null = null;
+function openLcdDetails(index: number): void {
+  const field = screenFields.value[index];
+  if (!field) return;
+  lcdDetailOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  lcdDetail.value = { label: field.label, text: rc505LcdFieldText(field).fullText };
+  void nextTick(() => lcdDetailElement.value?.focus());
+}
+function closeLcdDetails(): void {
+  lcdDetail.value = null;
+  const opener = lcdDetailOpener; lcdDetailOpener = null;
+  void nextTick(() => { if (opener?.isConnected) opener.focus(); });
+}
 const screenControls = computed<ScreenControl[]>(() => {
+  if (lcdDetail.value) return Array.from({ length: 4 }, (_, index) => infoControl(`detail-${index}`, '', '', 'Exit details to edit.'));
+  capabilityRevision.value;
   const view = classicView.value;
   if (view.kind === 'memory-write') return Array.from({ length: 4 }, (_, index) => ({
     key: `memory-${index}`, label: view.operation === 'choose' ? index < 2 ? 'WRITE' : 'CLEAR' : 'MEMORY NO.',
@@ -748,8 +856,8 @@ const screenControls = computed<ScreenControl[]>(() => {
   }
   if (view.kind === 'loop-root' || view.kind === 'menu-root') {
     const root: Rc505DisplayRoot = view.kind === 'loop-root' ? 'loop' : 'menu';
-    const start = view.pageIndex * 4;
-    const items: readonly Rc505DisplayRootItem[] = getRc505RootItems(root).slice(start, start + 4);
+    const start = getRc505RootPageStart(root, view.pageIndex);
+    const items: readonly Rc505DisplayRootItem[] = getRc505RootPage(root, view.pageIndex);
     const controlsForItems = items.map((item, index): ScreenControl => ({
       key: item.id,
       label: item.label,
@@ -770,13 +878,25 @@ const screenControls = computed<ScreenControl[]>(() => {
     const page = RC505_MIXER_PAGES[view.pageIndex];
     if (!page) return [];
     const controlsForChannels = page.channels.map((channel): ScreenControl => {
+      if (page.id === 'tracks') {
+        const trackId = (page.channels.indexOf(channel) + 1) as 1 | 2 | 3 | 4;
+        const mixer = engine.getMixerState?.();
+        const capability = engine.getTrackCapabilities(trackId);
+        const value = mixer?.tracks[trackId - 1];
+        const available = mixer?.available === true && capability.supportsTrackLevel && Number.isFinite(value);
+        return { key: `mixer-track-${trackId}`, label: channel, value: value ?? 0, min: 0, max: 200, step: 1, color: 'green',
+          disabled: !available || memory.state.busy,
+          reason: memory.state.busy ? 'Memory transaction is pending.' : !available ? capability.levelReason || mixer?.reason || 'Track gain is unavailable.' : '',
+          display: available ? `${value}%` : 'UNAVAILABLE', canRotate: available,
+          onRotate: (delta, accelerated) => { void setMixerLevel(trackId, latestMixerWrites.target(`${engine.getMixerControlIdentity()}:${trackId}`, value ?? 0) + delta * (accelerated ? 5 : 1)); } };
+      }
       if (page.id === 'outputs' && channel === 'MAIN') {
         const mixer = engine.getMixerState?.();
         return { key: 'mixer-main', label: 'MAIN', value: mixer?.main ?? 100, min: 0, max: 200, step: 1, color: 'green',
-          disabled: !mixer?.available || mixerPending.value || memory.state.busy,
+          disabled: !mixer?.available || memory.state.busy,
           reason: memory.state.busy ? 'Memory transaction is pending.' : mixer?.reason || '',
           display: mixer?.available ? `${mixer.main}%` : 'UNAVAILABLE', canRotate: true,
-          onRotate: (delta, accelerated) => { void setMixerLevel('MAIN', (mixer?.main ?? 100) + delta * (accelerated ? 5 : 1)); } };
+          onRotate: (delta, accelerated) => { void setMixerLevel('MAIN', latestMixerWrites.target(`${engine.getMixerControlIdentity()}:MAIN`, mixer?.main ?? 100) + delta * (accelerated ? 5 : 1)); } };
       }
       if (page.id === 'master' && channel === 'RHYTHM') return {
         key: 'mixer-rhythm', label: channel, value: rhythmVolume.value, min: 0, max: 100, step: 1, color: 'green',
@@ -785,9 +905,9 @@ const screenControls = computed<ScreenControl[]>(() => {
       };
       if (page.id === 'master' && channel === 'MASTER') return {
         key: 'mixer-master', label: channel, value: outputLevel.value, min: 0, max: 200, step: 1, color: 'red',
-        disabled: outputDisabled.value || mixerPending.value || memory.state.busy,
+        disabled: outputDisabled.value || memory.state.busy,
         reason: outputDisabledReason.value, display: `${Math.round(outputLevel.value)}%`, canRotate: !outputDisabled.value,
-        onRotate: (delta, accelerated) => { void setMixerLevel('MASTER', outputLevel.value + delta * (accelerated ? 5 : 1)); },
+        onRotate: (delta, accelerated) => { void setMixerLevel('MASTER', latestMixerWrites.target(`${engine.getMixerControlIdentity()}:MASTER`, outputLevel.value) + delta * (accelerated ? 5 : 1)); },
       };
       const reason = page.id === 'inputs'
         ? `${channel} input gain and meter data are not exposed by the current audio engine.`
@@ -800,31 +920,15 @@ const screenControls = computed<ScreenControl[]>(() => {
     return [...controlsForChannels, ...Array.from({ length: Math.max(0, 4 - controlsForChannels.length) }, (_, index) => infoControl(`mixer-empty-${index}`, '', ''))];
   }
   if (view.kind === 'play') {
-    const screenId = RC505_PLAY_SCREENS[view.pageIndex]?.id as Rc505PlayScreenId | undefined;
-    if (screenId === 'track-status' || screenId === 'loop-tracks' || screenId === 'loop-status' || screenId === 'loop-level') {
-      const controlsForTracks = [1, 2, 3, 4].map((trackId) => {
-        const label = screenId === 'loop-level' ? `TR ${trackId} LEVEL` : `TR ${trackId}`;
-        const display = screenId === 'loop-tracks' ? phraseLabel(trackId)
-          : screenId === 'loop-level' ? trackLevelLabel(trackId) : trackStateLabel(trackId);
-        const meter = screenId === 'loop-level' ? engine.getTrackMeter?.(trackId) : undefined;
-        const unavailable = screenId === 'loop-level' && !meter?.available;
-        const reason = unavailable ? meter?.reason || 'Track meter data is unavailable.' : 'This screen item is read-only.';
-        return infoControl(`play-${screenId}-${trackId}`, label, display, reason);
-      });
-      return controlsForTracks;
-    }
-    if (screenId === 'input-fx' || screenId === 'track-fx') {
-      const rows = fxDisplayRows(screenId === 'input-fx' ? 'input' : 'track');
-      return rows.map((row) => infoControl(row.key, row.label, row.value, row.reason || 'FX details are read-only here; press ENTER to open the FX editor.'));
-    }
-    if (screenId === 'memory-number') return [
-      { key: 'memory-number', label: 'MEMORY NO.', value: memory.state.number ?? 1, min: 1, max: 99, step: 1, color: 'white',
+    // Play functions are independent of the five-track status display.
+    return [
+      { key: 'play-memory', label: 'MEMORY', value: memory.state.number ?? 1, min: 1, max: 99, step: 1, color: 'white',
         disabled: !memory.state.available || memory.state.busy, reason: memory.state.reason,
         display: memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0'), canRotate: true,
         onRotate: delta => { void loadMemory(Math.max(1, Math.min(99, (memory.state.number ?? 1) + Math.trunc(delta)))); } },
-      infoControl('memory-name', 'NAME', memory.state.name || '—', 'Edit NAME from LOOP; WRITE persists the semantic Memory.'),
-      infoControl('memory-empty-2', '', ''),
-      infoControl('memory-empty-3', '', ''),
+      infoControl('play-off-2', '', '', 'No function assigned.'),
+      infoControl('play-off-3', '', '', 'No function assigned.'),
+      infoControl('play-master-reverb', 'MFX REVERB', 'UNAVAILABLE', 'Master reverb control is not available in this runtime.'),
     ];
   }
   return Array.from({ length: 4 }, (_, index) => infoControl(`screen-empty-${index}`, '', ''));
@@ -917,10 +1021,12 @@ function pressScreenControl(index: number): void {
 }
 
 function changeScreenPage(direction: -1 | 1): void {
+  if (lcdDetail.value) return;
   if (isClassicEditor.value) screenEditor.stepPage(direction);
   dispatchClassic({ type: 'PAGE', direction });
 }
 function exitPage(): void {
+  if (lcdDetail.value) { closeLcdDetails(); return; }
   if (confirmationOpen.value || classicView.value.kind === 'confirm') {
     window.dispatchEvent(new Event('rc505-cancel-confirmation'));
     return;
@@ -988,29 +1094,29 @@ function syncPlaybackState(): void {
 
 function syncBpm(): void { bpm.value = transport.bpm; }
 function setBpm(value: number): void {
-  transport.setBpm(Math.round(value));
+  transport.setBpm(value);
   bpm.value = transport.bpm;
 }
 function setRhythmVolume(value: number): void {
   rhythmVolume.value = Math.max(0, Math.min(100, Math.round(value)));
   void updateVolume();
 }
-async function setOutputLevel(value: number): Promise<void> {
-  if (outputDisabled.value || mixerPending.value || memory.state.busy) return;
-  const bounded = Math.max(0, Math.min(200, Math.round(value)));
-  mixerPending.value = true;
-  try { await engine.setMixerLevel('MASTER', bounded); outputLevel.value = engine.getOutputLevel(); }
-  catch (error) { controls.reportError('OUTPUT FAILED', error instanceof Error ? error.message : String(error)); }
-  finally { mixerPending.value = false; capabilityRevision.value += 1; }
+function setOutputLevel(value: number): void {
+  if (outputDisabled.value || memory.state.busy) return;
+  setMixerLevel('MASTER', value);
 }
-async function setMixerLevel(channel: 'MAIN' | 'MASTER', value: number): Promise<void> {
-  if (mixerPending.value || memory.state.busy) return;
-  mixerPending.value = true;
-  try {
-    await engine.setMixerLevel(channel, Math.max(0, Math.min(200, Math.round(value))));
-    outputLevel.value = engine.getOutputLevel();
-  } catch (error) { controls.reportError('MIXER FAILED', error instanceof Error ? error.message : String(error)); }
-  finally { mixerPending.value = false; capabilityRevision.value += 1; }
+function setMixerLevel(channel: 'MAIN' | 'MASTER' | 1 | 2 | 3 | 4 | 5, value: number): void {
+  if (memory.state.busy || !Number.isFinite(value)) return;
+  const identity = engine.getMixerControlIdentity();
+  latestMixerWrites.submit(`${identity}:${channel}`, Math.max(0, Math.min(200, Math.round(value))), async target => {
+    await engine.setMixerLevel(channel, target);
+    if (engine.getMixerControlIdentity() === identity) { outputLevel.value = engine.getOutputLevel(); capabilityRevision.value += 1; }
+  }, () => engine.getMixerControlIdentity() === identity && !memory.state.busy, async error => {
+    let unknown = false;
+    try { if (engine.getMixerControlIdentity() === identity) await engine.refreshMixerState(); else unknown = true; } catch { unknown = true; }
+    if (engine.getMixerControlIdentity() === identity) { outputLevel.value = engine.getOutputLevel(); capabilityRevision.value += 1; }
+    controls.reportError('MIXER FAILED', `${error instanceof Error ? error.message : String(error)}${unknown ? ' Readback unknown.' : ''}`);
+  }, () => { if (channel === 'MASTER') outputSyncRevision.value += 1; });
 }
 
 function toggleAllTransport(): void {
@@ -1025,6 +1131,7 @@ function toggleUndoLayer(): void {
 }
 
 function enterPage(): void {
+  if (lcdDetail.value) return;
   if (confirmationOpen.value || classicView.value.kind === 'confirm') {
     window.dispatchEvent(new Event('rc505-accept-confirmation'));
     return;
@@ -1059,26 +1166,60 @@ function handleClassicConfirmationState(event: Event): void {
   }
 }
 
-function handleTap(): void {
+function resetTapSession(): void {
+  if (tapResetTimer !== null) window.clearTimeout(tapResetTimer);
+  if (tapHoldTimer !== null) window.clearTimeout(tapHoldTimer);
+  tapResetTimer = null; tapHoldTimer = null; tapHeld = false; tapHoldConsumed = false;
+  tapSessionBpm = null; tapIdentity = ''; tapTimes.length = 0;
+}
+function confirmedTapBpm(): number | null {
+  if (engine.getMode() !== 'native') return transport.bpm;
+  const rhythm = engine.rhythmEngine;
+  if (!(rhythm instanceof NativeRhythmEngine) || !rhythm.available || !rhythm.settings) return null;
+  try {
+    if (rhythm.getPendingTempoIdentity() || rhythm.settings.bpm !== transport.bpm) return null;
+  } catch { return null; }
+  return rhythm.settings.bpm;
+}
+function beginTap(): void {
+  if (tapHeld) return;
+  if (tapSessionBpm !== null && (tapIdentity !== engine.getMixerControlIdentity() || tapExpectedRevision !== transport.tempoMutationRevision)) resetTapSession();
+  if (tapResetTimer !== null) { window.clearTimeout(tapResetTimer); tapResetTimer = null; }
+  if (tapSessionBpm === null) { tapSessionBpm = confirmedTapBpm(); tapIdentity = engine.getMixerControlIdentity(); tapExpectedRevision = transport.tempoMutationRevision; }
+  tapHeld = true; tapPressedAt = performance.now(); tapHoldConsumed = false;
+  tapHoldTimer = window.setTimeout(() => {
+    tapHoldTimer = null;
+    if (!tapHeld) return;
+    tapHoldConsumed = true;
+    if (tapSessionBpm !== null && tapIdentity === engine.getMixerControlIdentity() && tapExpectedRevision === transport.tempoMutationRevision && !memory.state.busy) setBpm(tapSessionBpm);
+    tapTimes.length = 0;
+  }, 2000);
+}
+function endTap(): void {
+  if (!tapHeld) return;
+  tapHeld = false;
+  if (tapHoldTimer !== null) window.clearTimeout(tapHoldTimer);
+  tapHoldTimer = null;
+  if (tapHoldConsumed) { resetTapSession(); return; }
   tapActive.value = true;
   if (tapFlashTimer !== null) window.clearTimeout(tapFlashTimer);
   tapFlashTimer = window.setTimeout(() => { tapActive.value = false; tapFlashTimer = null; }, 100);
-
-  const now = Date.now();
-  tapTimes.push(now);
+  tapTimes.push(tapPressedAt);
   if (tapTimes.length > 4) tapTimes.shift();
   if (tapTimes.length >= 2) {
     const intervals = tapTimes.slice(1).map((time, index) => time - tapTimes[index]!);
-    const average = intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
-    const nextBpm = Math.round(60000 / average);
-    if (nextBpm >= 40 && nextBpm <= 300) setBpm(nextBpm);
+    const nextBpm = Math.round(60000 / (intervals.reduce((sum, value) => sum + value, 0) / intervals.length));
+    if (nextBpm >= 40 && nextBpm <= 300) { setBpm(nextBpm); tapExpectedRevision = transport.tempoMutationRevision; }
   }
-
-  if (tapResetTimer !== null) window.clearTimeout(tapResetTimer);
-  tapResetTimer = window.setTimeout(() => { tapTimes.length = 0; tapResetTimer = null; }, 3000);
+  tapResetTimer = window.setTimeout(resetTapSession, 3000);
 }
+function cancelTap(): void { resetTapSession(); }
+watch([() => uiStatus.value.mode, () => engine.getMixerControlIdentity(), currentTrackId, classicScreenId, () => 'pageIndex' in classicView.value ? classicView.value.pageIndex : 0, () => memory.state.busy], () => { resetTapSession(); if (lcdDetail.value) closeLcdDetails(); }, { flush: 'sync' });
+watch(() => memory.state.busy, busy => { if (busy) latestMixerWrites.invalidate(); }, { flush: 'sync' });
 
 function syncTrackLevel(): void {
+  // AudioParam automation becomes observable after the render quantum.
+  if (engine.getMode() === 'browser') outputLevel.value = engine.getOutputLevel();
   trackLevel.value = engine.getMixerState?.().tracks[currentTrackId.value - 1] ?? engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
   capabilityRevision.value += 1;
   memory.refresh();
@@ -1108,13 +1249,15 @@ onUnmounted(() => {
   transport.off('start', syncPlaybackState);
   transport.off('stop', syncPlaybackState);
   if (tapFlashTimer !== null) window.clearTimeout(tapFlashTimer);
-  if (tapResetTimer !== null) window.clearTimeout(tapResetTimer);
+  resetTapSession();
   if (trackLevelTimer !== null) window.clearInterval(trackLevelTimer);
   unsubscribeStatus?.();
 });
 </script>
 
 <style scoped>
+.lcd-detail { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: 4px; color: #202d41; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lcd-detail small { margin-top: auto; }
 .center-main-panel {
   position: relative;
   display: block;
@@ -1176,6 +1319,39 @@ onUnmounted(() => {
 }
 .lcd-display:not(.lcd-editor-active) { aspect-ratio: 2 / 1; }
 .lcd-display.lcd-editor-active { grid-template-rows: 12px minmax(0, 1fr) 24px; gap: 1px; }
+.lcd-display.lcd-parameter-active { grid-template-rows: 12px minmax(0, 1fr) 14px; }
+.lcd-parameter-active .lcd-status { -webkit-line-clamp: 1; }
+.lcd-display.lcd-root-active,
+.lcd-display.lcd-mixer-active { grid-template-rows: 12px minmax(0, 1fr) 14px; }
+.lcd-root-active .lcd-status,
+.lcd-mixer-active .lcd-status { -webkit-line-clamp: 1; }
+.lcd-data-rows.lcd-category-columns,
+.lcd-data-rows.lcd-mixer-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 3px; }
+.lcd-category-columns .lcd-data-row { justify-content: center; padding: 2px; text-align: center; white-space: normal; }
+.lcd-category-columns .lcd-data-row span { white-space: normal; overflow-wrap: anywhere; font-size: 11px; line-height: 1.1; }
+.lcd-mixer-columns .lcd-data-row { display: grid; grid-template-rows: 12px minmax(0, 1fr) 20px; gap: 1px; justify-content: stretch; text-align: center; }
+.lcd-mixer-gain { font-size: 11px; line-height: 12px; }
+.lcd-mixer-strip { display: flex; justify-content: center; gap: 6px; height: 100%; min-height: 20px; padding: 2px 0; }
+.lcd-mixer-fader { position: relative; width: 9px; height: 100%; border-inline: 1px solid currentColor; }
+.lcd-mixer-fader > span:not(.lcd-mixer-unknown) { position: absolute; left: -3px; right: -3px; height: 3px; border: 1px solid currentColor; background: var(--lcd-selection-ink); transform: translateY(50%); }
+.lcd-mixer-unknown { position: absolute; inset: 0; display: grid; place-items: center; font-size: 10px; }
+.lcd-mixer-meter { position: relative; display: flex; align-items: center; justify-content: center; width: 12px; height: 100%; border-bottom: 1px solid currentColor; }
+.lcd-mixer-meter > span { position: absolute; bottom: 0; left: 0; right: 0; background: repeating-linear-gradient(to top, currentColor 0 3px, transparent 3px 5px); }
+.lcd-mixer-meter b { font-size: 10px; }
+.lcd-mixer-label { font-size: 10px; line-height: 10px; white-space: normal; overflow-wrap: anywhere; }
+.lcd-display.lcd-fx-play-active { display: block; padding: 3px 5px; }
+.fx-play-display { display: grid; grid-template-rows: 11px 20px 11px minmax(0, 1fr) 14px; height: 100%; min-height: 0; line-height: 1; }
+.fx-play-tempo { font-size: 10px; text-align: right; }
+.fx-play-memory { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 18px; }
+.fx-play-memory [data-fx-memory-number] { flex: none; border: 1px solid currentColor; }
+.fx-play-memory [data-fx-memory-name] { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fx-play-heading { font-size: 10px; }
+.fx-play-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; min-height: 0; align-items: stretch; }
+.fx-play-slot { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; padding: 2px 1px; overflow: hidden; text-align: center; }
+.fx-play-slot.is-on { color: var(--lcd-selection-ink, #202d41); background: var(--lcd-selection, #e3e8ff); }
+.fx-play-type { max-width: 100%; font-size: 16px; line-height: 1; white-space: pre-line; overflow-wrap: anywhere; }
+.fx-play-knob-labels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; font-size: 9px; }
+.fx-play-error { align-self: end; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; }
 .lcd-editor-active .lcd-status { display: -webkit-box; line-height: 12px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: 2; }
 .lcd-data-rows { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); gap: 1px; min-height: 0; overflow: hidden; color: #202d41; font-size: 11px; line-height: 1; }
 .lcd-data-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }

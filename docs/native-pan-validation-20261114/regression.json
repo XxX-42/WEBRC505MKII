@@ -1,0 +1,106 @@
+{
+  "base": "c543c67421456fc894d19a963364bc7d7c4e1bf9",
+  "scope": "Native PAN callback/readback and semantic Memory, not physical RC-505 parity",
+  "unit_before_busy_visual_fix": {
+    "total": 2950,
+    "passed": 2950,
+    "failed": 0
+  },
+  "native": {
+    "portable_ctest": {
+      "passed": 55,
+      "total": 55,
+      "seconds": 39.91
+    },
+    "hq_simulation_ctest": {
+      "passed": 18,
+      "total": 18,
+      "seconds": 70.97
+    },
+    "wasapi_build": "PASS",
+    "wasapi_runtime": "BLOCKED_PREVIOUS_AUTOMATIC_APPROVAL_REJECTION",
+    "physical_rc505": "HARDWARE_RC505_BLOCKED",
+    "revalidated_20261114": true
+  },
+  "e2e": {
+    "status": "FINAL_INTEGRATED_PASS",
+    "prior_complete_run": {
+      "scope": "PAN + FX Play + busy appearance; before parameter dial/relative-value fixes",
+      "total": 148,
+      "passed": 145,
+      "unexpected": 3,
+      "skipped": 0,
+      "flaky": 0,
+      "retries": 0,
+      "durationMs": 561397.389,
+      "jsonPath": "C:/Users/user1000/.codex/tmp/rc505-pan-lcd-full-e2e-20261114.json",
+      "failures": [
+        "VINYL FLICK initial wet-only section lacked expected 330 Hz while dry 220 Hz remained; later mixed section contained both",
+        "quantized capture input-frame-discontinuity",
+        "obsolete Native FX Play .lcd-data-row selector"
+      ]
+    },
+    "old_main_audio_comparison": {
+      "source": "c543c67421456fc894d19a963364bc7d7c4e1bf9",
+      "passed": 4,
+      "total": 4,
+      "retries": 0,
+      "durationMs": 27279.592,
+      "scope": "Two unchanged Browser audio specs in separate baseline server/cache on 4188; one pass does not establish cause of prior failures."
+    },
+    "final": {
+      "passed": 158,
+      "total": 158,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "retries": 0,
+      "durationMs": 545029.695,
+      "jsonPath": "C:/Users/user1000/.codex/tmp/rc505-lcd-final2-e2e-20261114.json"
+    }
+  },
+  "performance": "CPU deadline exceedances remain; see ../performance/20261114-native-pan/affinity/README.md",
+  "sources": {
+    "native-mvp/engine-cpp/src/native_audio_core.cpp": "6380baf832a031d74ce9dd285976784576069fcaebc7cab2a091c7839a5cd267",
+    "native-mvp/engine-cpp/src/native_bridge_host.cpp": "fd4e4222865ebc7c97c58ffaa469578c5fe1e6a02fa7ed837a1b4617faf815b7",
+    "native-mvp/engine-cpp/include/native_audio_core.hpp": "7cdf2e413440e4326edf7cadcc9be64c4526cf7d7ad740adebb2e9ce34404bba"
+  },
+  "unit_before_parameter_dials": {
+    "numTotalTests": 2964,
+    "numPassedTests": 2964,
+    "numFailedTests": 0,
+    "success": true
+  },
+  "known_pointer_issue_before_fix": {
+    "confirmed": true,
+    "scope": "relative HardwareKnob visual and ARIA can retain optimistic value if parent refuses unchanged modelValue",
+    "probe": "C:/Users/user1000/AppData/Local/Temp/rc505-trackfx-official-evidence/knob-relative-readback-probe.json",
+    "status": "FIXED_CONFIRMED_ONLY_AND_RELATIVE_READBACK"
+  },
+  "classic_alignment_first_run": {
+    "unit": {
+      "passed": 3007,
+      "total": 3007
+    },
+    "build": "PASS",
+    "e2e": {
+      "passed": 149,
+      "total": 158,
+      "failed": 9,
+      "retries": 0,
+      "receipt": "rc505-lcd-final-e2e-20261114.json",
+      "classification": [
+        "2 incorrect cancellation layer assertions",
+        "3 ambiguous helper button selectors after adding LCD details",
+        "3 outdated root page navigation assumptions",
+        "1 Browser OUTPUT delayed readback display defect"
+      ]
+    }
+  },
+  "unit_final_frozen_source": {
+    "passed": 3012,
+    "total": 3012,
+    "files": 240,
+    "jsonPath": "C:/Users/user1000/.codex/tmp/rc505-lcd-final2-unit-20261114.json"
+  }
+}

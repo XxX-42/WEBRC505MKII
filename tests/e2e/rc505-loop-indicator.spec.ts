@@ -6,7 +6,8 @@ const lcd = (page: Page) => page.getByTestId('rc505-lcd-screen');
 async function openSetup(page: Page): Promise<void> {
   await page.locator('[data-panel-control="menu"]').click();
   await page.locator('[data-panel-control="page-next"]').click();
-  await page.locator('[data-panel-control="screen-encoder-4"]').press('Enter');
+  await page.locator('[data-panel-control="page-next"]').click();
+  await page.locator('[data-panel-control="screen-encoder-1"]').press('Enter');
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'editor-setup');
 }
 
@@ -15,7 +16,11 @@ test('MENU > SETUP selects Classic loop indicator modes and displays Browser met
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
   await openSetup(page);
-  await expect(lcd(page)).toContainText('APPROX · NOT HARDWARE-VERIFIED');
+  const details = page.getByTestId('lcd-details-loop-indicator-visual-limit');
+  await details.click();
+  await expect(page.getByTestId('lcd-details-view')).toContainText('APPROX · NOT HARDWARE-VERIFIED');
+  await page.locator('[data-panel-control="exit"]').click();
+  await expect(details).toBeFocused();
 
   const selector = page.getByTestId('lcd-field-loop-indicator-mode');
   await expect(selector).toHaveAttribute('aria-valuetext', 'STATUS');

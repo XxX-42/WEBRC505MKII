@@ -544,6 +544,16 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedReverse[track] = nativeLoopTransportAppliedReverse_[track].load(std::memory_order_acquire);
+        for (;;) {
+            const auto sequence = nativePanAppliedSequence_[track].load(std::memory_order_acquire);
+            if ((sequence & 1U) != 0U) { std::this_thread::yield(); continue; }
+            status.nativeTrackPans[track] = nativeTrackPans_[track].load(std::memory_order_relaxed);
+            status.nativePanAppliedRevision[track] = nativePanAppliedRevision_[track].load(std::memory_order_relaxed);
+            std::atomic_thread_fence(std::memory_order_acquire);
+            if (nativePanAppliedSequence_[track].load(std::memory_order_relaxed) == sequence) break;
+        }
+        status.nativeTrackRequestedPans[track] = nativeTrackRequestedPans_[track].load(std::memory_order_acquire);
+        status.nativePanRequestedRevision[track] = nativePanRequestedRevision_[track].load(std::memory_order_acquire);
         status.nativeTrackDubModes[track] = nativeTrackDubModes_[track].load(std::memory_order_acquire);
         status.nativeTrackRequestedDubModes[track] = nativeTrackRequestedDubModes_[track].load(std::memory_order_acquire);
         status.nativeDubModeRequestedRevision[track] = nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire);
@@ -580,6 +590,8 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.projectContentRevision = projectContentRevision_.load(std::memory_order_acquire);
     status.projectContentRevisionSnapshotStable =
         projectRevisionAtSnapshotStart == status.projectContentRevision;
+    for (std::size_t track = 0; track < kNativeTrackCount; ++track)
+        if (status.nativePanRequestedRevision[track] != status.nativePanAppliedRevision[track]) status.projectContentRevisionSnapshotStable = false;
     status.inputPeak = inputPeak_.load(std::memory_order_acquire);
     status.outputPeak = outputPeak_.load(std::memory_order_acquire);
     status.xrunsOrDropouts = xrunsOrDropouts_.load(std::memory_order_acquire);
@@ -733,6 +745,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportAppliedReverse[track] = nativeLoopTransportAppliedReverse_[track].load(std::memory_order_acquire);
     }
     status.nativeMemoryDubModes = nativeMemoryDubModeSettings_;
+    status.nativeMemoryTrackPans = nativeMemoryTrackPans_;
     const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
     const auto appliedBounceSnapshot = nativeBounceAppliedSnapshot_.load(std::memory_order_acquire);
     status.nativeBounce = decodeNativeBounceSettings(appliedBounceSnapshot);
@@ -3821,6 +3834,36 @@ bool NativeAudioCore::setNativeDubMode(std::size_t trackIndex, NativeDubMode mod
     return true;
 }
 
+bool NativeAudioCore::setNativeTrackPan(std::size_t track, int pan, std::uint64_t expected, std::uint64_t& accepted, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (track >= kNativeTrackCount || pan < -50 || pan > 50) { error = "Invalid Native PAN."; return false; }
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || loopSnapshotRequested_.load(std::memory_order_acquire) || loopSnapshotReleaseRequested_.load(std::memory_order_acquire)) { error = "Wait for Memory transaction or snapshot."; return false; }
+    if (!engineRunning_.load(std::memory_order_acquire)) { error = "Native PAN requires a running audio engine for callback acknowledgement."; return false; }
+    const auto revision = nativePanRequestedRevision_[track].load(std::memory_order_acquire);
+    if (expected != revision || nativePanAppliedRevision_[track].load(std::memory_order_acquire) != revision) { error = "Native PAN revision conflict or callback pending."; return false; }
+    if (revision >= kMaximumSafeProjectContentRevision) { error = "Native PAN revision exhausted."; return false; }
+    nativeTrackRequestedPans_[track].store(pan, std::memory_order_relaxed);
+    nativeMemoryTrackPans_[track] = pan;
+    nativePanRequestedRevision_[track].store(revision + 1U, std::memory_order_release);
+    accepted = revision + 1U; advanceProjectRevision(projectContentRevision_); error.clear(); return true;
+}
+void NativeAudioCore::applyNativeTrackPans() noexcept {
+    constexpr float halfPi = 1.57079632679489661923f;
+    for (std::size_t track = 0; track < kNativeTrackCount; ++track) {
+        const auto revision = nativePanRequestedRevision_[track].load(std::memory_order_acquire);
+        if (revision == nativePanAppliedRevision_[track].load(std::memory_order_relaxed)) continue;
+        const int pan = nativeTrackRequestedPans_[track].load(std::memory_order_relaxed);
+        const float angle = static_cast<float>(std::abs(pan)) / 50.0f * halfPi;
+        nativePanCos_[track] = pan == -50 || pan == 50 ? 0.0f : std::cos(angle);
+        nativePanSin_[track] = pan == -50 || pan == 50 ? 1.0f : std::sin(angle);
+        nativePanAppliedSequence_[track].fetch_add(1U, std::memory_order_acq_rel);
+        nativeTrackPans_[track].store(pan, std::memory_order_relaxed);
+        nativePanAppliedRevision_[track].store(revision, std::memory_order_relaxed);
+        nativePanAppliedSequence_[track].fetch_add(1U, std::memory_order_release);
+    }
+}
+
 void NativeAudioCore::applyNativeDubModeCommands() noexcept {
     NativeDubModeCommand command{};
     while (nativeDubModeCommandQueue_.pop(command)) {
@@ -4061,6 +4104,8 @@ bool NativeAudioCore::captureLoopSnapshot(
         error = "Wait for the pending Native project import generation before exporting a project snapshot.";
         return false;
     }
+    for (std::size_t track = 0; track < kNativeTrackCount; ++track)
+        if (nativePanRequestedRevision_[track].load(std::memory_order_acquire) != nativePanAppliedRevision_[track].load(std::memory_order_acquire)) { error = "Wait for Native PAN callback acknowledgement before snapshot."; return false; }
 
     if (!currentConfig_ || !engineRunning_.load(std::memory_order_acquire)) {
         error = "Native HQ WAV export requires a running audio engine.";
@@ -4164,6 +4209,8 @@ bool NativeAudioCore::captureTrackSnapshot(
         error = "Wait for the pending Native project import generation before exporting a project snapshot.";
         return false;
     }
+    for (std::size_t track = 0; track < kNativeTrackCount; ++track)
+        if (nativePanRequestedRevision_[track].load(std::memory_order_acquire) != nativePanAppliedRevision_[track].load(std::memory_order_acquire)) { error = "Wait for Native PAN callback acknowledgement before snapshot."; return false; }
     if (trackIndex >= kNativeTrackCount) {
         error = "Native track index must be between 0 and 4.";
         return false;
@@ -4431,6 +4478,7 @@ bool NativeAudioCore::beginProjectArchiveImport(
             error = "Wait for scheduled Native REC/STOP callback acknowledgement before importing a project.";
             return false;
         }
+        if (nativePanRequestedRevision_[track].load(std::memory_order_acquire) != nativePanAppliedRevision_[track].load(std::memory_order_acquire)) { error = "Wait for pending Native PAN callback acknowledgement before importing a project."; return false; }
         if (nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire) !=
             nativeDubModeAppliedRevision_[track].load(std::memory_order_acquire)) {
             error = "Wait for pending Native DUB MODE callback acknowledgement before importing a project.";
@@ -4598,6 +4646,7 @@ bool NativeAudioCore::beginProjectArchiveImport(
                 }
             }
             for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (memory->trackPans[track] < -50 || memory->trackPans[track] > 50 || nativePanRequestedRevision_[track].load(std::memory_order_acquire) >= kMaximumSafeProjectContentRevision) { error = "Invalid or exhausted Memory PAN."; return false; }
                 const auto mode = memory->dubModes[track];
                 if (mode != NativeDubMode::Overdub && mode != NativeDubMode::Replace1 && mode != NativeDubMode::Replace2) {
                     error = "Invalid Memory DUB MODE setting.";
@@ -4809,6 +4858,7 @@ void NativeAudioCore::finalizeProjectImportLocked() {
                 nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
             }
             nativeMemoryDubModeSettings_ = memory.dubModes;
+            nativeMemoryTrackPans_ = memory.trackPans;
             const auto bounceRevision = nativeBounceSnapshotRevision(nativeBounceRequestedSnapshot_.load(std::memory_order_relaxed)) + 1U;
             nativeBounceRequestedSnapshot_.store(encodeNativeBounceSnapshot(memory.bounce, bounceRevision), std::memory_order_release);
             nativeReverbConfig_ = memory.reverb;
@@ -6000,11 +6050,28 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                     bank.processInPlaceNoPeak(playback, segmentFrames, outputChannels_);
                 if (playbackBufferAvailable) {
                     float* destination = nativeTrackFxApplyRuntime_[track] ? playbackBus : nativeTrackDryPlaybackScratch_.data();
-                    for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
-                        const float value = playback[sample] * mixerGain[track + 2U];
-                        segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(value));
-                        segmentTrackSquares[track] += static_cast<double>(value) * value;
-                        destination[sample] += value;
+                    const int pan = nativeTrackPans_[track].load(std::memory_order_relaxed);
+                    if (outputChannels_ == 2U && pan != 0) {
+                        const float c = nativePanCos_[track], sn = nativePanSin_[track];
+                        const float gain = mixerGain[track + 2U];
+                        for (std::size_t sample = 0U; sample < segmentSamples; sample += 2U) {
+                            const float l = playback[sample] * gain, r = playback[sample + 1U] * gain;
+                            const float left = pan < 0 ? l + r * sn : l * c;
+                            const float right = pan < 0 ? r * c : r + l * sn;
+                            segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(left));
+                            segmentTrackSquares[track] += static_cast<double>(left) * left;
+                            destination[sample] += left;
+                            segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(right));
+                            segmentTrackSquares[track] += static_cast<double>(right) * right;
+                            destination[sample + 1U] += right;
+                        }
+                    } else {
+                        for (std::size_t sample = 0U; sample < segmentSamples; ++sample) {
+                            const float value = playback[sample] * mixerGain[track + 2U];
+                            segmentTrackPeaks[track] = std::max(segmentTrackPeaks[track], std::fabs(value));
+                            segmentTrackSquares[track] += static_cast<double>(value) * value;
+                            destination[sample] += value;
+                        }
                     }
                 }
             }
@@ -6472,6 +6539,9 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
             nativeLoopTransportRuntimeRevision_[track] = nativeLoopTransportRequestedRevision_[track];
             nativeLoopTransportAppliedRevision_[track].store(nativeLoopTransportRuntimeRevision_[track], std::memory_order_release);
             nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
+            const auto panRevision = nativePanRequestedRevision_[track].load(std::memory_order_relaxed) + 1U;
+            nativeTrackRequestedPans_[track].store(memory.trackPans[track], std::memory_order_relaxed);
+            nativePanRequestedRevision_[track].store(panRevision, std::memory_order_release);
             const auto dubRevision = nativeDubModeRequestedRevision_[track].load(std::memory_order_relaxed) + 1U;
             (void)looperForTrack(track).setDubMode(memory.dubModes[track]);
             nativeTrackDubModes_[track].store(memory.dubModes[track], std::memory_order_release);
@@ -6479,6 +6549,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
             nativeDubModeRequestedRevision_[track].store(dubRevision, std::memory_order_release);
             nativeDubModeAppliedRevision_[track].store(dubRevision, std::memory_order_release);
         }
+        applyNativeTrackPans();
         for (std::size_t bank = 0U; bank < memory.banks.size(); ++bank) {
             for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
                 const bool bypassed = memory.banks[bank][slot].bypassed;
@@ -6651,7 +6722,7 @@ int NativeAudioCore::handleAudioCallback(
 
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
-    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) { applyNativeDubModeCommands(); applyNativeTrackPans(); }
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeRhythmCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
@@ -6737,7 +6808,7 @@ int NativeAudioCore::handleInputAudioCallback(
 
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
-    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) { applyNativeDubModeCommands(); applyNativeTrackPans(); }
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeRhythmCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};

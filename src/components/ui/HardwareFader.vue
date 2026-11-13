@@ -17,7 +17,7 @@
           type="range"
           :min="min"
           :max="max"
-          :value="liveValue"
+          :value="displayedValue"
           @input="handleInput"
           :disabled="disabled"
           :aria-disabled="disabled"
@@ -53,6 +53,7 @@ import { computed, ref, watch } from 'vue';
 
 interface Props {
   modelValue: number;
+  confirmedOnly?: boolean;
   min?: number;
   max?: number;
   label?: string;
@@ -64,6 +65,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  confirmedOnly: false,
   min: 0,
   max: 100,
   label: '',
@@ -84,12 +86,14 @@ watch(() => props.modelValue, (value) => {
   liveValue.value = value;
 });
 
+const displayedValue = computed(() => props.confirmedOnly ? props.modelValue : liveValue.value);
+
 const valuePercent = computed(() => {
-  return ((liveValue.value - props.min) / (props.max - props.min)) * 100;
+  return ((displayedValue.value - props.min) / (props.max - props.min)) * 100;
 });
 
 const displayValue = computed(() => {
-  return Math.round(liveValue.value);
+  return Math.round(displayedValue.value);
 });
 
 const ledColorClass = computed(() => {

@@ -8,7 +8,7 @@ import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserInputCaptureErrorDiagnostic, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
-import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeDubMode, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
+import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeDubMode, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus, NativeTrackPanEditContext } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
 import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFxDspCore';
 import type { NativeFxPath } from './nativeFxCatalog';
@@ -188,6 +188,8 @@ export class AudioEngine {
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
   private modeGeneration = 0;
+  private readonly mixerContextIds = new WeakMap<object, number>();
+  private mixerContextSequence = 0;
   private memoryPreparations = 0;
   private readonly memoryRuntimes = new WeakMap<Rc505MemoryRuntime, Rc505MemoryRuntime>();
   private browserOutputLevelPercent = 100;
@@ -633,6 +635,14 @@ export class AudioEngine {
     return this.nativeEngine.nativeTrackState(trackId);
   }
 
+  public getNativeTrackPanStatus(trackId: number) { return this.currentMode === 'native' ? this.nativeEngine.getNativeTrackPanStatus(trackId) : null; }
+  public isNativeTrackPanWritePending(): boolean { return this.currentMode === 'native' && this.nativeEngine.isNativeTrackPanWritePending(); }
+  public hasPendingNativeTrackPanChanges(): boolean { return this.currentMode === 'native' && this.nativeEngine.hasPendingNativeTrackPanChanges(); }
+  public async setNativeTrackPan(trackId: number, value: number, context?: NativeTrackPanEditContext): Promise<void> {
+    if (this.currentMode !== 'native') throw new Error('Native PAN is only available in Native audio mode.');
+    await this.nativeEngine.setNativeTrackPan(trackId, value, context);
+  }
+
   /** Set one Native track's DUB MODE and wait for its callback-applied revision. */
   public async setNativeDubMode(trackId: number, mode: NativeDubMode): Promise<void> {
     if (this.currentMode !== 'native') throw new Error('Native DUB MODE is only available in Native audio mode.');
@@ -912,6 +922,21 @@ export class AudioEngine {
     return runtime;
   }
   public getMixerState(): MixerState { return this.activeEngine.getMixerState(); }
+  public getMixerControlIdentity(): string {
+    if (this.currentMode === 'native') return `${this.modeGeneration}:native:${this.nativeEngine.getMixerControlIdentity()}`;
+    const context = this.browser.context;
+    if (!context) return `${this.modeGeneration}:browser:unavailable`;
+    if (!this.mixerContextIds.has(context)) this.mixerContextIds.set(context, ++this.mixerContextSequence);
+    return `${this.modeGeneration}:browser:${this.mixerContextIds.get(context)}:${context.state}`;
+  }
+  public async refreshMixerState(): Promise<MixerState> {
+    const identity = this.getMixerControlIdentity();
+    const state = this.currentMode === 'native'
+      ? await this.nativeEngine.refreshMixerState() : this.activeEngine.getMixerState();
+    if (identity !== this.getMixerControlIdentity()) throw new Error('Audio backend changed during mixer readback.');
+    return state;
+  }
+
   public setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {
     return Promise.resolve(this.activeEngine.setMixerLevel(channel, percent));
   }

@@ -3124,6 +3124,82 @@ void testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testNativeTrackPanPcmAndAck() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    std::vector<float> output(128U * 2U);
+    NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(1024U, 0.2f), 128U, output.data());
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+    std::string stoppedError; std::uint64_t stoppedRevision = 0;
+    assert(!core.setNativeTrackPan(0U, 20, 0U, stoppedRevision, stoppedError));
+    assert(core.getStatus().nativePanRequestedRevision[0] == 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 128U) == 0);
+    const float centerL = output[0], centerR = output[1];
+    assert(std::fabs(centerL - 0.2f) < 0.001f && std::fabs(centerR - 0.2f) < 0.001f);
+    std::string error; std::uint64_t revision = 0;
+    assert(core.setNativeTrackPan(0U, -50, 0U, revision, error) && revision == 1U);
+    auto status = core.getStatus();
+    assert(status.nativePanRequestedRevision[0] == 1U && status.nativePanAppliedRevision[0] == 0U);
+    assert(!status.projectContentRevisionSnapshotStable);
+    std::vector<float> blockedSnapshot; unsigned int blockedRate = 0;
+    assert(!core.captureLoopSnapshot(blockedSnapshot, blockedRate, error));
+    assert(error.find("PAN") != std::string::npos);
+    DecodedProjectArchive pendingArchive; pendingArchive.version = 1U;
+    std::uint64_t pendingGeneration = 0U;
+    assert(!core.beginProjectArchiveImport(std::move(pendingArchive), 256U,
+        status.projectContentRevision, pendingGeneration, error, std::make_unique<NativeMemorySettings>()));
+    assert(error.find("PAN") != std::string::npos && pendingGeneration == 0U);
+    assert(!core.setNativeTrackPan(0U, 50, 0U, revision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 128U) == 0);
+    status = core.getStatus(); assert(status.nativePanAppliedRevision[0] == 1U);
+    assert(std::fabs(output[0] - 0.4f) < 0.001f && std::fabs(output[1]) < 0.001f);
+    assert(core.setNativeTrackPan(0U, 50, 1U, revision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 128U) == 0);
+    assert(std::fabs(output[0]) < 0.001f && std::fabs(output[1] - 0.4f) < 0.001f);
+    assert(core.setNativeTrackPan(0U, 0, 2U, revision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 128U) == 0);
+    assert(output[0] == centerL && output[1] == centerR);
+    assert(!core.setNativeTrackPan(0U, 51, 3U, revision, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeTrackPanStereoAndMonitor() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    constexpr unsigned frames = 64U;
+    std::array<float, frames * 2U> input{}, output{};
+    for (unsigned i = 0; i < frames; ++i) { input[2*i] = 0.2f; input[2*i+1] = (i % 2U == 0U) ? -0.1f : -0.2f; }
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), frames) == 0);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::uint64_t rev = 0; std::string error;
+    const auto check = [&](int pan, float left, float right, float antiLeft, float antiRight) {
+        assert(core.setNativeTrackPan(0U, pan, rev, rev, error));
+        const auto beforeAlloc = trackedAllocations, beforeFree = trackedDeallocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == beforeAlloc && trackedDeallocations == beforeFree);
+        assert(std::fabs(output[0] - left) < 1e-6f && std::fabs(output[1] - right) < 1e-6f);
+        assert(std::fabs(output[2] - antiLeft) < 1e-6f && std::fabs(output[3] - antiRight) < 1e-6f);
+    };
+    constexpr float q = 0.7071067811865475f;
+    check(-50, 0.1f, 0.0f, 0.0f, 0.0f);
+    check(-25, 0.2f - 0.1f*q, -0.1f*q, 0.2f - 0.2f*q, -0.2f*q);
+    check(25, 0.2f*q, -0.1f + 0.2f*q, 0.2f*q, -0.2f + 0.2f*q);
+    check(50, 0.0f, 0.1f, 0.0f, 0.0f);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 0U);
+    NativeAudioCoreTestAccess::command(core, CommandType::SetMonitoring, true);
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), frames) == 0);
+    assert(std::fabs(output[0] - 0.2f) < 1e-6f && std::fabs(output[1] + 0.1f) < 1e-6f);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 void testMixerIndependentPcmGains() {
     webrc::native::NativeAudioCore core;
     webrc::native::NativeAudioCoreTestAccess::prepareWithoutDevice(core);
@@ -3383,6 +3459,8 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
         memory->dubModes = {{NativeDubMode::Replace1, NativeDubMode::Overdub, NativeDubMode::Replace2,
             NativeDubMode::Overdub, NativeDubMode::Replace1}};
         memory->dubModesIncluded = true;
+        memory->trackPans = {{-50, -25, 0, 25, 50}};
+        memory->trackPansIncluded = true;
         return memory;
     };
     LoopTransportConfig pendingTransport;
@@ -3443,6 +3521,9 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     assert((status.nativeMemoryDubModes == std::array<NativeDubMode, kNativeTrackCount>{{
         NativeDubMode::Replace1, NativeDubMode::Overdub, NativeDubMode::Replace2,
         NativeDubMode::Overdub, NativeDubMode::Replace1}}));
+    assert((status.nativeTrackPans == std::array<int, kNativeTrackCount>{{-50, -25, 0, 25, 50}}));
+    assert(status.nativeTrackPans == status.nativeMemoryTrackPans);
+    for (std::size_t track = 0; track < kNativeTrackCount; ++track) assert(status.nativePanRequestedRevision[track] == 1U && status.nativePanAppliedRevision[track] == 1U);
     assert(status.nativeTrackDubModes == status.nativeMemoryDubModes);
     assert(status.nativeTrackRequestedDubModes == status.nativeMemoryDubModes);
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -4278,6 +4359,9 @@ void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks(
     assert(copied == loopFrames);
     for (const auto sample : captured) assert(std::fabs(sample - 0.5f) < 1.0e-6f);
 
+    std::uint64_t panRevision = 0U;
+    assert(core.setNativeTrackPan(0U, -50, 0U, panRevision, error));
+    assert(core.setNativeTrackPan(1U, 50, 0U, panRevision, error));
     bounce.bounceIn[2U] = false;
     bounce.bounceIn[4U] = true;
     assert(core.setNativeBounceSettings(bounce, error));
@@ -5180,6 +5264,8 @@ int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testNativeOneShotOverdubAdmissionIsSideEffectFree();
     testMixerIndependentPcmGains();
+    testNativeTrackPanPcmAndAck();
+    testNativeTrackPanStereoAndMonitor();
     testNativeRhythmPhaseStatusIsReadOnlyAndSchedulingUnavailable();
     testNativeLoopSyncRejectsRecDubCombination();
     testNativeRhythmPhaseIsProtectedAndEmergencyStopRetainsPcm();
@@ -5194,6 +5280,7 @@ int main() {
     testNativeRhythmPhaseSnapshotAcrossConcurrentConfigTransitions();
     testNativeTrackPhaseProvenanceSnapshotUnderConcurrentPublication();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
+    testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();
     testNativeDubModeCannotOvertakePendingTrackCommands();

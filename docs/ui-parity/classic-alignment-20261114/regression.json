@@ -1,0 +1,52 @@
+{
+  "base": "c543c67421456fc894d19a963364bc7d7c4e1bf9",
+  "e2e": {
+    "stats": {
+      "startTime": "2026-11-13T23:04:59.201Z",
+      "duration": 545029.6950000001,
+      "expected": 158,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "retries": 0,
+    "workers": 1,
+    "timeoutMs": 30000,
+    "sourceReceipt": "C:\\Users\\user1000\\.codex\\tmp\\rc505-lcd-final2-e2e-20261114.json",
+    "receiptSha256": "c49deebee945621d6fe8e004331484438fc9a4277c43a341b7d87a6fc5965036"
+  },
+  "native": {
+    "portable": {
+      "passed": 55,
+      "total": 55,
+      "seconds": 39.91
+    },
+    "hqSimulation": {
+      "passed": 18,
+      "total": 18,
+      "seconds": 70.97
+    }
+  },
+  "unit": {
+    "numTotalTests": 3012,
+    "numPassedTests": 3012,
+    "numFailedTests": 0,
+    "success": true,
+    "receipt": "C:\\Users\\user1000\\.codex\\tmp\\rc505-lcd-final2-unit-20261114.json",
+    "receiptSha256": "b3bdf261e436b6e974b4f4b6e5c7118ff8680f74949625fbefcd6a9ac9eb8f74"
+  },
+  "build": {
+    "status": "PASS",
+    "exitCode": 0,
+    "seconds": 8.24,
+    "licenseFilesVerified": 6,
+    "warning": "Existing chunks exceed 500 kB; no threshold changed"
+  },
+  "localDeployment": {
+    "url": "http://127.0.0.1:4198/?audio=browser&ui=classic",
+    "sourceWorktree": "C:\\Users\\user1000\\.codex\\scratch\\rc505-native-pan-20261114",
+    "verification": "Local Chromium Browser virtual audio and Native simulation E2E; isolated no-audio screenshots on the existing live source server",
+    "realWasapi": "BLOCKED_PREVIOUS_AUTOMATIC_APPROVAL_REJECTION",
+    "physicalRC505": "UNMEASURED"
+  }
+}

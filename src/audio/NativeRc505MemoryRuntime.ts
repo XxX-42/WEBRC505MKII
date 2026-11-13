@@ -82,7 +82,36 @@ function assertNoPendingAutoRec(port: NativeMemoryPort, status: NativeStatus): v
     throw new Error('Cancel or reconcile every Native AUTO REC arm before Memory capture or switching.');
   }
 }
-function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
+// PAN is optional only as a complete capability: partial readback is never evidence.
+function panSnapshot(port: NativeMemoryPort, status: NativeStatus): { values: number[]; revisions: number[] } | undefined {
+  const tracks = status.nativeTracks ?? [];
+  const memory = status.nativeMemory as (typeof status.nativeMemory & { trackPans?: number[] });
+  const pans = tracks.map((track) => (track as typeof track & { pan?: { applied: number; requested: number; requestedRevision: number; appliedRevision: number; law: string } }).pan);
+  const bridge = port.bridge as typeof port.bridge & { hasUnresolvedNativeTrackPanOperation?: (trackId: number, status: NativeStatus | null) => boolean };
+  if ([1, 2, 3, 4, 5].some((id) => bridge.hasUnresolvedNativeTrackPanOperation?.(id, status))) {
+    throw new Error('Reconcile pending Native PAN operations before Memory capture or switching.');
+  }
+  if (memory?.trackPans === undefined && pans.every((pan) => pan === undefined)) return undefined;
+  if (tracks.length !== 5 || !Array.isArray(memory?.trackPans) || memory.trackPans.length !== 5) {
+    throw new Error('Native host lacks complete PAN Memory readback.');
+  }
+  const revisions: number[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    const pan = (tracks.find((track) => track.trackId === i + 1) as (typeof tracks)[number] & { pan?: { applied: number; requested: number; requestedRevision: number; appliedRevision: number; law: string } } | undefined)?.pan;
+    const value = memory.trackPans[i];
+    if (!pan || pan.law !== 'webaudio-stereo-v1' || !Number.isInteger(value) || value! < -50 || value! > 50 ||
+        !Number.isInteger(pan.applied) || !Number.isInteger(pan.requested) || pan.applied < -50 || pan.applied > 50 || pan.requested < -50 || pan.requested > 50 ||
+        !Number.isSafeInteger(pan.requestedRevision) || !Number.isSafeInteger(pan.appliedRevision) || pan.requestedRevision < 0 || pan.appliedRevision < 0) {
+      throw new Error(`Native Track ${i + 1} PAN readback is incomplete or invalid.`);
+    }
+    if (pan.requestedRevision !== pan.appliedRevision || pan.requested !== pan.applied || pan.applied !== value) {
+      throw new Error(`Wait for Native Track ${i + 1} PAN callback acknowledgement before Memory operations.`);
+    }
+    revisions.push(pan.appliedRevision);
+  }
+  return { values: [...memory.trackPans], revisions };
+}
+function nativeSettings(status: NativeStatus, pans?: number[]): Record<string, Rc505Json> {
   const native = status.nativeMemory;
   if (native?.version !== 1 || native.loopTransports.length !== 5 || !status.nativeRhythm) {
     throw new Error('Native host does not support atomic semantic Memory; update the host.');
@@ -162,7 +191,7 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
     ...(native.recQuantize === 'OFF' || native.recQuantize === 'MEASURE' ? { recQuantize: native.recQuantize } : {}),
     ...(native.loopSync?.length === 5 ? { loopSync: [...native.loopSync] } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
-    banks, loopTransports: copyJson(native.loopTransports), ...(dubModes ? { dubModes } : {}),
+    banks, loopTransports: copyJson(native.loopTransports), ...(dubModes ? { dubModes } : {}), ...(pans ? { trackPans: pans } : {}),
     bounce: native.bounce ? copyJson(native.bounce) : { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] },
     rhythm: { enabled: rhythm.enabled, bpm: rhythm.bpm, kitIndex: rhythm.kitIndex, patternIndex: rhythm.patternIndex,
       variation: ['A', 'B', 'C', 'D'].indexOf(rhythm.variation), section: ['main', 'intro', 'ending', 'fill'].indexOf(rhythm.section),
@@ -188,15 +217,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
   let preservedHostIncarnationId: string | null = null;
   const revision = () => {
     const status = port.status();
-    return `${status?.hostIncarnationId ?? 'unknown'}:${status?.projectContentRevision ?? 'unknown'}:${Transport.getInstance().projectMutationRevision}:${port.editRevision()}`;
+    return `${status?.hostIncarnationId ?? 'unknown'}:${status?.projectContentRevision ?? 'unknown'}:${Transport.getInstance().projectMutationRevision}:${port.editRevision()}:${JSON.stringify(status?.nativeTracks?.map((track) => (track as typeof track & { pan?: unknown }).pan) ?? null)}`;
   };
   const assertStopped = (status: NativeStatus | null) => { const result = stopped(status); if (!result.allowed) throw new Error(result.reason); };
   return {
     revision,
     canSwitch: () => {
-      if (port.pendingEdits?.()) return { allowed: false, reason: 'Wait for pending Native FX edits before switching Memory.' };
+      if (port.pendingEdits?.()) return { allowed: false, reason: 'Wait for pending Native FX or PAN edits before switching Memory.' };
       const status = port.status();
-      try { if (status) assertNoPendingAutoRec(port, status); }
+      try { if (status) { assertNoPendingAutoRec(port, status); panSnapshot(port, status); } }
       catch (error) { return { allowed: false, reason: error instanceof Error ? error.message : String(error) }; }
       if ([1, 2, 3, 4, 5].some((trackId) => port.bridge.hasUnresolvedNativeAutoRecOperation(trackId, status))) {
         return { allowed: false, reason: 'Cancel or reconcile every Native AUTO REC arm before switching Memory.' };
@@ -204,7 +233,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       return stopped(status);
     },
     capture: async () => {
-      if (port.pendingEdits?.()) throw new Error('Wait for pending Native FX edits before Memory capture.');
+      if (port.pendingEdits?.()) throw new Error('Wait for pending Native FX or PAN edits before Memory capture.');
       const initial = await port.bridge.getStatus();
       if (!isNativeHostIncarnationId(initial.hostIncarnationId)) throw new Error('Native host incarnation is unavailable; Memory semantics cannot be safely captured.');
       if (preservedHostIncarnationId !== null && preservedHostIncarnationId !== initial.hostIncarnationId) {
@@ -217,7 +246,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       if (!Number.isSafeInteger(initial.projectContentRevision) || initial.projectContentRevision! >= Number.MAX_SAFE_INTEGER) throw new Error('Native Memory revision is unavailable or exhausted.');
       assertStopped(initial);
       assertNoPendingAutoRec(port, initial);
-      const settings = nativeSettings(initial);
+      const initialPans = panSnapshot(port, initial);
+      const settings = nativeSettings(initial, initialPans?.values);
       const before = initial.projectContentRevision;
       const local = port.editRevision();
       const transport = Transport.getInstance();
@@ -228,6 +258,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const after = await port.bridge.getStatus();
       assertStopped(after);
       assertNoPendingAutoRec(port, after);
+      const afterPans = panSnapshot(port, after);
+      if (JSON.stringify(initialPans) !== JSON.stringify(afterPans)) throw new Error('Native PAN changed during Memory capture.');
       if (initial.hostIncarnationId !== after.hostIncarnationId || before !== after.projectContentRevision || after.projectContentRevisionSnapshotStable !== true
         || local !== port.editRevision() || transportRevision !== Transport.getInstance().projectMutationRevision) {
         throw new Error('Native Memory changed during capture.');
@@ -238,6 +270,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         for (const key of ['level', 'pan', 'reverse', 'oneShot', 'tempoSync', 'measure', 'startMode', 'stopMode']) {
           fields[`track.${track}.${key}`] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
         }
+        if (initialPans) fields[`track.${track}.pan`] = { value: initialPans.values[track - 1]!, availability: 'supported' };
         fields[`track.${track}.dubMode`] = settings.dubModes
           ? { value: (settings.dubModes as Rc505Json[])[track - 1]!, availability: 'supported' }
           : { value: null, availability: 'unsupported', reason: 'Native host does not implement DUB MODE Memory.' };
@@ -287,6 +320,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       assertStopped(current);
       assertNoPendingAutoRec(port, current);
       assertLoopTransportReadback(current);
+      const currentPans = panSnapshot(port, current);
       if (!isNativeHostIncarnationId(expectedHostIncarnationId) || !isNativeHostIncarnationId(current.hostIncarnationId) ||
           current.hostIncarnationId !== expectedHostIncarnationId ||
           current.projectContentRevision !== expectedHostRevision || current.projectContentRevisionSnapshotStable !== true) {
@@ -294,6 +328,21 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       if (!document.extensions.WEBRC.nativeMemory) throw new Error('This Memory has no Native engine settings.');
       const settings = document.extensions.WEBRC.nativeMemory as Record<string, Rc505Json>;
+      const savedPans = settings.trackPans;
+      if (savedPans !== undefined && (!Array.isArray(savedPans) || savedPans.length !== 5 ||
+          savedPans.some((value) => !Number.isInteger(value) || (value as number) < -50 || (value as number) > 50))) {
+        throw new Error('Native Memory requires five valid PAN values.');
+      }
+      if (savedPans !== undefined && !currentPans) throw new Error('This Native host does not support PAN Memory restore.');
+      const targetPans = currentPans ? (savedPans as number[] | undefined) ?? [0, 0, 0, 0, 0] : undefined;
+      if (savedPans !== undefined) {
+        for (let track = 1; track <= 5; track += 1) {
+          const field = document.semantics.fields[`track.${track}.pan`];
+          if (field?.availability !== 'supported' || field.value !== (savedPans as number[])[track - 1]) {
+            throw new Error(`Native Memory PAN semantic field for Track ${track} is missing or inconsistent.`);
+          }
+        }
+      }
       const savedAutoRec = settings.autoRec === undefined ? { enabled: false, sensitivity: 50 }
         : settings.autoRec && typeof settings.autoRec === 'object' && !Array.isArray(settings.autoRec)
           && typeof (settings.autoRec as { enabled?: unknown }).enabled === 'boolean'
@@ -389,6 +438,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         expectedFields[`track.${track}.bounceIn`] = bounceSettings.bounceIn[track - 1]!;
         expectedFields[`track.${track}.bounceTrack`] = bounceSettings.bounceTrack[track - 1]!;
         if (dubModes) expectedFields[`track.${track}.dubMode`] = dubModes[track - 1]!;
+        if (savedPans) expectedFields[`track.${track}.pan`] = (savedPans as number[])[track - 1]!;
       }
       if (dubModes) {
         for (let track = 1; track <= 5; track += 1) {
@@ -405,6 +455,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       const decodedArchive = await decodeProjectArchive(document.archive);
       const importHostStatus = await port.bridge.getStatus();
+      if (JSON.stringify(panSnapshot(port, importHostStatus)) !== JSON.stringify(currentPans)) {
+        throw new Error('Native PAN changed during Memory preparation; no import was submitted.');
+      }
       if (!isNativeHostIncarnationId(importHostStatus.hostIncarnationId) ||
           importHostStatus.hostIncarnationId !== expectedHostIncarnationId ||
           importHostStatus.projectContentRevision !== expectedHostRevision) {
@@ -465,6 +518,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             throw new Error('Native Memory candidate is stale because project or transport changed before commit.');
           }
           try {
+          if (currentPans && JSON.stringify(panSnapshot(port, await port.bridge.getStatus())) !== JSON.stringify(currentPans)) {
+            throw new Error('Native PAN changed before Memory commit; the candidate was not committed.');
+          }
           await port.bridge.commitPreparedMemory(generation, acceptance.hostIncarnationId);
           const result = await port.bridge.waitForProjectArchiveImport(generation, acceptance.hostIncarnationId, 10_000);
           if (result.state === 'unavailable') throw new Error('Native host restarted during Memory commit; status is unverifiable and no follow-up sync was applied.');
@@ -480,6 +536,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           port.committed?.(generation);
           const deadline = Date.now() + 10_000;
           const readbackAcknowledged = (status: NativeStatus): boolean => {
+            let readbackPans: ReturnType<typeof panSnapshot>;
+            try { readbackPans = panSnapshot(port, status); } catch { return false; }
+            const panAcknowledged = !targetPans || !!readbackPans && targetPans.every((value, index) => readbackPans!.values[index] === value);
             const gates = status.nativeFx?.trackFxApply;
             const bounce = status.nativeBounce;
             const bounceAcknowledged = bounce && bounce.requestedRevision === bounce.appliedRevision;
@@ -505,7 +564,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
               && status.nativeMemory?.autoRec?.enabled === targetAutoRec.enabled
               && status.nativeMemory?.autoRec?.sensitivity === targetAutoRec.sensitivity
               && status.nativeAutoRec.tracks.every((track) => !track.armed));
-            return Boolean(bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
+            return Boolean(panAcknowledged && bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
               && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)
               && quantizeAcknowledged && loopSyncAcknowledged && autoRecAcknowledged);
           };
@@ -524,6 +583,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
               throw new Error('Native Memory committed, but one or more LOOP SYNC tracks failed same-host readback.');
             }
             if (readbackAcknowledged(status)) {
+              const acknowledgedPans = panSnapshot(port, status);
               if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
                 throw new Error('Native Memory committed, but transport changed during callback acknowledgement; imported transport was not applied and archive BPM was not synchronized to Native rhythm, preserving the user edit.');
               }
@@ -548,6 +608,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
                 throw new Error('Native Memory committed, but transport changed before final synchronization; imported transport was not applied and Native rhythm may remain at the imported archive BPM.');
               }
               if (readbackAcknowledged(finalStatus) &&
+                  JSON.stringify(panSnapshot(port, finalStatus)) === JSON.stringify(acknowledgedPans) &&
                   finalStatus.nativeRhythm?.available === true && finalStatus.nativeRhythm.bpm === document.semantics.tempo) {
                 // Commit opaque target metadata only after all ACKs survive the
                 // final same-incarnation readback.
@@ -559,7 +620,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
                 break;
               }
             }
-            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but DUB MODE, Bounce, or FX gate render acknowledgements timed out.`);
+            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but PAN, DUB MODE, Bounce, or FX gate render acknowledgements timed out.`);
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
           if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {

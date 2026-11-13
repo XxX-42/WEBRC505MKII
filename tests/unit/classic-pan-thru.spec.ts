@@ -32,8 +32,9 @@ beforeEach(() => {
     playbackSourceOutput: { gain: { value: 1 } }, historyBusy: false,
     updateSettings() { TrackAudio.prototype.updateSettings.call(this as any); } };
   fixture.engine = { tracks: [audio], monitoringEnabled: false, getMode: () => 'browser',
-    getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
+    getUiStatus: () => ({ ready: true, engineRunning: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
+    getNativeTrackPanStatus: () => null, isNativeTrackPanWritePending: () => false, setNativeTrackPan: vi.fn(async () => undefined),
     getNativeDubModeStatus: () => null,
     setNativeDubMode: vi.fn(async () => undefined),
     getBrowserAutoRecSettings: () => null,
@@ -91,12 +92,49 @@ describe('Classic existing audio controls', () => {
     expect(field.disabled).toBe(true);
     expect(field.reason).toContain('callback acknowledgement');
   });
-  it('leaves Native PAN explicitly disabled without changing its track', () => {
+  it('does not present a stale proxy PAN as confirmed on an older Native host', () => {
     fixture.engine.getMode = () => 'native';
+    fixture.engine.tracks[0].track.pan = 35;
     const { editor } = createEditor('track');
     const field = editor.fields.value.find(field => field.key === 'track-pan')!;
-    expect(field.disabled).toBe(true); expect(field.reason).toContain('no audio provider');
-    field.setValue!(50); expect(fixture.engine.tracks[0].track.pan).toBe('CENTER');
+    expect(field.disabled).toBe(true); expect(field.value).toBe(0);
+    expect(field.format!(0)).toBe('UNAVAILABLE'); expect(field.reason).toContain('Native PAN readback unavailable');
+    field.setValue!(50); expect(fixture.engine.tracks[0].track.pan).toBe('R35');
+  });
+  it('rejects a stale PAN field after switching audio modes', async () => {
+    const { editor } = createEditor('track');
+    const oldField = editor.fields.value.find(field => field.key === 'track-pan')!;
+    fixture.engine.getMode = () => 'native';
+    await oldField.setValue!(35); await settle();
+    expect(fixture.engine.tracks[0].track.pan).toBe('CENTER');
+    expect(fixture.engine.setNativeTrackPan).not.toHaveBeenCalled();
+    expect(editor.status.value).toContain('audio mode changed');
+  });
+  it('uses acknowledged Native PAN and sends the selected track to the provider', async () => {
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getNativeTrackPanStatus = () => ({ applied: -12, requested: -12, requestedRevision: 1, appliedRevision: 1, law: 'webaudio-stereo-v1', hostIncarnationId: 'a'.repeat(32) });
+    const { editor } = createEditor('track');
+    const field = editor.fields.value.find(field => field.key === 'track-pan')!;
+    expect(field.disabled).toBe(false); expect(field.value).toBe(-12);
+    await field.setValue!(50); await settle();
+    expect(fixture.engine.setNativeTrackPan).toHaveBeenCalledWith(1, 50, { hostIncarnationId: 'a'.repeat(32), expectedRevision: 1 });
+    expect(fixture.engine.tracks[0].track.pan).toBe('CENTER');
+  });
+  it('disables Native PAN while Native audio is stopped', () => {
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getUiStatus = () => ({ ready: false, engineRunning: false });
+    fixture.engine.getNativeTrackPanStatus = () => ({ applied: 0, requested: 0, requestedRevision: 0, appliedRevision: 0, law: 'webaudio-stereo-v1', hostIncarnationId: 'a'.repeat(32) });
+    const { editor } = createEditor('track');
+    const field = editor.fields.value.find(field => field.key === 'track-pan')!;
+    expect(field.disabled).toBe(true); expect(field.reason).toContain('Start Native audio');
+  });
+  it('displays applied PAN while the callback is pending', () => {
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getNativeTrackPanStatus = () => ({ applied: -12, requested: 30, requestedRevision: 2, appliedRevision: 1, law: 'webaudio-stereo-v1', hostIncarnationId: 'a'.repeat(32) });
+    fixture.engine.isNativeTrackPanWritePending = () => true;
+    const { editor } = createEditor('track');
+    const field = editor.fields.value.find(field => field.key === 'track-pan')!;
+    expect(field.value).toBe(-12); expect(field.disabled).toBe(true);
   });
   it('places global INPUT THRU under OUTPUT / ROUTING / INPUT/RHYTHM and retains confirmation', async () => {
     const { editor, confirm } = createEditor('output', 'menu');

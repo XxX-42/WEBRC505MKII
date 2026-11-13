@@ -29,6 +29,7 @@ import { useRc505FxSwitchSettings } from './useRc505FxSwitchSettings';
 import { assertTrackFxApplyConfirmed } from '../audio/TrackFxApplyStatus';
 import { useRc505Memory } from './useRc505Memory';
 import { useRc505LoopIndicator, type Rc505LoopIndicatorMode } from './useRc505LoopIndicator';
+import { rc505LcdFieldText } from '../ui/rc505/Rc505LcdFieldText';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -42,6 +43,9 @@ export interface DeviceScreenField {
   label: string;
   value: number;
   kind: DeviceScreenFieldKind;
+  shortLabel?: string;
+  shortValue?: string;
+  fullText?: string;
   options?: readonly DeviceScreenOption[];
   min?: number;
   max?: number;
@@ -694,8 +698,14 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const base: DeviceScreenField[] = [
       makeNumberField('bpm', 'TEMPO', Transport.getInstance().bpm, (value) => { Transport.getInstance().setBpm(Math.max(40, Math.min(300, Math.round(value)))); }, { min: 40, max: 300, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeNumberField('volume', 'VOLUME', rhythm.volume.value, async (value) => { rhythm.volume.value = Math.max(0, Math.min(100, value)); await rhythm.updateVolume(); }, { min: 0, max: 100, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
-      makeEnumField('pattern', 'PATTERN', rhythmUiState.patternIndex, patternOptions, (value) => { void rhythm.updateSelection({ patternIndex: value }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
-      makeEnumField('kit', 'KIT', rhythmUiState.kitIndex, kitOptions, (value) => { void rhythm.updateSelection({ kitIndex: value }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
+      makeEnumField('pattern', 'PATTERN', rhythmUiState.patternIndex, patternOptions, (value) => { void rhythm.updateSelection({ patternIndex: value }); }, {
+        disabled: rhythm.disabled.value, reason: rhythm.message.value,
+        ...(classic ? { shortValue: RHYTHM_PATTERN_CATALOG.find(pattern => pattern.globalIndex === rhythmUiState.patternIndex)?.pattern ?? '--' } : {}),
+      }),
+      makeEnumField('kit', 'KIT', rhythmUiState.kitIndex, kitOptions, (value) => { void rhythm.updateSelection({ kitIndex: value }); }, {
+        disabled: rhythm.disabled.value, reason: rhythm.message.value,
+        ...(classic ? { shortValue: DRUM_KIT_CATALOG.find(kit => kit.index === rhythmUiState.kitIndex)?.officialName ?? '--' } : {}),
+      }),
       makeEnumField('variation', 'VARIATION', RHYTHM_VARIATIONS.indexOf(rhythmUiState.variation), fieldOptions(RHYTHM_VARIATIONS), (value) => { void rhythm.updateSelection({ variation: RHYTHM_VARIATIONS[value] ?? 'A' }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeEnumField('section', 'SECTION', RHYTHM_SECTIONS.indexOf(rhythmUiState.section), fieldOptions(RHYTHM_SECTIONS.map((item) => item.toUpperCase())), (value) => { void rhythm.updateSelection({ section: RHYTHM_SECTIONS[value] ?? 'main' }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeNumberField('swing', 'SWING', rhythmUiState.swingPercent, (value) => { void rhythm.updateSelection({ swingPercent: Math.max(50, Math.min(75, Math.round(value))) }); }, { min: 50, max: 75, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
@@ -765,15 +775,25 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     ];
     // Roland Parameter Guide v1.3+, p.2: TRACK PAN L50–CENTER–R50.
     // https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf
-    if (classic) fields.push(makeNumberField('track-pan', 'PAN', panValue, (value) => {
-      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('Native track pan has no audio provider.');
+    const panMode = engine.getMode();
+    const isNativePan = panMode === 'native';
+    const nativePan = isNativePan ? engine.getNativeTrackPanStatus?.(bounceTarget) : null;
+    const nativePanPending = engine.getMode() === 'native' && engine.isNativeTrackPanWritePending?.() === true;
+    const nativePanStopped = engine.getMode() === 'native' && engine.getUiStatus().engineRunning !== true;
+    if (classic) fields.push(makeNumberField('track-pan', 'PAN', isNativePan ? (nativePan?.applied ?? 0) : panValue, (value) => {
+      if (currentTrackId.value !== bounceTarget || engine.getMode() !== panMode) throw new Error('Track selection or audio mode changed; select the track again.');
       if (!Number.isFinite(value)) throw new Error('PAN requires a finite value.');
-      audioTrack.track.pan = Math.max(-50, Math.min(50, Math.round(value)));
-      audioTrack.updateSettings();
+      const bounded = Math.max(-50, Math.min(50, Math.round(value)));
+      if (isNativePan) {
+        if (!nativePan) throw new Error('Native PAN readback unavailable.');
+        return engine.setNativeTrackPan(bounceTarget, bounded, { hostIncarnationId: nativePan.hostIncarnationId, expectedRevision: nativePan.requestedRevision });
+      }
+      if (!audioTrack) throw new Error('Track is unavailable.');
+      audioTrack.track.pan = bounded; audioTrack.updateSettings();
     }, { min: -50, max: 50, step: 1,
-      format: (value) => value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
-      disabled: engine.getMode() !== 'browser' || !audioTrack,
-      reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
+      format: (value) => isNativePan && !nativePan ? 'UNAVAILABLE' : value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
+      disabled: !audioTrack || (engine.getMode() === 'native' && (!nativePan || nativePanPending || nativePanStopped)),
+      reason: engine.getMode() === 'native' ? (!nativePan ? 'Native PAN readback unavailable.' : nativePanStopped ? 'Start Native audio to change PAN.' : nativePanPending ? 'Wait for Native PAN callback acknowledgement.' : 'Browser-compatible stereo pan law.') : '' }));
     if (classic && audioTrack) {
       const dubModes = ['OVERDUB', 'REPLACE1', 'REPLACE2'] as const;
       const nativeDubMode = engine.getMode() === 'native' ? engine.getNativeDubModeStatus(bounceTarget) : null;
@@ -1423,6 +1443,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const fxChangeBlocked = () => (device.state.page === 'input-fx' && controls.state.fxBusy.input) || (device.state.page === 'track-fx' && controls.state.fxBusy.track);
   const fields = computed<readonly DeviceScreenField[]>(() => (pages.value[Math.min(pageIndex.value, pages.value.length - 1)] ?? []).map((field) => ({
     ...field,
+    ...(classic ? rc505LcdFieldText(field) : {}),
     ...(semanticMemory.state.busy ? { disabled: true, reason: 'Wait for the Memory transaction to finish.' } : {}),
     ...(fxChangeBlocked()
       ? { disabled: true, reason: 'Wait for the current FX bank application.' } : {}),

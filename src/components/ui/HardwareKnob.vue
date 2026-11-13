@@ -12,7 +12,7 @@
     :aria-label="ariaLabel || label || 'Hardware knob'"
     :aria-valuemin="min"
     :aria-valuemax="max"
-    :aria-valuenow="liveValue"
+    :aria-valuenow="displayedValue"
     :aria-valuetext="`${ariaLabel || label || 'Value'}: ${displayValue}`"
     :aria-disabled="disabled"
     :aria-description="disabled && disabledReason ? disabledReason : undefined"
@@ -81,6 +81,8 @@ interface EncoderInteractionDetail {
 
 const props = withDefaults(defineProps<{
   modelValue: number;
+  confirmedOnly?: boolean;
+  confirmedRevision?: number;
   min?: number;
   max?: number;
   label?: string;
@@ -95,6 +97,8 @@ const props = withDefaults(defineProps<{
   pushable?: boolean;
   interactionContextKey?: string | number;
 }>(), {
+  confirmedOnly: false,
+  confirmedRevision: 0,
   min: 0,
   max: 100,
   label: '',
@@ -151,16 +155,20 @@ const dragThresholdPx = 4;
 const pixelsPerRelativeStep = 4;
 const touchPushHoldMs = 350;
 
-const displayValue = computed(() => Number.isInteger(liveValue.value)
-  ? String(liveValue.value)
-  : liveValue.value.toFixed(2).replace(/\.?0+$/, ''));
-
 const liveValue = ref(props.modelValue);
+// Relative gestures express intent; only parent readback is evidence of a value.
+const displayedValue = computed(() => props.interactionMode === 'relative' || props.confirmedOnly ? props.modelValue : liveValue.value);
+const displayValue = computed(() => Number.isInteger(displayedValue.value)
+  ? String(displayedValue.value)
+  : displayedValue.value.toFixed(2).replace(/\.?0+$/, ''));
 const normalizedValue = computed(() => {
   const range = props.max - props.min;
   if (!(range > 0)) return 0;
-  return Math.max(0, Math.min(1, (liveValue.value - props.min) / range));
+  return Math.max(0, Math.min(1, (displayedValue.value - props.min) / range));
 });
+
+watch(() => props.interactionMode, () => { liveValue.value = props.modelValue; });
+watch(() => props.confirmedRevision, () => { if (!isDragging.value) liveValue.value = props.modelValue; });
 
 watch(() => props.modelValue, (value) => {
   if (props.interactionMode === 'relative' || !isDragging.value) {
@@ -291,8 +299,6 @@ const updateLegacyValueFromPointer = (e: PointerEvent) => {
 const emitRelativeSteps = (delta: number, gesture: 'rotate' | 'pressRotate') => {
   if (delta === 0) return;
   const source = interactionDetail('pointer', gesture, activePointerType.value);
-  const step = props.step > 0 ? props.step : (Math.max(0, props.max - props.min) / 100 || 1);
-  liveValue.value = Math.max(props.min, Math.min(props.max, liveValue.value + delta * step));
   if (gesture === 'pressRotate') emit('pressRotate', delta, source);
   else emit('rotate', delta, source);
 };
@@ -369,7 +375,7 @@ const finishPointerGesture = (cancelReason?: EncoderCancelReason) => {
   }
   pointerTarget.value = null;
 
-  if (pointerInteractionMode !== 'relative') return;
+  if (pointerInteractionMode !== 'relative') { liveValue.value = props.modelValue; return; }
   if (cancelReason) {
     emit('cancel', cancelReason, detail);
     return;
@@ -450,7 +456,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault();
       const target = event.key === 'Home' ? props.min : props.max;
-      const delta = Math.round((target - liveValue.value) / step);
+      const delta = Math.round((target - displayedValue.value) / step);
       emitKeyboardSteps(delta, keyboardPushHeld ? 'pressRotate' : 'rotate');
       if (keyboardPushHeld && delta !== 0) keyboardPushRotated = true;
       return;
@@ -493,8 +499,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
 const emitKeyboardSteps = (delta: number, gesture: 'rotate' | 'pressRotate') => {
   if (delta === 0) return;
   const detail = interactionDetail('keyboard', gesture, undefined, keyboardPushHeld ? keyboardGestureStartedKey : props.interactionContextKey);
-  const step = props.step > 0 ? props.step : (Math.max(0, props.max - props.min) / 100 || 1);
-  liveValue.value = Math.max(props.min, Math.min(props.max, liveValue.value + delta * step));
   if (gesture === 'pressRotate') emit('pressRotate', delta, detail);
   else emit('rotate', delta, detail);
 };

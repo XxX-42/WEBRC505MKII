@@ -7,7 +7,7 @@ import { Rc505MemoryCommittedError, decodeRc505Memory } from '../../src/audio/Rc
 import { encodeProjectArchive } from '../../src/audio/projectArchive';
 import { Transport } from '../../src/core/Transport';
 import { ProjectMemoryStore } from '../../src/audio/projectMemoryStore';
-import type { NativeBridgeClient, NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { NativeBridgeClient, type NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 function fixture(archiveBpm = 120) {
   const hostIncarnationId = 'a'.repeat(32);
@@ -85,6 +85,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  sessionStorage.clear();
   vi.restoreAllMocks();
   const transport = Transport.getInstance();
   transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
@@ -92,6 +93,81 @@ afterEach(() => {
 });
 
 describe('Native semantic Memory runtime', () => {
+  it('captures and restores coherent PAN, defaults legacy Memory to center, and rejects inconsistent fields', async () => {
+    const h = fixture();
+    const status = h.hostStatus() as any;
+    const setPans = (values: number[], revision: number) => {
+      status.nativeMemory.trackPans = [...values];
+      status.nativeTracks.forEach((track: any, i: number) => { track.pan = { requested: values[i], applied: values[i], requestedRevision: revision, appliedRevision: revision, law: 'webaudio-stereo-v1' }; });
+    };
+    setPans([-50, -10, 0, 10, 50], 1);
+    const captured = await h.runtime.capture();
+    expect((captured.extensions.WEBRC.nativeMemory as any).trackPans).toEqual([-50, -10, 0, 10, 50]);
+    expect(captured.semantics.fields['track.1.pan']).toEqual({ value: -50, availability: 'supported' });
+    const bad = structuredClone(captured);
+    bad.semantics.fields['track.1.pan'].value = 2;
+    await expect(h.runtime.prepare(bad, h.runtime.revision())).rejects.toThrow(/PAN semantic field/);
+    const candidate = await h.runtime.prepare(captured, h.runtime.revision());
+    await candidate.commit();
+    expect(h.install).toHaveBeenCalled();
+    const legacy = structuredClone(captured);
+    delete (legacy.extensions.WEBRC.nativeMemory as any).trackPans;
+    for (let i = 1; i <= 5; i++) delete legacy.semantics.fields[`track.${i}.pan`];
+    const legacyCandidate = await h.runtime.prepare(legacy, h.runtime.revision());
+    h.bridge.commitPreparedMemory.mockImplementationOnce(async () => { setPans([0, 0, 0, 0, 0], 2); });
+    await legacyCandidate.commit();
+    expect(status.nativeMemory.trackPans).toEqual([0, 0, 0, 0, 0]);
+  });
+  it('blocks Memory across refresh while a lost PAN request is unresolved and detects a later ABA edit', async () => {
+    const h = fixture();
+    const status = h.hostStatus() as any;
+    status.nativeMemory.trackPans = [0, 0, 0, 0, 0];
+    status.nativeTracks.forEach((track: any) => { track.pan = { requested: 0, applied: 0, requestedRevision: 1, appliedRevision: 1, law: 'webaudio-stereo-v1' }; });
+    const captured = await h.runtime.capture();
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('response lost'); }));
+    const client = new NativeBridgeClient();
+    await expect(client.setTrackPan(1, 20, 1, status.hostIncarnationId)).rejects.toThrow();
+    const refreshedClient = new NativeBridgeClient();
+    (h.bridge as any).hasUnresolvedNativeTrackPanOperation = refreshedClient.hasUnresolvedNativeTrackPanOperation.bind(refreshedClient);
+    expect(h.runtime.canSwitch().allowed).toBe(false);
+    await expect(h.runtime.capture()).rejects.toThrow(/pending Native PAN/);
+    await expect(h.runtime.prepare(captured, h.runtime.revision())).rejects.toThrow(/pending Native PAN/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+    // A later applied revision proves the uncertain request has settled, even if the user returned to center.
+    status.nativeTracks[0].pan.requestedRevision = 3;
+    status.nativeTracks[0].pan.appliedRevision = 3;
+    expect(h.runtime.canSwitch().allowed).toBe(true);
+    const candidate = await h.runtime.prepare(captured, h.runtime.revision());
+    status.nativeTracks[0].pan.requestedRevision = 5;
+    status.nativeTracks[0].pan.appliedRevision = 5;
+    await expect(candidate.commit()).rejects.toThrow(/stale|PAN changed/);
+    expect(h.bridge.commitPreparedMemory).not.toHaveBeenCalled();
+  });
+  it('rejects pending, partial, unknown-host and ABA PAN snapshots', async () => {
+    const h = fixture();
+    const status = h.hostStatus() as any;
+    const old = await h.runtime.capture();
+    expect(old.semantics.fields['track.1.pan'].availability).toBe('unsupported');
+    const unsupportedTarget = structuredClone(old);
+    (unsupportedTarget.extensions.WEBRC.nativeMemory as any).trackPans = [0, 0, 0, 0, 0];
+    await expect(h.runtime.prepare(unsupportedTarget, h.runtime.revision())).rejects.toThrow(/does not support PAN/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+    status.nativeMemory.trackPans = [0, 0, 0, 0, 0];
+    status.nativeTracks.forEach((track: any) => { track.pan = { requested: 0, applied: 0, requestedRevision: 1, appliedRevision: 1, law: 'webaudio-stereo-v1' }; });
+    status.nativeTracks[0].pan.requestedRevision = 2;
+    expect(h.runtime.canSwitch().allowed).toBe(false);
+    await expect(h.runtime.capture()).rejects.toThrow(/PAN callback/);
+    status.nativeTracks[0].pan.requestedRevision = 1;
+    const doc = await h.runtime.capture();
+    const candidate = await h.runtime.prepare(doc, h.runtime.revision());
+    status.nativeTracks[0].pan.requestedRevision = 3;
+    status.nativeTracks[0].pan.appliedRevision = 3;
+    await expect(candidate.commit()).rejects.toThrow(/stale|PAN changed/);
+    expect(h.bridge.commitPreparedMemory).not.toHaveBeenCalled();
+    delete status.nativeTracks[0].pan;
+    await expect(h.runtime.capture()).rejects.toThrow(/PAN readback/);
+  });
+
   it('round-trips only acknowledged AUTO REC settings and rejects Memory boundaries while armed', async () => {
     const h = fixture();
     const status = h.hostStatus();

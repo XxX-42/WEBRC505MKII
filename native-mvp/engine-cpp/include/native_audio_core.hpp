@@ -280,6 +280,8 @@ struct EngineStatus {
         NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
         NativeDubMode::Overdub, NativeDubMode::Overdub
     }};
+    std::array<int, kNativeTrackCount> nativeTrackPans{}, nativeTrackRequestedPans{}, nativeMemoryTrackPans{};
+    std::array<std::uint64_t, kNativeTrackCount> nativePanRequestedRevision{}, nativePanAppliedRevision{};
     std::array<NativeDubMode, kNativeTrackCount> nativeTrackDubModes{};
     std::array<NativeDubMode, kNativeTrackCount> nativeTrackRequestedDubModes{};
     std::array<std::uint64_t, kNativeTrackCount> nativeDubModeRequestedRevision{};
@@ -511,6 +513,8 @@ struct NativeMemorySettings {
         NativeDubMode::Overdub, NativeDubMode::Overdub
     }};
     bool dubModesIncluded = false;
+    std::array<int, kNativeTrackCount> trackPans{};
+    bool trackPansIncluded = false;
     NativeBounceSettings bounce{};
 };
 
@@ -685,6 +689,7 @@ public:
     // applies it at an audio callback boundary and reports the requested and
     // applied revisions in EngineStatus. Mode edits are refused while the
     // selected track is recording/overdubbing or a start is pending.
+    bool setNativeTrackPan(std::size_t trackIndex, int pan, std::uint64_t expectedRevision, std::uint64_t& acceptedRevision, std::string& error);
     bool setNativeDubMode(std::size_t trackIndex, NativeDubMode mode,
         std::uint64_t& requestedRevision, std::string& error);
     bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
@@ -880,6 +885,7 @@ private:
     void applyNativePitchCommands() noexcept;
     void applyNativeLoopTransportCommands() noexcept;
     void applyNativeDubModeCommands() noexcept;
+    void applyNativeTrackPans() noexcept;
     void applyOfficialSourceTransports() noexcept;
     void prepareVocoderCarriers(unsigned int frames) noexcept;
     [[nodiscard]] bool processLoopSnapshotRequestAtCallback() noexcept;
@@ -1173,6 +1179,10 @@ private:
     // has been applied, so control producers cannot race the queue head.
     std::array<std::atomic<std::uint32_t>, kNativeTrackCount> nativeLoopTransportPendingCommands_{};
     std::array<std::atomic<std::uint32_t>, kNativeTrackCount> pendingTrackStateCommands_{};
+    std::array<std::atomic<int>, kNativeTrackCount> nativeTrackPans_{}, nativeTrackRequestedPans_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativePanRequestedRevision_{}, nativePanAppliedRevision_{}, nativePanAppliedSequence_{};
+    std::array<int, kNativeTrackCount> nativeMemoryTrackPans_{};
+    std::array<float, kNativeTrackCount> nativePanCos_{{1,1,1,1,1}}, nativePanSin_{};
     SpscRingQueue<NativeDubModeCommand, 16> nativeDubModeCommandQueue_;
     std::array<NativeDubModeCommand, kNativeTrackCount> pendingNativeDubModeCommands_{};
     std::array<bool, kNativeTrackCount> pendingNativeDubModeCommandValid_{};

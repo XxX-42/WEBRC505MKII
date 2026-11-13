@@ -3,6 +3,7 @@ import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-uti
 import { nextTick } from 'vue';
 import type { NativeBridgeClient, NativeRhythmConfig, NativeStatus } from '../../src/audio/NativeBridgeClient';
 import { nativeRhythmStatus } from '../helpers/nativeRhythmStatus';
+import { DRUM_KIT_CATALOG, RHYTHM_PATTERN_CATALOG } from '../../src/audio/rhythm';
 
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
@@ -25,7 +26,7 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
     applyStatus: (next) => { status = next; notify(); }, reportError: () => {}, notify,
   });
   const audio = {
-    rhythmEngine: rhythm, tracks: [], getMode: () => 'native',
+    rhythmEngine: rhythm, tracks: [], getMode: () => 'native', getMixerControlIdentity: () => 'fixture-native',
     getCapabilities: () => ({
       mode: 'native', modeSummary: 'NATIVE · TEST RUNTIME', supportedTrackCount: 0,
       supportsInputFx: false, supportsTrackFx: false, supportsReverse: false, supportsRhythm: rhythm.available,
@@ -87,6 +88,10 @@ describe('Native ACK-backed shared rhythm panels', () => {
     expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('197');
     expect(lcdGet(center, '[data-testid="lcd-field-kit"]').element.value).toBe('12');
     expect(lcdGet(center, '[data-testid="lcd-field-volume"]').element.value).toBe('73');
+    const values = center.findAll('.lcd-dial-value');
+    expect(values[2]!.text()).toBe(RHYTHM_PATTERN_CATALOG.find(pattern => pattern.globalIndex === 198)!.pattern);
+    expect(values[3]!.text()).toBe(DRUM_KIT_CATALOG.find(kit => kit.index === 13)!.officialName);
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').attributes('aria-valuetext')).toContain('198');
     await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('239');
     await lcdGet(center, '[data-testid="lcd-field-kit"]').setValue('15');
     await lcdGet(center, '[data-testid="lcd-field-volume"]').setValue('84');

@@ -1,0 +1,718 @@
+{
+  "scope": "Isolated Chromium 127.0.0.1:4198 Browser mode, fake microphone, 1600x1000; no Native device host",
+  "clock": "Event offsets relative to corresponding start marker in page performance.now milliseconds; node IDs are per-run WeakMap instrumentation identities, not persistent DOM IDs",
+  "before": {
+    "1": {
+      "marker": 7402.159999996424,
+      "controls": [
+        {
+          "role": "fx",
+          "instrumentedNodeId": 22,
+          "events": [
+            {
+              "offsetMs": 83.53,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 110.53,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 87.7,
+              "opacity": "0.64",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 34,
+          "uniqueFrameBounds": [
+            [
+              160.04498291015625,
+              511.0917663574219,
+              78.58157348632812,
+              35.361724853515625
+            ]
+          ]
+        },
+        {
+          "role": "stop",
+          "instrumentedNodeId": 24,
+          "events": [
+            {
+              "offsetMs": 83.7,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.62",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 110.63,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.62",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 87.7,
+              "opacity": "0.62",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 34,
+          "uniqueFrameBounds": [
+            [
+              160.04498291015625,
+              657.449951171875,
+              78.58157348632812,
+              78.58154296875
+            ]
+          ]
+        },
+        {
+          "role": "record",
+          "instrumentedNodeId": 25,
+          "events": [
+            {
+              "offsetMs": 83.82,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 110.69,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 87.7,
+              "opacity": "0.64",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 34,
+          "uniqueFrameBounds": [
+            [
+              190.00421142578125,
+              794.4765014648438,
+              126.7127685546875,
+              126.7127685546875
+            ]
+          ]
+        }
+      ],
+      "hardwareNodeRemovalMutations": 0
+    },
+    "2": {
+      "marker": 8144.729999989271,
+      "controls": [
+        {
+          "role": "fx",
+          "instrumentedNodeId": 26,
+          "events": [
+            {
+              "offsetMs": 55.59,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 73.32,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 61.8,
+              "opacity": "0.64",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              430.1690979003906,
+              511.0917663574219,
+              78.58157348632812,
+              35.361724853515625
+            ]
+          ]
+        },
+        {
+          "role": "stop",
+          "instrumentedNodeId": 28,
+          "events": [
+            {
+              "offsetMs": 55.74,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.62",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 73.41,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.62",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 61.8,
+              "opacity": "0.62",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              430.1690979003906,
+              657.449951171875,
+              78.58157348632812,
+              78.58154296875
+            ]
+          ]
+        },
+        {
+          "role": "record",
+          "instrumentedNodeId": 29,
+          "events": [
+            {
+              "offsetMs": 55.83,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": "not captured"
+            },
+            {
+              "offsetMs": 73.47,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 61.8,
+              "opacity": "0.64",
+              "ariaBusy": "not captured"
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              460.1283264160156,
+              794.4765014648438,
+              126.71279907226562,
+              126.7127685546875
+            ]
+          ]
+        }
+      ],
+      "hardwareNodeRemovalMutations": 0
+    }
+  },
+  "after": {
+    "1": {
+      "marker": 7199.034999996424,
+      "controls": [
+        {
+          "role": "fx",
+          "instrumentedNodeId": 22,
+          "events": [
+            {
+              "offsetMs": 74.48,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 93.8,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 75.3,
+              "opacity": "0.64",
+              "ariaBusy": null
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              160.04498291015625,
+              511.0917663574219,
+              78.58157348632812,
+              35.361724853515625
+            ]
+          ]
+        },
+        {
+          "role": "stop",
+          "instrumentedNodeId": 24,
+          "events": [
+            {
+              "offsetMs": 74.64,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 74.65,
+              "attribute": "aria-busy",
+              "old": null,
+              "new": "true",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 93.94,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 93.95,
+              "attribute": "aria-busy",
+              "old": "true",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 75.3,
+              "opacity": "1",
+              "ariaBusy": "true"
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              160.04498291015625,
+              657.449951171875,
+              78.58157348632812,
+              78.58154296875
+            ]
+          ]
+        },
+        {
+          "role": "record",
+          "instrumentedNodeId": 25,
+          "events": [
+            {
+              "offsetMs": 74.67,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 74.69,
+              "attribute": "aria-busy",
+              "old": null,
+              "new": "true",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 94.0,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 94.03,
+              "attribute": "aria-busy",
+              "old": "true",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 75.3,
+              "opacity": "1",
+              "ariaBusy": "true"
+            }
+          ],
+          "frameCount": 31,
+          "uniqueFrameBounds": [
+            [
+              190.00421142578125,
+              794.4765014648438,
+              126.7127685546875,
+              126.7127685546875
+            ]
+          ]
+        }
+      ],
+      "hardwareNodeRemovalMutations": 0
+    },
+    "2": {
+      "marker": 7921.854999989271,
+      "controls": [
+        {
+          "role": "fx",
+          "instrumentedNodeId": 26,
+          "events": [
+            {
+              "offsetMs": 69.38,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "0.64",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 93.1,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "0.64",
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 69.1,
+              "opacity": "0.64",
+              "ariaBusy": null
+            }
+          ],
+          "frameCount": 32,
+          "uniqueFrameBounds": [
+            [
+              430.1690979003906,
+              511.0917663574219,
+              78.58157348632812,
+              35.361724853515625
+            ]
+          ]
+        },
+        {
+          "role": "stop",
+          "instrumentedNodeId": 28,
+          "events": [
+            {
+              "offsetMs": 69.5,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 69.52,
+              "attribute": "aria-busy",
+              "old": null,
+              "new": "true",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 93.25,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 93.28,
+              "attribute": "aria-busy",
+              "old": "true",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 69.1,
+              "opacity": "1",
+              "ariaBusy": "true"
+            }
+          ],
+          "frameCount": 32,
+          "uniqueFrameBounds": [
+            [
+              430.1690979003906,
+              657.449951171875,
+              78.58157348632812,
+              78.58154296875
+            ]
+          ]
+        },
+        {
+          "role": "record",
+          "instrumentedNodeId": 29,
+          "events": [
+            {
+              "offsetMs": 69.56,
+              "attribute": "disabled",
+              "old": null,
+              "new": "",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 69.59,
+              "attribute": "aria-busy",
+              "old": null,
+              "new": "true",
+              "computedOpacity": "1",
+              "ariaBusy": "true"
+            },
+            {
+              "offsetMs": 93.31,
+              "attribute": "disabled",
+              "old": "",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            },
+            {
+              "offsetMs": 93.34,
+              "attribute": "aria-busy",
+              "old": "true",
+              "new": null,
+              "computedOpacity": "1",
+              "ariaBusy": null
+            }
+          ],
+          "frameOpacities": [
+            "1"
+          ],
+          "disabledFrames": [
+            {
+              "offsetMs": 69.1,
+              "opacity": "1",
+              "ariaBusy": "true"
+            }
+          ],
+          "frameCount": 32,
+          "uniqueFrameBounds": [
+            [
+              460.1283264160156,
+              794.4765014648438,
+              126.71279907226562,
+              126.7127685546875
+            ]
+          ]
+        }
+      ],
+      "hardwareNodeRemovalMutations": 0
+    }
+  },
+  "afterNoAudioFirstFrame": [
+    {
+      "label": "Track 1 TRACK_FX_APPLY: Browser per-track Track FX switching requires a running renderer and a ready raw/processed capture tap.",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    },
+    {
+      "label": "Stop track (hold to clear)",
+      "disabled": true,
+      "opacity": "0.62",
+      "ariaBusy": null
+    },
+    {
+      "label": "Record or play track",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    },
+    {
+      "label": "Stop track (hold to clear)",
+      "disabled": true,
+      "opacity": "0.62",
+      "ariaBusy": null
+    },
+    {
+      "label": "Record or play track",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    },
+    {
+      "label": "Stop track (hold to clear)",
+      "disabled": true,
+      "opacity": "0.62",
+      "ariaBusy": null
+    },
+    {
+      "label": "Record or play track",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    },
+    {
+      "label": "Stop track (hold to clear)",
+      "disabled": true,
+      "opacity": "0.62",
+      "ariaBusy": null
+    },
+    {
+      "label": "Record or play track",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    },
+    {
+      "label": "Stop track (hold to clear)",
+      "disabled": true,
+      "opacity": "0.62",
+      "ariaBusy": null
+    },
+    {
+      "label": "Record or play track",
+      "disabled": true,
+      "opacity": "0.64",
+      "ariaBusy": null
+    }
+  ],
+  "rawEvidence": [
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-trace-before-audio.json",
+      "sha256": "042deb982c875c893616d84e42b07c8f14db200e8863c01854ab873762070bd5",
+      "bytes": 8135556
+    },
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-before-audio.png",
+      "sha256": "019d5785f4f172a8393fce034da12a2c094d4106e4d7a51c8c8ef5df8902e445",
+      "bytes": 547887
+    },
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-trace-after-audio.json",
+      "sha256": "6e8f3971dde424aae3684124b88f00f03a1ea1e019ae2e543255c5db0e21f93f",
+      "bytes": 7929277
+    },
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-after-retest-audio.png",
+      "sha256": "019d5785f4f172a8393fce034da12a2c094d4106e4d7a51c8c8ef5df8902e445",
+      "bytes": 547887
+    },
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-trace-after-noaudio.json",
+      "sha256": "1e7fe58841cc64c87ab400c8ab859d9478de18dcbc5fea6cdb7a3b80f1039454",
+      "bytes": 7360774
+    },
+    {
+      "path": "C:/Users/user1000/AppData/Local/Temp/fx-after-retest-noaudio.png",
+      "sha256": "6a203a88190bfa2e17376d763fc3821552fc6f94ce40bd48a67a7c82031bde23",
+      "bytes": 447624
+    }
+  ],
+  "nativeTests": {
+    "portable": {
+      "result": "55/55 passed",
+      "seconds": 39.73,
+      "assertions": "Release tests force-include enable_test_assertions.hpp",
+      "log": {
+        "path": "C:/Users/user1000/.codex/scratch/build-rc505-pan-portable-20261114/portable-ctest-final.log",
+        "sha256": "de7268bc5dc39af737941c023a430f384c5a5fcadd55de6f89e743d747845dfa",
+        "bytes": 7228
+      }
+    },
+    "hqSimulation": {
+      "result": "18/18 passed",
+      "seconds": 76.33,
+      "log": {
+        "path": "C:/Users/user1000/.codex/scratch/build-rc505-pan-20261114/Testing/Temporary/LastTest.log",
+        "sha256": "97d1f52fee8b31ba52ad9054b7df42546e399b58d48ee001ff7fd061e17abcbe",
+        "bytes": 17655
+      },
+      "hostSha256": "b980a341bb687581b57f05b27debce614a59d16e5b84eae288e3f4efb1e6e499"
+    }
+  }
+}

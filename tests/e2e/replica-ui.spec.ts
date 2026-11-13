@@ -82,7 +82,7 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   await expect(rhythmVolumeLabel).toHaveText('VOLUME');
   const labelWidths = await rhythmVolumeLabel.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
   expect(labelWidths.scroll).toBeLessThanOrEqual(labelWidths.client);
-  await expect(screen.locator('[data-field-key="pattern"] .lcd-field-label')).toHaveCSS('font-size', '13px');
+  await expect(screen.locator('[data-field-key="pattern"] .lcd-field-label')).toHaveText('PATTERN');
   await screen.screenshot({ path: testInfo.outputPath('lcd-editor-1920.png') });
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   await expect(screen.locator(':focus')).toHaveCount(1);
@@ -91,7 +91,7 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   await expect(pattern).toBeEnabled();
   await expect(JSON.parse((await pattern.getAttribute('data-option-labels')) ?? '[]')).toHaveLength(240);
   await selectLcdEnum(page, 'pattern', '240');
-  await expect(patternField.locator('.lcd-enum-value')).toContainText('240 ·');
+  await expect(pattern).toHaveAttribute('aria-valuetext', /240 ·/);
   await selectLcdEnum(page, 'variation', 'D');
   await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await expect(rhythmEdit).toBeFocused();

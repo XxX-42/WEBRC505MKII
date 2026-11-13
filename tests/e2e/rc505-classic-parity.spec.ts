@@ -27,6 +27,8 @@ test('seven Play screens wrap in both directions and retain the returning page',
   await button(page, 'enter').click();
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'mixer-inputs');
   await button(page, 'page-next').click();
+  await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'mixer-tracks');
+  await button(page, 'page-next').click();
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'mixer-outputs');
   await button(page, 'page-next').click();
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'mixer-master');
@@ -48,7 +50,7 @@ test('LOOP and MENU expose hardware roots; encoder push and EXIT retain context'
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'memory-number');
   await button(page, 'menu').click();
   await expect(lcd(page)).toContainText('INPUT');
-  await expect(lcd(page)).toContainText('CTL FUNC');
+  await expect(lcd(page)).toContainText('OUTPUT');
   await expect(button(page, 'screen-encoder-1')).toHaveAttribute('aria-disabled', 'true');
   await button(page, 'screen-encoder-3').press('Enter');
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'mixer-inputs');

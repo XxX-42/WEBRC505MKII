@@ -1,0 +1,11 @@
+{
+  "allowedMask": "0xffff",
+  "systemMask": "0xffff",
+  "selectedMask": "0x1",
+  "priority": "inherited normal",
+  "compiler": "MSVC 2019 19.29.30159 x64 Release",
+  "baselineExecutable": "C:/Users/user1000/.codex/scratch/rc505-pan-benchmark-baseline-20261114/native_performance_matrix.exe",
+  "newExecutable": "C:/Users/user1000/.codex/scratch/build-rc505-pan-portable-20261114/Release/native_performance_matrix.exe",
+  "baselineSha256": "39b945ab511f55a531855cfcd70843687c2c3dc59215ab50f380792e8a255b24",
+  "newSha256": "bbe655c018198221a8b7f2684851547bbe318797b675b403091a41b57aa6ff66"
+}

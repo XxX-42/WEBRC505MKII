@@ -60,9 +60,10 @@
         <div class="clear-note">CLEAR: HOLD</div>
         <button
           class="stop-disc"
-          :class="{ 'is-pressed': stopPressActive }"
+          :class="{ 'is-pressed': stopPressActive, 'is-busy': stopOperationBusy }"
           type="button"
           :disabled="!resolvedControls.stop.enabled"
+          :aria-busy="stopOperationBusy ? 'true' : undefined"
           :data-hardware-role="resolvedControls.stop.hardwareRole"
           :title="resolvedControls.stop.unavailableReason || trackInteractionDisabledReason || 'Hold to clear this track'"
           :aria-label="undoLayer ? `Track ${trackId} MARK BACK unavailable` : 'Stop track (hold to clear)'"
@@ -86,8 +87,9 @@
         <HardwareFader
           appearance="classic"
           :model-value="playLevel"
+          :confirmed-only="nativeLevelDisplay"
           :led-color="faderLedColor"
-          :disabled="!levelControlEnabled || semanticMemory.state.busy || levelWritePending"
+          :disabled="!levelControlEnabled || semanticMemory.state.busy"
           :max="200"
           :disabled-reason="trackLevelUnavailableReason"
           :aria-label="levelControlAriaLabel"
@@ -111,6 +113,7 @@
           :led-blink-period-ms="resolvedControls.record.ledBlinkPeriodMs ?? 0"
           :data-led-blink-period-ms="resolvedControls.record.ledBlinkPeriodMs ?? 0"
           :disabled="!resolvedControls.record.enabled"
+          :busy="recordOperationBusy"
           :disabled-reason="resolvedControls.record.unavailableReason || recordActionDisabledReason"
           :aria-label="undoLayer ? `Track ${trackId} ${resolvedControls.record.hardwareRole}` : 'Record or play track'"
           :data-hardware-role="resolvedControls.record.hardwareRole"
@@ -146,6 +149,7 @@ import { TrackState } from '../../core/types';
 import { useDevicePanel } from '../../composables/useDevicePanel';
 import { useRc505Controls } from '../../composables/useRc505Controls';
 import { useRc505Memory } from '../../composables/useRc505Memory';
+import { latestMixerWrites } from '../../composables/latestMixerWrites';
 import { useRc505LoopIndicator } from '../../composables/useRc505LoopIndicator';
 import { resolveRc505TrackControls } from '../../ui/rc505/Rc505ControlStateResolver';
 import { useTrackStripState } from '../../composables/useTrackStripState';
@@ -165,6 +169,7 @@ const audioEngine = AudioEngine.getInstance();
 const loopIndicator = useRc505LoopIndicator();
 const loopIndicatorMode = computed(() => loopIndicator.mode.value);
 const audioStatusRevision = ref(0);
+const nativeLevelDisplay = computed(() => { audioStatusRevision.value; return audioEngine.getMode() === 'native'; });
 const controlOperationPending = ref(false);
 const audioReady = computed(() => {
   audioStatusRevision.value;
@@ -172,7 +177,8 @@ const audioReady = computed(() => {
 });
 const trackDrawerOpen = computed(() => device.state.page === 'track' && device.currentTrackId.value === props.trackId);
 
-const trackController = useTrackStripState(props.trackId);
+watch(() => semanticMemory.state.busy, busy => { if (busy) latestMixerWrites.invalidate(); }, { flush: 'sync' });
+const trackController = useTrackStripState(props.trackId, () => semanticMemory.state.busy);
 const {
   trackState,
   autoRecArmed,
@@ -190,7 +196,6 @@ const {
   isCurrentTrack,
   faderLedColor,
   levelControlEnabled,
-  levelWritePending,
   levelControlAriaLabel,
   trackLevelUnavailableReason,
   trackButtonAriaLabel,
@@ -244,7 +249,7 @@ const recordActionDisabledReason = computed(() => recordActionPending.value
     ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
     : trackInteractionDisabledReason.value);
 
-const resolvedControls = computed(() => {
+function resolveControls(operationPending: boolean) {
   audioStatusRevision.value;
   runtimeRevision.value;
   trackState.value;
@@ -257,10 +262,14 @@ const resolvedControls = computed(() => {
     ready: trackTransportReady.value, recordReady: recordActionReady.value,
     recordUnavailableReason: recordActionDisabledReason.value,
     layer: controls.state.controlLayer, history,
-    mark: audioEngine.getMarkState?.(props.trackId), operationPending: controlOperationPending.value || semanticMemory.state.busy,
+    mark: audioEngine.getMarkState?.(props.trackId), operationPending,
     fxApplyState: audioEngine.getTrackFxApply?.(props.trackId)[0], fxApplySupported: false, fxApplied: null,
   });
-});
+}
+const resolvedControls = computed(() => resolveControls(controlOperationPending.value || semanticMemory.state.busy));
+const controlsWithoutOperation = computed(() => resolveControls(semanticMemory.state.busy));
+const recordOperationBusy = computed(() => controlOperationPending.value && !resolvedControls.value.record.enabled && controlsWithoutOperation.value.record.enabled);
+const stopOperationBusy = computed(() => controlOperationPending.value && !resolvedControls.value.stop.enabled && controlsWithoutOperation.value.stop.enabled);
 const trackFxDisabledReason = computed(() => resolvedControls.value.fx.unavailableReason);
 watch(() => resolvedControls.value.stop.enabled, (enabled) => { if (!enabled) cancelStopPress(); }, { flush: 'sync' });
 async function handleTrackRecPlay(): Promise<void> {
@@ -366,9 +375,11 @@ const stateLabel = computed(() => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* Selected-track outline disabled at user request.
 .track-strip.selected {
   box-shadow: inset 0 0 0 1px rgba(255, 72, 115, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+*/
 
 .track-strip.disabled {
   opacity: 0.84;
@@ -459,6 +470,7 @@ const stateLabel = computed(() => {
 .stop-disc:hover:not(:disabled) { border-color: #fff; background: radial-gradient(circle at 35% 30%, #444850 0%, #191b21 72%); }
 .stop-disc:focus-visible { outline: 3px solid #6bc5ff; outline-offset: 3px; }
 .stop-disc:disabled { opacity: 0.62; cursor: not-allowed; }
+.stop-disc:disabled.is-busy { opacity: 1; }
 .stop-disc:active:not(:disabled) { transform: translateY(1px); }
 
 .stop-disc .stop-square {

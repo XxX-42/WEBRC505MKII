@@ -60,13 +60,26 @@ test('default Classic LCD exposes Native Input and shared Track named controls w
     await expect(page.locator('.lcd-status')).toContainText('APPLY IN ENHANCED');
 
     const screen = page.getByTestId('rc505-lcd-screen');
-    const firstFxRow = screen.locator('.lcd-data-row').first();
+    const firstFxSlot = screen.locator('[data-fx-slot="A"]');
+    const expectRestart = async () => {
+      await expect(firstFxSlot).toHaveAttribute('data-state', 'RESTART');
+      await expect(firstFxSlot).toHaveAttribute('data-active', 'UNKNOWN');
+      await expect(firstFxSlot).toHaveAttribute('data-confirmed', 'false');
+      await expect(firstFxSlot).not.toHaveClass(/\bis-on\b/);
+      await expect(firstFxSlot).not.toContainText('PHASER');
+    };
+    const expectAcknowledged = async () => {
+      await expect(firstFxSlot).toHaveAttribute('data-state', 'ACK');
+      await expect(firstFxSlot).toHaveAttribute('data-active', 'ON');
+      await expect(firstFxSlot).toHaveAttribute('data-confirmed', 'true');
+      await expect(firstFxSlot).toHaveClass(/\bis-on\b/);
+      await expect(firstFxSlot).toHaveAttribute('aria-label', /PHASER/);
+    };
     await page.locator('[data-panel-control="exit"]').click();
     await expect(screen).toHaveAttribute('data-classic-screen', 'memory-number');
     for (let index = 0; index < 5; index += 1) await page.locator('[data-panel-control="page-next"]').click();
     await expect(screen).toHaveAttribute('data-classic-screen', 'input-fx');
-    await expect(firstFxRow).toContainText('RESTART');
-    await expect(firstFxRow).not.toContainText(/PHASER|\bON\b/);
+    await expectRestart();
 
     await openClassicFxEditor(page, 'track');
     await expect(screen.locator('[data-field-key="target"]')).toHaveCount(0);
@@ -79,8 +92,7 @@ test('default Classic LCD exposes Native Input and shared Track named controls w
     await expect(screen).toHaveAttribute('data-classic-screen', 'input-fx');
     await page.locator('[data-panel-control="page-next"]').click();
     await expect(screen).toHaveAttribute('data-classic-screen', 'track-fx');
-    await expect(firstFxRow).toContainText('RESTART');
-    await expect(firstFxRow).not.toContainText(/PHASER|\bON\b/);
+    await expectRestart();
 
     const tools = await openEnhancedTools(page, 'PROJECT / TOOLS');
     await activateEnhancedAction(page, 'restart-native');
@@ -95,8 +107,12 @@ test('default Classic LCD exposes Native Input and shared Track named controls w
     await tools.getByRole('button', { name: 'CLOSE', exact: true }).click();
     await expect(tools).toHaveCount(0);
     await expect(screen).toHaveAttribute('data-classic-screen', 'track-fx');
-    await expect(firstFxRow).toContainText('PHASER');
-    await expect(firstFxRow).toContainText('ACK');
+    await expectAcknowledged();
+    await page.locator('[data-panel-control="page-prev"]').click();
+    await expect(screen).toHaveAttribute('data-classic-screen', 'input-fx');
+    await expectAcknowledged();
+    await page.locator('[data-panel-control="page-next"]').click();
+    await expect(screen).toHaveAttribute('data-classic-screen', 'track-fx');
     for (const location of ['input', 'track'] as const) {
       const activeSlot = page.getByTestId(`${location}-fx-slot-a`);
       await expect(activeSlot).toHaveAttribute('data-led-on', 'true');

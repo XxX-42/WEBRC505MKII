@@ -7,6 +7,9 @@ export interface LcdFieldOption {
 export interface LcdField {
   key: string;
   label: string;
+  shortLabel?: string;
+  shortValue?: string;
+  fullText?: string;
   value: number;
   min: number;
   max: number;
@@ -22,22 +25,51 @@ export interface LcdField {
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import LcdParameterDial from './LcdParameterDial.vue';
+import { fullRc505FieldValue, rc505LcdFieldText } from '../../ui/rc505/Rc505LcdFieldText';
 
 const props = withDefaults(defineProps<{
   fields: readonly LcdField[];
   selectedIndex?: number;
+  layout?: 'cards' | 'parameter-dials';
 }>(), {
   selectedIndex: 0,
+  layout: 'cards',
 });
 
 const emit = defineEmits<{
   (event: 'select', index: number): void;
   (event: 'update', index: number, value: number): void;
   (event: 'activate', index: number): void;
+  (event: 'details', index: number): void;
 }>();
 
 const cards = computed(() => Array.from({ length: 4 }, (_, index) => props.fields[index] ?? null));
+const grid = ref<HTMLElement | null>(null);
+const overflowKeys = ref<ReadonlySet<string>>(new Set());
+let observer: ResizeObserver | null = null;
+
+function measureText(): void {
+  const next = new Set<string>();
+  grid.value?.querySelectorAll<HTMLElement>('[data-lcd-text]').forEach(element => {
+    if (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1) next.add(element.dataset.lcdText!);
+  });
+  if (next.size !== overflowKeys.value.size || [...next].some(key => !overflowKeys.value.has(key))) overflowKeys.value = next;
+}
+watch(cards, async () => { await nextTick(); measureText(); });
+onMounted(() => {
+  measureText();
+  if (typeof ResizeObserver !== 'undefined' && grid.value) { observer = new ResizeObserver(measureText); observer.observe(grid.value); }
+});
+onUnmounted(() => observer?.disconnect());
+
+function textFor(field: LcdField) { return rc505LcdFieldText(field); }
+function hasDetails(field: LcdField): boolean {
+  const text = textFor(field);
+  return overflowKeys.value.has(field.key) || text.shortLabel !== field.label || text.shortValue !== fullRc505FieldValue(field)
+    || Boolean(field.reason) || Boolean(field.fullText && field.fullText !== `${field.label}${fullRc505FieldValue(field) ? `: ${fullRc505FieldValue(field)}` : ''}`);
+}
 
 function fieldId(key: string): string {
   return 'lcd-field-' + key;
@@ -60,6 +92,16 @@ function enumIndex(field: LcdField): number {
   if (!field.options?.length) return 0;
   const index = field.options.findIndex((option) => option.value === field.value);
   return index < 0 ? 0 : index;
+}
+
+function dialNormalized(field: LcdField): number | null {
+  if (field.disabled || !Number.isFinite(field.value) || field.kind === 'action' || field.kind === 'boolean') return null;
+  if (field.kind === 'enum') {
+    const index = field.options?.findIndex(option => option.value === field.value) ?? -1;
+    return index >= 0 && (field.options?.length ?? 0) > 1 ? index / (field.options!.length - 1) : null;
+  }
+  return Number.isFinite(field.min) && Number.isFinite(field.max) && field.max > field.min
+    ? Math.max(0, Math.min(1, (field.value - field.min) / (field.max - field.min))) : null;
 }
 
 function updateNumber(index: number, event: Event): void {
@@ -86,7 +128,8 @@ function activateField(index: number): void {
 </script>
 
 <template>
-  <div class="lcd-field-grid" role="group" aria-label="LCD screen controls">
+  <div ref="grid" class="lcd-field-grid" :class="{ 'lcd-parameter-columns': layout === 'parameter-dials' }"
+    :data-classic-parameter-dials="layout === 'parameter-dials' ? '' : undefined" role="group" aria-label="LCD screen controls">
     <div
       v-for="(field, index) in cards"
       :key="field ? field.key : 'lcd-empty-' + index"
@@ -104,7 +147,35 @@ function activateField(index: number): void {
       @focusin="selectField(index)"
     >
       <template v-if="field">
-        <template v-if="field.kind === 'enum'">
+        <template v-if="layout === 'parameter-dials'">
+          <button v-if="hasDetails(field)" type="button" class="lcd-field-details" :data-testid="`lcd-details-${field.key}`"
+            :aria-label="`Details for ${field.label}`" :title="textFor(field).fullText" @click.stop="emit('details', index)">…</button>
+          <output class="lcd-dial-value" :class="{ 'has-details': hasDetails(field) }" :data-lcd-text="field.key" :for="fieldId(field.key)" :title="textFor(field).fullText">{{ field.kind === 'action' ? '' : textFor(field).shortValue }}</output>
+          <div class="lcd-dial-control">
+            <button v-if="field.kind === 'boolean'" type="button" class="lcd-field-toggle lcd-pixel-switch"
+              :id="fieldId(field.key)" :data-testid="fieldId(field.key)" :disabled="field.disabled"
+              :aria-pressed="field.value >= 50" :aria-label="field.label + ': ' + displayValue(field)"
+              :aria-description="field.reason || undefined" :title="field.reason || undefined" @click="toggleBoolean(index, field)">
+              <span aria-hidden="true" class="lcd-switch-thumb" :class="{ 'is-on': field.value >= 50 }"></span>
+            </button>
+            <button v-else-if="field.kind === 'action'" type="button" class="lcd-field-action lcd-dial-action"
+              :id="fieldId(field.key)" :data-testid="fieldId(field.key)" :disabled="field.disabled" :aria-label="field.label"
+              :aria-description="field.reason || undefined" :title="textFor(field).fullText" :data-lcd-text="field.key" @click="activateField(index)">{{ textFor(field).shortLabel }}</button>
+            <template v-else>
+              <LcdParameterDial v-if="dialNormalized(field) !== null" :normalized="dialNormalized(field)!" :data-testid="`lcd-dial-${field.key}`" />
+              <span v-else class="lcd-dial-placeholder" aria-hidden="true">--</span>
+              <input :id="fieldId(field.key)" :data-testid="fieldId(field.key)" class="lcd-dial-input" type="range"
+                :min="field.kind === 'enum' ? 0 : field.min" :max="field.kind === 'enum' ? Math.max(0, (field.options?.length ?? 1) - 1) : field.max"
+                :step="field.kind === 'enum' ? 1 : field.step" :value="field.kind === 'enum' ? enumIndex(field) : field.value"
+                :disabled="field.disabled || !Number.isFinite(field.value) || (field.kind === 'enum' && !field.options?.length)"
+                :data-option-labels="field.options ? JSON.stringify(field.options.map(option => option.label)) : undefined"
+                :aria-label="field.label" :aria-valuetext="displayValue(field)" :aria-description="field.reason || undefined" :title="field.reason || undefined"
+                @input="field.kind === 'enum' ? updateEnum(index, field, $event) : updateNumber(index, $event)">
+            </template>
+          </div>
+          <label v-if="field.kind !== 'action'" class="lcd-field-label lcd-dial-label" :data-lcd-text="field.key" :title="textFor(field).fullText" :for="fieldId(field.key)">{{ textFor(field).shortLabel }}</label>
+        </template>
+        <template v-else-if="field.kind === 'enum'">
           <span class="lcd-field-label">{{ field.label }}</span>
           <div class="lcd-enum-control">
             <output class="lcd-enum-value" :aria-label="`${field.label}: ${displayValue(field)}`">
@@ -206,6 +277,23 @@ function activateField(index: number): void {
   font-family: var(--font-lcd, 'Lucida Console', monospace);
   text-transform: uppercase;
 }
+
+.lcd-field-grid.lcd-parameter-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 2px; }
+.lcd-parameter-columns .lcd-field-card,
+.lcd-parameter-columns .lcd-field-card.is-number { display: grid; grid-template-rows: 12px 32px minmax(0, 1fr); align-content: start; justify-items: center; gap: 1px; padding: 0 1px; }
+.lcd-parameter-columns .lcd-field-card { position: relative; }
+.lcd-field-details { position: absolute; top: 0; right: 0; z-index: 2; width: 10px; height: 12px; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: 12px/10px monospace; cursor: pointer; }
+.lcd-dial-value.has-details { box-sizing: border-box; padding-right: 10px; }
+.lcd-dial-value { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; font-size: 11px; line-height: 12px; }
+.lcd-dial-control { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 32px; }
+.lcd-dial-input { position: absolute; inset: 0; width: 100%; height: 32px; margin: 0; opacity: 0; cursor: ew-resize; touch-action: none; }
+.lcd-parameter-columns .lcd-field-card:focus-within { outline: 1px solid currentColor; outline-offset: -1px; }
+.lcd-field-grid.lcd-parameter-columns .lcd-field-card .lcd-dial-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; align-self: start; max-width: 100%; max-height: 22px; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; font-size: 10px; line-height: 11px; letter-spacing: 0; }
+.lcd-dial-placeholder { font-size: 18px; }
+.lcd-parameter-columns .lcd-pixel-switch { position: relative; min-width: 11px; width: 11px; min-height: 28px; height: 28px; padding: 0; border: 2px solid currentColor; }
+.lcd-switch-thumb { position: absolute; left: 1px; right: 1px; top: 16px; height: 6px; background: currentColor; }
+.lcd-switch-thumb.is-on { top: 2px; }
+.lcd-parameter-columns .lcd-dial-action { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; justify-content: center; width: 100%; height: 32px; overflow: hidden; overflow-wrap: normal; word-break: normal; text-align: center; font-size: 10px; line-height: 11px; }
 
 .lcd-field-card {
   display: flex;
