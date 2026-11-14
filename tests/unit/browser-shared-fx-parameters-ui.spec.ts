@@ -17,6 +17,7 @@ async function loadPanel(surface: 'face' | 'tech', path: 'input' | 'track', type
     getMode: () => 'browser', onStatusChange: vi.fn(() => () => {}),
     getCapabilities: () => ({ supportsInputFx: true, supportsTrackFx: true, fxReason: '' }),
     getNativeCatalogFxOptions: () => [], getNativeCatalogFxSlotStatus: () => null,
+    getBrowserSharedFxSnapshot: vi.fn(() => null as any),
     setFxType: vi.fn(), setFxParam: vi.fn(), setFxActive: vi.fn(),
     setCatalogFxParameters: vi.fn(), setPreampParameters: vi.fn(), setNativeStepSlicerParameters: vi.fn(),
     setTrackFxType: vi.fn(() => true), setTrackFxParameter: vi.fn(() => true),
@@ -41,6 +42,17 @@ async function loadPanel(surface: 'face' | 'tech', path: 'input' | 'track', type
 describe.each([
   ['face', 'input'], ['face', 'track'], ['tech', 'input'], ['tech', 'track'],
 ] as const)('Browser %s %s shared FX controls', (surface, path) => {
+  it('changes only FLANGER E.LEVEL when the processor already confirms official mode', async () => {
+    const { engine, state, title, editor } = await loadPanel(surface, path, 'FLANGER');
+    await editor.get(`[aria-label="${title} official_e_level"]`).setValue('50');
+    engine.getBrowserSharedFxSnapshot.mockReturnValue([{ type: 'FLANGER', state: 'ready', parameters: { official_e_level: 50, flangerDepth: 0.7 } }] as any);
+    engine.setFxParam.mockClear();
+    engine.setCatalogFxParameters.mockClear();
+    state.slots.value[0]!.namedParametersByType = { FLANGER: { official_e_level: 76 } };
+    await Promise.resolve();
+    expect(engine.setFxParam).not.toHaveBeenCalled();
+    expect(engine.setCatalogFxParameters).toHaveBeenCalledWith(path, 0, { official_e_level: 76 });
+  });
   it('preserves the dedicated editor while exposing official controls and dispatching/persisting the edit', async () => {
     const { wrapper, editor, engine, state, title } = await loadPanel(surface, path, 'PREAMP');
     expect(wrapper.find('preamp-fx-editor-stub').exists()).toBe(true);

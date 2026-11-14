@@ -84,6 +84,7 @@ export function useTrackStripState(trackId: number, memoryBusy: () => boolean = 
   const currentAudioMode = ref(readAudioMode());
   const playLevel = ref(trackAudio.track.playLevel);
   const levelWritePending = ref(false);
+  const levelTarget = ref(playLevel.value);
   const trackAvailable = ref(trackAudio.isAvailable);
   const trackTransportEnabled = ref(trackAudio.transportEnabled);
   const recordActionPending = ref(false);
@@ -359,6 +360,7 @@ export function useTrackStripState(trackId: number, memoryBusy: () => boolean = 
       hqNativeEngine.value = nativeHqRendererEngines.value.includes('R3') ? 'R3' : nativeHqRendererEngines.value[0]!;
     }
     playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? trackAudio.track.playLevel;
+    if (!levelWritePending.value) levelTarget.value = playLevel.value;
     trackAvailable.value = trackAudio.isAvailable;
     const audioStatus = engine.getUiStatus();
     trackTransportEnabled.value = trackAudio.transportEnabled && audioStatus.ready;
@@ -470,6 +472,7 @@ export function useTrackStripState(trackId: number, memoryBusy: () => boolean = 
     if (readAudioMode() === 'native') {
       const identity = engine.getMixerControlIdentity();
       levelWritePending.value = true;
+      levelTarget.value = safeValue;
       latestMixerWrites.submit(`${identity}:${trackId}`, safeValue, async (target) => {
         await engine.setMixerLevel(trackId as 1 | 2 | 3 | 4 | 5, target);
         const confirmed = engine.getMixerState().tracks[trackId - 1];
@@ -480,10 +483,11 @@ export function useTrackStripState(trackId: number, memoryBusy: () => boolean = 
         try { if (engine.getMixerControlIdentity() === identity) await engine.refreshMixerState(); else unknown = true; } catch { unknown = true; }
         if (engine.getMixerControlIdentity() === identity) playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? playLevel.value;
         classicControls.reportError('LEVEL FAILED', `${error instanceof Error ? error.message : String(error)}${unknown ? ' Readback unknown.' : ''}`);
-      }, () => { levelWritePending.value = false; });
+      }, () => { levelWritePending.value = false; levelTarget.value = playLevel.value; });
       return;
     }
     playLevel.value = safeValue;
+    levelTarget.value = safeValue;
     trackAudio.track.playLevel = safeValue;
     trackAudio.updateSettings();
   };
@@ -692,6 +696,7 @@ export function useTrackStripState(trackId: number, memoryBusy: () => boolean = 
     faderLedColor,
     levelControlEnabled,
     levelWritePending,
+    levelTarget,
     trackFxControlEnabled,
     levelControlAriaLabel,
     trackFxUnavailableReason: computed(() => trackCapabilities.value.supportsTrackFx ? '' : trackCapabilities.value.trackFxReason),

@@ -6,14 +6,14 @@ import { useDevicePanel } from '../../src/composables/useDevicePanel';
 import { useDeviceScreenEditor } from '../../src/composables/useDeviceScreenEditor';
 import { useRc505Memory } from '../../src/composables/useRc505Memory';
 
-const fixture = vi.hoisted(() => ({ engine: null as any }));
+const fixture = vi.hoisted(() => ({ engine: null as any, controller: null as any }));
 vi.mock('../../src/audio/AudioEngine', () => ({ AudioEngine: { getInstance: () => fixture.engine } }));
 vi.mock('../../src/composables/useFxPanelState', () => ({ useFxPanelState: () => ({}) }));
 vi.mock('../../src/composables/useTrackFxTargetState', () => ({ useTrackFxTargetState: () => ({}) }));
 vi.mock('../../src/composables/useBrowserTrackFxState', () => ({ useBrowserTrackFxState: () => ({}) }));
 vi.mock('../../src/composables/useNativeTrackFxState', () => ({ useNativeTrackFxState: () => ({}) }));
 vi.mock('../../src/composables/rhythmUiState', () => ({ useRhythmUiControls: () => ({}), rhythmUiState: {} }));
-vi.mock('../../src/composables/deviceTrackControllers', () => ({ getDeviceTrackController: () => new Proxy({}, { get: (_, key) => ({ value: key === 'nativeHqRendererEngines' ? [] : key === 'livePitchMode' ? 'OFF' : key === 'hqWavFormat' ? 'pcm16' : 0 }) }) }));
+vi.mock('../../src/composables/deviceTrackControllers', () => ({ getDeviceTrackController: () => fixture.controller ?? new Proxy({}, { get: (_, key) => ({ value: key === 'nativeHqRendererEngines' ? [] : key === 'livePitchMode' ? 'OFF' : key === 'hqWavFormat' ? 'pcm16' : 0 }) }) }));
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 const panel = useDevicePanel();
@@ -26,6 +26,7 @@ function createEditor(category: string, target: 'track' | 'menu' | 'memory' = 't
 async function settle() { await nextTick(); await Promise.resolve(); await nextTick(); }
 
 beforeEach(() => {
+  fixture.controller = null;
   const track = new Track(1);
   const audio = { track, disposed: false, lastLoopSyncSw: track.loopSyncSw, loopSyncSettingsRevision: 0,
     invalidateQuantizedRecordingStopIfStale: vi.fn(), transport: { masterTrackId: null }, gainNode: { gain: { value: 1 } }, panNode: { pan: { value: 0 } },
@@ -45,6 +46,24 @@ beforeEach(() => {
 afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()); panel.goHome(); useRc505Memory().state.busy = false; });
 
 describe('Classic existing audio controls', () => {
+  it('keeps Native level editable during delayed acknowledgement and advances from the target', async () => {
+    const confirmed = ref(100), target = ref(100), pending = ref(false);
+    const writes: number[] = [];
+    const controller = { playLevel: confirmed, levelTarget: target, levelWritePending: pending,
+      levelControlEnabled: ref(true), trackLevelUnavailableReason: ref(''),
+      handleLevelChange: (value: number) => { writes.push(value); target.value = value; pending.value = true; } };
+    fixture.controller = new Proxy(controller, { get: (object, key) => key in object ? object[key as keyof typeof controller] : { value: key === 'nativeHqRendererEngines' ? [] : 0 } });
+    const { editor } = createEditor('track');
+    let field = editor.fields.value.find(item => item.key === 'track-level')!;
+    field.setValue!(101); await settle();
+    field = editor.fields.value.find(item => item.key === 'track-level')!;
+    expect(field.disabled).toBe(false); expect(field.value).toBe(100); expect(field.encoderValue).toBe(101);
+    field.setValue!(field.encoderValue! + 1); await settle();
+    expect(writes).toEqual([101, 102]); expect(confirmed.value).toBe(100); expect(target.value).toBe(102);
+    confirmed.value = 102; pending.value = false; await settle();
+    expect(editor.fields.value.find(item => item.key === 'track-level')!.value).toBe(102);
+  });
+
   it('blocks stale LCD edit callbacks while Memory is publishing and restores editing afterwards', async () => {
     const { editor } = createEditor('track');
     const stalePan = editor.fields.value.find(field => field.key === 'track-pan')!;

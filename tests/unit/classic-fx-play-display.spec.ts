@@ -226,7 +226,7 @@ describe('Classic FX Play component', () => {
 
   it('shows a concise Browser startup hint and preserves the diagnostic title', async () => {
     fixture.engine.getUiStatus = () => ({ mode: 'browser', ready: false, engineRunning: false, message: 'BROWSER AUDIO NOT INITIALIZED', lastError: '' });
-    const center = await render(0); const status = center.get('.lcd-status');
+    const center = await render(0); const status = center.get('.play-feedback');
     expect(status.text()).toBe('AUDIO OFF');
     expect(status.attributes('title')).toBe('BROWSER AUDIO NOT INITIALIZED');
   });

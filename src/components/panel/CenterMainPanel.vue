@@ -66,9 +66,24 @@
 
     <div class="display-cluster">
       <div class="screen-shell" aria-label="RC-505 status display">
-        <div class="lcd-display" :class="{ 'lcd-editor-active': isClassicEditor, 'lcd-parameter-active': isClassicEditor, 'lcd-root-active': classicRoot !== null, 'lcd-mixer-active': classicView.kind === 'mixer', 'lcd-fx-play-active': isFxPlayScreen }" :data-classic-screen="classicScreenId" data-testid="rc505-lcd-screen" @keydown.esc.stop.prevent="exitPage">
+        <div class="lcd-display" :class="{ 'lcd-editor-active': isClassicEditor, 'lcd-parameter-active': isClassicEditor, 'lcd-root-active': classicRoot !== null, 'lcd-mixer-active': classicView.kind === 'mixer', 'lcd-fx-play-active': isFxPlayScreen || isPlayOverview || tempoScreen }" :data-classic-screen="classicScreenId" data-testid="rc505-lcd-screen" @keydown.esc.stop.prevent="exitPage">
           <div v-if="lcdDetail" ref="lcdDetailElement" class="lcd-detail" tabindex="-1" data-testid="lcd-details-view"><strong>{{ lcdDetail.label }}</strong><span>{{ lcdDetail.text }}</span><small>EXIT · BACK</small></div>
-          <div v-if="!lcdDetail && isFxPlayScreen" class="fx-play-display" :data-classic-fx-display="fxPlayLocation" :aria-label="`${pageTitle} status`">
+          <div v-if="!lcdDetail && tempoScreen" class="tempo-display" data-testid="tempo-screen"><span>TEMPO</span><strong>{{ bpm.toFixed(1) }}</strong><small>KNOB 4 · BPM</small></div>
+          <div v-else-if="!lcdDetail && isPlayOverview" class="play-overview" :data-play-screen="playScreenId">
+            <div class="play-tempo">♪={{ bpm.toFixed(1) }}</div>
+            <template v-if="playScreenId === 'memory-number'"><div class="play-memory-large">{{ playMemoryNumber }}</div><div class="play-memory-name">{{ memory.state.name || '—' }}<small>{{ memory.state.busy ? 'PLEASE WAIT' : memory.state.dirty ? 'EDITED · PARTIAL' : 'SAVED · PARTIAL' }}</small></div></template>
+            <template v-else><div class="play-memory-header"><b>{{ playMemoryNumber }}</b> {{ memory.state.name || '—' }}</div>
+              <div v-if="playScreenId === 'track-status' || playScreenId === 'loop-tracks'" class="play-track-icons">
+                <div v-for="id in [1,2,3,4,5]" :key="id" class="play-track" :data-track="id" :title="`Track ${id}: ${trackStateLabel(id)} · ${phraseLabel(id)}${id === currentTrackId ? ' · current track' : ''}`">
+                  <div class="play-icon" :class="{ active: ['RECORDING', 'PLAYING', 'OVERDUBBING', 'REC_FINISHING'].includes(trackStateLabel(id)), empty: engine.getTrackHasPhrase(id) === false, current: id === currentTrackId }">{{ id === currentTrackId ? '•' : '' }}</div>
+                  <span v-if="playScreenId === 'loop-tracks'" class="play-progress" :title="playProgress(id) === null ? 'Playback progress unavailable' : `Playback progress ${Math.round(playProgress(id)! * 100)}%`"><span v-if="playProgress(id) !== null" :style="{ width: `${playProgress(id)! * 100}%` }"></span><b v-else>—</b></span><small>{{ id }}</small>
+                </div>
+              </div>
+              <div v-else-if="playScreenId === 'loop-status'" class="play-loop-status" title="Current track follows the selected track in this application">TRK {{ currentTrackId }}: {{ trackStateLabel(currentTrackId) }}</div>
+              <div v-else class="play-meters"><div v-for="id in [1,2,3,4,5]" :key="id" class="play-meter" :data-track="id" :data-available="playMeter(id) !== null" :title="trackLevelLabel(id)"><span v-if="playMeter(id) !== null" :style="{ height: `${playMeter(id)! * 100}%` }"></span><b v-else>—</b><small>{{ id }}</small></div></div>
+            </template><div v-if="playStatus" class="play-feedback" role="status" :title="statusDetail">{{ statusHint }}</div><div v-else class="play-knob-labels"><span>MEMORY</span><span></span><span></span><span>MFX REVERB</span></div>
+          </div>
+          <div v-else-if="!lcdDetail && isFxPlayScreen" class="fx-play-display" :data-classic-fx-display="fxPlayLocation" :aria-label="`${pageTitle} status`">
             <div class="fx-play-tempo" data-fx-tempo>{{ fxPlayTempo }}</div>
             <div class="fx-play-memory"><span data-fx-memory-number>{{ fxPlayMemoryNumber }}</span> <span data-fx-memory-name :title="memory.state.name">{{ memory.state.name || '--' }}</span></div>
             <div class="fx-play-heading">{{ pageTitle }}</div>
@@ -83,12 +98,12 @@
             <div v-if="fxPlayError" class="fx-play-error" role="status" aria-live="polite" :title="fxPlayError">{{ conciseStatus(fxPlayError) }}</div>
             <div v-else class="fx-play-knob-labels"><span v-for="(control, index) in screenControls" :key="control.key" :data-fx-knob-label="index + 1">{{ control.disabled ? '' : control.label }}</span></div>
           </div>
-          <div v-if="!lcdDetail && !isFxPlayScreen" class="lcd-row top">
+          <div v-if="!lcdDetail && !isFxPlayScreen && !isPlayOverview && !tempoScreen" class="lcd-row top">
             <span>{{ lcdContextLabel }}</span>{{ ' ' }}
             <span>{{ pageLabel }} {{ pageCounter }}</span>
           </div>
-          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen && classicRoot === null && classicView.kind !== 'mixer'" class="lcd-name">{{ pageTitle }}</div>
-          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen" class="lcd-data-rows" :class="{ 'lcd-category-columns': classicRoot !== null, 'lcd-mixer-columns': classicView.kind === 'mixer' }"
+          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen && !isPlayOverview && !tempoScreen && classicRoot === null && classicView.kind !== 'mixer'" class="lcd-name">{{ pageTitle }}</div>
+          <div v-if="!lcdDetail && !isClassicEditor && !isFxPlayScreen && !isPlayOverview && !tempoScreen" class="lcd-data-rows" :class="{ 'lcd-category-columns': classicRoot !== null, 'lcd-mixer-columns': classicView.kind === 'mixer', 'lcd-write-columns': classicView.kind === 'memory-write' && classicView.operation === 'choose' }"
             :data-classic-root="classicRoot ?? undefined" :data-classic-mixer="classicView.kind === 'mixer' ? RC505_MIXER_PAGES[classicView.pageIndex]?.id : undefined" :aria-label="`${pageTitle} display data`">
             <div v-for="(row, index) in lcdDataRows" :key="row.key" class="lcd-data-row" :class="{ 'is-disabled': row.disabled, 'is-selected': row.selected }" :title="row.reason"
               :data-root-item="classicRoot ? row.key : undefined" :data-root-encoder="classicRoot ? index + 1 : undefined"
@@ -105,9 +120,9 @@
               <template v-else><span>{{ row.label }}</span><span v-if="classicRoot === null">{{ row.value }}</span></template>
             </div>
           </div>
-          <LcdFieldGrid v-if="isClassicEditor" v-show="!lcdDetail" layout="parameter-dials" :fields="screenFields" :selected-index="screenEditor.selectedFieldIndex.value"
+          <LcdFieldGrid v-if="isClassicEditor" v-show="!lcdDetail && !tempoScreen" layout="parameter-dials" :fields="screenFields" :selected-index="screenEditor.selectedFieldIndex.value"
             @select="screenEditor.selectField" @update="setScreenField" @activate="activateScreenField" @details="openLcdDetails" />
-          <div v-if="!lcdDetail && !isFxPlayScreen" class="lcd-status" role="status" aria-live="polite" :title="statusDetail">{{ statusHint }}</div>
+          <div v-if="!lcdDetail && !isFxPlayScreen && !isPlayOverview && !tempoScreen" class="lcd-status" role="status" aria-live="polite" :title="statusDetail">{{ statusHint }}</div>
           <div id="rc505-lcd-confirmations" class="lcd-confirmations"></div>
         </div>
       </div>
@@ -358,6 +373,12 @@ let tapHoldConsumed = false;
 let unsubscribeStatus: (() => void) | null = null;
 const tapTimes: number[] = [];
 
+const tempoScreen = ref(false);
+const playScreenId = computed(() => classicView.value.kind === 'play' ? RC505_PLAY_SCREENS[classicView.value.pageIndex]?.id : undefined);
+const isPlayOverview = computed(() => classicView.value.kind === 'play' && classicView.value.pageIndex < 5);
+const playMemoryNumber = computed(() => memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0'));
+function playProgress(id: number): number | null { capabilityRevision.value; if (engine.getMode() !== 'browser' || !engine.trackPositions || engine.getTrackHasPhrase(id) !== true) return null; const value = engine.trackPositions[id - 1]; return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : null; }
+function playMeter(id: number): number | null { capabilityRevision.value; const meter = engine.getTrackMeter?.(id); return meter?.available && Number.isFinite(meter.peak) && meter.peak >= 0 ? Math.min(1, meter.peak) : null; }
 const currentTrackId = computed(() => focusState.currentTrackId);
 const historyButtonLabel = 'UNDO/REDO';
 const historyButtonAriaLabel = 'Toggle Undo/Redo control layer';
@@ -443,6 +464,7 @@ watch(() => [device.actionStatus.pending, device.actionStatus.error], ([pending,
   if (!pending && !error && device.state.page === 'track') pageActionHint.value = '';
 });
 const classicScreenId = computed(() => {
+  if (tempoScreen.value) return 'tempo';
   const view = classicView.value;
   if (view.kind === 'play') return RC505_PLAY_SCREENS[view.pageIndex]?.id ?? 'memory-number';
   if (view.kind === 'mixer') return `mixer-${RC505_MIXER_PAGES[view.pageIndex]?.id ?? 'inputs'}`;
@@ -525,6 +547,7 @@ const statusDetail = computed(() => runtimeStatusPriority.value ||
   || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value || (undoLayerActive.value ? 'UNDO/REDO CONTROLS ACTIVE' : '')
   || (rhythmPending.value ? 'RHYTHM COMMAND PENDING' : !audioReady.value ? uiStatus.value.message || 'AUDIO NOT READY'
     : rhythmMessage.value || (isPlaying.value ? 'TRANSPORT RUNNING' : 'READY')));
+const playStatus = computed(() => Boolean(!audioReady.value || runtimeStatusPriority.value || scopedControlError.value || classicState.value.notice || memory.state.error || memory.state.busy || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value));
 const statusHint = computed(() => {
   const message = runtimeStatusPriority.value || scopedControlError.value || statusDetail.value;
   if (!uiStatus.value.lastError && !scopedControlError.value && /browser audio not initialized/i.test(message)) return 'AUDIO OFF';
@@ -534,6 +557,7 @@ const statusHint = computed(() => {
 type ScreenField = {
   key: string;
   label: string;
+  encoderValue?: number;
   shortLabel?: string;
   shortValue?: string;
   fullText?: string;
@@ -824,6 +848,7 @@ function closeLcdDetails(): void {
   void nextTick(() => { if (opener?.isConnected) opener.focus(); });
 }
 const screenControls = computed<ScreenControl[]>(() => {
+  if (tempoScreen.value) return [0, 1, 2, 3].map(index => index !== 3 ? infoControl(`tempo-empty-${index}`, '', '') : ({ key: 'tempo', label: 'TEMPO', value: bpm.value, min: 40, max: 300, step: 0.1, color: 'red' as const, disabled: memory.state.busy, reason: memory.state.busy ? 'Memory transaction is pending.' : '', display: bpm.value.toFixed(1), canRotate: true, onRotate: (delta: number, pressed: boolean) => setBpm(Math.max(40, Math.min(300, Math.round((bpm.value + delta * (pressed ? 0.1 : 1)) * 10) / 10))) }));
   if (lcdDetail.value) return Array.from({ length: 4 }, (_, index) => infoControl(`detail-${index}`, '', '', 'Exit details to edit.'));
   capabilityRevision.value;
   const view = classicView.value;
@@ -849,8 +874,8 @@ const screenControls = computed<ScreenControl[]>(() => {
       reason: field.reason,
       display: displayFieldValue(field),
       canRotate: !field.disabled && field.kind !== 'action',
-      onRotate: (delta, accelerated) => setScreenField(index, advanceRc505EncoderField(field, delta, accelerated)),
-      onPress: field.disabled ? undefined : () => { screenEditor.selectField(index); screenEditor.enter(); },
+      onRotate: (delta, accelerated) => setScreenField(index, advanceRc505EncoderField({ ...field, value: field.encoderValue ?? field.value }, delta, accelerated)),
+      onPress: field.disabled ? undefined : () => { screenEditor.selectField(index); if (field.activate) void field.activate(); else screenEditor.enter(); },
     }));
     return [...fields, ...Array.from({ length: Math.max(0, 4 - fields.length) }, (_, index) => infoControl(`field-empty-${index}`, '', ''))];
   }
@@ -971,6 +996,7 @@ function syncClassicPanel(state: Rc505DisplayState): void {
 }
 
 function dispatchClassic(action: Rc505DisplayAction): Rc505DisplayState {
+  tempoScreen.value = false;
   const next = device.classicDispatch(action);
   syncClassicPanel(next);
   return next;
@@ -985,12 +1011,14 @@ function openRootEncoder(index: number): void {
 }
 
 function openClassicRoot(root: Rc505DisplayRoot): void {
+  tempoScreen.value = false;
   const rootKind = root === 'loop' ? 'loop-root' : 'menu-root';
   if (classicView.value.kind === rootKind) return;
   dispatchClassic({ type: 'OPEN_ROOT', root });
 }
 
 function openClassicEditor(target: Rc505DisplayEditorTarget, category: string): void {
+  tempoScreen.value = false;
   if (classicView.value.kind === 'editor' && classicView.value.target === target) return;
   dispatchClassic({ type: 'OPEN_EDITOR', target, category });
 }
@@ -998,12 +1026,12 @@ function openClassicEditor(target: Rc505DisplayEditorTarget, category: string): 
 function rotateScreenControl(index: number, delta: number, accelerated = false): void {
   const control = screenControls.value[index];
   if (!control) return;
-  if (classicView.value.kind === 'loop-root' || classicView.value.kind === 'menu-root') {
+  if (!tempoScreen.value && (classicView.value.kind === 'loop-root' || classicView.value.kind === 'menu-root')) {
     dispatchClassic({ type: accelerated ? 'ENCODER_PRESS_ROTATE' : 'ENCODER_ROTATE', encoderIndex: index, delta });
     return;
   }
   if (control.disabled) return;
-  if (isClassicEditor.value) {
+  if (!tempoScreen.value && isClassicEditor.value) {
     if (control.canRotate) control.onRotate?.(delta, accelerated);
     return;
   }
@@ -1026,6 +1054,7 @@ function changeScreenPage(direction: -1 | 1): void {
   dispatchClassic({ type: 'PAGE', direction });
 }
 function exitPage(): void {
+  if (tempoScreen.value) { tempoScreen.value = false; return; }
   if (lcdDetail.value) { closeLcdDetails(); return; }
   if (confirmationOpen.value || classicView.value.kind === 'confirm') {
     window.dispatchEvent(new Event('rc505-cancel-confirmation'));
@@ -1182,6 +1211,8 @@ function confirmedTapBpm(): number | null {
   return rhythm.settings.bpm;
 }
 function beginTap(): void {
+  if (confirmationOpen.value || classicView.value.kind === 'confirm' || memory.state.busy) return;
+  tempoScreen.value = true;
   if (tapHeld) return;
   if (tapSessionBpm !== null && (tapIdentity !== engine.getMixerControlIdentity() || tapExpectedRevision !== transport.tempoMutationRevision)) resetTapSession();
   if (tapResetTimer !== null) { window.clearTimeout(tapResetTimer); tapResetTimer = null; }
@@ -1214,6 +1245,7 @@ function endTap(): void {
   tapResetTimer = window.setTimeout(resetTapSession, 3000);
 }
 function cancelTap(): void { resetTapSession(); }
+watch([classicView, currentTrackId, () => focusState.activeInputFxSlot, () => focusState.activeTrackFxSlot], () => { tempoScreen.value = false; }, { flush: 'sync' });
 watch([() => uiStatus.value.mode, () => engine.getMixerControlIdentity(), currentTrackId, classicScreenId, () => 'pageIndex' in classicView.value ? classicView.value.pageIndex : 0, () => memory.state.busy], () => { resetTapSession(); if (lcdDetail.value) closeLcdDetails(); }, { flush: 'sync' });
 watch(() => memory.state.busy, busy => { if (busy) latestMixerWrites.invalidate(); }, { flush: 'sync' });
 
@@ -1256,7 +1288,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.lcd-detail { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: 4px; color: #202d41; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lcd-detail { background: transparent; grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: 4px; color: var(--lcd-ink); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lcd-detail strong, .lcd-detail span, .lcd-detail small { color: inherit; }
 .lcd-detail small { margin-top: auto; }
 .center-main-panel {
   position: relative;
@@ -1325,6 +1358,8 @@ onUnmounted(() => {
 .lcd-display.lcd-mixer-active { grid-template-rows: 12px minmax(0, 1fr) 14px; }
 .lcd-root-active .lcd-status,
 .lcd-mixer-active .lcd-status { -webkit-line-clamp: 1; }
+.lcd-write-columns { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-template-rows: 1fr; }
+.lcd-write-columns .lcd-data-row { flex-direction: column; justify-content: center; }
 .lcd-data-rows.lcd-category-columns,
 .lcd-data-rows.lcd-mixer-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 3px; }
 .lcd-category-columns .lcd-data-row { justify-content: center; padding: 2px; text-align: center; white-space: normal; }
@@ -1340,6 +1375,29 @@ onUnmounted(() => {
 .lcd-mixer-meter b { font-size: 10px; }
 .lcd-mixer-label { font-size: 10px; line-height: 10px; white-space: normal; overflow-wrap: anywhere; }
 .lcd-display.lcd-fx-play-active { display: block; padding: 3px 5px; }
+.tempo-display { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-around; color: var(--lcd-ink); }
+.tempo-display strong { font-size: 34px; }
+.play-overview { display: grid; grid-template-rows: 11px 22px minmax(0,1fr) 12px; height: 100%; min-height: 0; color: var(--lcd-ink); line-height: 1; }
+.play-tempo { text-align: right; font-size: 10px; }
+.play-memory-large { text-align: center; font-size: 20px; font-weight: bold; }
+.play-memory-name { text-align: center; font-size: 18px; }
+.play-memory-name small { display: block; font-size: 9px; margin-top: 3px; }
+.play-feedback { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; }
+.play-memory-header { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 17px; }
+.play-track-icons, .play-meters { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; min-height: 0; }
+.play-track { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.play-icon { width: 24px; height: 24px; border: 2px solid currentColor; border-radius: 5px; display: grid; place-items: center; font-size: 20px; }
+.play-icon.active { background: currentColor; }
+.play-icon.active.current { background: var(--lcd-ink); color: var(--lcd-bg, #d7e3f4); border-color: var(--lcd-ink); }
+.play-icon.empty { height: 5px; border-radius: 50%; background: none; }
+.play-progress { display: block; width: 25px; height: 5px; border: 1px solid currentColor; font-size: 9px; line-height: 4px; text-align: center; }
+.play-progress > span { display: block; height: 100%; background: currentColor; }
+.play-track small, .play-meter small { font-size: 9px; }
+.play-loop-status { align-self: center; font-size: 20px; font-weight: bold; white-space: nowrap; }
+.play-meter { position: relative; display: flex; align-items: center; justify-content: center; border: 1px solid currentColor; margin-bottom: 10px; }
+.play-meter > span { position: absolute; bottom: 0; left: 1px; right: 1px; background: repeating-linear-gradient(to top, currentColor 0 3px, transparent 3px 5px); }
+.play-meter small { position: absolute; top: 100%; }
+.play-knob-labels { display: grid; grid-template-columns: repeat(4,1fr); font-size: 8px; align-items: end; }
 .fx-play-display { display: grid; grid-template-rows: 11px 20px 11px minmax(0, 1fr) 14px; height: 100%; min-height: 0; line-height: 1; }
 .fx-play-tempo { font-size: 10px; text-align: right; }
 .fx-play-memory { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 18px; }

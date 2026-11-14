@@ -58,9 +58,26 @@ test('all seven PLAY pages keep the same four physical encoder roles and five-tr
     await expect(control(page, 'screen-encoder-4')).toHaveAttribute('aria-label', 'MFX REVERB screen control');
     await expect(control(page, 'screen-encoder-4')).toHaveAttribute('aria-description', /not available/i);
     if (['track-status', 'loop-tracks', 'loop-status', 'loop-level'].includes(id)) {
-      await expect(lcd(page).locator('.lcd-data-row')).toHaveCount(5);
+      if (id === 'loop-status') await expect(lcd(page).locator('.play-loop-status')).toContainText('TRK');
+      else await expect(lcd(page).locator(id === 'loop-level' ? '.play-meter' : '.play-track')).toHaveCount(5);
     }
     await control(page, 'page-next').click();
   }
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'memory-number');
+});
+
+
+test('TAP tempo returns to play and navigation leaves tempo context', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await control(page, 'tap-tempo').click();
+  await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'tempo');
+  await expect(control(page, 'screen-encoder-4')).toHaveAttribute('aria-label', 'TEMPO screen control');
+  await control(page, 'exit').click();
+  await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'memory-number');
+  await control(page, 'tap-tempo').click();
+  await control(page, 'menu').click();
+  await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'menu-root');
+  await control(page, 'tap-tempo').click();
+  await control(page, 'loop').click();
+  await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'loop-root');
 });

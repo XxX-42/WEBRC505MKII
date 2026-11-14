@@ -30,8 +30,8 @@ test('replica keeps the physical control inventory and warns below readable view
     await expect(disabledRecord.locator('.button-label')).toHaveCSS('color', 'rgb(241, 242, 245)');
     await expect(face.locator('.track-strip[data-track-id="1"] .stop-disc')).toHaveCSS('opacity', '0.62');
     if (viewport.width === 1366) {
-      const memoryCells = page.locator('.lcd-data-rows .lcd-data-row span');
-      expect(await memoryCells.allTextContents()).toEqual(['MEMORY NO.', '--', 'NAME', '—', 'MEMORY DATA', 'EDITED · PARTIAL']);
+      const memoryCells = page.locator('.play-memory-large, .play-memory-name');
+      expect(await memoryCells.allTextContents()).toEqual(['--', '—EDITED · PARTIAL']);
       expect(await memoryCells.evaluateAll((elements) => elements.every((element) => {
         return element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight;
       }))).toBe(true);
@@ -193,7 +193,7 @@ test('Native simulation bridge readiness is visible on the shared Classic facepl
       physicalDeviceValidated: false,
       bridgeStatus: (await page.locator('.status-pill').innerText()).trim(),
       capabilitySummary: (await page.locator('.mode-summary').innerText()).trim(),
-      lcdStatus: (await page.locator('[data-testid="rc505-lcd-screen"] .lcd-status').innerText()).trim(),
+      lcdStatus: (await page.locator('[data-testid="rc505-lcd-screen"]').innerText()).trim(),
       controlCounts: { buttons: 41, knobs: 7, faders: 5 },
       commandWritten: false,
     };

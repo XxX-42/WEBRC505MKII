@@ -42,6 +42,7 @@ export interface DeviceScreenField {
   key: string;
   label: string;
   value: number;
+  encoderValue?: number;
   kind: DeviceScreenFieldKind;
   shortLabel?: string;
   shortValue?: string;
@@ -321,6 +322,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     return engine.tracks.some((track) => (track as { historyBusy?: boolean }).historyBusy
       || track.state === 'RECORDING' || track.state === 'OVERDUBBING');
   };
+  const nameCursor = ref(0);
   const pageIndex = computed(() => device.state.editorPageIndex);
   const pageCount = computed(() => device.state.editorPageCount);
   const fieldOptions = (labels: readonly string[]): DeviceScreenOption[] => labels.map((label, value) => ({ label, value }));
@@ -733,7 +735,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const bounceTarget = currentTrackId.value;
     const bounceBusy = bounceSettingsBusy();
     const fields: DeviceScreenField[] = [
-      makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
+      makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, encoderValue: controller.levelTarget.value, disabled: !controller.levelControlEnabled.value, reason: controller.trackLevelUnavailableReason.value }),
       makeBooleanField('track-reverse', 'REVERSE', engine.getMode() === 'native'
         ? engine.getNativeReverse?.(currentTrackId.value) === true : audioTrack?.isReverse === true, async (enabled) => {
         if (!audioTrack || currentTrackId.value !== bounceTarget) throw new Error('Track changed; select it again.');
@@ -1371,20 +1373,34 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (classicView?.kind === 'editor' && classicView.target === 'memory') {
       if (classicView.category === 'name') {
         const memory = useRc505Memory();
-        // Four characters per page is an accessible software mapping; the
-        // alphabet is an engineering choice, not a claimed Roland charset.
-        const alphabet = ' ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!';
-        const paddedCharacters = () => Array.from({ length: 12 }, (_, index) => [...memory.state.name][index] ?? ' ');
-        const characters = paddedCharacters();
-        const options = [...alphabet].map((character, value) => ({ label: character === ' ' ? 'SPACE' : character, value }));
-        return chunks(Array.from({ length: 12 }, (_, index) => makeEnumField(`memory-name-${index}`, `CHAR ${index + 1}`,
-          Math.max(0, alphabet.indexOf(characters[index]!)), options, (value) => {
-            const next = paddedCharacters();
-            next[index] = alphabet[value] ?? ' ';
-            memory.setName(next.join('').trimEnd());
-          }, { disabled: memory.state.busy, reason: memory.state.busy ? 'Memory operation is pending.' : '',
-            format: () => characters[index] === ' ' ? 'SPACE' : characters[index]!,
-          })));
+        // Character repertoire and group order are software approximations; the
+        // hardware guide specifies the controls, not a complete character map.
+        const groups = ['ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0123456789', ' -_.!'];
+        const cursor = nameCursor.value;
+        const characters = [...memory.state.name];
+        const current = characters[cursor] ?? ' ';
+        const upper = current.toUpperCase();
+        const groupIndex = Math.max(0, groups.findIndex(group => group.includes(upper)));
+        const group = groups[groupIndex]!;
+        const lowercase = current !== upper;
+        const replace = (character: string) => {
+          const next = [...memory.state.name];
+          while (next.length <= nameCursor.value) next.push(' ');
+          next[nameCursor.value] = character;
+          memory.setName(next.join('').trimEnd());
+        };
+        const busy = { disabled: memory.state.busy, reason: memory.state.busy ? 'Memory operation is pending.' : 'Character groups are a software approximation.' };
+        return [[
+          makeEnumField('memory-name-group', 'GROUP / DELETE', groupIndex, fieldOptions(['ABC', '123', 'SYMBOL']), value => {
+            const selected = groups[value]; if (selected) replace(selected[0]!);
+          }, { ...busy, activate: () => { const next = [...memory.state.name]; next.splice(nameCursor.value, 1); memory.setName(next.join('')); } }),
+          makeEnumField('memory-name-case', 'CASE / INSERT', lowercase ? 1 : 0, fieldOptions(['UPPER', 'LOWER']), value => replace(value ? current.toLowerCase() : current.toUpperCase()),
+            { ...busy, activate: () => { const next = [...memory.state.name]; while (next.length < nameCursor.value) next.push(' '); next.splice(nameCursor.value, 0, ' '); memory.setName(next.slice(0, 12).join('').trimEnd()); } }),
+          makeEnumField('memory-name-character', 'CHARACTER', Math.max(0, group.indexOf(upper)), fieldOptions([...group].map(char => char === ' ' ? 'SPACE' : char)), value => {
+            const selected = group[value]; if (selected !== undefined) replace(lowercase ? selected.toLowerCase() : selected);
+          }, { ...busy, format: () => current === ' ' ? 'SPACE' : current }),
+          makeNumberField('memory-name-cursor', 'CURSOR', cursor + 1, value => { nameCursor.value = Math.max(0, Math.min(11, Math.round(value) - 1)); }, { ...busy, min: 1, max: 12 }),
+        ]];
       }
       const settings = engine.getRecordPlaySettings?.();
       const quantizeAvailable = settings?.quantizeAvailable ?? (engine.getMode?.() === 'browser' && settings?.available === true);
@@ -1467,6 +1483,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (statusText.value) return statusText.value;
     if (settings.error) return settings.error;
     const classicView = classic ? useDevicePanel().classicState.value.view : null;
+    if (classicView?.kind === 'editor' && classicView.target === 'memory' && classicView.category === 'name') return `NAME: ${semanticMemory.state.name || '(EMPTY)'} · CHARACTER SET APPROXIMATION`;
     if (classicView?.kind === 'editor' && classicView.target === 'menu' && classicView.category === 'setup') {
       return `LOOP RING VISUAL APPROXIMATION · ${engine.getMode().toUpperCase()} METER AVAILABILITY IS LIVE.`;
     }

@@ -12,15 +12,17 @@
       <HardwareKnob
         class="fx-bank-knob"
         appearance="classic"
-        :model-value="modelValue"
+        :model-value="displayedKnobValue"
+        :confirmed-only="activeFx?.type === 'FLANGER'"
         :label="activeFx?.type ?? 'FX VALUE'"
         :color="color"
         :size="140"
         :disabled="valueDisabled"
         :disabled-reason="valueDisabledReason"
+        :interaction-context-key="interactionContextKey"
         :aria-label="`${title} selected effect value`"
         data-hardware-control="knob"
-        @update:model-value="$emit('update:modelValue', $event)"
+        @update:model-value="updateKnobValue"
       />
 
       <div class="bank-actions">
@@ -75,8 +77,8 @@
       </div>
     </div>
 
-    <p v-if="fxUnavailableReason" class="bank-status" role="status">{{ fxUnavailableReason }}</p>
-    <p v-else class="bank-status">{{ activeFx?.id ?? 'A' }} · {{ activeFx?.type ?? 'EMPTY' }} · {{ Math.round(activeFx?.value ?? 0) }}%</p>
+    <p v-if="fxUnavailableReason || flangerKnobUnavailable || nativeKnobPending || knobError" class="bank-status" role="status">{{ fxUnavailableReason || valueDisabledReason }}</p>
+    <p v-else class="bank-status">{{ activeFx?.id ?? 'A' }} · {{ activeFx?.type ?? 'EMPTY' }} · {{ Math.round(displayedKnobValue) }}%</p>
   </section>
 </template>
 
@@ -106,6 +108,7 @@ const engine = AudioEngine.getInstance();
 const memory = useRc505Memory();
 const trackTarget = useTrackFxTargetState();
 const revision = ref(0);
+const knobError = ref('');
 const poll = window.setInterval(() => revision.value++, 100);
 const slots = sharedBank.slots;
 const activeSlot = sharedBank.activeSlot;
@@ -118,8 +121,64 @@ const controlLayer = computed(() => controls.state.fxLayers[props.location]);
 const slotsDisabled = computed(() => memory.state.busy || fxDisabled.value || !!switchSettings.value.state.error || banks.state.busy
   || (controlLayer.value === 'BANK_SELECT' && !banks.canSelect.value));
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
-const valueDisabled = computed(() => memory.state.busy || fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE');
-const valueDisabledReason = computed(() => fxUnavailableReason.value || 'Select an effect before editing its value.');
+// The official FLANGER knob is E.LEVEL. The legacy amount route also edits
+// depth, while entering official mode currently applies additional defaults.
+// Do not silently change either depth or other controls until an isolated
+// official-parameter transition is available.
+const flangerKnobValue = computed<number | null>(() => {
+  revision.value;
+  if (activeFx.value?.type !== 'FLANGER') return null;
+  const index = slots.value.findIndex(slot => slot.id === activeSlot.value);
+  if (index < 0) return null;
+  if (engine.getMode() === 'native') {
+    const runtime = engine.getNativeCatalogFxSlotStatus(props.location, index);
+    if (resolveNativeFxReadback(runtime).disabled || runtime?.acknowledgedEffectId !== 'flanger') return null;
+    const value = runtime.acknowledgedParameters?.official_e_level;
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+  const runtime = engine.getBrowserSharedFxSnapshot(props.location)?.[index];
+  const value = runtime?.parameters?.official_e_level;
+  return runtime?.type === 'FLANGER' && runtime.state === 'ready' && typeof value === 'number' && Number.isFinite(value) ? value : null;
+});
+const flangerKnobUnavailable = computed(() => activeFx.value?.type === 'FLANGER' && flangerKnobValue.value === null);
+const nativeKnobPending = computed(() => activeFx.value?.type === 'FLANGER' && engine.getMode() === 'native' && !!sharedBank.nativeNamedParametersPending.value);
+const valueDisabled = computed(() => memory.state.busy || fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE' || flangerKnobUnavailable.value || nativeKnobPending.value);
+const nativeKnobReadbackReason = computed(() => {
+  if (activeFx.value?.type !== 'FLANGER' || engine.getMode() !== 'native') return '';
+  const index = slots.value.findIndex(slot => slot.id === activeSlot.value);
+  const readback = resolveNativeFxReadback(index < 0 ? null : engine.getNativeCatalogFxSlotStatus(props.location, index));
+  return readback.disabled ? readback.reason : '';
+});
+const valueDisabledReason = computed(() => fxUnavailableReason.value || knobError.value || (nativeKnobPending.value ? 'Waiting for Native E.LEVEL acknowledgement.' : nativeKnobReadbackReason.value || (flangerKnobUnavailable.value
+  ? 'E.LEVEL unavailable until official FLANGER parameters are applied; legacy mix preserved.'
+  : 'Select an effect before editing its value.')));
+const interactionContextKey = computed(() => {
+  revision.value;
+  return [props.location, activeSlot.value, activeFx.value?.type, banks.state.requestedBank,
+    banks.state.appliedBank, engine.getMode(), engine.getMixerControlIdentity(), trackTarget.target.value].join(':');
+});
+const lastConfirmed = ref<{ context: string; value: number } | null>(null);
+watch([interactionContextKey, flangerKnobValue], ([context, value]) => {
+  if (value !== null) lastConfirmed.value = { context, value };
+}, { immediate: true, flush: 'sync' });
+const displayedKnobValue = computed(() => flangerKnobValue.value
+  ?? (lastConfirmed.value?.context === interactionContextKey.value ? lastConfirmed.value.value : modelValueFallback()));
+function modelValueFallback(): number { return props.modelValue; }
+function updateKnobValue(value: number): void {
+  if (activeFx.value?.type !== 'FLANGER') { emit('update:modelValue', value); return; }
+  if (valueDisabled.value || flangerKnobValue.value === null) return;
+  const index = slots.value.findIndex(slot => slot.id === activeSlot.value);
+  if (index < 0) return;
+  const bounded = Math.max(0, Math.min(100, Math.round(value)));
+  const slot = activeFx.value;
+  const named = { ...slot.namedParametersByType?.FLANGER, official_e_level: bounded };
+  if (engine.getMode() === 'native') {
+    knobError.value = sharedBank.setNativeNamedParameters(index, named) ? '' : 'Native did not accept the E.LEVEL request.';
+  } else {
+    slot.namedParametersByType = { ...slot.namedParametersByType, FLANGER: named };
+  }
+}
+watch(interactionContextKey, () => { knobError.value = ''; });
 const slotStates = computed(() => {
   revision.value;
   return Object.fromEntries(slots.value.map((slot, index) => {

@@ -41,7 +41,26 @@ test('Classic WRITE chord, NAME and encoder recall preserve real stereo PCM and 
   });
   await button(page, 'loop').click(); await button(page, 'page-next').click(); await button(page, 'screen-encoder-4').click();
   await expect(lcd(page)).toHaveAttribute('data-classic-screen', 'editor-name');
-  await page.getByTestId('lcd-field-memory-name-0').focus(); await page.keyboard.press('ArrowRight');
+  await page.getByTestId('lcd-field-memory-name-group').focus(); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
+  const memoryName = () => page.evaluate(async () => {
+    const { useRc505Memory } = await (new Function('return import("/src/composables/useRc505Memory.ts")'))();
+    return useRc505Memory().state.name;
+  });
+  await expect.poll(memoryName).toBe('A');
+  await page.getByTestId('lcd-field-memory-name-case').focus(); await page.keyboard.press('ArrowRight');
+  await expect.poll(memoryName).toBe('a');
+  await page.getByTestId('lcd-field-memory-name-character').focus(); await page.keyboard.press('ArrowRight');
+  await expect.poll(memoryName).toBe('b');
+  await page.getByTestId('lcd-field-memory-name-cursor').focus(); await page.keyboard.press('ArrowRight');
+  await page.getByTestId('lcd-field-memory-name-group').focus(); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
+  await expect.poll(memoryName).toBe('bA');
+  await page.getByTestId('lcd-field-memory-name-cursor').focus(); await page.keyboard.press('ArrowLeft');
+  await button(page, 'screen-encoder-2').click();
+  await expect.poll(memoryName).toBe(' bA');
+  await button(page, 'screen-encoder-1').click();
+  await expect.poll(memoryName).toBe('bA');
+  await button(page, 'screen-encoder-1').click();
+  await expect.poll(memoryName).toBe('A');
   await button(page, 'exit').click(); await button(page, 'exit').click();
   await expect(lcd(page)).toContainText('A');
   await writeChord(page); await button(page, 'screen-encoder-1').click(); await button(page, 'enter').click();

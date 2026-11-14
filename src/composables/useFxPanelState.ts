@@ -664,12 +664,30 @@ function ensureInitialized() {
       slot.electricParameters?.toneHz ?? null,
       slot.electricParameters?.mixPercent ?? null,
     ] as const;
+    const syncBrowserNamedLevelOnly = (location: FxLocation, index: number, slot: FxSlotState,
+      current: readonly unknown[], previous: readonly unknown[] | undefined): boolean => {
+      if (!previous || slot.type !== 'FLANGER' || current.some((value, i) => i !== 4 && value !== previous[i])) return false;
+      const before = JSON.parse(String(previous[4] || '{}')) as Record<string, Record<string, number>>;
+      const after = JSON.parse(String(current[4] || '{}')) as Record<string, Record<string, number>>;
+      const newLevel = after.FLANGER?.official_e_level;
+      const runtime = engine.getBrowserSharedFxSnapshot(location)?.[index];
+      if (typeof newLevel !== 'number' || runtime?.type !== 'FLANGER' || runtime.state !== 'ready'
+        || typeof runtime.parameters.official_e_level !== 'number') return false;
+      if (before.FLANGER) delete before.FLANGER.official_e_level;
+      delete after.FLANGER!.official_e_level;
+      if (before.FLANGER && !Object.keys(before.FLANGER).length) delete before.FLANGER;
+      if (after.FLANGER && !Object.keys(after.FLANGER).length) delete after.FLANGER;
+      if (JSON.stringify(before) !== JSON.stringify(after)) return false;
+      engine.setCatalogFxParameters(location, index, { official_e_level: newLevel });
+      return true;
+    };
     watch(() => state.inputSlots.map((slot) => slotControlSnapshot(slot)), (newValues, oldValues) => {
       if (engine.getMode() !== 'browser' || memoryHydrating) return;
       state.inputSlots.forEach((slot, index) => {
         const previous = oldValues?.[index];
         const current = newValues[index];
         if (previous && current && JSON.stringify(previous) === JSON.stringify(current)) return;
+        if (current && syncBrowserNamedLevelOnly('input', index, slot, current, previous)) return;
         syncSlotToEngine('input', index, slot);
       });
     });
@@ -681,6 +699,7 @@ function ensureInitialized() {
         const previous = oldValues?.[index];
         const current = newValues[index];
         if (previous && current && JSON.stringify(previous) === JSON.stringify(current)) return;
+        if (current && syncBrowserNamedLevelOnly('track', index, slot, current, previous)) return;
         syncSlotToEngine('track', index, slot);
       });
     });
