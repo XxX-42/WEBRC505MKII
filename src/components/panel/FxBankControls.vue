@@ -13,8 +13,8 @@
         class="fx-bank-knob"
         appearance="classic"
         :model-value="displayedKnobValue"
-        :confirmed-only="activeFx?.type === 'FLANGER'"
-        :label="activeFx?.type ?? 'FX VALUE'"
+        :confirmed-only="activeFx?.type === 'FLANGER' && !legacyFlanger"
+        :label="legacyFlanger ? 'FLANGER · LEGACY AMOUNT' : activeFx?.type ?? 'FX VALUE'"
         :color="color"
         :size="140"
         :disabled="valueDisabled"
@@ -140,7 +140,10 @@ const flangerKnobValue = computed<number | null>(() => {
   const value = runtime?.parameters?.official_e_level;
   return runtime?.type === 'FLANGER' && runtime.state === 'ready' && typeof value === 'number' && Number.isFinite(value) ? value : null;
 });
-const flangerKnobUnavailable = computed(() => activeFx.value?.type === 'FLANGER' && flangerKnobValue.value === null);
+const legacyFlanger = computed(() => activeFx.value?.type === 'FLANGER'
+  && flangerKnobValue.value === null
+  && !Object.keys(activeFx.value.namedParametersByType?.FLANGER ?? {}).some(key => key.startsWith('official_')));
+const flangerKnobUnavailable = computed(() => activeFx.value?.type === 'FLANGER' && !legacyFlanger.value && flangerKnobValue.value === null);
 const nativeKnobPending = computed(() => activeFx.value?.type === 'FLANGER' && engine.getMode() === 'native' && !!sharedBank.nativeNamedParametersPending.value);
 const valueDisabled = computed(() => memory.state.busy || fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE' || flangerKnobUnavailable.value || nativeKnobPending.value);
 const nativeKnobReadbackReason = computed(() => {
@@ -165,7 +168,8 @@ const displayedKnobValue = computed(() => flangerKnobValue.value
   ?? (lastConfirmed.value?.context === interactionContextKey.value ? lastConfirmed.value.value : modelValueFallback()));
 function modelValueFallback(): number { return props.modelValue; }
 function updateKnobValue(value: number): void {
-  if (activeFx.value?.type !== 'FLANGER') { emit('update:modelValue', value); return; }
+  if (valueDisabled.value) return;
+  if (activeFx.value?.type !== 'FLANGER' || legacyFlanger.value) { emit('update:modelValue', value); return; }
   if (valueDisabled.value || flangerKnobValue.value === null) return;
   const index = slots.value.findIndex(slot => slot.id === activeSlot.value);
   if (index < 0) return;

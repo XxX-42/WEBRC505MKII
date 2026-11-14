@@ -117,6 +117,15 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   box-shadow: 0 22px 44px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.22), inset 0 -3px rgba(0,0,0,.72);
 }
 
+/* Memory transactions temporarily lock controls. Keep their physical material
+   stable so lock/unlock does not flash the whole panel; native disabled/ARIA
+   semantics and the not-allowed cursor still prevent activation. */
+.rc505-face :deep(.hardware-button.appearance-classic.is-disabled),
+.rc505-face :deep(.hardware-knob-wrapper.appearance-classic.is-disabled) {
+  opacity: 1;
+  filter: none;
+}
+
 .face-branding {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

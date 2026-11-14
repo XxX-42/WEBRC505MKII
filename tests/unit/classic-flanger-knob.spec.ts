@@ -41,13 +41,13 @@ describe('Classic FLANGER knob routing', () => {
     expect(h.wrapper.emitted('update:modelValue')).toBeUndefined();
     h.wrapper.unmount();
   });
-  it('refuses legacy FLANGER without writing', async () => {
-    const h = await setup('browser', false);
+  it.each(['browser', 'native'] as const)('keeps %s legacy FLANGER amount usable without converting named parameters', async mode => {
+    const h = await setup(mode, false);
     const knob = h.wrapper.get('[role="slider"]');
-    expect(knob.attributes('aria-disabled')).toBe('true');
+    expect(knob.attributes('aria-disabled')).toBe('false');
     await knob.trigger('keydown', { key: 'ArrowUp' });
     expect(h.slots.value[0]!.namedParametersByType).toBeUndefined();
-    expect(h.wrapper.emitted('update:modelValue')).toBeUndefined();
+    expect(h.wrapper.emitted('update:modelValue')).toEqual([[36]]);
     h.wrapper.unmount();
   });
   it('uses acknowledged Native value and refuses unknown or rejected status', async () => {
